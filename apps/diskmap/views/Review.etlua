@@ -1,3 +1,4 @@
+<% local DETAILS = {maximumHeight = 144} %>
 <Sheet width="620" height="560">
   <VStack maxHeight="infinity" padding="20" spacing="12">
     <HStack spacing="12" alignment="center">
@@ -13,9 +14,16 @@
       <Column id="result" title="" width="120" minWidth="90" />
       <Column id="size" title="On disk" width="100" minWidth="90" alignment="trailing" />
     </List>
-    <Label id="consequence" text="Sizes are measured again, and each item is checked just before it moves: one whose app is open, whose project file is gone or that was replaced is skipped. Nothing is deleted until you empty the Trash." size="11" color="secondary" maxWidth="infinity" lines="3" />
+    <ScrollView id="selectedDetails" vertical="true" maxHeight="<%= DETAILS.maximumHeight %>" hidden="true">
+      <VStack spacing="8" alignment="leading">
+        <Label id="consequence" text="" size="12" maxWidth="infinity" lines="0" />
+        <Label id="selectedPath" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+        <Label id="selectedResult" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+      </VStack>
+    </ScrollView>
+    <Label id="revalidation" text="Sizes are measured again, and each item is checked just before it moves: one whose app is open, whose project file is gone or that was replaced is skipped. Nothing is deleted until you empty the Trash." size="11" color="secondary" maxWidth="infinity" lines="0" />
     <HStack spacing="8" alignment="center">
-      <Button id="remove" title="Remove" action="remove" disabled="true" />
+      <Button id="remove" title="Unmark Selected" action="remove" disabled="true" />
       <Button id="clear" title="Clear All" action="clear" />
       <Spacer />
       <Button id="emptyTrash" title="Empty Trash…" action="emptyTrash" hidden="true" />

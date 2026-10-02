@@ -117,7 +117,7 @@ local kindsPage = app.page
 local decision = kindsPage:decisionData(kinds)
 t.assertEqual(decision.amount, Model.size(ownInstallers + ownArchives), "the decision's amount is the user-owned review set")
 t.assertEqual(decision.amountCaption, "could recover", "which it names")
-t.expect(decision.detail:find("total", 1, true) and decision.detail:find("stored", 1, true), "and states the inventory total apart: " .. decision.detail)
+t.expect(decision.detail:find("installed or extracted", 1, true), "the lead explains the review before removal")
 local shown
 kindsPage.show = function(id, filter) shown = {id, filter} end
 app.page.template.actions.decisionInstallers()

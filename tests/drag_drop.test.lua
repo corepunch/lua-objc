@@ -125,4 +125,20 @@ local clash = move(root .. "/from/b.txt", root .. "/to")
 t.expect(clash and not clash.ok and clash.message:find("already exists", 1, true), "an item of the same name is never replaced")
 t.expect(io.open(root .. "/from/b.txt") ~= nil, "a refused move leaves the item where it was")
 os.execute("/bin/rm -rf " .. root)
+
+-- Native file-hover lifecycle can reveal an initially empty drop target.
+-- It observes internal files even when that destination accepts only Finder
+-- drops; rejection must still end the hover without calling its action.
+local hover, accepted = {}, 0
+local _, hoverRefs = xml.render('<VStack id="hover" onDrop="drop" dropExternalOnly="true" onFileDragChanged="hover" />',
+	{actions = {drop = function() accepted = accepted + 1; return false end,
+		hover = function(targeted) table.insert(hover, targeted) end}}, ns)
+t.expect(not ns._dropFiles(hoverRefs.hover, {'/tmp/file'}, true), 'internal drag is still refused')
+t.assertEqual(accepted, 0, 'hover observation does not open internal files')
+t.expect(hover[1] == true and hover[2] == false, 'refused drag reports enter then exit')
+hover = {}
+t.expect(not ns._dropFiles(hoverRefs.hover, {'/tmp/file'}), 'drop action can refuse an external file')
+t.expect(hover[1] == true and hover[2] == false, 'refused drop clears hover')
+t.assertEqual(accepted, 1, 'external drop still reaches original action')
+
 os.exit(t.summary() and 0 or 1)

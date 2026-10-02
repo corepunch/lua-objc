@@ -15,6 +15,7 @@
       sizeId               ref of a total beside the heading
       links                buttons before the filter
       filters              {id, options}: a segmented picker calling `filter`
+      controlsId           optional ref for the whole filters/actions block
       buttons              buttons after the filter
       empties              {id, title, systemImage, description, hidden}
       panelId              ref of the box around the list
@@ -23,6 +24,8 @@
     leads                refs for retained child templates right below the header:
                          the page's leading decision (Decision.etlua)
     slots                refs for retained child templates, below the sections
+    contextAfterSections puts scope and statistics after the actual rows
+    contextDisclosure    optional collapsed title for that accounting context
     scopeNote            initial text of the note stating what the totals cover (models/Scope.lua)
     footnote             {text, icon} ]] %>
 <% if layout.details then %><VStack spacing="0" flexGrow="1" flexBasis="0" flexShrink="1"><% end %>
@@ -32,15 +35,8 @@
     <% for _, slot in ipairs(layout.leads or {}) do %>
     <VStack id="<%= slot %>" spacing="0" alignment="leading" />
     <% end %>
-    <% if layout.scopeNote then %>
-    <%- partial("Footnote.etlua", {id = "scopeNote", icon = "scope", text = layout.scopeNote}) %>
-    <% end %>
-    <% if layout.tiles and #layout.tiles > 0 then %>
-    <HStack id="stats" fixedSize="vertical" spacing="12" alignment="top">
-      <% for _, tile in ipairs(layout.tiles) do %>
-      <%- partial("StatTile.etlua", tile) %>
-      <% end %>
-    </HStack>
+    <% if not layout.contextAfterSections then %>
+    <%- partial("PageContext.etlua", {layout = layout}) %>
     <% end %>
     <% if layout.empty then %>
     <ContentUnavailable id="<%= layout.empty.id %>" title="<%= layout.empty.title %>" systemImage="<%= layout.empty.systemImage %>" description="<%= layout.empty.description %>" />
@@ -48,30 +44,28 @@
     <% for _, section in ipairs(layout.sections or {}) do %>
     <VStack <% if section.id then %>id="<%= section.id %>" <% end %> spacing="8" alignment="leading">
       <% if section.title then %>
-      <% --[[ A filter gets its own row under the heading, with the section's
-        links and buttons: beside a segmented picker the heading's detail
-        wrapped into a sliver in a narrow window. ]] %>
-      <% local filtered = section.filters ~= nil %>
       <HStack spacing="12" alignment="<%= section.sizeId and "bottom" or "center" %>">
         <%- partial("SectionHeader.etlua", {title = section.title, titleId = section.titleId, detail = section.detail or "", detailId = section.detailId}) %>
-        <% if not filtered then %>
-        <%- partial("Buttons.etlua", {buttons = section.links}) %>
-        <%- partial("Buttons.etlua", {buttons = section.buttons}) %>
-        <% end %>
         <% if section.sizeId then %>
         <Label id="<%= section.sizeId %>" text="" size="13" weight="semibold" monospacedDigit="true" />
         <% end %>
       </HStack>
-      <% if filtered then %>
-      <HStack spacing="12" alignment="center">
-        <%- partial("Buttons.etlua", {buttons = section.links}) %>
+      <% end %>
+      <% if section.links or section.filters or section.buttons then %>
+      <VStack <% if section.controlsId then %>id="<%= section.controlsId %>" <% end %> spacing="8" alignment="leading">
+        <% if section.filters then %>
         <Picker id="<%= section.filters.id %>" style="segmented" onChange="filter">
           <% for _, title in ipairs(section.filters.options) do %><Option title="<%= title %>" /><% end %>
         </Picker>
-        <Spacer />
-        <%- partial("Buttons.etlua", {buttons = section.buttons}) %>
-      </HStack>
-      <% end %>
+        <% end %>
+        <% if section.links or section.buttons then %>
+        <HStack spacing="12" alignment="center">
+          <%- partial("Buttons.etlua", {buttons = section.links}) %>
+          <%- partial("Buttons.etlua", {buttons = section.buttons}) %>
+          <Spacer />
+        </HStack>
+        <% end %>
+      </VStack>
       <% end %>
       <% for _, empty in ipairs(section.empties or {}) do %>
       <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= empty.description %>" />
@@ -88,6 +82,9 @@
       </GroupBox>
       <% end %>
     </VStack>
+    <% end %>
+    <% if layout.contextAfterSections then %>
+    <%- partial("PageContext.etlua", {layout = layout}) %>
     <% end %>
     <% for _, slot in ipairs(layout.slots or {}) do %>
     <VStack id="<%= slot %>" spacing="0" />

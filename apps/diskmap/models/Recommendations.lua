@@ -106,7 +106,7 @@ function Recommendations.presentation(model, query, sources)
 		row.detail = row.kind == "rebuildable" and "Rebuildable" or "Review"
 		row.shareText = ""
 		if row.id == "simulators" and plan and plan.removalCount > 0 then
-			row.subtitle = "Keep one iPhone and one iPad: " .. Model.plural(plan.removalCount, "redundant device") .. " can go. Shared runtimes stay. "
+			row.subtitle = "Shared runtimes stay. "
 				.. Model.size(row.bytes) .. " is stored in all simulators."
 			row.decisionTitle = "Keep one iPhone and one iPad; review " .. Model.plural(plan.removalCount, "extra simulator")
 			row.page, row.pageName, row.detail = "simulators", "Simulators", "Opens Simulators"
@@ -254,10 +254,9 @@ function Recommendations.lead(data)
 			actionTitle = "Open Large Files", action = "leadFiles"}
 	end
 	local verb = row.kind == "rebuildable" and "Clear " or "Review "
-	local others = data.count - 1
 	return {id = "decision", icon = row.icon or "sparkles", color = row.color or "systemIndigo",
 		title = row.decisionTitle or (verb .. row.name),
-		detail = (row.subtitle or "") .. (others > 0 and (" " .. Model.plural(others, "more suggestion") .. " follow, ranked by what they could recover.") or ""),
+		detail = row.id == "simulators" and "Choose the devices to keep, then confirm the extras. Shared runtimes stay." or (row.subtitle or ""),
 		amount = row.size, amountCaption = row.shareText,
 		actionTitle = row.page and ("Open " .. (row.pageName or "Page") .. "…") or "Review…", action = "leadOpen"}
 end

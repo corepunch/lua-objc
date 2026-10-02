@@ -62,7 +62,7 @@ local data = Recommendations.presentation(model, "", {})
 local row
 for _, item in ipairs(data.decisions) do if item.id == "simulators" then row = item end end
 t.expect(row and row.page == "simulators", "the simulator suggestion opens the minimal device set")
-t.expect(row.subtitle:find("Keep one iPhone and one iPad", 1, true), "and says what it proposes")
+t.expect(row.decisionTitle:find("Keep one iPhone and one iPad", 1, true), "and says what it proposes")
 t.assertEqual(data.eligibleBytes, 13e9 + 3e9, "the page total adds eligible bytes only: " .. tostring(data.eligibleBytes))
 t.expect(data.reviewBytes >= 22e9, "bytes to review are reported separately")
 t.expect(Recommendations.recovery(row):find("Estimated recoverable 13", 1, true), "the inspector shows estimated recoverable bytes")

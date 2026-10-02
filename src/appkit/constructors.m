@@ -19,6 +19,8 @@
 // SwiftUI `.dropDestination(for: URL.self)`: files dropped on the stack go to
 // `onDrop(paths)`, which returns whether it took them.
 @property(nonatomic, strong) LuaReg *dropReg;
+@property(nonatomic, strong) LuaReg *fileDragReg;
+@property(nonatomic) BOOL fileDragTargeted;
 @property(nonatomic) BOOL dropTargeted;
 // Accept only drags from other applications: a drag that starts in this
 // app has a dragging source, one from the Finder has none.
@@ -69,11 +71,21 @@ static void stack_register_drag_types(LuaStackView *view) {
 	self.layer.borderWidth = targeted ? kDropHighlightWidth : 0;
 	self.layer.borderColor = NSColor.keyboardFocusIndicatorColor.CGColor;
 }
+- (void)setFileDragTargeted:(BOOL)targeted {
+	if (_fileDragTargeted == targeted) return;
+	_fileDragTargeted = targeted;
+	lua_State *L = lua_reg_live_state(self.fileDragReg);
+	if (L && lua_reg_push(self.fileDragReg)) {
+		lua_pushboolean(L, targeted);
+		lua_objc_pcall(L, 1, 0, "file drag changed");
+	}
+}
 - (BOOL)acceptsFileDrag:(id<NSDraggingInfo>)sender {
 	return self.dropReg && (!self.dropExternalOnly || sender.draggingSource == nil)
 		&& stack_drop_paths(sender).count > 0;
 }
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+	self.fileDragTargeted = stack_drop_paths(sender).count > 0;
 	NSDragOperation reorder = [self.reorder validateDrag:sender];
 	if (reorder != NSDragOperationNone) return reorder;
 	self.dropTargeted = [self acceptsFileDrag:sender];
@@ -84,9 +96,10 @@ static void stack_register_drag_types(LuaStackView *view) {
 	if (reorder != NSDragOperationNone) return reorder;
 	return self.dropTargeted ? NSDragOperationCopy : NSDragOperationNone;
 }
-- (void)draggingExited:(id<NSDraggingInfo>)sender { (void)sender; self.dropTargeted = NO; }
+- (void)draggingExited:(id<NSDraggingInfo>)sender { (void)sender; self.dropTargeted = NO; self.fileDragTargeted = NO; }
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
 	self.dropTargeted = NO;
+	self.fileDragTargeted = NO;
 	if ([self.reorder validateDrag:sender] != NSDragOperationNone) return [self.reorder acceptDrag:sender];
 	if (![self acceptsFileDrag:sender]) return NO;
 	return stack_perform_drop(self, stack_drop_paths(sender));
@@ -113,6 +126,7 @@ static int bridge_set_drop_handler(lua_State *L) {
 	LuaStackView *view = lua_objc_check_object(L, 1, [LuaStackView class], "stack");
 	view.dropReg = lua_reg_opt(L, 2);
 	view.dropExternalOnly = lua_toboolean(L, 3);
+	view.fileDragReg = lua_reg_opt(L, 4);
 	stack_register_drag_types(view);
 	return 0;
 }
@@ -146,6 +160,7 @@ static int bridge_drop_files(lua_State *L) {
 	if (lua_toboolean(L, 3)) drag.draggingSource = view;
 	id<NSDraggingInfo> info = (id<NSDraggingInfo>)drag;
 	BOOL accepted = [view draggingEntered:info] != NSDragOperationNone && [view performDragOperation:info];
+	[view draggingExited:info];
 	[drag.draggingPasteboard releaseGlobally];
 	lua_pushboolean(L, accepted);
 	return 1;

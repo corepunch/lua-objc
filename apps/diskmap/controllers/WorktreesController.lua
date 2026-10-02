@@ -24,7 +24,7 @@ function Controller:mount(host, state)
 		select = function(_, _, row) self.selected = row; self:buttons() end,
 		reveal = function() if self.selected then self.service.reveal(self.selected.path) end end,
 		keep = function() self:toggleKeep() end,
-		openOwner = function() if self.selected and self.selected.manager then self.service.openOwner(self.selected.manager:lower()) end end,
+		openOwner = function() self:openOwner() end,
 		review = function() self:review() end,
 		cleanup = function() if self.showPage then self.showPage("cleanup") end end,
 		prune = function() self:prune() end,
@@ -75,7 +75,7 @@ end
 
 function Controller:detail(row)
 	if not row then return "Select a worktree to see why it is or is not offered." end
-	local parts = {table.concat(row.reasons, " ")}
+	local parts = {row.name .. " · " .. (row.branch or "Detached HEAD"), row.path, table.concat(row.reasons, " ")}
 	for _, warning in ipairs(row.warnings or {}) do table.insert(parts, warning) end
 	if row.worktreeBytes then
 		table.insert(parts, "Source " .. Model.size(row.sourceBytes) .. " · generated output " .. Model.size(row.generatedBytes or 0)
@@ -106,9 +106,9 @@ function Controller:decisionData(plan)
 		data.disabled = self.busy
 	elseif #plan.review > 0 then
 		data.title = Model.plural(#plan.review, "worktree") .. " " .. (#plan.review == 1 and "needs" or "need") .. " your review"
-		data.detail = "None is clean, published and idle, so Diskmap removes nothing here. Select one below to read the evidence, or continue in Clean Up."
+		data.detail = "Select a worktree below to read its evidence and open the app that manages it."
 		data.amount, data.amountCaption = Model.size(plan.reviewBytes), "to review"
-		data.actionTitle, data.action, data.disabled = "Open Clean Up", "cleanup", false
+		data.actionTitle, data.action, data.disabled = nil, nil, true
 	else
 		data.title = linked > 0 and "No worktree to remove" or "No leftover worktrees"
 		data.detail = (#plan.prune > 0 and (Model.plural(#plan.prune, "missing registration") .. " can be pruned below; that deletes no checkout. ") or "")
@@ -152,7 +152,7 @@ function Controller:show()
 	refs.reviewSection.hidden = #review == 0
 	refs.missingSection.hidden = #missing == 0
 	refs.repositories.hidden = #repositories == 0
-	refs.selectionSection.hidden = #remove + #review + #missing == 0
+	refs.selectionSection.hidden = self.selected == nil
 	if self.loading then
 		refs.summary.text = "Looking for Git worktrees…"
 	else
@@ -174,6 +174,7 @@ function Controller:buttons()
 	if not refs then return end
 	local plan = Worktrees.plan(self.rows)
 	local row = self.selected
+	refs.selectionSection.hidden = row == nil
 	local idle = not self.busy and not self.loading
 	self.decisionActions = self.decisionActions or {
 		review = function() self:review() end,
@@ -187,7 +188,19 @@ function Controller:buttons()
 	refs.openOwner.enabled = idle and row ~= nil and row.manager ~= nil
 	refs.openOwner.title = row and row.manager and ("Open " .. row.manager .. "…") or "Open Owner…"
 	refs.retry.enabled = idle
-	if refs.selectedDetail then refs.selectedDetail.text = self:detail(row) end
+	if refs.selectedDetail then
+		refs.selectedTitle.text = row and (row.name .. " · " .. (row.branch or "Detached HEAD")) or ""
+		refs.selectedTitle.toolTip = refs.selectedTitle.text
+		refs.selectedSummary.text = row and table.concat(row.reasons, " ") or ""
+		refs.selectedDetail.text = self:detail(row)
+	end
+end
+
+function Controller:openOwner()
+	if not self.selected or not self.selected.manager then return false end
+	local ok, message = self.service.openOwner(self.selected.manager:lower())
+	if ok == false and self.refs then self.refs.status.text = message end
+	return ok
 end
 
 function Controller:toggleKeep()

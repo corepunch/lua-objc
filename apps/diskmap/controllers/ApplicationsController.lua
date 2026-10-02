@@ -84,11 +84,12 @@ function Controller:mount(host, state)
 		cleanup = function() if self.showPage then self.showPage("cleanup") end end,
 		markHigh = function()
 			local items = {}
-			for _, row in ipairs(Applications.leftovers(self.model, self.installed) or {}) do
+			for _, row in ipairs(self.visibleLeftovers or {}) do
 				if row.tier == "high" then table.insert(items, self:leftoverItem(row)) end
 			end
 			self.actions:markAll(items)
 		end,
+		reviewMarked = function() self.actions.handlers.review() end,
 		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
 	}
 	local refs = self:attach(host, {layout = LAYOUT, actions = self.pageActions})
@@ -106,11 +107,14 @@ function Controller:update(state)
 	local rows = Applications.rows(self.model, self.info, Applications.filters[self.filterIndex], query)
 	refs.apps:replaceRows(rows)
 	local leftovers = Applications.leftovers(self.model, self.installed, query)
+	self.visibleLeftovers = leftovers or {}
 	refs.leftovers:replaceRows(self.actions:annotate(leftovers or {}))
 	refs.leftoversSection.hidden = not leftovers or #leftovers == 0
-	local unmarkedHigh = false
+	local unmarkedHigh, markedHigh = 0, 0
 	for _, row in ipairs(leftovers or {}) do
-		if row.tier == "high" and not self.actions:isMarked(row.path) then unmarkedHigh = true end
+		if row.tier == "high" then
+			if self.actions:isIncluded(row.path) then markedHigh = markedHigh + 1 else unmarkedHigh = unmarkedHigh + 1 end
+		end
 	end
 	local all = Applications.rows(self.model, self.info, "All")
 	local summary = Applications.summary(all, Applications.leftovers(self.model, self.installed))
@@ -118,24 +122,30 @@ function Controller:update(state)
 		or string.format("%s %s %s, and their data another %s stored.", Model.plural(summary.count, "app"), summary.count == 1 and "uses" or "use", Model.size(summary.apps), Model.size(summary.data))
 	refs.installedDetail.text = "Each app with the data it keeps in your Library."
 		.. (self.info and summary.unused > 0 and (" " .. Model.plural(summary.unused, "app") .. " with a known last use over six months ago, " .. Model.size(summary.unusedBytes) .. " with " .. (summary.unused == 1 and "its" or "their") .. " data.") or "")
-	self.leadRefs = self:decision("lead", self:decisionData(summary, unmarkedHigh))
+	self.leadRefs = self:decision("lead", self:decisionData(summary, unmarkedHigh, markedHigh))
 end
 
 -- The leading decision: leftover data first, because removing it changes
 -- nothing an installed app needs; then apps with a known long absence;
 -- otherwise where else to look.
-function Controller:decisionData(summary, unmarkedHigh)
+function Controller:decisionData(summary, unmarkedHigh, markedHigh)
 	local data = {id = "decision", icon = "questionmark.folder.fill", color = "systemGray", actions = self.pageActions}
 	if not summary.leftovers then
 		data.title, data.detail, data.amount, data.amountCaption = "Checking for data left behind by removed apps…", "Diskmap compares data folders with the apps Spotlight knows.", "—", "to review"
 	elseif summary.leftovers > 0 then
-		data.title = "Review " .. Model.plural(summary.leftovers, "leftover folder") .. " of apps no longer installed"
+		data.title = "Review " .. Model.plural(summary.leftovers, "possible leftover folder")
 		data.detail = summary.leftoversHigh > 0
-			and (Model.plural(summary.leftoversHigh, "folder") .. " " .. (summary.leftoversHigh == 1 and "is" or "are") .. " high confidence: no app from that vendor is installed. Mark them for cleanup, then review the rest below.")
-			or "None is high confidence: an app from the same vendor is installed. Review each one below before removing it."
+			and (Model.plural(summary.leftoversHigh, "folder") .. " " .. (summary.leftoversHigh == 1 and "is" or "are") .. " likely leftovers: no app from that vendor is known to be installed. Review the other unclaimed folders individually.")
+			or "No known installed app claims these folders. A name-only match does not prove its app was removed; review each folder individually."
 		if summary.leftoversHighBytes > 0 then data.amount, data.amountCaption = Model.size(summary.leftoversHighBytes), "could recover"
 		else data.amount, data.amountCaption = Model.size(summary.leftoverBytes), "to review" end
-		data.actionTitle, data.action, data.disabled = "Mark High Confidence", "markHigh", not unmarkedHigh
+		if unmarkedHigh > 0 then
+			data.actionTitle, data.action = "Mark " .. Model.plural(unmarkedHigh, "Likely Leftover"), "markHigh"
+		elseif markedHigh > 0 then
+			data.actionTitle, data.action = "Review Marked Items…", "reviewMarked"
+		end
+		data.secondaryTitle = unmarkedHigh > 0 and markedHigh > 0 and "Review Marked Items…" or nil
+		data.secondaryAction = "reviewMarked"
 	elseif self.info and summary.unused > 0 then
 		data.icon, data.color = "hourglass", "systemOrange"
 		data.title = Model.plural(summary.unused, "app") .. " not opened in six months"

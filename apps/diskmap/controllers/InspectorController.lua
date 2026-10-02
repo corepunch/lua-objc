@@ -38,7 +38,9 @@ function Controller:manage()
 			self.refresh()
 		end)
 	elseif row.action == "settings" then self.service.openSettings(row.settingsSection)
-	elseif row.action == "xcode" or row.action == "docker" then self.service.openOwner(row.action)
+	elseif row.action == "xcode" or row.action == "docker" then
+		local ok, message = self.service.openOwner(row.action)
+		if ok == false then self.service.showError("Cannot open cleanup owner", message); return false end
 	elseif row.path then self.service.reveal(row.path) end
 	return true
 end

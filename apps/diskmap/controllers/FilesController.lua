@@ -7,17 +7,20 @@ local Controller = Page.extend("files")
 
 local THRESHOLD = Model.size(Inventory.summary.minimumFileBytes)
 local LAYOUT = {
-	summary = "Measuring files…", scopeNote = Scope.pages.files,
+	summary = "Measuring files…", scopeNote = Scope.pages.files, leads = {"lead"}, contextAfterSections = true, contextDisclosure = "Scan scope and statistics",
 	tiles = {
 		{id = "largeTile", icon = "doc.fill", color = "systemTeal", title = "Over " .. THRESHOLD, value = "—", detail = "Individual files, largest first"},
 		{id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year", value = "—", detail = "Not opened or changed since"},
 		{id = "movableTile", icon = "trash.fill", color = "systemRed", title = "Yours to review", value = "—", detail = "Unused documents you can move to the Trash"},
 	},
-	sections = {{title = "Files", detailId = "filterDetail",
+	sections = {{
+		controlsId = "fileControls",
 		links = {{id = "clearKind", title = "Show All Kinds", style = "link", action = "clearKind", hidden = true}},
 		filters = {id = "filter", options = Files.filters},
 		empties = {
-			{id = "filesNoResults", hidden = true, title = "No Results", systemImage = "magnifyingglass", description = "No large file matches the search. The totals above count every large file."},
+			{id = "filesUnavailable", hidden = true, title = "File Results Unavailable", systemImage = "exclamationmark.triangle", description = "Check scan access, then refresh to measure files again."},
+			{id = "filesNone", hidden = true, title = "No Large Files Found", systemImage = "doc", description = "No files over " .. THRESHOLD .. " were ranked. Clean Up can still find rebuildable data."},
+			{id = "filesNoResults", hidden = true, title = "No Results", systemImage = "magnifyingglass", description = "No large file matches the search. Try another filter or search."},
 			{id = "filesEmpty", hidden = true, title = "No Files Here", systemImage = "doc", description = "No large file fits this filter. Choose All to see every file Diskmap ranked."},
 		},
 		panelId = "filesPanel",
@@ -40,6 +43,11 @@ function Controller:mount(host, state)
 	local refs = self:attach(host, {layout = LAYOUT, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:update(self.state) end,
 		clearKind = function() self.kind = nil; self:update(self.state) end,
+		markFiles = function() self:markFiles() end,
+		reviewMarked = function() self.actions.handlers.review() end,
+		refreshFiles = function() self.actions.handlers.refresh() end,
+		cleanup = function() self.actions.handlers.show("cleanup") end,
+		clearSearch = function() self.actions.handlers.search("files", "") end,
 		rowMenu = function(_, _, row) return self.actions:file(row) end,
 		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end,
 	}})
@@ -54,24 +62,68 @@ function Controller:update(state)
 	refs.filter.selectedSegment = self.filterIndex - 1
 	refs.scopeNote.text = Scope.text(self.model, "files")
 	local filter = Files.filters[self.filterIndex]
+	local fileState, stateReason = Files.state(self.model)
+	local noLargeFiles = self.model.files ~= nil and #(self.model.files.large or {}) == 0 and #(self.model.files.old or {}) == 0 and fileState ~= "loading"
 	local rows = Files.rows(self.model, filter, state and state.query, self.kind)
-	refs.files:replaceRows(rows)
+	self.visible = rows
+	refs.files:replaceRows(self.actions:annotate(rows))
+	local bytes, reviewable, marked, included = 0, 0, 0, 0
+	for _, row in ipairs(rows) do
+		bytes = bytes + row.bytes
+		if Files.validateTrash(self.model, row.path) then
+			if self.actions:isMarked(row.path) then marked = marked + 1
+			elseif self.actions:isIncluded(row.path) then marked, included = marked + 1, included + 1
+			else reviewable = reviewable + 1 end
+		end
+	end
+	local kind = self.kind and Files.kindById(self.kind)
+	local decision = {id = "decision", icon = "doc.fill", color = "systemTeal",
+		title = (kind and kind.name or filter) .. " · " .. Model.plural(#rows, "file"),
+		detail = filter == "Installers & archives" and "Check that these are installed or extracted. Marking stages them for your final review."
+			or "Review the contents before marking. Files inside apps or libraries stay with their owners.",
+		amount = Model.size(bytes), amountCaption = "to review",
+		actionTitle = reviewable > 0 and ("Mark " .. Model.plural(reviewable, "File")) or (marked > 0 and "Review Marked Items…" or "No Files to Mark"),
+		action = reviewable > 0 and "markFiles" or "reviewMarked", disabled = (reviewable == 0 and marked == 0) or self.model.scan.running,
+		secondaryTitle = reviewable > 0 and marked > 0 and "Review Marked Items…" or nil, secondaryAction = "reviewMarked",
+		actions = {
+			markFiles = function() self:markFiles() end, reviewMarked = function() self.actions.handlers.review() end,
+			refreshFiles = function() self.actions.handlers.refresh() end, cleanup = function() self.actions.handlers.show("cleanup") end,
+			clearSearch = function() self.actions.handlers.search("files", "") end}}
+	if included > 0 then decision.detail = Model.plural(included, "file") .. " included through a marked folder. Review the folder to change its cleanup plan." end
+	if #rows == 0 and fileState == "loading" then
+		decision.title, decision.detail = "Looking for large files…", "Results appear as they are measured. Marking is available after the scan finishes."
+		decision.amount, decision.amountCaption, decision.actionTitle = "—", "in progress", nil
+	elseif fileState == "empty" or (fileState == "loaded" and noLargeFiles) then
+		decision.title, decision.detail = "No large files found", "No files over " .. THRESHOLD .. " were ranked. Review rebuildable data in Clean Up."
+		decision.amount, decision.amountCaption, decision.actionTitle, decision.action = "—", "scan finished", "Open Clean Up", "cleanup"
+		decision.disabled = false
+	elseif fileState == "error" or fileState == "unavailable" then
+		decision.title, decision.detail = "File results unavailable", stateReason
+		decision.amount, decision.amountCaption, decision.actionTitle, decision.action = "—", "not measured", "Refresh Scan", "refreshFiles"
+		decision.disabled = false
+	elseif #rows == 0 and (state and state.query or "") ~= "" then
+		decision.title, decision.detail = "Nothing matches this search", "Clear the search or choose another filter to review the measured files."
+		decision.amount, decision.amountCaption, decision.actionTitle, decision.action = "—", "no matches", "Clear Search", "clearSearch"
+		decision.disabled = false
+	end
+	self:decision("lead", decision)
 	local measuring = self.model.scan.running == true
 	if measuring and #rows == 0 then refs.files:showLoading() else refs.files:hideLoading() end
 	-- An empty list says why it is empty: nothing matches the search, or
 	-- this filter has no files.
 	local query = state and state.query or ""
 	local measured = self.model.files ~= nil
-	refs.filesPanel.hidden = measured and #rows == 0 and not measuring
-	refs.filesEmpty.hidden = not (measured and #rows == 0 and query == "" and not measuring)
-	refs.filesNoResults.hidden = not (measured and #rows == 0 and query ~= "" and not measuring)
+	local unavailable = fileState == "error" or fileState == "unavailable"
+	refs.filesPanel.hidden = not measuring and (#rows == 0 or unavailable)
+	refs.fileControls.hidden = unavailable or noLargeFiles or (measuring and #rows == 0)
+	refs.filesUnavailable.hidden = not unavailable
+	refs.filesNone.hidden = not (fileState == "empty" or (fileState == "loaded" and noLargeFiles))
+	refs.filesEmpty.hidden = not (measured and #rows == 0 and query == "" and fileState == "loaded" and not noLargeFiles)
+	refs.filesNoResults.hidden = not (measured and #rows == 0 and query ~= "" and fileState == "loaded" and not noLargeFiles)
 	local summary = Files.summary(self.model)
 	local kind = self.kind and Files.kindById(self.kind)
 	refs.clearKind.hidden = kind == nil
-	refs.filterDetail.text = (kind and (kind.name .. " · ") or "") .. Model.plural(Model.count(#rows), "file")
-		.. (filter == "Unused for a year" and " not opened or changed in a year" or "")
-		.. (filter == "Yours" and " you can move to the Trash" or "")
-		.. (query ~= "" and " matching the search" or "")
+
 	if not summary then
 		for _, tile in ipairs(LAYOUT.tiles) do
 			refs[tile.id .. "Value"].text = "—"
@@ -81,8 +133,7 @@ function Controller:update(state)
 			or "Measuring files… Results appear as they are found."
 		return
 	end
-	refs.summary.text = (self.model.files.measuring and "Scan in progress · Found so far: " or "") .. string.format("%s over %s use %s%s.", Model.plural(Model.count(summary.count), "file"), THRESHOLD,
-		Model.size(summary.bytes), summary.partial and " · results are incomplete" or "")
+	refs.summary.text = (self.model.files.measuring and "Scan in progress · Found so far · " or "") .. "Files over " .. THRESHOLD .. " · " .. (summary.partial and "scan coverage is incomplete" or "largest first")
 	refs.largeTileValue.text = Model.size(summary.bytes)
 	refs.largeTileDetail.text = Model.plural(Model.count(summary.count), "file") .. ", largest first"
 	refs.oldTileValue.text = Model.size(summary.oldBytes)
@@ -90,5 +141,20 @@ function Controller:update(state)
 	refs.movableTileValue.text = Model.size(summary.reviewableOldBytes)
 	refs.movableTileDetail.text = Model.plural(Model.count(summary.reviewableOld), "unused document") .. " you can move to the Trash"
 end
+
+-- Mark only the visible, user-owned subset. This stages the files; the
+-- existing basket supplies the review and confirmation before removal.
+function Controller:markFiles()
+	local items = {}
+	for _, row in ipairs(self.visible or {}) do
+		if Files.validateTrash(self.model, row.path) and not self.actions:isIncluded(row.path) then
+			table.insert(items, {path = row.path, name = row.name, bytes = row.bytes,
+				source = "Large Files", consequence = "Moved to the Trash after your final review. Check that this is not your only copy."})
+		end
+	end
+	return self.actions:markAll(items)
+end
+
+function Controller:marksChanged() self:update(self.state) end
 
 return Controller

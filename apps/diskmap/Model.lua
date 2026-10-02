@@ -58,7 +58,17 @@ end
 
 -- "1 app", "3 apps": `count` may already be a formatted number.
 function Model.plural(count, word)
-	return count .. " " .. word .. (tostring(count) == "1" and "" or "s")
+	if tonumber(count) == 1 then return count .. " " .. word end
+	local stem, noun = word:match("^(.-)([%a]+)$")
+	if not noun then return count .. " " .. word .. "s" end
+	local lower, plural = noun:lower(), noun .. "s"
+	local irregular = {person = "people", child = "children", analysis = "analyses"}
+	if irregular[lower] then
+		plural = irregular[lower]
+		if noun:match("^%u") then plural = plural:sub(1, 1):upper() .. plural:sub(2) end
+	elseif lower:match("[^aeiou]y$") then plural = noun:sub(1, -2) .. "ies"
+	elseif lower:match("[sxz]$") or lower:match("ch$") or lower:match("sh$") then plural = noun .. "es" end
+	return count .. " " .. stem .. plural
 end
 
 -- "3 days ago", "5 months ago", "2 years ago": the precision a person needs

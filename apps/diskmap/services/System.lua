@@ -1,4 +1,5 @@
 local ns = require("AppKit")
+local Owners = require("apps.diskmap.services.Owners")
 local System = {}
 -- The person's home folder. Inside the App Sandbox HOME names Diskmap's
 -- container, so catalog paths and access checks would all miss.
@@ -127,8 +128,9 @@ function System.openSettings(section)
 	os.execute("/usr/bin/open " .. System.quote(target))
 end
 function System.openOwner(owner)
-	local applications = {xcode = "Xcode", docker = "Docker", codex = "Codex", claude = "Claude"}
-	os.execute("/usr/bin/open -a " .. System.quote(applications[owner] or "Docker"))
+	return Owners.open(owner, function(identifier)
+		return os.execute("/usr/bin/open -b " .. System.quote(identifier) .. " 2>/dev/null")
+	end)
 end
 function System.confirmTrash(row)
 	return ns.Alert {title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}} == 2

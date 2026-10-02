@@ -85,8 +85,14 @@ end
 
 function Controller:menu(row)
 	local items, keep = Duplicates.copies(row.group)
-	local menu = {{title = "Mark " .. #items .. (#items == 1 and " Copy" or " Copies") .. " for Cleanup", systemImage = "plus.circle",
-		action = function() self.actions:markAll(items) end}}
+	local available, enclosing = {}, nil
+	for _, item in ipairs(items) do
+		local parent = self.actions:covering(item.path)
+		if parent then enclosing = enclosing or parent.path else table.insert(available, item) end
+	end
+	local menu = {{title = #available > 0 and ("Mark " .. #available .. (#available == 1 and " Copy" or " Copies") .. " for Cleanup") or "Review Marked Items…",
+		systemImage = #available > 0 and "plus.circle" or "checkmark.circle",
+		action = function() if #available > 0 then self.actions:markAll(available) else self.actions.handlers.review(enclosing) end end}}
 	table.insert(menu, {title = "Show Kept Copy", systemImage = "folder", action = function() self.service.reveal(keep.path) end})
 	for _, item in ipairs(items) do
 		table.insert(menu, {title = "Show " .. Model.tilde(item.path, self.model.home), systemImage = "doc",

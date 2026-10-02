@@ -105,6 +105,8 @@ function Controller.new(service)
 	self.watchlist = WatchlistController.new(self.model, service, function() self:updateRows() end)
 	self.actions = ActionsController.new(self.model, service, {
 		open = open,
+		search = function(page, text) self:search(page, text) end,
+		review = function(path) self:openReview(path) end,
 		show = function(id) self:show(id) end,
 		keep = function(id) self.cleanup:toggleKeep(id) end,
 		watch = function(entry) return self.watchlist:menuItem(entry) end,
@@ -145,7 +147,8 @@ function Controller.new(service)
 		largest = resourcePage(Largest.page),
 		files = files,
 		kinds = KindsController.new(self.model, function(kind) files:focus(kind); self:show("files", true) end,
-			function(id, filter) self:showFiltered(id, filter and Files.filterIndex(filter)) end),
+			function(id, filter) self:showFiltered(id, filter and Files.filterIndex(filter)) end,
+			function() self.scan:start() end, function() self:search("kinds", "") end),
 		duplicates = DuplicatesController.new(self.model, service, self.actions),
 		cleanup = resourcePage(Recommendations.page(cleanupSources)),
 		applications = applications,
@@ -310,10 +313,27 @@ function Controller:basketChanged()
 		ns.withAnimation(ns.Animation.snappy(), function()
 			self.collector.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.review:summary()
 			self.collector.collectorReview.enabled = count > 0
+			self.collector.collectorArea.hidden = count == 0 and not self.collectorDragging
 		end)
 	end
 	if self.page and self.page.marksChanged then self.page:marksChanged() end
 end
+
+-- A file drag reveals the empty staging area. Delay an exit to the next
+-- run-loop turn: AppKit exits the parent before entering its child target.
+function Controller:collectorDrag(target, targeted)
+	self.dragTargets = self.dragTargets or {}
+	self.dragTargets[target] = targeted or nil
+	self.dragGeneration = (self.dragGeneration or 0) + 1
+	local generation = self.dragGeneration
+	local function update()
+		if generation ~= self.dragGeneration then return end
+		self.collectorDragging = next(self.dragTargets) ~= nil
+		if self.collector then self.collector.collectorArea.hidden = self.review:count() == 0 and not self.collectorDragging end
+	end
+	if targeted then update() else ns.async(function() ns.sleep(0); update() end) end
+end
+
 -- Files dropped on the collector are marked for cleanup. A catalog location
 -- keeps its cleanup rules; any other file or folder is measured first and
 -- then validated like everything else in the basket.
@@ -493,9 +513,9 @@ function Controller:openSettings()
 	self.review:close()
 	self.settings:open(self.window)
 end
-function Controller:openReview()
+function Controller:openReview(path)
 	self.settings:close()
-	self.review:open(self.window)
+	self.review:open(self.window, path)
 end
 function Controller:createWindow()
 	self.scan.disk = self.service.diskSpace(self.scan.home)
@@ -523,6 +543,8 @@ function Controller:createWindow()
 		dropToMark = function(paths) return self:dropToMark(paths) end,
 		dropToOpen = function(paths) return paths[1] ~= nil and self:openFolder(paths[1]) end,
 		review = function() self:openReview() end,
+		pageDrag = function(targeted) self:collectorDrag("page", targeted) end,
+		collectorDrag = function(targeted) self:collectorDrag("collector", targeted) end,
 	}})
 	self.navigation:setWatched(self.watchlist:rows())
 	self.navigation:setWorkflows(self:presentWorkflows())

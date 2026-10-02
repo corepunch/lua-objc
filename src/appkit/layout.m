@@ -247,7 +247,13 @@ static BOOL default_grows_on_axis(NSView *view, BOOL horizontal) {
 	if (axis == LayoutAxisHStack || axis == LayoutAxisVStack || axis == LayoutAxisZStack) {
 		for (NSView *child in view.subviews) {
 			if (is_hidden(child)) continue;
-			if (view_flex_grow(child, horizontal) > 0) return YES;
+			/* A bounded child can fill its own proposal but cannot make its
+			 * enclosing content-sized stack absorb unlimited spare space.
+			 * Otherwise a max-height scrolling inspector grows its parent
+			 * after the scroll view itself has already reached its limit. */
+			CGFloat maximum = view_optional_dimension(child,
+				horizontal ? &kKeys[kMaxWidthKey] : &kKeys[kMaxHeightKey], INFINITY);
+			if (!isfinite(maximum) && view_flex_grow(child, horizontal) > 0) return YES;
 		}
 		return NO;
 	}
@@ -626,6 +632,26 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 					verticalScrollerClass:Nil borderType:scroll.borderType
 					controlSize:scroll.horizontalScroller.controlSize
 					scrollerStyle:scroll.scrollerStyle].height;
+			} else if (scroll.hasVerticalScroller && isfinite(view_optional_dimension(view, &kKeys[kMaxHeightKey], INFINITY))) {
+				/* A bounded scroll region prefers its document's height up to
+				 * the cap. Its native fitting height only describes the frame
+				 * decoration, which would hide the document behind a tiny clip. */
+				CGFloat documentWidth = constraint.width;
+				if (constraint.widthMode != LuaMeasureUndefined) {
+					NSSize viewport = [NSScrollView contentSizeForFrameSize:NSMakeSize(documentWidth, 0)
+						horizontalScrollerClass:scroll.hasHorizontalScroller ? scroll.horizontalScroller.class : Nil
+						verticalScrollerClass:scroll.verticalScroller.class borderType:scroll.borderType
+						controlSize:scroll.verticalScroller.controlSize scrollerStyle:scroll.scrollerStyle];
+					documentWidth = viewport.width;
+					apply_scroll_container_widths(scrollContent, documentWidth);
+				}
+				NSSize content = measure_view(scrollContent, (LuaLayoutConstraint){
+					.width = documentWidth, .widthMode = constraint.widthMode == LuaMeasureUndefined ? LuaMeasureUndefined : LuaMeasureAtMost,
+					.heightMode = LuaMeasureUndefined});
+				natural.height = [NSScrollView frameSizeForContentSize:content
+					horizontalScrollerClass:scroll.hasHorizontalScroller ? scroll.horizontalScroller.class : Nil
+					verticalScrollerClass:scroll.verticalScroller.class borderType:scroll.borderType
+					controlSize:scroll.verticalScroller.controlSize scrollerStyle:scroll.scrollerStyle].height;
 			}
 		}
 		if ([view isKindOfClass:NSScrollView.class] && ((NSScrollView *)view).scrollDisabled
@@ -1162,7 +1188,7 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 			[source updateTableFrame];
 			position_table_spinner((NSScrollView *)view);
 			NSView *document = scroll.documentView;
-			if (!source && document && layout_axis(document) != LayoutAxisNone) {
+			if (!source && document) {
 				NSSize viewport = scroll.contentSize;
 				NSRect previous = document.frame;
 				NSValue *previousViewport = objc_getAssociatedObject(scroll, &kKeys[kScrollViewportSizeKey]);

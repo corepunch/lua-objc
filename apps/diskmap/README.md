@@ -16,12 +16,11 @@ and the button that starts it, before any chart or inventory; a page with
 nothing to remove says why and routes to Clean Up. Meters are capsules half
 the height of AppKit's capacity cell.
 
-- **Overview — what uses my storage?** A donut of the whole startup disk by
-  category, with free space as the empty track and unattributed usage in gray,
-  the used total in its hole, and a legend that opens each category. Below it:
-  categories ranked by size with share bars, the six largest individual items,
-  and the rebuildable-versus-review cleanup headline with a prominent
-  Review Cleanup button.
+- **Overview — what uses my storage?** The rebuildable-versus-review cleanup
+  headline and Review Cleanup button lead above a compact donut of the whole
+  startup disk. Free space is the empty track, unattributed usage is gray, and
+  the legend opens each category. Below it are categories ranked by size with
+  share bars and the six largest individual items.
 - **Folder Map** — any folder or disk, measured in one scan and shown as
   DaisyDisk and GrandPerspective show a disk: rings or rectangles beside a list
   of the focused folder's contents, largest first. Drop a folder or disk from
@@ -184,9 +183,12 @@ suggestion's full explanation and primary Open action beneath the scrolling page
 
 **Mark, review, act, confirm.** Mark for Cleanup on the Map, Largest Items,
 Applications, Xcode, Projects, Duplicates, Disks and Updates pages, or a drop on
-the collector bar under every page, adds items to one basket;
+the collector revealed during a drag or when items are marked, adds items to one basket;
 marking never touches the disk. The Marked toolbar sheet lists them with their
-consequences and moves them to the Trash one at a time, checking each again
+consequences and full paths in a bounded selected-item inspector, starting with
+the first pending item. A file inside a marked folder is included through that
+folder: its action opens the enclosing mark for review, and unmarking a leaf
+never unmarks its whole folder. The sheet moves items to the Trash one at a time, checking each again
 first. Marking and moving both refuse the disk root, system folders, mount
 points, your home's standard folders, `/tmp` and `/private/var`, the shared
 folder and other users' homes, the iCloud Drive and cloud storage roots, Photos,
@@ -565,8 +567,10 @@ window presentation. Their views are etlua; controllers do not build view trees.
 
 ## Added for issues #36 and #37
 
-- **Applications** leftovers carry High, Medium or Low confidence; Mark High
-  Confidence marks the certain ones.
+- **Applications** leftovers carry High, Medium or Low confidence in their
+  evidence. The leading action counts likely leftovers still available to mark
+  in the current search, then offers Review Marked Items. Marking stages items;
+  removal follows the separate final review.
 - **Duplicates** compares files byte for byte, only in folders you add, and
   counts only unshared (non-clone) blocks as reclaimable.
 - **Disks & Volumes** analyzes an external disk's top level on request and

@@ -22,6 +22,10 @@ function Controller.new(model, service, handlers, review)
 end
 
 function Controller:isMarked(path) return self.review ~= nil and self.review:isMarked(path) end
+function Controller:covering(path)
+	if self.review then return self.review:covering(path) end
+end
+function Controller:isIncluded(path) return self:covering(path) ~= nil end
 
 -- The Mark/Unmark item for an item {path, name, bytes, source, consequence,
 -- resourceId}. A refusal (a system folder, a parent already marked) is
@@ -29,6 +33,11 @@ function Controller:isMarked(path) return self.review ~= nil and self.review:isM
 function Controller:mark(item)
 	if not self.review or not item or not item.path then return nil end
 	local marked = self.review:isMarked(item.path)
+	local parent, exact = self:covering(item.path)
+	if parent and not exact then
+		return {title = "Included through Marked Folder — Review…", systemImage = "folder.badge.checkmark",
+			action = function() self.handlers.review(parent.path) end}
+	end
 	return {title = marked and "Unmark" or "Mark for Cleanup", systemImage = marked and "minus.circle" or "plus.circle",
 		action = function()
 			local _, reason = self.review:toggle(item)
@@ -38,11 +47,7 @@ end
 
 -- Marks every item in `items` that is not marked yet; returns how many.
 function Controller:markAll(items)
-	local count = 0
-	for _, item in ipairs(items) do
-		if self.review and not self.review:isMarked(item.path) and self.review:toggle(item) then count = count + 1 end
-	end
-	return count
+	return self.review and self.review:markAll(items) or 0
 end
 
 -- Prepares rows for ResourceList: share bars relative to the largest row,
@@ -51,7 +56,10 @@ end
 function Controller:annotate(rows, icon, color)
 	local largest = 0
 	for _, row in ipairs(rows) do largest = math.max(largest, row.bytes or 0) end
-	for _, row in ipairs(rows) do
+	local presented = {}
+	for _, source in ipairs(rows) do
+		local row = setmetatable({}, getmetatable(source))
+		for key, value in pairs(source) do row[key] = value end
 		-- An unmeasured row has no fraction: its meter draws an empty,
 		-- disabled bar under its state rather than a measured zero.
 		if row.bytes == nil then row.relative = nil
@@ -62,9 +70,14 @@ function Controller:annotate(rows, icon, color)
 		if self:isMarked(row.path) then
 			row.icon, row.color = "checkmark.circle.fill", "systemBlue"
 			row.subtitle = "Marked for cleanup · " .. (row.subtitle or "")
+		elseif self:isIncluded(row.path) then
+			local parent = self:covering(row.path)
+			row.icon, row.color = "folder.badge.checkmark", "systemBlue"
+			row.subtitle = "Included through marked folder " .. (parent.name or parent.path) .. " · " .. (row.subtitle or "")
 		end
+		table.insert(presented, row)
 	end
-	return rows
+	return presented
 end
 
 -- Only resources Diskmap has a verified Move to Trash recipe for can be

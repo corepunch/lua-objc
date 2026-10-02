@@ -45,6 +45,20 @@ end
 
 local plural = Model.plural
 
+-- Empty results are a conclusion only after a successful scan. Both file
+-- screens share this state so absence of data never becomes a measured zero.
+function Files.state(model)
+	local scan, files = model.scan or {}, model.files
+	if scan.running then return "loading" end
+	if scan.failure and scan.failure ~= "" then return "error", tostring(scan.failure) end
+	if not files then return "unavailable", "No file results are available. Refresh to try again." end
+	if #files.large == 0 and #files.old == 0 and #files.extensions == 0 then
+		if files.partial or (scan.errors or 0) > 0 then return "unavailable", "No file results were readable. Check scan access and refresh." end
+		return "empty"
+	end
+	return "loaded"
+end
+
 -- How long ago a file was last used, from its Unix time.
 function Files.age(seconds, now)
 	if not seconds or seconds <= 0 then return "Unknown" end

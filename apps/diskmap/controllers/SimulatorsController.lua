@@ -10,12 +10,12 @@ local Controller = Page.extend("simulators", "Simulators")
 -- `simctl runtime list`. `changed` asks the root to remeasure after an action.
 function Controller.new(model, service, changed)
 	return setmetatable({model = model, service = service, changed = changed,
-		inventory = {}, runtimes = {}, runtimeList = nil, query = "", filterIndex = 1}, Controller)
+		inventory = {}, runtimes = {}, runtimeList = nil, query = "", filterIndex = 1, planKeep = {}}, Controller)
 end
 
 function Controller:mount(host, state)
 	self.query, self.filterIndex, self.selected, self.selectedRuntime = state.query or "", 1, nil, nil
-	self.planRuntime, self.planKeep, self.planSelected, self.planChildren = nil, {}, nil, nil
+	self.planSelected, self.planChildren = nil, nil
 	local refs = self:attach(host, {filters = Simulators.filters, actions = {
 		filter = function(index) self.filterIndex = (index or 0) + 1; self:show() end,
 		select = function(_, _, row) self.selected = row; self:buttons() end,
@@ -25,7 +25,10 @@ function Controller:mount(host, state)
 		delete = function() self:perform("delete") end,
 		unavailable = function() self:perform("delete", true) end,
 		deleteRuntime = function() self:deleteRuntime() end,
-		components = function() self.service.openOwner("xcode") end,
+		components = function()
+			local ok, message = self.service.openOwner("xcode")
+			if ok == false then self.service.showError("Cannot open Xcode", message) end
+		end,
 		retry = function() self:load() end,
 	}})
 	self:load()

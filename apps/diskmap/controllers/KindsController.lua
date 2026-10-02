@@ -10,8 +10,8 @@ local Controller = Page.extend("kinds", "Kinds")
 -- the largest kind and the top extensions. `showFiles(kindId)` opens Large
 -- Files narrowed to one kind; `show(page, filterName)` opens a page, Large
 -- Files on one of its filters.
-function Controller.new(model, showFiles, show)
-	return setmetatable({model = model, showFiles = showFiles, show = show}, Controller)
+function Controller.new(model, showFiles, show, refresh, clearSearch)
+	return setmetatable({model = model, showFiles = showFiles, show = show, refresh = refresh, clearSearch = clearSearch}, Controller)
 end
 
 -- The leading decision: the files of yours this page can point at, never a
@@ -20,18 +20,25 @@ end
 function Controller:decisionData(kinds)
 	local data = {id = "decision", icon = "opticaldiscdrive.fill", color = "systemTeal"}
 	if #kinds == 0 then
-		data.title, data.detail, data.amount, data.amountCaption = "Measuring files…", "Review candidates appear when the scan finishes.", "—", "could recover"
+		local state, reason = Files.state(self.model)
+		data.amount, data.amountCaption = "—", "not measured"
+		if state == "loading" then
+			data.title, data.detail, data.amountCaption = "Measuring file types…", "Results appear as the scan reads files.", "in progress"
+		elseif state == "empty" then
+			data.title, data.detail, data.amountCaption = "No files found in the measured locations", "Clean Up can still guide you through rebuildable data and owner-managed storage.", "scan finished"
+			data.actionTitle, data.action = "Open Clean Up", "decisionCleanup"
+		else
+			data.title, data.detail = "File type results unavailable", reason or "No extension totals were recorded. Refresh the scan to try again."
+			data.actionTitle, data.action = "Refresh Scan", "decisionRefresh"
+		end
 		return data
 	end
 	local installers = Files.rows(self.model, "Installers & archives")
 	local removable = 0
 	for _, row in ipairs(installers) do removable = removable + row.bytes end
-	local inventory = 0
-	for _, kind in ipairs(kinds) do if kind.id == "installers" or kind.id == "archives" then inventory = inventory + kind.bytes end end
 	if removable > 0 then
 		data.title = "Review " .. (#installers == 1 and "1 installer or archive" or (#installers .. " installers and archives")) .. " in your folders"
-		data.detail = "Disk images, installers and archives total " .. Model.size(inventory) .. " stored; " .. Model.size(removable)
-			.. " of them are in your own folders. The other " .. Model.size(math.max(0, inventory - removable)) .. " belong to the system and to apps, which manage them."
+		data.detail = "Check that you have installed or extracted them before moving them to the Trash."
 		data.amount, data.amountCaption = Model.size(removable), "could recover"
 		data.actionTitle, data.action = "Show Installers", "decisionInstallers"
 		return data
@@ -47,7 +54,7 @@ function Controller:decisionData(kinds)
 	end
 	data.icon, data.color = "checkmark.circle.fill", "systemGreen"
 	data.title = "No large file of yours to review"
-	data.detail = "Every large file belongs to an app, a library or the system. Clean Up lists the places their owners can clear."
+	data.detail = "No user-owned file over " .. Model.size(require("apps.diskmap.models.Inventory").summary.minimumFileBytes) .. " was ranked. Clean Up lists other places their owners can clear."
 	data.amount, data.amountCaption = Model.size(0), "could recover"
 	data.actionTitle, data.action = "Open Clean Up", "decisionCleanup"
 	return data
@@ -71,7 +78,25 @@ end
 -- extensions all name it.
 function Controller:update(state)
 	if not self.template then return end
+	self.state = state or self.state or {}
 	local kinds, extensions = Files.kinds(self.model)
+	local fileState, reason = Files.state(self.model)
+	if fileState == "error" or fileState == "unavailable" then kinds, extensions = {}, {} end
+	local query = (self.state.query or ""):lower()
+	if query ~= "" then
+		local matches, matchedKinds = {}, {}
+		for _, extension in ipairs(extensions) do
+			if (extension.name .. " " .. extension.subtitle):lower():find(query, 1, true) then
+				table.insert(matches, extension); matchedKinds[extension.kindId] = true
+			end
+		end
+		extensions = matches
+		matches = {}
+		for _, kind in ipairs(kinds) do
+			if kind.name:lower():find(query, 1, true) or matchedKinds[kind.id] then table.insert(matches, kind) end
+		end
+		kinds = matches
+	end
 	if not Selection.index(kinds, self.selectedId) then self.selectedId = nil end
 	local all = 0
 	for _, kind in ipairs(kinds) do all = all + kind.bytes end
@@ -92,6 +117,10 @@ function Controller:update(state)
 		end
 	end
 	headline = headline or kinds[1]
+	local inventoryNote = "All measured files, including app and system storage; only files in your own folders are offered for review above."
+	if headline and headline.removableBytes then
+		inventoryNote = headline.size .. " total stored; " .. Model.size(headline.removableBytes) .. " in your own folders. The rest belongs to apps or the system."
+	end
 	local actions = {
 		kindMenu = function(_, _, row) return self:menu(row) end,
 		openKind = function(_, _, row) if row then self.showFiles(row.kindId or row.id) end end,
@@ -116,27 +145,36 @@ function Controller:update(state)
 	actions.decisionInstallers = function() if self.show then self.show("files", "Installers & archives") end end
 	actions.decisionOld = function() if self.show then self.show("files", "Unused for a year") end end
 	actions.decisionCleanup = function() if self.show then self.show("cleanup") end end
-	-- The installers kind is an inventory: its headline states the total and
-	-- the user-owned part apart, in the prominent text, never only in a row.
-	local advice = headline and headline.advice
-	if headline and headline.removableBytes then
-		advice = (headline.removableBytes > 0
-			and (Model.size(headline.removableBytes) .. " of it is in your own folders and can be reviewed; the rest belongs to the system and to apps, which manage it. ")
-			or "None of it is in your own folders: it belongs to the system and to apps, which manage it. ") .. advice
-	end
+	actions.decisionRefresh = function() self.refresh() end
+	actions.decisionClearSearch = function() self.clearSearch() end
+	local decision = self:decisionData(kinds)
+	local summary = Model.size(all) .. " in files across " .. #kinds .. " kinds"
+	if #kinds == 0 then
+		if fileState == "loading" then summary = "Scan in progress"
+		elseif fileState == "empty" then summary = "Scan complete · No files found"
+		elseif fileState == "loaded" and query ~= "" then
+			summary = "No matching file types"
+			decision.title, decision.detail = "Nothing matches this search", "Clear the search to see the measured file types."
+			decision.amountCaption, decision.actionTitle, decision.action = "no matches", "Clear Search", "decisionClearSearch"
+		else summary = "File type results unavailable" end
+	elseif fileState == "loading" then summary = "Scan in progress · " .. summary
+	elseif self.model.files and self.model.files.partial then summary = summary .. " · scan coverage is incomplete" end
 	local refs = self:render({kinds = marks, total = Model.size(all), scope = Scope.text(self.model, "kinds"),
-		summary = #kinds == 0 and "Measuring files…" or (Model.size(all) .. " in files across " .. #kinds .. " kinds"),
+		summary = summary, loading = fileState == "loading", hasExtensions = #extensions > 0,
 		accessibilityLabel = "File types: " .. table.concat(labels, ", "),
-		headline = headline and {id = headline.id, title = headline.name .. " · " .. headline.size .. " stored", advice = advice} or {},
-		decision = self:decisionData(kinds),
+		headline = headline and {id = headline.id, title = headline.name .. " · " .. headline.size .. " stored", advice = headline.advice} or {}, inventoryNote = inventoryNote,
+		decision = decision,
 		extensionsDetail = selected and ("The " .. selected.name .. " extensions that use the most space")
 			or "The twelve extensions that use the most space",
 		actions = actions})
 	self.kinds = kinds
 	for _, kind in ipairs(kinds) do kind.detail = Model.count(kind.count) end
-	refs.kinds:replaceRows(kinds)
+	if refs.kinds then
+		refs.kinds:replaceRows(kinds)
+		if fileState == "loading" and #kinds == 0 then refs.kinds:showLoading() else refs.kinds:hideLoading() end
+	end
 	for _, row in ipairs(extensions) do row.detail = Model.count(row.count) end
-	refs.extensions:replaceRows(Selection.extensions(extensions, self.selectedId))
+	if refs.extensions then refs.extensions:replaceRows(Selection.extensions(extensions, self.selectedId)) end
 	-- Reloading rows drops the native selection; the token restores it.
 	Selection.show(refs.kinds, kinds, self.selectedId)
 	if refs.kindsChart then Sectors.highlight(refs.kindsChart, self.selectedId) end

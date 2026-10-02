@@ -148,8 +148,8 @@ function Worktrees.classify(entry, facts, options)
 	return {state = state, eligible = state == "candidate", reasons = reasons, warnings = warnings}
 end
 
-local ROLE = {primary = "Repository", locked = "Locked", kept = "Kept", missing = "Missing", active = "In use", recent = "Recently touched", dirty = "Has changes",
-	unpublished = "Unpublished", unknown = "Unknown", submodules = "Submodules", candidate = "Ready"}
+local ROLE = {primary = "Repository", locked = "Locked", kept = "Kept", missing = "Missing", active = "In use", recent = "Recent", dirty = "Changed",
+	unpublished = "Local commits", unknown = "Unknown", submodules = "Submodules", candidate = "Ready"}
 Worktrees.roleNames = ROLE
 local COLORS = {primary = "systemGray", locked = "systemBlue", kept = "systemBlue", missing = "systemGray", active = "systemRed", recent = "systemYellow", dirty = "systemOrange",
 	unpublished = "systemOrange", unknown = "systemGray", submodules = "systemOrange", candidate = "systemGreen"}
@@ -186,7 +186,7 @@ function Worktrees.rows(entries, facts, options)
 		row.subtitle = repo .. " · " .. (entry.detached and ("detached " .. (row.head or "")) or (entry.branch or "no branch"))
 			.. (manager and (" · " .. manager) or "")
 		-- A filesystem timestamp shows a change, not a use.
-		row.lastUse = fact.lastActivity and options.now and ("Changed " .. Model.ago(math.floor((options.now - fact.lastActivity) / 86400)):lower())
+		row.lastUse = fact.lastActivity and options.now and Model.ago(math.floor((options.now - fact.lastActivity) / 86400))
 			or (entry.primary and "" or "Last change unknown")
 		table.insert(rows, row)
 	end

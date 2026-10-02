@@ -24,6 +24,14 @@ local function vendor(identifier)
 	return a and (a .. "." .. b):lower() or nil
 end
 
+-- Some apps use a product storage name independently of their bundle's
+-- Finder name. Claim only an explicit folder for its exact installed bundle
+-- identity; sharing a vendor or a filename is not proof of ownership.
+local SUPPORT_NAMES = {['com.openai.codex'] = {codex = true}}
+function Leftovers.supportNames(bundleId)
+	return type(bundleId) == 'string' and SUPPORT_NAMES[bundleId:lower()] or nil
+end
+
 -- Installed apps as {bundleId, name}. Returns lookup sets for identifiers,
 -- vendors and display names.
 function Leftovers.index(apps)
@@ -31,6 +39,7 @@ function Leftovers.index(apps)
 	for _, app in ipairs(apps or {}) do
 		if type(app.bundleId) == "string" then
 			ids[app.bundleId:lower()] = true
+			for name in pairs(Leftovers.supportNames(app.bundleId) or {}) do names[name] = true end
 			local v = vendor(app.bundleId)
 			if v then
 				vendors[v] = true

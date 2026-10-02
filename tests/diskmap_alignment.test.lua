@@ -44,7 +44,7 @@ local function assertOneColumn(rows, minimum, tag)
 end
 
 -- The Overview card on a nearly full disk: the low-space warning, the legend
--- dots, the hidden-space symbols and the cleanup symbol share one column.
+-- dots, the hidden-space symbols share one column; the leading cleanup action is a separate block.
 local service = Mock.new()
 service.availableBytes = service.fixture.capacityBytes * 0.05
 local app = Controller.new(service)
@@ -55,8 +55,8 @@ t.expect(hero.lowSpace ~= nil, "a nearly full disk shows the low-space warning")
 t.expect(hero.legend ~= nil and hero.hiddenSpace ~= nil, "the card lists categories and hidden space")
 local column = hero.legend.superview
 local legend, hidden = #hero.legend.subviews, #hero.hiddenSpace.subviews
--- The warning, each legend and hidden-space row, and the cleanup row.
-assertOneColumn(symbolRows(column), 1 + legend + hidden + 1, "the Overview card")
+-- The warning, each legend and hidden-space row.
+assertOneColumn(symbolRows(column), 1 + legend + hidden, "the Overview card")
 
 -- The "could not measure" card: its own symbol and each reason's symbol share
 -- one column, and the title, each reason's name and what is written under it

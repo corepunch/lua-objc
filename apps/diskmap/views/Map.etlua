@@ -78,7 +78,7 @@
           <HStack spacing="8" alignment="center">
             <Label text="<%= item.name %>" size="12" flexGrow="1" flexShrink="1" lines="1" />
             <Label text="<%= item.size %>" size="12" color="secondary" monospacedDigit="true" />
-            <Button id="worthMark_<%= index %>" title="<%= item.marked and "Marked" or "Mark" %>" systemImage="<%= item.marked and "checkmark.circle.fill" or "plus.circle" %>" style="plain" action="worth_<%= index %>" help="Mark <%= item.name %> for cleanup" disabled="<%= item.markable and "false" or "true" %>" />
+            <Button id="worthMark_<%= index %>" title="<%= item.included and "Included · Review…" or item.marked and "Marked" or "Mark" %>" systemImage="<%= item.included and "folder.badge.checkmark" or item.marked and "checkmark.circle.fill" or "plus.circle" %>" style="plain" action="worth_<%= index %>" help="<%= item.included and "Included through a marked folder; review its cleanup plan" or "Mark " .. item.name .. " for cleanup" %>" disabled="<%= item.markable and "false" or "true" %>" />
           </HStack>
           <% end %>
         </VStack>

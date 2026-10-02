@@ -61,7 +61,10 @@ end
 
 function Controller:mount(host, state)
 	self.query = state.query or ""
-	local actions = {openXcode = function() self.service.openOwner("xcode") end,
+	local actions = {openXcode = function()
+		local ok, message = self.service.openOwner("xcode")
+		if ok == false then self.service.showError("Cannot open Xcode", message) end
+	end,
 		reveal = function(_, _, row) if row then self.service.reveal(row.path) end end}
 	for _, section in ipairs(SECTIONS) do
 		local id = section.id
@@ -114,7 +117,7 @@ function Controller:show()
 		if bulk then
 			local pending = false
 			for _, row in ipairs(self.rows[section.id] or {}) do
-				if bulkable(section, row) and not self.actions:isMarked(row.path) then pending = true end
+				if bulkable(section, row) and not self.actions:isIncluded(row.path) then pending = true end
 			end
 			bulk.enabled = pending
 		end

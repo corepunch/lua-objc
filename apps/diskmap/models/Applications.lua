@@ -35,13 +35,14 @@ function Applications.data(model, bundleId, name)
 	local folders, bytes = {}, 0
 	if not bundleId and not name then return folders, bytes end
 	local lowerId, lowerName = bundleId and bundleId:lower(), name and name:lower()
+	local supportNames = Leftovers.supportNames(bundleId) or {}
 	for _, source in ipairs(Applications.dataSources) do
 		local root = model.resources:find(source.id)
 		for _, child in ipairs(root and model.breakdowns[source.id] or {}) do
 			local candidate = child.name:lower()
 			local owned = (source.byId and lowerId and (candidate == lowerId or candidate:sub(1, #lowerId + 1) == lowerId .. "."))
 				or (source.contains and lowerId and candidate:find(lowerId, 1, true) ~= nil)
-				or (source.byName and lowerName and candidate == lowerName)
+				or (source.byName and ((lowerName and candidate == lowerName) or supportNames[candidate]))
 			if owned and child.directory then
 				local childBytes = math.floor((child.kb or 0) * 1024 + 0.5)
 				bytes = bytes + childBytes

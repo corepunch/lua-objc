@@ -65,7 +65,7 @@ t.assertEqual(classify(entry(), with({active = true})), "active", "a known runni
 local recent = Worktrees.classify(entry(), with({lastActivity = NOW - 3600}), {now = NOW})
 t.expect(not recent.eligible, "a recent change is never offered for removal")
 t.expect(table.concat(recent.reasons, " "):find("cannot tell whether a session still uses it", 1, true), "and says what the evidence does not show: " .. table.concat(recent.reasons, " "))
-t.assertEqual(Worktrees.roleNames.recent, "Recently touched", "it is labelled for what it is")
+t.assertEqual(Worktrees.roleNames.recent, "Recent", "it is labelled for what it is")
 t.assertEqual(Worktrees.roleNames.active, "In use", "only confirmed activity reads In use")
 local managed = Worktrees.classify({path = "/Users/me/.claude/worktrees/x", branch = "x"}, with({lastActivity = NOW - 3600}), {now = NOW})
 t.expect(table.concat(managed.reasons, " "):find("archive the session in Claude", 1, true), "a held-back managed worktree explains its archive route: " .. table.concat(managed.reasons, " "))

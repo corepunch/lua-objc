@@ -1,0 +1,18 @@
+<% --[[ Scan accounting belongs beside totals or after the ranked rows, depending
+  on the page. Its own disclosure never hides the actual cleanup decision. ]] %>
+<% if layout.contextDisclosure then %>
+<DisclosureGroup id="scanDetails" label="<%= layout.contextDisclosure %>" expanded="false" indicatorWidth="26" indicatorSpacing="10">
+  <VStack spacing="12" alignment="leading">
+<% end %>
+<% if layout.scopeNote then %>
+<%- partial("Footnote.etlua", {id = "scopeNote", icon = "scope", text = layout.scopeNote}) %>
+<% end %>
+<% if layout.tiles and #layout.tiles > 0 then %>
+<HStack id="stats" fixedSize="vertical" spacing="12" alignment="top">
+  <% for _, tile in ipairs(layout.tiles) do %><%- partial("StatTile.etlua", tile) %><% end %>
+</HStack>
+<% end %>
+<% if layout.contextDisclosure then %>
+  </VStack>
+</DisclosureGroup>
+<% end %>

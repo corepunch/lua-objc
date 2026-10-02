@@ -1,14 +1,16 @@
+<VStack spacing="0" flexGrow="1" flexBasis="0" flexShrink="1">
 <% --[[ Leftover Git worktrees, decision first: what Git can remove now and
   what it could recover, then the linked worktrees that need a person, then
   registrations that only need pruning. The repositories they were made from
   are never offered and stay collapsed as context. Evidence and rules live in
   models/Worktrees.lua; this template carries structure only. ]]
+  local SELECTION = {detailMaximum = 144}
   local function list(id)
 %>
         <List id="<%= id %>" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Worktree" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="170" />
-          <Column id="roleLabel" title="Plan" width="140" minWidth="140" />
-          <Column id="lastUse" title="Last change" width="170" minWidth="170" />
+          <Column id="roleLabel" title="Plan" width="115" minWidth="105" />
+          <Column id="lastUse" title="Last change" width="105" minWidth="90" />
           <Column id="size" title="On disk" width="90" minWidth="80" alignment="trailing" />
         </List>
 <% end %>
@@ -32,16 +34,6 @@
 <% list("reviewList") %>
       </GroupBox>
     </VStack>
-    <VStack id="selectionSection" spacing="8" alignment="leading">
-      <Label id="selectedDetail" text="Select a worktree to see why it is or is not offered." size="12" maxWidth="infinity" lines="0" />
-      <HStack spacing="8" alignment="center">
-        <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
-        <Button id="keep" title="Keep" action="keep" disabled="true" help="Protect this worktree from every cleanup suggestion" />
-        <Button id="openOwner" title="Open Owner…" action="openOwner" disabled="true" help="Archive managed worktrees in the application that made them" />
-        <Spacer />
-      </HStack>
-      <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
-    </VStack>
     <VStack id="missingSection" spacing="8" alignment="leading">
       <HStack spacing="12" alignment="center">
         <%- partial("SectionHeader.etlua", {title = "Missing", detail = "Git still lists these, but the directory is gone. Pruning forgets the record; no checkout is deleted."}) %>
@@ -57,6 +49,27 @@
 <% list("repositoryList") %>
       </GroupBox>
     </DisclosureGroup>
-    <%- partial("Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recently touched and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
+    <%- partial("Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recent and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
   </VStack>
 </ScrollView>
+
+    <VStack id="selectionSection" spacing="8" padding="14" hidden="true" alignment="leading">
+      <ScrollView id="selectionEvidence" vertical="true" maxHeight="<%= SELECTION.detailMaximum %>">
+        <VStack spacing="8" alignment="leading">
+      <Label id="selectedTitle" text="" size="13" weight="semibold" maxWidth="infinity" lines="1" truncation="middle" />
+      <Label id="selectedSummary" text="" size="12" maxWidth="infinity" lines="0" />
+      <DisclosureGroup label="Path and storage details" expanded="false" indicatorWidth="26" indicatorSpacing="10">
+        <Label id="selectedDetail" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+      </DisclosureGroup>
+        </VStack>
+      </ScrollView>
+      <HStack spacing="8" alignment="center">
+        <Button id="reveal" title="Show in Finder" action="reveal" disabled="true" />
+        <Button id="keep" title="Keep" action="keep" disabled="true" help="Protect this worktree from every cleanup suggestion" />
+        <Button id="openOwner" title="Open Owner…" action="openOwner" disabled="true" help="Archive managed worktrees in the application that made them" />
+        <Spacer />
+      </HStack>
+      <Label id="status" text="" size="11" color="secondary" maxWidth="infinity" lines="0" />
+    </VStack>
+
+</VStack>

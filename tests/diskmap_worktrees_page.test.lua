@@ -50,8 +50,8 @@ for _, row in ipairs(page.rows) do
 end
 t.assertEqual(byName["3f2a/MockProject"] ~= nil and byName["9bd1/MockProject"] ~= nil, true, "worktrees named after their repository are told apart by their own folder")
 t.assertEqual(codexDirty.state, "recent", "a Codex worktree touched in the last hours waits for review, whatever else is true of it")
-t.assertEqual(codexDirty.roleLabel, "Recently touched", "and says only that it was recently touched")
-t.expect(codexDirty.lastUse:find("^Changed "), "its date is a change, not a use: " .. codexDirty.lastUse)
+t.assertEqual(codexDirty.roleLabel, "Recent", "and says only that it was recently touched")
+t.expect(not codexDirty.lastUse:find("[Uu]sed"), "its column is Last change, with a compact date: " .. codexDirty.lastUse)
 t.assertEqual(codexDetached.state, "unpublished", "a detached worktree with commits nowhere else is held back")
 t.assertEqual(byName["mockproject-spike"].state, "locked", "a locked worktree is protected")
 t.assertEqual(byName["mockproject-gone"].state, "missing", "a missing registration is listed")

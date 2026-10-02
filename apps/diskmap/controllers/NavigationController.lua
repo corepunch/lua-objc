@@ -44,7 +44,7 @@ local function destinations()
 			section = workflow.section
 			table.insert(list, {section = true, title = section})
 		end
-		table.insert(list, {id = workflow.id, name = workflow.sidebar or workflow.name, title = workflow.name, icon = workflow.icon,
+		table.insert(list, {id = workflow.id, name = workflow.sidebar or (workflow.id == "developer" and "Dev tools" or workflow.name), title = workflow.id == "developer" and "Developer tools" or workflow.name, icon = workflow.icon,
 			color = workflow.color, key = workflow.key, workflow = workflow.id})
 		for _, row in ipairs(companions[workflow.id] or {}) do table.insert(list, row) end
 	end

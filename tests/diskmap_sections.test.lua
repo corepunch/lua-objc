@@ -38,7 +38,7 @@ t.assertEqual(heroRefs.usedTotal.text, "100.0 GB", "the chart hole shows used ca
 t.expect(heroRefs.cleanUp.bezelColor ~= nil, "the cleanup call to action is the prominent button")
 hero.size = ns.Size(760, 320); hero:layout(760)
 -- The total fits the chart's hole once laid out.
-t.expect(heroRefs.usedTotal.font.pointSize > heroRefs.freeSpace.font.pointSize + 4, "used capacity is the page's largest number")
+t.expect(heroRefs.usedTotal.font.pointSize >= heroRefs.freeSpace.font.pointSize, "capacity stays readable beneath the cleanup action")
 local buttons = {}
 local function collect(view)
 	if view.className == "NSButton" and not view.bordered then table.insert(buttons, view) end
@@ -218,15 +218,16 @@ for _, id in ipairs({"add", "stats", "oneTileValue", "firstSection", "firstTitle
 end
 t.assertEqual(fullRefs.filter.className, "NSSegmentedControl", "filters are a segmented control")
 t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden and not fullRefs.bulk.enabled, "hidden and disabled come from the layout")
--- A filter and the section's buttons take their own row under the heading,
--- so a narrow window never squeezes the heading's detail into a sliver.
+-- Filters and actions take separate rows under the heading, so neither
+-- the heading's detail nor the controls get squeezed in a narrow window.
 fullRefs.page.size = ns.Size(620, 600); fullRefs.page:layout(620)
 local filterRow, titleRow = fullRefs.filter.superview, fullRefs.firstTitle.superview.superview
 t.expect(filterRow ~= titleRow, "the filter is not on the heading's row")
-t.assertEqual(fullRefs.bulk.superview, filterRow, "section buttons share the filter's row")
+t.assertEqual(fullRefs.bulk.superview.superview, filterRow, "section buttons share the filter's controls block")
+t.expect(fullRefs.bulk.superview ~= titleRow, "section actions stay below the heading")
 t.expect(fullRefs.firstDetail.frame.size.width > 400, "the heading's detail keeps the section's width beside no controls")
 t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intrinsicContentSize.height, "the detail stays on one line")
 local _, plainRefs = render("Page", {header = header, actions = anyAction, layout = {sections = {
 	{title = "Plain", titleId = "plainTitle", buttons = {{id = "open", title = "Open", action = "open"}}, list = {id = "plain", menu = "rowMenu"}}}}})
-t.assertEqual(plainRefs.open.superview, plainRefs.plainTitle.superview.superview, "without a filter, buttons stay beside the heading")
+t.expect(plainRefs.open.superview ~= plainRefs.plainTitle.superview.superview, "section actions keep their own row without a filter")
 os.exit(t.summary() and 0 or 1)

@@ -84,6 +84,9 @@ function Controller:presentation()
 	for _, item in ipairs(worth) do
 		item.markable = self.actions:markableResource(self.model.resources:find(item.id))
 		item.marked = self.actions:isMarked(item.path)
+		local parent, exact = self.actions:covering(item.path)
+		item.included = parent ~= nil and not exact
+		item.enclosingPath = item.included and parent.path or nil
 	end
 	self.defaultHover = #nodes == 0 and "" or "Hover over the map for details; click a group to look inside."
 	local focusRow = self.focus ~= "" and Categories.row(self.model, self.focus) or nil
@@ -139,6 +142,7 @@ function Controller:update(state)
 	end
 	for index, item in ipairs(data.worth) do
 		actions["worth_" .. index] = function()
+			if item.included then self.actions.handlers.review(item.enclosingPath); return end
 			local resource = self.model.resources:find(item.id)
 			self.actions.review:toggle({path = item.path, name = item.name, bytes = item.bytes, resourceId = item.id,
 				source = "Map", consequence = resource and resource.consequence})

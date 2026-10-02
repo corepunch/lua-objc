@@ -139,7 +139,7 @@ function Workflow.page(workflow)
 		texts.summary = data.calculating and ("Measuring " .. workflow.noun .. "…")
 			or (data.total .. " " .. workflow.summary
 				.. (data.rebuildable > 0 and (" · " .. data.rebuildableSize .. " rebuildable now") or ""))
-		return {layout = {buttons = buttons, sections = structure, footnote = {text = workflow.footnote},
+		return {layout = {buttons = buttons, sections = structure, scopeNote = workflow.id == "developer" and "Developer tools includes Xcode, package managers, containers and AI tools. Overview’s Developer category covers a different set by owner; these totals overlap." or nil, footnote = {text = workflow.footnote},
 				empty = #structure == 0 and {id = "workflowEmpty", systemImage = workflow.icon, description = workflow.empty,
 					title = data.calculating and ("Measuring " .. workflow.noun .. "…") or ("No " .. workflow.noun .. " found")} or nil},
 			lists = lists, texts = texts, links = links}

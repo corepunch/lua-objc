@@ -2469,7 +2469,9 @@ Other additions: `ns.watch(paths, callback, {since})` (FSEvents, Scope
 owned), `ns.notifications` (UNUserNotificationCenter; unavailable without an
 app bundle), `ns.bookmark`/`ns.resolveBookmark` (security-scoped
 bookmarks), List `dragKey`, stack `onDrop` (with `dropExternalOnly="true"`
-to take only drags from other apps, such as the Finder), chart `dragItem` and
+to take only drags from other apps, such as the Finder; `onFileDragChanged`
+observes enter/exit of any file drag so a hidden staging target can appear
+without accepting an internal drop), chart `dragItem` and
 keyboard navigation, and `<Window onBack onForward>` for mouse buttons and
 swipes. `ns.onOpenFiles(handler)` receives folders and files dropped on the
 Dock icon or opened with the app from the Finder (`application:openURLs:`,

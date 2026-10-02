@@ -410,7 +410,7 @@ local function layoutProps(attrs)
 
         props.onClick = renderData.actions[attrs.onClick]
     end
-    bindActions(props, attrs, { "onDrop" })
+    bindActions(props, attrs, { "onDrop", "onFileDragChanged" })
     for _, key in ipairs({ "onTap", "onDrag", "onEdgeSwipe" }) do
         if attrs[key] and type(attrs[key]) == "string" and renderData and renderData.actions then
             props[key] = renderData.actions[attrs[key]]

@@ -62,7 +62,10 @@ t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names 
 t.expect(chart.explanation:find("still arriving", 1, true), "unfinished chart explains its gray sector")
 local apps = require("apps.diskmap.controllers.ApplicationsController").new(model, {}, {}, function() end)
 t.assertEqual(apps:summary(), nil, "live file findings do not imply app-data breakdowns are ready")
-local files = require("apps.diskmap.controllers.FilesController").new(model, {}, {file = function() return {} end})
+local files = require("apps.diskmap.controllers.FilesController").new(model, {}, {
+	file = function() return {} end, annotate = function(_, rows) return rows end,
+	isMarked = function() return false end, isIncluded = function() return false end,
+})
 files:mount(ns.VStack {}, {query = ""})
 t.assertEqual(files.refs.files.rowCount, 1, "partial file appears in the native table")
 t.expect(files.refs.summary.text:find("Found so far", 1, true), "file page names partial results")

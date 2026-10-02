@@ -95,17 +95,22 @@ end
 -- Adds an item {id, path, name, bytes, consequence, source}. Returns ok and a
 -- refusal reason.
 function Basket:add(item)
+	if type(item) ~= "table" then return false, "Nothing selected." end
 	local ok, reason = Basket.validate(item.path, self.home)
 	if not ok then return false, reason end
+	local key = Basket.normalize(item.path)
 	for _, path in ipairs(self.order) do
 		-- A parent and its child would be counted and moved twice.
-		if item.path:sub(1, #path + 1) == path .. "/" then return false, "Its folder is already marked." end
+		local parent = Basket.normalize(path)
+		if key ~= parent and within(key, parent) then return false, "Included through marked folder: " .. path end
+		if key == parent then item.path = path; self.items[path] = item; return true end
 	end
 	if not self.items[item.path] then table.insert(self.order, item.path) end
 	self.items[item.path] = item
 	for index = #self.order, 1, -1 do
 		local path = self.order[index]
-		if path:sub(1, #item.path + 1) == item.path .. "/" then
+		local child = Basket.normalize(path)
+		if child ~= key and within(child, key) then
 			self.items[path] = nil
 			table.remove(self.order, index)
 		end
@@ -114,6 +119,9 @@ function Basket:add(item)
 end
 
 function Basket:remove(path)
+	local item, exact = self:covering(path)
+	if not exact then return false end
+	path = item.path
 	if not self.items[path] then return false end
 	self.items[path] = nil
 	for index, value in ipairs(self.order) do
@@ -122,7 +130,20 @@ function Basket:remove(path)
 	return true
 end
 
-function Basket:contains(path) return self.items[path] ~= nil end
+function Basket:contains(path)
+	local _, exact = self:covering(path)
+	return exact == true
+end
+-- Exact marks and inclusion through a folder are different decisions:
+-- unmarking a file must never remove its enclosing folder's mark.
+function Basket:covering(path)
+	if type(path) ~= "string" or path:sub(1, 1) ~= "/" then return nil end
+	local key = Basket.normalize(path)
+	for _, candidate in ipairs(self.order) do
+		local parent = Basket.normalize(candidate)
+		if within(key, parent) then return self.items[candidate], key == parent end
+	end
+end
 function Basket:count() return #self.order end
 function Basket:clear() self.items, self.order = {}, {} end
 

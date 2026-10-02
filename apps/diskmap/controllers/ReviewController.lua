@@ -25,31 +25,62 @@ function Controller:log(action, ok, bytes, target, detail)
 end
 
 function Controller:isMarked(path) return path ~= nil and self.basket:contains(path) end
+function Controller:covering(path) return self.basket:covering(path) end
+
+-- Identity and basket validation are identical for individual and bulk
+-- staging. Only the caller publishes, so a bulk click refreshes UI once.
+local function add(self, item)
+	local valid, why = Basket.validate(item.path, self.model.home)
+	if not valid then return false, why end
+	local identity = rawget(self.service, "fileIdentity")
+	if type(identity) == "function" and not item.identity then item.identity = identity(item.path) end
+	local ok, reason = self.basket:add(item)
+	if ok then
+		self.results[item.path] = nil
+		if self.done then self.done[item.path] = nil end
+	end
+	return ok, reason
+end
 
 -- Marks or unmarks an item {path, name, bytes, consequence, source,
 -- resourceId}. Returns marked state and a refusal message.
 function Controller:toggle(item)
-	if not item or not item.path then return false, "Nothing selected." end
+	if type(item) ~= "table" or not item.path then return false, "Nothing selected." end
 	if self.basket:contains(item.path) then
 		self.basket:remove(item.path)
 		self.handlers.changed()
 		return false
 	end
-	-- The item's identity when marked: a different item at the same path
-	-- later is never moved in its place.
-	local identity = rawget(self.service, "fileIdentity")
-	if type(identity) == "function" and not item.identity then item.identity = identity(item.path) end
-	local ok, reason = self.basket:add(item)
-	if ok then self.results[item.path] = nil end
+	local ok, reason = add(self, item)
 	self.handlers.changed()
 	return ok, reason
+end
+
+function Controller:markAll(items)
+	local count = 0
+	for _, item in ipairs(items) do
+		if type(item) == "table" and item.path and not self:covering(item.path) and add(self, item) then count = count + 1 end
+	end
+	if count > 0 then self.handlers.changed() end
+	return count
 end
 
 function Controller:summary() return self.basket:summary() end
 function Controller:count() return self.basket:count() end
 
+function Controller:select(row)
+	self.selected = row
+	if not self.refs then return end
+	self.refs.remove.enabled = row ~= nil and self.basket:contains(row.path) and not self.busy
+	self.refs.selectedDetails.hidden = row == nil
+	self.refs.selectedPath.text = row and row.path or ""
+	self.refs.consequence.text = row and (row.consequence or "This item has already left the cleanup basket.") or ""
+	self.refs.selectedResult.text = row and row.result or ""
+end
+
 function Controller:show()
 	if not self.refs then return end
+	local selectedPath = self.selected and self.selected.path
 	local rows, bytes = self.basket:rows()
 	for _, row in ipairs(rows) do row.result = self.results[row.path] or "" end
 	for path, result in pairs(self.done or {}) do
@@ -63,15 +94,18 @@ function Controller:show()
 	self.refs.clear.enabled = pending > 0 and not self.busy
 	self.refs.remove.enabled = false
 	self.refs.emptyTrash.hidden = not self.movedBytes or self.movedBytes <= 0
-	self.selected = nil
+	self:select(nil)
+	for index, row in ipairs(rows) do
+		if row.path == selectedPath then self.refs.items:selectRow(index - 1); break end
+	end
 end
 
-function Controller:open(parent)
+function Controller:open(parent, path)
 	self:close()
 	self.done, self.status, self.movedBytes = {}, nil, nil
 	self.sheet, self.refs = Sheet.present(function()
 		return xml.renderFile("apps/diskmap/views/Review.etlua", {summary = self:summary(), actions = {
-			select = function(_, _, row) self.selected = row; if self.refs then self.refs.remove.enabled = row and self.basket:contains(row.path) or false end end,
+			select = function(_, _, row) self:select(row) end,
 			remove = function() if self.selected then self.basket:remove(self.selected.path); self.handlers.changed(); self:show() end end,
 			clear = function() self.basket:clear(); self.handlers.changed(); self:show() end,
 			trash = function() self:trash() end,
@@ -81,11 +115,14 @@ function Controller:open(parent)
 		}}, ns)
 	end, parent)
 	self:show()
+	for index, row in ipairs(self.basket:rows()) do
+		if not path or row.path == path then self.refs.items:selectRow(index - 1); break end
+	end
 end
 
 function Controller:close()
 	if self.sheet then ns.dismiss(self.sheet) end
-	self.sheet, self.refs = nil, nil
+	self.sheet, self.refs, self.selected = nil, nil, nil
 end
 
 -- Moves every marked item to the Trash. Sizes are measured again first,

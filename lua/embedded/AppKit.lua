@@ -88,7 +88,9 @@ local function applyLayout(view, props)
 				-- SwiftUI `.dropDestination`: files dropped on the stack.
 				-- `dropExternalOnly` takes only drags from other apps,
 				-- such as the Finder, never this app's own rows.
-				bridge._setDropHandler(view, props[key], props.dropExternalOnly == true)
+				-- `onFileDragChanged(targeted)` observes file drags, including
+				-- internal drags refused by an external-only destination.
+				bridge._setDropHandler(view, props[key], props.dropExternalOnly == true, props.onFileDragChanged)
 			elseif key == "help" then
 				-- SwiftUI `.help(_:)` is the view's native AppKit tooltip.
 				view.toolTip = props[key]
