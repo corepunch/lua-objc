@@ -7,29 +7,100 @@ local Drums = require("apps.dnb.models.Drums")
 local Visuals = require("apps.dnb.models.Visuals")
 local Styles = require("apps.dnb.host.Styles")
 local StyleKit = require("apps.dnb.host.StyleKit")
+local Canvas = require("apps.dnb.host.Canvas")
+local Composer = require("apps.dnb.host.Composer")
 local Visualizers = require("apps.dnb.host.Visualizers")
 local Controller = require("apps.dnb.Controller")
 
 local SR = 11025 -- synthesis is rate-independent; a low rate keeps the suite fast
+local TRACKS = 6 -- how many tracks of a set the per-style checks look at
+local LABELS = {["Mix in"] = true, Groove = true, Lift = true, Peak = true, Release = true, Breakdown = true,
+	["Mix out"] = true}
+-- Genres whose arc turns risers and snare rolls off: nothing in their
+-- arrangements may be a riser, though the shared blocks include some.
+local NO_RISERS = {techno = true, breakbeat = true}
+-- Roles that may sound in the first and last bars of a track (host/Canvas.lua):
+-- the layers a DJ mixes over, and the fx that announce what follows.
+local ENDS = {drums = true, tops = true, texture = true, fx = true}
 
 local controlIds = {}
 for _, group in ipairs(Model.controlGroups) do for _, control in ipairs(group.controls) do controlIds[control.id] = true end end
+
+local function setOf(list)
+	local set = {}
+	for _, tag in ipairs(list or {}) do set[tag] = true end
+	return set
+end
+
+-- A channel as the set sees it: the style's fallback for its role, then its own.
+local function specOf(style, entry)
+	local spec = {}
+	for k, v in pairs(style.roles and style.roles[entry.role] or {}) do spec[k] = v end
+	for k, v in pairs(entry) do spec[k] = v end
+	return spec
+end
+
+-- Every block of a plan, by lane, with its catalogue entry.
+local function eachBlock(composer, plan, visit)
+	for _, lane in ipairs(plan.lanes) do
+		for _, block in ipairs(lane.blocks) do
+			visit(lane.part, block, composer.catalogue.byId[block.pattern])
+		end
+	end
+end
+
+local function hasEvent(plan, kind)
+	for _, event in ipairs(plan.events) do
+		if event.kind == kind then return true end
+	end
+	return false
+end
+
+-- The phrase of `plan` that is the highest in energy, and the quietest one
+-- between the mix-in and the mix-out.
+local function extremes(plan)
+	local loud, quiet
+	for _, phrase in ipairs(plan.phrases) do
+		if not loud or phrase.energy > loud.energy then loud = phrase end
+		if not phrase.edge and (not quiet or phrase.energy < quiet.energy) then quiet = phrase end
+	end
+	return loud, quiet
+end
+
+-- Renders a second from the first bar of `phrase` and measures it.
+local function loudness(synth, track, phrase)
+	synth.composerBar = track.start + phrase.start
+	local out = {}
+	synth:render(out, SR)
+	local peak, sum, bad = 0, 0, false
+	for i = 1, #out do
+		local x = math.abs(out[i])
+		if x ~= x then bad = true end
+		if x > peak then peak = x end
+		sum = sum + x * x
+	end
+	return peak, math.sqrt(sum / #out), bad
+end
 
 -- Every style plugin honours the contract the app and Synth rely on.
 local list = Styles:list()
 t.expect(#list >= 7, "the generator ships drum & bass and at least six more styles")
 t.assertEqual(list[1].id, "dnb", "drum & bass is the first style")
 local seenTitles, flavourTotal = {}, 0
+local shapes = {}
 for _, style in ipairs(list) do
 	local name = style.title
-	t.expect(not seenTitles[name], name .. " has a unique title")
+		t.expect(not seenTitles[name], name .. " has a unique title")
 	seenTitles[name] = true
 	for id in pairs(style.defaults or {}) do t.expect(controlIds[id], name .. " defaults name real controls") end
 	t.expect(pcall(Synth.mix, style.mix), name .. " mix overrides real fields")
 	t.expect(pcall(Drums.design, style.kit), name .. " kit overrides real fields")
 	t.expect(#style.flavours >= 5, name .. " plays " .. #style.flavours .. " kinds of track")
+	t.expect(pcall(Canvas.arc, style.arc), name .. " has an arc of known fields")
 	flavourTotal = flavourTotal + #style.flavours
 	local ids = {}
+	local a, b = Styles:create(style.id, 21), Styles:create(style.id, 21)
+	local catalogue = a.catalogue
 	for _, flavour in ipairs(style.flavours) do
 		t.expect(not ids[flavour.id], name .. " flavours have ids of their own")
 		ids[flavour.id] = true
@@ -37,23 +108,51 @@ for _, style in ipairs(list) do
 			name .. " " .. flavour.name .. " has a tempo range")
 		t.expect(flavour.swing[1] <= flavour.swing[2] and flavour.swing[2] <= 0.5, name .. " " .. flavour.name .. " has a swing range")
 		t.expect(#flavour.channels <= Model.channels, name .. " " .. flavour.name .. " fits eight channels")
+		local ok, err = pcall(Canvas.arc, style.arc, flavour.arc)
+		t.expect(ok, name .. " " .. flavour.name .. " has a valid arc: " .. tostring(err))
+
+		-- Each channel finds blocks to play, and the tags it wants exist on
+		-- some block of its role.
+		local roles = {}
+		for _, entry in ipairs(flavour.channels) do
+			local role = entry.role
+			t.expect(not roles[role], name .. " " .. flavour.name .. " has one " .. role .. " channel")
+			roles[role] = true
+			local spec = specOf(style, entry)
+			local found = catalogue:candidates(role, style.id, flavour.id, setOf(spec.avoid))
+			t.expect(#found > 0, name .. " " .. flavour.name .. " " .. role .. " finds blocks to play")
+			for _, tag in ipairs(spec.wants or {}) do
+				local tagged = 0
+				for _, block in ipairs(found) do
+					if block.tags[tag] then tagged = tagged + 1 end
+				end
+				t.expect(tagged > 0, name .. " " .. flavour.name .. " " .. role .. " wants '" .. tag .. "' and finds it on a block")
+			end
+		end
+		t.expect(roles.drums, name .. " " .. flavour.name .. " has drums")
 	end
 
 	local model = Model.new(21, style)
 	for id, value in pairs(style.defaults or {}) do t.assertEqual(model:value(id), value, name .. " sets its " .. id) end
-	local a, b = Styles:create(style.id, 21), Styles:create(style.id, 21)
-	local sections, flavours, voices = {}, {}, {}
-	local bassOk, polyOk, stepsOk, slicesOk, patchesOk = true, true, true, true, true
+	local flavours = {}
+	local bassOk, polyOk, stepsOk, slicesOk, patchesOk, fieldsOk = true, true, true, true, true, true
 	for n = 0, a:trackStart(3) - 1 do
 		local bar = a:bar(n, model)
 		local twin = b:bar(n, model)
 		t.assertEqual(#bar.hits .. ":" .. #bar.slices .. ":" .. #bar.notes .. ":" .. bar.key,
 			#twin.hits .. ":" .. #twin.slices .. ":" .. #twin.notes .. ":" .. twin.key, name .. " bar " .. n .. " is deterministic")
-		sections[bar.section] = true
 		flavours[bar.style] = true
 		local track = a:trackAt(n)
+		local plan = a:arrangement(track.index)
+		local pos = n - track.start
+		local phrase, index = plan:phraseAt(pos)
+		if bar.arc ~= phrase.energy or bar.label ~= phrase.label or bar.phrase ~= index or bar.phraseBar ~= pos % track.phraseBars
+			or bar.trackBar ~= pos or bar.trackLength ~= track.length or not LABELS[bar.label]
+			or bar.arc < 0 or bar.arc > 1 or bar.section ~= nil then
+			fieldsOk = false
+		end
 		for _, h in ipairs(bar.hits) do
-			voices[h.voice] = true
+			if not Drums.place[h.voice] then fieldsOk = false end
 			if h.step < 0 or h.step >= 16 or h.gain <= 0 or h.gain > 1.01 then stepsOk = false end
 			if not track.byRole[h.role] then patchesOk = false end
 		end
@@ -72,13 +171,10 @@ for _, style in ipairs(list) do
 		t.expect(type(bar.progression) == "string" and bar.chord ~= nil, name .. " names its harmony")
 		t.expect(bar.tempo >= 100 and bar.tempo <= 180 and bar.trackTempo == track.tempo, name .. " bars carry their tempo")
 	end
-	for _, section in ipairs({"intro", "build", "drop", "breakdown", "outro"}) do
-		t.expect(sections[section], name .. " arranges a " .. section)
-	end
 	local count = 0
 	for _ in pairs(flavours) do count = count + 1 end
 	t.expect(count >= 2, name .. " sets move between flavours")
-	for voice in pairs(voices) do t.expect(Drums.place[voice], name .. " plays kit voices only: " .. voice) end
+	t.expect(fieldsOk, name .. " bars carry their phrase's arc, label and position, and kit voices only")
 	t.expect(stepsOk, name .. " hits sit inside the bar with sane gains")
 	t.expect(slicesOk, name .. " slices lie inside their loops, on drum channels")
 	t.expect(patchesOk, name .. " notes play a patch on a channel of their track")
@@ -97,47 +193,171 @@ for _, style in ipairs(list) do
 	end
 	t.assertEqual(anything, 0, name .. " is silent playing no roles")
 
-	-- The patterns it arranges exist, and its own play real roles.
-	for _, pattern in ipairs(style.patterns or {}) do
-		t.expect(Model.family[pattern.part], name .. " pattern " .. pattern.id .. " plays a real role")
-	end
-	for k = 0, 5 do
+	-- The blocks it arranges exist, play a role of their lane, and fit the
+	-- shape of the track: moves where its curve has them, a quiet mix-in.
+	local used, usedFlavours, riser = {}, {}, false
+	local breakdowns, kickOuts = 0, 0
+	local minutes, curve = 0, {}
+	for k = 0, TRACKS - 1 do
+		local track = a.set:track(k)
 		local plan = a:arrangement(k)
-		t.assertEqual(plan.length, a.set:track(k).length, name .. " arranges each track whole")
-		for _, lane in ipairs(plan.lanes) do
-			for _, block in ipairs(lane.blocks) do
-				t.expect(a.patterns[block.pattern] ~= nil and a.patterns[block.pattern].part == lane.part,
-					name .. " " .. lane.part .. " plays " .. block.pattern)
+		local tname = string.format("%s track %d (%s)", name, k, track.flavour.name)
+		t.assertEqual(plan.length, track.length, tname .. " is arranged whole")
+		t.assertEqual(track.length % track.arc.unit, 0, tname .. " is whole units long")
+		t.expect(track.length >= 4 * track.arc.unit, tname .. " is at least four units long")
+		minutes = minutes + track.length * 4 / track.tempo
+		t.expect(plan.phrases[1].start == 0 and #plan.phrases == track.length // track.arc.phrase, tname .. " is phrases of its arc's length")
+		eachBlock(a, plan, function(part, block, entry)
+			t.expect(a.patterns[block.pattern] ~= nil and a.patterns[block.pattern].part == part,
+				tname .. " " .. part .. " plays " .. block.pattern)
+			used[block.pattern] = true
+			if entry then
+				if entry.flavours then for id in pairs(entry.flavours) do usedFlavours[id] = true end end
+				if entry.kind == "riser" then riser = true end
+				-- A genre without risers never places one.
+				t.expect(not (NO_RISERS[style.id] and entry.kind == "riser"), tname .. " places no riser")
+			end
+		end)
+		for _, event in ipairs(plan.events) do
+			if event.kind == "riser" then riser = true end
+		end
+		t.expect(not (NO_RISERS[style.id] and (hasEvent(plan, "riser"))), tname .. " has no riser event")
+
+		-- Moves: every valley of its curve is a breakdown the timeline names
+		-- and a return follows; a track without one still takes its kick out.
+		local valleys = 0
+		for _, phrase in ipairs(plan.phrases) do
+			if phrase.valley then
+				valleys = valleys + 1
+				t.expect(not phrase.edge and phrase.label == "Breakdown", tname .. " names its valley a breakdown")
 			end
 		end
+		if valleys > 0 then
+			breakdowns = breakdowns + 1
+			t.expect(hasEvent(plan, "valley") and hasEvent(plan, "return"), tname .. " has a breakdown and a way back")
+		end
+		if hasEvent(plan, "drumsOut") then kickOuts = kickOuts + 1 end
+		-- A curve with two peaks apart (dips of 0.2 between anchors, 0.15 once
+		-- the anchors are moved a little) is laid out with a first and a second.
+		local anchors = track.arc.curve
+		local dips = false
+		for i = 1, #anchors do
+			for j = i + 1, #anchors do
+				for l = j + 1, #anchors do
+					if anchors[i][2] >= 0.6 and anchors[l][2] >= 0.6 and anchors[j][2] <= math.min(anchors[i][2], anchors[l][2]) - 0.2 then
+						dips = true
+					end
+				end
+			end
+		end
+		if dips then
+			local found = false
+			local peaks = plan.phrases
+			for q = 1, #peaks do
+				local left, right = 0, 0
+				for p = 1, q - 1 do left = math.max(left, peaks[p].energy) end
+				for r = q + 1, #peaks do right = math.max(right, peaks[r].energy) end
+				if left >= 0.55 and right >= 0.55 and peaks[q].energy <= math.min(left, right) - 0.15 then found = true end
+			end
+			t.expect(found, tname .. " has a first and a second peak")
+		end
+		if track.lift then
+			local lifted = plan:phraseAt(track.lift.bar)
+			t.expect(hasEvent(plan, "lift") and lifted.start == track.lift.bar and lifted.energy >= 0.75,
+				tname .. " lifts its key into its second peak")
+		end
+
+		-- The mix-in and mix-out are quiet and keep to the layers a DJ mixes over.
+		local outro = 0
+		for _, phrase in ipairs(plan.phrases) do
+			if phrase.start + phrase.length > track.length - track.arc.outro then outro = math.max(outro, phrase.energy) end
+			if phrase.start < track.arc.intro then
+				t.expect(phrase.energy <= 0.7 and phrase.label == "Mix in", tname .. " mixes in quietly at bar " .. phrase.start)
+			end
+			if phrase.start + phrase.length > track.length - track.arc.outro then
+				t.expect(phrase.label == "Mix out", tname .. " labels its last phrases Mix out at bar " .. phrase.start)
+			end
+		end
+		t.expect(outro <= 0.7, string.format("%s mixes out quietly (its mix-out reaches an energy of %.2f)", tname, outro))
+		t.expect(plan.phrases[1].energy <= 0.5 and plan.phrases[#plan.phrases].energy <= 0.5,
+			tname .. " begins and ends on a low energy")
+		eachBlock(a, plan, function(part, block)
+			local from, to = block.start, block.start + block.length
+			if from < track.arc.intro or to > track.length - track.arc.outro then
+				local blend = block.pattern == "pad.blend" or block.pattern == "bass.blend"
+				t.expect(ENDS[part] or blend, tname .. " plays " .. block.pattern .. " at bar " .. from .. " of its mix")
+			end
+		end)
+		local intro = plan:blocksAt(0).drums
+		local introBlock = intro and a.catalogue.byId[intro.pattern]
+		t.expect(introBlock and introBlock.energy <= 0.6, tname .. " starts on a quiet drum loop")
+		for tenth = 0, 9 do
+			curve[tenth + 1] = (curve[tenth + 1] or 0) + plan:energyAt(math.floor(track.length * (tenth + 0.5) / 10)) / TRACKS
+		end
+	end
+	t.expect(breakdowns + kickOuts > 0, name .. " plays a breakdown or a kick-out in " .. TRACKS .. " tracks")
+	if style.id == "dnb" or style.id == "trance" then
+		t.expect(riser, name .. " builds on risers")
 	end
 
-	-- It sounds: a drop renders in range, every flavour of it.
+	-- Across tracks the style mixes its own blocks: more than one flavour's.
+	local own, flavourSpecific = 0, 0
+	for id in pairs(used) do
+		local block = a.catalogue.byId[id]
+		if block and block.genre == style.id then own = own + 1 end
+	end
+	local named = 0
+	for _ in pairs(usedFlavours) do named = named + 1 end
+	t.expect(own >= 8, name .. " plays " .. own .. " of its own blocks in " .. TRACKS .. " tracks")
+	t.expect(named >= 2, name .. " plays blocks of " .. named .. " flavour-specific lists in " .. TRACKS .. " tracks")
+	table.insert(shapes, {id = style.id, length = minutes / TRACKS, curve = curve})
+
+	-- It sounds: the highest-energy phrase of every flavour and its quietest
+	-- interior one render in range.
 	for _, flavour in ipairs(style.flavours) do
 		local only = setmetatable({flavours = {flavour}}, {__index = style})
-		local composer = require("apps.dnb.host.Composer").new(only, 21)
+		local composer = Composer.new(only, 21)
 		local synth = Synth.new(model, SR, style)
 		synth:setComposer(composer)
-		local drop
-		for _, section in ipairs(composer:arrangement(0).sections) do drop = drop or (section.id == "drop" and section) end
-		t.expect(drop ~= nil and drop.start >= composer:arrangement(0).sections[1].length, name .. " drops after its intro")
-		synth.composerBar = drop.start
-		local out = {}
-		synth:render(out, SR)
-		local peak, sum, bad = 0, 0, false
-		for i = 1, #out do
-			local x = math.abs(out[i])
-			if x ~= x then bad = true end
-			if x > peak then peak = x end
-			sum = sum + x * x
+		local track = composer.set:track(0)
+		local loud, quiet = extremes(composer:arrangement(0))
+		t.expect(loud.start >= track.arc.intro and not loud.edge, name .. " " .. flavour.name .. " peaks after its mix-in")
+		t.expect(quiet ~= nil and quiet.energy < loud.energy, name .. " " .. flavour.name .. " has a quieter interior phrase")
+		for _, case in ipairs({{"peak", loud}, {"quiet phrase", quiet}}) do
+			local peak, rms, bad = loudness(synth, track, case[2])
+			t.expect(not bad and peak <= 1 and rms > 0.05,
+				string.format("%s %s %s is audible and soft-clipped (%.3f)", name, flavour.name, case[1], rms))
+			t.expect(rms < 0.5, string.format("%s %s %s leaves the master room (%.3f)", name, flavour.name, case[1], rms))
 		end
-		local rms = math.sqrt(sum / #out)
-		t.expect(not bad and peak <= 1 and rms > 0.05,
-			string.format("%s %s drop is audible and soft-clipped (%.3f)", name, flavour.name, rms))
-		t.expect(rms < 0.5, string.format("%s %s drop leaves the master room (%.3f)", name, flavour.name, rms))
 	end
 end
 t.expect(flavourTotal >= 40, "the styles play " .. flavourTotal .. " kinds of track between them")
+
+-- Genres give their tracks different shapes: their own lengths, mix-ins and
+-- energy curves, not one form with another palette.
+do
+	local byId = {}
+	for _, shape in ipairs(shapes) do byId[shape.id] = shape; end
+	local function distance(x, y)
+		local sum = 0
+		for i = 1, #x do sum = sum + math.abs(x[i] - y[i]) end
+		return sum / #x
+	end
+	local lengths = {}
+	for _, shape in ipairs(shapes) do lengths[string.format("%.1f", shape.length)] = true end
+	local distinct = 0
+	for _ in pairs(lengths) do distinct = distinct + 1 end
+	t.expect(distinct >= 3, "the genres' tracks differ in length: " .. distinct .. " distinct averages")
+	t.expect(distance(byId.techno.curve, byId.dnb.curve) > 0.03, "techno and drum & bass draw different energy curves")
+	t.expect(distance(byId.techno.curve, byId.trance.curve) > 0.02, "techno and trance draw different energy curves")
+	t.expect(byId.techno.length > byId.dnb.length, "techno tracks run longer, in minutes, than drum & bass")
+	local intros = {}
+	for _, style in ipairs(list) do
+		local arc = Canvas.arc(style.arc)
+		intros[style.id] = arc.intro
+	end
+	t.expect(intros.techno > intros.dnb, "techno mixes in longer than drum & bass")
+end
 
 -- Model: a style sets the controls' defaults; what plays is its tracks'.
 local techno = Styles:get("techno")
@@ -147,14 +367,11 @@ model:setStyle(techno)
 t.assertEqual(model:value("energy"), techno.defaults.energy, "control defaults follow the style")
 t.assertEqual(model:value("pitch"), 0, "and the pitch fader returns to rest")
 t.expect(not model:plays("tops") and model:plays("drums"), "a style change keeps which channels sound")
+-- A record's break is a block of the genre's own: only breakbeat styles write one.
 local breaks = {}
 for _, style in ipairs(Styles:list()) do
-	for _, flavour in ipairs(style.flavours) do
-		for _, channel in ipairs(flavour.channels) do
-			for _, id in ipairs(channel.beats or {}) do
-				if id:find("^break%.") then breaks[style.id] = true end
-			end
-		end
+	for _, block in ipairs(Styles:create(style.id, 1).catalogue.list) do
+		if block.genre == style.id and block.beat and block.beat.kit == "break" then breaks[style.id] = true end
 	end
 end
 t.expect(breaks.dnb and breaks.breakbeat and not breaks.techno and not breaks.trance, "only breakbeat styles play a record's break")
@@ -265,12 +482,11 @@ do
 	local heard = {}
 	for k = 0, 3 do
 		local track = source.set:track(k)
-		local drop
-		for _, section in ipairs(source:arrangement(k).sections) do drop = drop or (section.id == "drop" and section) end
-		bassPlayer.composerBar = track.start + drop.start
+		local loud = extremes(source:arrangement(k))
+		bassPlayer.composerBar = track.start + loud.start
 		bassPlayer:render({}, bassPlayer.nextBarFrame - bassPlayer.frame + SR)
 		local voice = bassPlayer.mono.bass
-		if voice then
+		if voice and track.byRole.bass then
 			t.expect(voice.patch == track.byRole.bass.patch, "track " .. k .. " plays its own bass patch")
 			heard[voice.patch.id] = true
 		end
@@ -288,7 +504,9 @@ t.assertEqual(#program.scenes, #scenes, "every scene is linked")
 t.assertEqual(program.scenes[1].entry, scenes[1].id .. "Scene", "scene functions follow the plugin id")
 local meshScenes = 0
 for _, scene in ipairs(scenes) do
-	t.expect(#scene.sections > 0, scene.title .. " names its sections")
+	t.expect(#scene.arc == 2 and scene.arc[1] >= 0 and scene.arc[2] <= 1 and scene.arc[1] < scene.arc[2],
+		scene.title .. " names a range of energy")
+	t.expect(scene.sections == nil, scene.title .. " has no sections")
 	local file = io.open(scene.resource(scene.shader))
 	t.expect(file ~= nil, scene.title .. " ships its shader")
 	if file then file:close() end
@@ -353,20 +571,58 @@ for index = 0, #scenes - 1 do
 	end
 end
 
--- Visuals: pools from the plugins' sections, and pinning.
+-- Visuals: the director picks a scene by the energy of the moment, and pinning.
+for step = 0, 100 do
+	local energy = step / 100
+	local pool = 0
+	for _, scene in ipairs(scenes) do
+		if energy >= scene.arc[1] and energy <= scene.arc[2] then pool = pool + 1 end
+	end
+	t.expect(pool > 0, "a scene plays at an energy of " .. energy)
+end
+local function inArc(index, energy)
+	local scene = scenes[index + 1]
+	return energy >= scene.arc[1] and energy <= scene.arc[2]
+end
 local visuals = Visuals.new(scenes, 4)
 local horizon = Visualizers:index("horizon") - 1
-t.assertEqual(visuals.scene, horizon, "the idle scene opens the intro pool")
+t.assertEqual(visuals.scene, horizon, "the idle scene opens the quiet pool")
 visuals:pin(Visualizers:index("tunnel") - 1)
-local bar = {frame = 0, frames = 4000, section = "breakdown", sectionBar = 0, sectionLength = 16, number = 0}
+local bar = {frame = 0, frames = 4000, arc = 0.2, label = "Breakdown", phrase = 3, phraseBar = 0, number = 24,
+	trackBar = 24, trackLength = 96, tonic = 0}
 for _ = 1, 200 do visuals:update({playing = true, bar = bar, played = 10, sampleRate = 1000}, 1 / 60) end
-t.assertEqual(visuals.scene, Visualizers:index("tunnel") - 1, "a pinned scene plays whatever the section")
+t.assertEqual(visuals.scene, Visualizers:index("tunnel") - 1, "a pinned scene plays whatever the energy")
 visuals:pin(nil)
 for _ = 1, 200 do visuals:update({playing = true, bar = bar, played = 10, sampleRate = 1000}, 1 / 60) end
-local pooled = false
-for _, index in ipairs(visuals.pools.breakdown) do if index == visuals.scene then pooled = true end end
-t.expect(pooled, "unpinned, the director returns to the section's pool")
+t.expect(inArc(visuals.scene, 0.2), "unpinned, the director returns to a scene of the moment's energy")
 t.assertThrows(function() visuals:pin(99) end, "only loaded scenes can be pinned")
+t.expect(math.abs(visuals.intensity - (0.35 + 0.65 * 0.2)) < 1e-9, "intensity follows the phrase's energy")
+t.expect(math.abs(visuals.progress - 24 / 96) < 0.01, "progress is the track's")
+
+-- A scene lasts a phrase of eight bars and never repeats the one showing.
+local director = Visuals.new(scenes, 4)
+local function at(number, arc)
+	return {arc = arc, phraseBar = number % 8, number = number}
+end
+for _, arc in ipairs({0.1, 0.3, 0.5, 0.58, 0.8, 1}) do
+	local first, key = director:sceneFor(at(16, arc))
+	t.expect(inArc(first, arc), "the scene for an energy of " .. arc .. " suits it")
+	for n = 16, 23 do
+		local scene, same = director:sceneFor(at(n, arc))
+		t.expect(scene == first and same == key, "bars of one phrase keep one scene at " .. arc)
+	end
+	local later, other = director:sceneFor(at(24, arc))
+	t.expect(other ~= key, "the next phrase takes a new key at " .. arc)
+	t.expect(inArc(later, arc), "and a scene that suits " .. arc)
+end
+director.scene = (director:sceneFor(at(0, 0.8)))
+t.expect(director:sceneFor(at(0, 0.8)) ~= director.scene, "a phrase does not repeat the scene already showing")
+director:pin(2)
+t.assertEqual(select(2, director:sceneFor(at(0, 0.8))), "pinned", "a pin overrides the director")
+local quietScene = Visuals.new(scenes, 4):sceneFor({arc = 0.05, phraseBar = 0, number = 0})
+local loudScene = Visuals.new(scenes, 4):sceneFor({arc = 0.95, phraseBar = 0, number = 0})
+t.expect(inArc(quietScene, 0.05) and not inArc(quietScene, 0.95), "a quiet moment gets a calm scene")
+t.expect(inArc(loudScene, 0.95) and not inArc(loudScene, 0.05), "and a peak gets an intense one")
 
 -- Controller: style and scene pickers, and the mini player.
 local function fakeOutput()

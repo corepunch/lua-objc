@@ -8,7 +8,7 @@ return {
 	title = "Light Trails",
 	symbol = "scribble.variable",
 	shader = "Scene.metal",
-	sections = {"build", "drop"},
+	arc = {0.55, 1},
 	draws = {
 		{vertex = "fullscreenVertex", fragment = "trailsBackground", count = 3},
 		{vertex = "trailsVertex", fragment = "trailsFragment", blend = "add",

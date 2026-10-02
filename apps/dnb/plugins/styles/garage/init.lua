@@ -1,144 +1,107 @@
 -- UK Garage: 128 to 140 BPM, swung hard. The skippy two-step kick that
 -- leaves beats two and four to the snare, shuffled hats, rim shots and
--- minor-ninth chords over a bouncing bass. Its flavours: 2-Step, Speed
--- Garage on four kicks and a reese, Future Garage washed out under a
--- pitched lead, Bassline on a donk, and Dark Garage, all sub and squares.
+-- minor-ninth chords over a bouncing bass. The track is one canvas (see
+-- `arc`): a first peak early, a long valley where only a vocal hook and
+-- the pad stay over a skipping rim and sub (the garage "drop" is the kick
+-- and bass coming back, not a riser), a second peak and a mix-out. Risers
+-- are rare. Its flavours: 2-Step, Speed Garage on four kicks and a reese,
+-- Future Garage washed out under a pitched lead, Bassline on a donk, and
+-- Dark Garage, all sub and squares.
 
 local PROGRESSIONS = {{1, 4, 1, 4}, {1, 6, 4, 5}, {4, 5, 1, 1}, {1, 7, 6, 4}, {2, 5, 1, 6}, {1, 3, 4, 4}, {6, 4, 1, 5}}
 local DARK = {{1, 1, 1, 1}, {1, 1, 6, 7}, {1, 2, 1, 7}, {1, 7, 1, 7}}
-local COMPS = {"x.....x...x.....", "...x..x.......x.", "x..x......x..x..", "..x..x....x.....", "x......x..x.....",
-	"x..x..x...x.....", "..x...x..x....x.", "x....x..x.x.....", "x.x...x......x..", "...x...x..x..x.."}
-
-local BEATS = {
-	{id = "garage.twostep", name = "2-Step", bars = 2, lanes = {
-		{"kick", "X.........x.....|X.........x..x.."},
-		{"snare", "....X.......X...", gain = 0.9},
-		{"clap", "....x.......x...", gain = 0.6, light = false},
-		{"hat", ".x.x.x.x.x.x.x.x", gain = 0.4},
-		{"hat", "x.x.x.x.x.x.x.x.", gain = 0.25, when = "energy"},
-		{"openHat", "..............x.", gain = 0.45, light = false},
-		{"rim", ".......x.......x|.......x.x.....x", gain = 0.4, light = false},
-		{"shaker", "..x...x...x...x.", gain = 0.35, when = "complexity"},
-	}},
-	{id = "garage.skippy", name = "Skippy", bars = 2, lanes = {
-		{"kick", "X......x..x.....|X.x.......x....."},
-		{"snare", "....X.......X...", gain = 0.9},
-		{"clap", "....x.......x...", gain = 0.5, light = false},
-		{"hat", ".x.x.x.x.x.x.x.x", gain = 0.4},
-		{"hat", "x.x.x.x.x.x.x.x.", gain = 0.22, when = "energy"},
-		{"openHat", "......x.......x.", gain = 0.4, light = false},
-		{"rim", "...x.....x.....x", gain = 0.4, when = "complexity"},
-	}},
-	{id = "garage.four", name = "4x4", bars = 2, lanes = {
-		{"kick", "X...X...X...X..."},
-		{"clap", "....X.......X...", gain = 0.85, light = false},
-		{"snare", "....x.......x...", gain = 0.5},
-		{"hat", ".x.x.x.x.x.x.x.x", gain = 0.4},
-		{"openHat", "..x...x...x...x.", gain = 0.5},
-		{"rim", ".......x.......x|.......x.....x.x", gain = 0.35, when = "complexity"},
-		{"shaker", "xoxoxoxoxoxoxoxo", gain = 0.25, when = "energy"},
-	}},
-	{id = "garage.future", name = "Future", bars = 2, lanes = {
-		{"kick", "X......x..x.....|X.........x....."},
-		{"rim", "....x...........|....x.......x...", gain = 0.6},
-		{"snare", "............X...", gain = 0.8},
-		{"snap", "....x.......x...", gain = 0.5, light = false},
-		{"hat", ".x...x.x.x...x.x", gain = 0.35},
-		{"shaker", "..x...x...x...x.", gain = 0.3, when = "energy"},
-		{"ghost", ".........g.....g", when = "complexity"},
-	}},
-	{id = "garage.dark", name = "Dark", bars = 2, lanes = {
-		{"kick", "X.....x...x.....|X.........x.x..."},
-		{"snare", "....X.......X...", gain = 0.9},
-		{"hat", "x.xxx.xxx.xxx.xx", gain = 0.3},
-		{"openHat", "..x.......x.....", gain = 0.35, when = "energy"},
-		{"rim", ".......x.....x..", gain = 0.4, when = "complexity"},
-	}},
-}
-
-local LINES = {
-	{id = "garage.bounce", name = "Bounce", notes = "0:0:3 3:0:1 6:7:2~ 10:0:2? 13:4:3~"},
-	{id = "garage.skip", name = "Skip", notes = "0:0:2 2:7:2~ 7:0:2? 10:2:4~"},
-	{id = "garage.roll", name = "Roll", notes = "0:0:4 6:0:1 7:7:2~ 11:6:1? 12:4:4~"},
-	{id = "garage.donk", name = "Donk", notes = "2:0:1 3:0:1? 6:0:1 7:7:1! 10:0:1 11:0:1? 14:6:1 15:7:1!"},
-	{id = "garage.wob", name = "Warp", notes = "0:0:6w2 6:0:2w4 8:7:4w3~ 12:0:4w2? | 0:0:6w2 6:0:2w4 8:6:4w3~ 12:4:4w2?"},
-	{id = "garage.low", name = "Low", notes = "0:0:6 7:0:1? 10:0:2 13:6:3~ | 0:0:6 7:0:1? 10:2:2 13:0:3"},
-}
 
 local FILLS = {"fill.snares", "fill.rims", "fill.claps", "fill.stutter", "@stutter", "@cut", "@reverse"}
 
+-- Peaks at a fifth and two thirds of the track, a valley between at about
+-- 0.3 where the vocal and pad carry it.
+local CURVE = {{0, 0.3}, {0.08, 0.5}, {0.2, 0.8}, {0.35, 0.75}, {0.42, 0.35}, {0.5, 0.3}, {0.58, 0.7}, {0.65, 0.9},
+	{0.82, 0.7}, {0.92, 0.45}, {1, 0.25}}
+
 local FLAVOURS = {
+	-- Soulful: vocal hooks and Rhodes, the valley a drum-and-vocal gap.
 	{id = "twostep", name = "2-Step", tempo = {130, 136}, swing = {0.24, 0.34},
 		snares = {"rimshot", "tight", "layered", "vintage"},
+		arc = {valley = 0.5, drumless = 0.35, lift = 0.25, kickOut = 0.5, swap = 0.4},
 		channels = {
-			{role = "drums", beats = {"garage.twostep", "garage.skippy"}},
-			{role = "bass", patches = {"bass.fm", "bass.round", "bass.reese", "bass.organ"}, lines = {"garage.bounce", "garage.skip", "garage.roll", "@cell"}},
-			{role = "pad", patches = {"pad.warm", "pad.strings", "pad.glass"}, chance = 0.6},
-			{role = "keys", patches = {"keys.wurli", "keys.rhodes", "keys.organ", "keys.vibes"}},
-			{role = "stab", patches = {"stab.organ", "stab.pizzicato", "stab.piano"}, chance = 0.5, steps = {"......x.........", "...x..x.......x."}},
-			{role = "arp", patches = {"pluck.bell", "pluck.string", "pluck.marimba"}, chance = 0.4, arp = {rates = {2}}},
-			{role = "lead", patches = {"lead.vox", "lead.sine", "lead.square"}, chance = 0.6,
-				hooks = {"hook.call", "hook.question", "hook.bounce", "hook.voice", "@motif"}},
+			{role = "drums", wants = {"twostep", "swung"}, avoid = {"fourfloor"}},
+			{role = "bass", patches = {"bass.fm", "bass.round", "bass.reese", "bass.organ"}, wants = {"syncopated", "soulful", "walking"}},
+			{role = "pad", patches = {"pad.warm", "pad.strings", "pad.glass"}, chance = 0.6, wants = {"warm"}},
+			{role = "keys", patches = {"keys.wurli", "keys.rhodes", "keys.organ", "keys.vibes"}, wants = {"soulful"}},
+			{role = "stab", patches = {"stab.organ", "stab.pizzicato", "stab.piano"}, chance = 0.5, wants = {"soulful", "syncopated"}},
+			{role = "arp", patches = {"pluck.bell", "pluck.string", "pluck.marimba"}, chance = 0.4, wants = {"swung"}},
+			{role = "lead", patches = {"lead.vox", "lead.sine", "lead.square"}, chance = 0.6, wants = {"hook", "vocal", "soulful"}},
 			{role = "fx", patches = {"fx.riser", "fx.wind"}},
 		}},
+	-- Four kicks and a reese: the driving flavour, a short valley and risers.
 	{id = "speed", name = "Speed Garage", tempo = {130, 136}, swing = {0.16, 0.26},
 		snares = {"tight", "rimshot", "crunchy", "layered"},
+		arc = {riser = 0.5, roll = 0.3, impact = 0.6, drumless = 0.15, kickOut = 0.25, halftime = 0, valley = 0.4,
+			curve = {{0, 0.35}, {0.1, 0.6}, {0.2, 0.9}, {0.4, 0.85}, {0.46, 0.45}, {0.52, 0.45}, {0.6, 0.85},
+				{0.65, 0.95}, {0.82, 0.8}, {0.92, 0.5}, {1, 0.3}}},
 		channels = {
-			{role = "drums", beats = {"garage.four", "garage.twostep"}},
-			{role = "bass", patches = {"bass.reese", "bass.reeseWide", "bass.wobble", "bass.hoover"}, lines = {"garage.wob", "garage.roll", "garage.bounce"}},
+			{role = "drums", wants = {"fourfloor", "driving"}, avoid = {"halftime"}},
+			{role = "bass", patches = {"bass.reese", "bass.reeseWide", "bass.wobble", "bass.hoover"}, wants = {"reese", "wobble", "octave"}},
 			{role = "pad", patches = {"pad.saw", "pad.dark"}, chance = 0.5},
-			{role = "keys", patches = {"keys.organ", "keys.piano"}, chance = 0.4},
-			{role = "stab", patches = {"stab.organ", "stab.rave", "stab.brass"}, steps = {"......x.........", "..x...x...x....."}},
-			{role = "lead", patches = {"lead.hoover", "lead.square", "lead.vox"}, chance = 0.4,
-				hooks = {"hook.jack", "hook.insist", "hook.skank", "@motif"}},
+			{role = "keys", patches = {"keys.organ", "keys.piano"}, chance = 0.4, wants = {"bright", "rhythmic"}},
+			{role = "stab", patches = {"stab.organ", "stab.rave", "stab.brass"}, wants = {"offbeat", "driving"}},
+			{role = "lead", patches = {"lead.hoover", "lead.square", "lead.vox"}, chance = 0.4, wants = {"riff", "rhythmic"}},
 			{role = "texture", patches = {"texture.tape"}, chance = 0.4},
 			{role = "fx", patches = {"fx.siren", "fx.riser"}},
 		}},
-	-- Keeps its pads under the whole track.
+	-- Atmospheric: the long valley is most of the middle, no risers, the
+	-- half-time snare. Keeps its pads under the whole track.
 	{id = "future", name = "Future Garage", tempo = {128, 134}, swing = {0.2, 0.3},
 		snares = {"roomy", "vintage", "rimshot", "layered"},
-		form = {openings = {"melodic", "cold"}, builds = {"rise", "sweep"}, intro = {1, 2}},
+		arc = {riser = 0, roll = 0, impact = 0.1, halftime = 0.6, drumless = 0.3, valley = 0.55, kickOut = 0.5,
+			minutes = {4.5, 5.5}, lift = 0,
+			curve = {{0, 0.2}, {0.12, 0.4}, {0.2, 0.65}, {0.3, 0.6}, {0.38, 0.3}, {0.55, 0.3}, {0.65, 0.7},
+				{0.82, 0.6}, {0.92, 0.35}, {1, 0.2}}},
 		channels = {
-			{role = "drums", beats = {"garage.future", "garage.skippy"}, gain = 0.9},
-			{role = "bass", patches = {"bass.sub", "bass.round", "bass.808"}, lines = {"garage.low", "garage.skip", "line.push"}},
-			{role = "pad", patches = {"pad.air", "pad.glass", "pad.choir", "pad.warm"}},
-			{role = "keys", patches = {"keys.vibes", "keys.rhodes", "keys.harp"}, chance = 0.7},
-			{role = "arp", patches = {"pluck.glass", "pluck.string"}, chance = 0.4, arp = {rates = {2, 4}}},
-			{role = "lead", patches = {"lead.vox", "lead.sine", "lead.pluck"}, hooks = {"hook.voice", "hook.sigh", "hook.space", "hook.lullaby", "@motif"}},
-			{role = "texture", patches = {"texture.tape", "texture.shimmer", "texture.air"}},
+			{role = "drums", wants = {"halftime", "dreamy", "sparse"}, avoid = {"fourfloor"}, gain = 0.9},
+			{role = "bass", patches = {"bass.sub", "bass.round", "bass.808"}, wants = {"sub", "pedal", "deep"}},
+			{role = "pad", patches = {"pad.air", "pad.glass", "pad.choir", "pad.warm"}, wants = {"dreamy", "held"}},
+			{role = "keys", patches = {"keys.vibes", "keys.rhodes", "keys.harp"}, chance = 0.7, wants = {"dreamy", "sparse"}},
+			{role = "arp", patches = {"pluck.glass", "pluck.string"}, chance = 0.4, avoid = {"driving"}},
+			{role = "lead", patches = {"lead.vox", "lead.sine", "lead.pluck"}, wants = {"vocal", "dreamy", "melancholic", "sparse"}},
+			{role = "texture", patches = {"texture.tape", "texture.shimmer", "texture.air"}, wants = {"ambient"}},
 			{role = "fx", patches = {"fx.wind"}},
-		},
-		plan = {intro = {pad = "pad.chords"}, build = {pad = "pad.chords"}, drop = {pad = "pad.chords"},
-			breakdown = {pad = "pad.chords", lead = "lead.soft"}, outro = {pad = "pad.chords"}}},
+		}},
+	-- Donk bass on four kicks: the party flavour, high and short-valleyed.
 	{id = "bassline", name = "Bassline", tempo = {134, 140}, swing = {0.1, 0.2},
 		snares = {"tight", "layered", "crunchy"},
 		harmony = {progressions = {{1, 1, 4, 4}, {1, 7, 6, 7}, {1, 4, 1, 5}, {1, 1, 6, 7}}, voicing = {0, 2, 4, 6}},
+		arc = {riser = 0.4, roll = 0.3, impact = 0.6, drumless = 0.1, kickOut = 0.2, halftime = 0, valley = 0.4,
+			curve = {{0, 0.4}, {0.1, 0.65}, {0.2, 0.9}, {0.4, 0.85}, {0.46, 0.5}, {0.52, 0.5}, {0.6, 0.9},
+				{0.65, 0.95}, {0.82, 0.85}, {0.92, 0.55}, {1, 0.35}}},
 		channels = {
-			{role = "drums", beats = {"garage.four"}},
-			{role = "bass", patches = {"bass.donk", "bass.organ", "bass.yoi", "bass.fm"}, lines = {"garage.donk", "garage.wob", "garage.roll"}},
-			{role = "keys", patches = {"keys.organ", "keys.piano"}, chance = 0.5},
-			{role = "stab", patches = {"stab.organ", "stab.brass", "stab.rave"}, steps = {"..x...x...x...x.", "......x.......x."}},
-			{role = "lead", patches = {"lead.square", "lead.vox", "lead.hoover"}, chance = 0.6,
-				hooks = {"hook.jack", "hook.bounce", "hook.octaves", "hook.skank", "@motif"}},
+			{role = "drums", wants = {"fourfloor", "playful"}, avoid = {"halftime"}},
+			{role = "bass", patches = {"bass.donk", "bass.organ", "bass.yoi", "bass.fm"}, wants = {"pluck", "stab", "playful"}},
+			{role = "keys", patches = {"keys.organ", "keys.piano"}, chance = 0.5, wants = {"offbeat", "bright"}},
+			{role = "stab", patches = {"stab.organ", "stab.brass", "stab.rave"}, wants = {"offbeat", "playful"}},
+			{role = "lead", patches = {"lead.square", "lead.vox", "lead.hoover"}, chance = 0.6, wants = {"hook", "leap", "playful"}},
 			{role = "fx", patches = {"fx.siren", "fx.riser"}},
 		}},
+	-- All sub and squares: a tense valley, stuttering stabs, few risers.
 	{id = "dark", name = "Dark Garage", tempo = {134, 140}, swing = {0.14, 0.24},
 		snares = {"tight", "crunchy", "rimshot"},
 		harmony = {progressions = DARK, voicing = {0, 2, 4, 6}, change = 0.2},
-		form = {openings = {"cold", "build"}, links = {"build", "breakdown", "double", "breakdown build"}},
+		arc = {riser = 0.15, roll = 0.15, impact = 0.5, halftime = 0.3, drumless = 0.4, kickOut = 0.4, valley = 0.4,
+			curve = {{0, 0.25}, {0.1, 0.45}, {0.2, 0.8}, {0.36, 0.8}, {0.42, 0.3}, {0.52, 0.3}, {0.6, 0.75},
+				{0.65, 0.9}, {0.82, 0.8}, {0.92, 0.4}, {1, 0.2}}},
 		channels = {
-			{role = "drums", beats = {"garage.dark", "garage.skippy"}},
-			{role = "bass", patches = {"bass.sub", "bass.808", "bass.growl", "bass.reeseWide"}, lines = {"garage.low", "garage.wob", "@cell"}},
-			{role = "pad", patches = {"pad.dark", "pad.choir"}, chance = 0.6},
-			{role = "stab", patches = {"stab.fm", "stab.dub", "stab.brass"}, chance = 0.7},
-			{role = "lead", patches = {"lead.square", "lead.fm"}, chance = 0.6, hooks = {"hook.morse", "hook.insist", "hook.dotted", "@motif"}},
-			{role = "texture", patches = {"texture.drone", "texture.tape"}, chance = 0.7},
+			{role = "drums", wants = {"dark", "tense"}, avoid = {"fourfloor"}},
+			{role = "bass", patches = {"bass.sub", "bass.808", "bass.growl", "bass.reeseWide"}, wants = {"dark", "sub", "tense"}},
+			{role = "pad", patches = {"pad.dark", "pad.choir"}, chance = 0.6, wants = {"dark", "deep"}},
+			{role = "stab", patches = {"stab.fm", "stab.dub", "stab.brass"}, chance = 0.7, wants = {"dark", "tense"}},
+			{role = "lead", patches = {"lead.square", "lead.fm"}, chance = 0.6, wants = {"dark", "riff", "minimal"}},
+			{role = "texture", patches = {"texture.drone", "texture.tape"}, chance = 0.7, wants = {"dark"}},
 			{role = "fx", patches = {"fx.siren", "fx.wind"}},
 		}},
 }
 
 return {
-	api = 3,
+	api = 4,
 	title = "UK Garage",
 	symbol = "figure.dance",
 	summary = "2-Step, Speed Garage, Future Garage and more, shuffled",
@@ -149,18 +112,16 @@ return {
 		hat = {scale = 1.8, decay = 0.014, openDecay = 0.08},
 	},
 	mix = {duckDepth = 0.4, keys = 1.2},
-	set = {form = {openings = {"cold", "build", "melodic"}, builds = {"sweep", "rise", "roll"}},
-		modes = {"minor", "dorian"}, modulations = {0, 5},
-		arrangement = {introBars = 8, buildBars = 8, dropBars = 32, breakdownBars = 16, rebuildBars = 8,
-			outroBars = 16, blendBars = 8, minCycles = 2, maxCycles = 3}},
-	harmony = {progressions = PROGRESSIONS, voicing = {0, 2, 4, 6, 8}, barsPerChord = 2, cells = COMPS},
-	roles = {drums = {fills = FILLS}},
-	plan = {
-		intro = {pad = false},
-		drop = {keys = "keys.comp", pad = {"pad.chords", from = 16}},
-		breakdown = {lead = "lead.soft"},
-		outro = {bass = {"bass.line", to = 8}},
+	set = {modes = {"minor", "dorian"}, modulations = {0, 5}},
+	-- Vocal-led and sectional: the valley keeps the pad and the hook and
+	-- usually drops the kick but not always the drums; risers are rare.
+	arc = {
+		minutes = {4, 5.5}, intro = 16, outro = 16, riser = 0.1, riserBars = {2, 4}, roll = 0.1, impact = 0.3,
+		valley = 0.45, drumless = 0.5, bassOut = 0.6, kickOut = 0.5, kickOutBars = {1, 2, 4}, halftime = 0.1,
+		lift = 0.15, fill = 0.5, curve = CURVE,
+		breakdown = {"pad", "keys", "lead", "stab", "counter", "texture"},
 	},
+	harmony = {progressions = PROGRESSIONS, voicing = {0, 2, 4, 6, 8}, barsPerChord = 2, change = 0.1, segmentBars = 16},
+	roles = {drums = {fills = FILLS}},
 	flavours = FLAVOURS,
-	library = {beats = BEATS, lines = LINES},
 }

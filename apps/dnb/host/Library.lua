@@ -1,10 +1,9 @@
--- The library: the authored material tracks are made of, as a tracker
--- module carries its samples and patterns. Patches (the instruments), beats
--- (drum loops written as steps), bass lines and hooks live in
+-- The library: the sounds and notation tracks are made of, as a tracker
+-- module carries its samples. Patches (the instruments) and fills live in
 -- apps/dnb/library/ and in each style plugin's own `library`; this module
--- reads their notation, checks them and looks them up by id. The generator
--- picks from the library and varies what it picks; it also writes material
--- of its own (host/Motif.lua), named with a leading "@".
+-- reads their notation, checks them and looks them up by id. The loops a
+-- track is arranged from are blocks (host/Blocks.lua), which use the
+-- notations read here.
 --
 -- Beats are lanes of steps, 16 to a bar:
 --   {id = "twostep", bars = 1, lanes = {
@@ -18,7 +17,7 @@
 -- in 32nds. A beat with `kit = "break"` is a record's break: played on the
 -- break kit, at the record's `bpm`, through a room.
 --
--- Lines and hooks are notes, "step:pitch:length" with bars split by "|":
+-- Notes, "step:pitch:length" with bars split by "|":
 --   "0:0:6 8:7:2~ 12:4:3! | 0:0:8 10:2b:2?"
 -- Pitch is in scale steps (0 the root, 2 the third, 7 the octave; "b" and
 -- "#" bend it a semitone), so a line stays in its track's key and mode.
@@ -131,42 +130,11 @@ function Library.notes(text, where)
 	return {bars = bar, notes = notes}
 end
 
---- A 16-step rhythm as its onsets: "x..x..x." → {0, 3, 6}; accents ("X")
---- are returned as a set.
-function Library.steps(pattern)
-	local steps, accents = {}, {}
-	local at = 0
-	for c in pattern:gmatch("[^%s|]") do
-		if not REST[c] then
-			table.insert(steps, at)
-			if c == "X" then accents[at] = true end
-		end
-		at = at + 1
-	end
-	return steps, accents
-end
-
-local function line(spec, kind)
-	local where = kind .. " " .. tostring(spec.id)
-	assert(type(spec.id) == "string", "a " .. kind .. " needs an id")
-	local parsed = Library.notes(assert(spec.notes, where .. " needs notes"), where)
-	parsed.id, parsed.name, parsed.follow = spec.id, spec.name or spec.id, spec.follow or "chord"
-	parsed.octave = spec.octave
-	assert(parsed.follow == "chord" or parsed.follow == "key", where .. " follows the chord or the key")
-	if spec.bars then
-		assert(spec.bars >= parsed.bars, where .. " is written longer than its bars")
-		parsed.bars = spec.bars
-	end
-	return parsed
-end
-
 local KINDS = {
 	patches = function(spec) return Instrument.patch(spec) end,
-	beats = Library.beat,
-	lines = function(spec) return line(spec, "line") end,
-	hooks = function(spec) return line(spec, "hook") end,
+	fills = Library.beat,
 }
-Library.kinds = {"patches", "beats", "lines", "hooks"}
+Library.kinds = {"patches", "fills"}
 
 local function add(self, kind, specs, source)
 	for _, spec in ipairs(specs or {}) do
@@ -182,12 +150,9 @@ local shared
 --- The material every style shares (apps/dnb/library/).
 function Library.shared()
 	if not shared then
-		shared = setmetatable({patches = {}, beats = {}, lines = {}, hooks = {}, shared = {patches = {}, beats = {},
-			lines = {}, hooks = {}}}, Library)
+		shared = setmetatable({patches = {}, fills = {}, shared = {patches = {}, fills = {}}}, Library)
 		add(shared, "patches", require("apps.dnb.library.Patches"), "the library")
-		add(shared, "beats", require("apps.dnb.library.Beats"), "the library")
-		add(shared, "lines", require("apps.dnb.library.Lines"), "the library")
-		add(shared, "hooks", require("apps.dnb.library.Hooks"), "the library")
+		add(shared, "fills", require("apps.dnb.library.Fills"), "the library")
 	end
 	return shared
 end
@@ -196,7 +161,7 @@ end
 --- table of lists by kind) over the shared one.
 function Library.of(style)
 	local base = Library.shared()
-	local self = setmetatable({patches = {}, beats = {}, lines = {}, hooks = {}, shared = base}, Library)
+	local self = setmetatable({patches = {}, fills = {}, shared = base}, Library)
 	for _, kind in ipairs(Library.kinds) do
 		for id, entry in pairs(base[kind]) do self[kind][id] = entry end
 	end
@@ -210,7 +175,7 @@ end
 --- The entry of `kind` called `id`; an unknown id is an error naming it.
 function Library:get(kind, id)
 	local entry = self[kind][id]
-	if not entry then error("unknown " .. kind:sub(1, -2):gsub("che$", "ch") .. " " .. tostring(id), 0) end
+	if not entry then error("unknown " .. kind:sub(1, -2) .. " " .. tostring(id), 0) end
 	return entry
 end
 

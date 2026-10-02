@@ -4,5 +4,5 @@ return {
 	title = "Crystals",
 	symbol = "hexagon.fill",
 	shader = "Scene.metal",
-	sections = {"drop", "breakdown"},
+	arc = {0.45, 1},
 }

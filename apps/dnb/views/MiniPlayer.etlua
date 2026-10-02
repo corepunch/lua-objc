@@ -6,7 +6,7 @@
 			<GlassEffect id="panels" cornerRadius="18" maxWidth="infinity">
 				<HStack paddingLeading="14" paddingTrailing="8" paddingVertical="8" spacing="6" maxWidth="infinity">
 					<VStack spacing="1" alignment="leading" maxWidth="infinity">
-						<Label id="section" text="<%= nowPlaying.section %>" size="13" weight="bold" lineLimit="1" />
+						<Label id="moment" text="<%= nowPlaying.moment %>" size="13" weight="bold" lineLimit="1" />
 						<Label id="detail" text="<%= nowPlaying.detail %>" size="11" color="secondary" lineLimit="1" />
 					</VStack>
 					<Button id="play" style="plain" systemImage="play.fill" symbolSize="15" accessibilityLabel="Play" action="play" />

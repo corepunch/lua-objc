@@ -4,5 +4,5 @@ return {
 	title = "Liquid Chrome",
 	symbol = "drop.fill",
 	shader = "Scene.metal",
-	sections = {"drop", "breakdown"},
+	arc = {0.5, 1},
 }

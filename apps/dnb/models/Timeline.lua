@@ -19,7 +19,8 @@ Timeline.rowCount = Model.channels
 -- A meter spans this many decibels below full level.
 local METER = {range = 48}
 
-local SECTION_TITLES = {intro = "Intro", build = "Build-up", drop = "Drop", breakdown = "Breakdown", outro = "Outro"}
+local EVENT_TITLES = {valley = "Breakdown", ["return"] = "Full band", lift = "Key lift", riser = "Riser",
+	drumsOut = "Drums out", halftime = "Half-time"}
 
 -- Floats per instance: row, first bar, length in bars, colour (its role's
 -- place in Model.roles, from 0), its envelope at its first and last bar
@@ -92,20 +93,16 @@ function Timeline.instances(plans)
 	return data
 end
 
---- The next section change after set bar `n` in `plans`: "Breakdown in 8
---- bars", or the next track's intro once the outro plays.
+--- The next event of the playing track after set bar `n`: "Breakdown in 8
+--- bars", or the next track once the last has passed.
 function Timeline.headline(plans, n)
-	for p, plan in ipairs(plans) do
-		for _, section in ipairs(plan.sections) do
-			local start = plan.start + section.start
-			if start > n then
-				local bars = start - n
-				local title = p > 1 and "Next track" or SECTION_TITLES[section.id]
-				return string.format("%s in %d bar%s", title, bars, bars == 1 and "" or "s")
-			end
+	local plan = plans[1]
+	for _, event in ipairs(plan.events) do
+		local bars = plan.start + event.bar - n
+		if bars > 0 then
+			return string.format("%s in %d bar%s", EVENT_TITLES[event.kind], bars, bars == 1 and "" or "s")
 		end
 	end
-	local plan = plans[#plans]
 	local bars = plan.start + plan.length - n
 	return string.format("Next track in %d bar%s", bars, bars == 1 and "" or "s")
 end

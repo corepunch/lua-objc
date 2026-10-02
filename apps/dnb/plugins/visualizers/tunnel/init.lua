@@ -4,5 +4,5 @@ return {
 	title = "Tunnel",
 	symbol = "circle.circle",
 	shader = "Scene.metal",
-	sections = {"build", "drop"},
+	arc = {0.6, 1},
 }

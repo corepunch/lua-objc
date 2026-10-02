@@ -14,7 +14,7 @@ return {
 	title = "Valley Flight",
 	symbol = "mountain.2.fill",
 	shader = "Scene.metal",
-	sections = {"intro", "breakdown", "drop"},
+	arc = {0, 0.7},
 	draws = {
 		{vertex = "landscapeTerrainVertex", fragment = "landscapeTerrainFragment", depth = "write",
 			primitive = "triangleStrip", count = (TERRAIN.strip + 1) * 2, instances = STRIPS},
