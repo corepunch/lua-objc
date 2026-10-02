@@ -33,6 +33,7 @@ nav:
       - Apple UI checklist: agents/apple-ui-checklist.md
       - Delight vs coverage: delight.md
       - Components: components.md
+      - Data-driven apps: data-driven.md
       - SceneKit scenes and games: scenekit.md
       - Table behavior: tableview_swiftui.md
       - iOS host and hot reload: ios.md

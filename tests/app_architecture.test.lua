@@ -126,17 +126,27 @@ end
 for _, app in ipairs(apps) do
 	local module = app:gsub("/", ".")
 
-	-- init.lua is the entry point only: it returns the Controller class.
+	-- init.lua is the entry point only: it returns the Controller class, or,
+	-- for an app described by a manifest (lua/data/manifest.lua), the path of
+	-- its app.xml, from which the framework builds the launch class.
 	local initPath = app .. "/init.lua"
+	local manifest = exists(app .. "/app.xml")
 	check(exists(initPath), app .. " has no init.lua")
 	if exists(initPath) then
 		local source = stripped(read(initPath)):gsub("%s+", " "):match("^%s*(.-)%s*$")
-		check(source == 'return require("' .. module .. '.Controller")',
-			app .. '/init.lua does more than return require("' .. module .. '.Controller")')
+		if manifest then
+			check(source == 'return "' .. app .. '/app.xml"', app .. '/init.lua does more than return "' .. app .. '/app.xml"')
+		else
+			check(source == 'return require("' .. module .. '.Controller")',
+				app .. '/init.lua does more than return require("' .. module .. '.Controller")')
+		end
 	end
 
-	check(exists(app .. "/Controller.lua"), app .. " has no Controller.lua")
+	if not manifest then check(exists(app .. "/Controller.lua"), app .. " has no Controller.lua") end
 	local ok, class = pcall(dofile, initPath)
+	if ok and manifest and type(class) == "string" then
+		ok, class = pcall(require("data.app").launcher, class)
+	end
 	check(ok and type(class) == "table" and type(class.new) == "function"
 		and type(class.createWindow) == "function",
 		app .. " entry does not return a class with new() and createWindow()")

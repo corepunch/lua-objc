@@ -163,6 +163,14 @@ function Schema:related(field)
 	return self.loader(field.attrs.of)
 end
 
+-- A loader for an app's `schemas/` folder.
+function Schema.app(dir)
+	local xml = require("ui.xml")
+	return Schema.directory(dir, function(path)
+		return xml.source(path) or error("schema: cannot read " .. path, 0)
+	end, xml.parse)
+end
+
 -- ── Validation ─────────────────────────────────────────────────────────
 
 local function read(model, key)
