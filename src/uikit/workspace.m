@@ -1,35 +1,5 @@
-#pragma mark - Credentials and HTTP requests
+#pragma mark - HTTP requests
 
-static int bridge_credential(lua_State *L) {
-	NSMutableDictionary *query = [@{(__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,
-		(__bridge id)kSecAttrService:NSBundle.mainBundle.bundleIdentifier ?: @"lua-objc",
-		(__bridge id)kSecAttrAccount:@(luaL_checkstring(L, 1))} mutableCopy];
-	if (!lua_isnoneornil(L, 2)) {
-		NSData *data = [@(luaL_checkstring(L, 2)) dataUsingEncoding:NSUTF8StringEncoding];
-		OSStatus status;
-		if (!data.length) status = SecItemDelete((__bridge CFDictionaryRef)query);
-		else {
-			status = SecItemUpdate((__bridge CFDictionaryRef)query,
-				(__bridge CFDictionaryRef)@{(__bridge id)kSecValueData:data});
-			if (status == errSecItemNotFound) {
-				query[(__bridge id)kSecValueData] = data;
-				query[(__bridge id)kSecAttrAccessible] = (__bridge id)kSecAttrAccessibleWhenUnlockedThisDeviceOnly;
-				status = SecItemAdd((__bridge CFDictionaryRef)query, NULL);
-			}
-		}
-		if (status != errSecSuccess && !(status == errSecItemNotFound && !data.length))
-			return luaL_error(L, "Keychain error %d", (int)status);
-		return 0;
-	}
-	query[(__bridge id)kSecReturnData] = @YES;
-	CFTypeRef result = NULL;
-	OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
-	if (status == errSecItemNotFound) { lua_pushstring(L, ""); return 1; }
-	if (status != errSecSuccess) return luaL_error(L, "Keychain error %d", (int)status);
-	NSData *data = CFBridgingRelease(result);
-	lua_pushlstring(L, data.bytes, data.length);
-	return 1;
-}
 static int bridge_http_request(lua_State *L) {
 	NSURL *url = [NSURL URLWithString:@(luaL_checkstring(L, 1))];
 	if (!url || ![url.scheme isEqualToString:@"https"]) return luaL_error(L, "HTTP request requires HTTPS");

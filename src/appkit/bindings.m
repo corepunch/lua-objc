@@ -38,7 +38,6 @@ static int bridge_toolbar_item(lua_State *L);
 static int bridge_window(lua_State *L);
 static int bridge_set_window_workspace(lua_State *L);
 static int bridge_image(lua_State *L);
-static int bridge_image_viewer(lua_State *L);
 static int bridge_system_image(lua_State *L);
 static int bridge_system_color(lua_State *L);
 static int bridge_add_double_click(lua_State *L);
@@ -47,7 +46,6 @@ static int bridge_tableview(lua_State *L);
 static int bridge_action_button(lua_State *L);
 static int bridge_panel(lua_State *L);
 static int bridge_glass_effect(lua_State *L);
-static int bridge_panel_style_state(lua_State *L);
 static int bridge_set_main_menu(lua_State *L);
 static int bridge_main_menu_snapshot(lua_State *L);
 static int bridge_perform_main_menu_item(lua_State *L);
@@ -57,8 +55,6 @@ static int bridge_text_field_test_input(lua_State *L);
 static int bridge_text_field_test_command(lua_State *L);
 static int bridge_text_field_test_focus(lua_State *L);
 static int bridge_text_view(lua_State *L);
-static int bridge_symbol_toggle(lua_State *L);
-static int bridge_symbol_button(lua_State *L);
 static int bridge_tabview(lua_State *L);
 static int bridge_segmented_control(lua_State *L);
 static int bridge_pick_folder(lua_State *L);
@@ -128,10 +124,6 @@ static int bridge_AppKit_image(lua_State *L) {
 	return bridge_image(L);
 }
 
-static int bridge_AppKit_image_viewer(lua_State *L) {
-	return bridge_image_viewer(L);
-}
-
 static int bridge_AppKit_system_image(lua_State *L) {
 	return bridge_system_image(L);
 }
@@ -164,10 +156,6 @@ static int bridge_AppKit_glass_effect(lua_State *L) {
 	return bridge_glass_effect(L);
 }
 
-static int bridge_AppKit_panel_style_state(lua_State *L) {
-	return bridge_panel_style_state(L);
-}
-
 
 static int bridge_AppKit_text_field_callbacks(lua_State *L) {
 	return bridge_text_field_callbacks(L);
@@ -187,14 +175,6 @@ static int bridge_AppKit_text_field_test_focus(lua_State *L) {
 
 static int bridge_AppKit_text_view(lua_State *L) {
 	return bridge_text_view(L);
-}
-
-static int bridge_AppKit_symbol_toggle(lua_State *L) {
-	return bridge_symbol_toggle(L);
-}
-
-static int bridge_AppKit_symbol_button(lua_State *L) {
-	return bridge_symbol_button(L);
 }
 
 static int bridge_AppKit_tabview(lua_State *L) {

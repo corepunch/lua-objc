@@ -1950,8 +1950,6 @@ function AppKit.ContentUnavailable(props)
 	return applyLayout(view, props)
 end
 
-AppKit.ActionButton = AppKit.Button
-
 --- Represents an on/off value with a native switch or checkbox.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -2524,10 +2522,6 @@ function AppKit.ToolbarProgress(window, identifier)
 		end,
 	}
 end
-
-AppKit.Spinner = AppKit.ProgressView
-AppKit.SpinnerStart = AppKit.ProgressStart
-AppKit.SpinnerStop = AppKit.ProgressStop
 
 function AppKit.sleep(seconds)
 	local co = coroutine.running()

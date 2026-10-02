@@ -732,18 +732,6 @@ static int bridge_image(lua_State *L) {
 	return 1;
 }
 
-static int bridge_image_viewer(lua_State *L) {
-	const char *path = luaL_checkstring(L, 1);
-
-	LuaImageViewerView *viewer = [[LuaImageViewerView alloc]
-		initWithFrame:NSMakeRect(0, 0, kImageViewerDefaultWidth, kImageViewerDefaultHeight)];
-	viewer.dropCallback = lua_reg_opt(L, 2);
-	viewer.imagePath = [NSString stringWithUTF8String:path];
-
-	push_objc(L, viewer, "nsview");
-	return 1;
-}
-
 static int bridge_system_image(lua_State *L) {
 	const char *symbol = luaL_checkstring(L, 1);
 	const char *description = luaL_optstring(L, 2, symbol);

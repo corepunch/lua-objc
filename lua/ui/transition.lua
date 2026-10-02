@@ -90,49 +90,6 @@ function Transition.destinationOf(view)
 	return destinations[view]
 end
 
-function Transition.applySource(view, props, namespaces)
-	if not props or not props.matchedTransitionSourceId then
-		return view
-	end
-	local ns = props.namespace
-	if type(ns) == "string" and namespaces then
-		ns = namespaces[ns]
-	end
-	if ns == nil then
-		ns = Namespace.new(type(props.namespace) == "string" and props.namespace or "default")
-		if type(props.namespace) == "string" and namespaces then
-			namespaces[props.namespace] = ns
-		end
-	end
-	ns:registerSource(props.matchedTransitionSourceId, view)
-	return view
-end
-
-function Transition.applyDestination(view, props, namespaces)
-	if not props then return view end
-	local transition = props.navigationTransition
-	local sourceId = props.sourceId or props.matchedTransitionSourceId
-	if transition == nil and sourceId == nil then
-		return view
-	end
-	local ns = props.namespace
-	if type(ns) == "string" and namespaces then
-		ns = namespaces[ns]
-	end
-	if ns == nil then
-		ns = Namespace.new(type(props.namespace) == "string" and props.namespace or "default")
-		if type(props.namespace) == "string" and namespaces then
-			namespaces[props.namespace] = ns
-		end
-	end
-	ns:registerDestination(sourceId or "cover", view, {
-		transition = transition or "zoom",
-		toolbarVisibility = props.toolbarVisibility,
-		ignoresSafeArea = props.ignoresSafeArea,
-	})
-	return view
-end
-
 function Transition.pushOptions(sourceId, namespace)
 	if not Transition.shouldZoom() then
 		return { animated = true, transition = "push" }

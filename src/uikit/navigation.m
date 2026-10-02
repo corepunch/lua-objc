@@ -398,12 +398,6 @@ static int bridge_UIKitTabView_selectTab(lua_State *L) {
 	return 0;
 }
 
-static int bridge_UIKitTabView_tabCount(lua_State *L) {
-	UITabBarController *tbc = lua_objc_check_object(L, 1, [UITabBarController class], "TabView");
-	lua_pushinteger(L, (lua_Integer)tbc.tabs.count);
-	return 1;
-}
-
 static int bridge_UIKitTabView_onChange(lua_State *L) {
 	id obj = check_objc(L, 1);
 	UITabBarController *tbc = (UITabBarController *)obj;

@@ -335,7 +335,6 @@ t.expect(xml.schema.ToolbarItem ~= nil, "xml.schema contains ToolbarItem definit
 t.expect(xml.schema.Column ~= nil, "xml.schema contains Column definition")
 t.expect(type(xml.aliases) == "table", "xml.aliases is exported as a table")
 t.assertEqual(xml.aliases.Text, "Label", "Text is an alias for Label")
-t.assertEqual(xml.aliases.Switch, "Toggle", "Switch is an alias for Toggle")
 
 -- ── Custom tag registration ────────────────────────────────────────────────
 

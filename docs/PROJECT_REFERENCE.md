@@ -352,7 +352,6 @@ Each ObjC object is wrapped in a Lua full userdata with a metatable (`nsview` or
 | `_picker(options, selectedIndex, callback?)` | `NSPopUpButton` |
 | `_actionButton(title, subtitle, symbol, style, detail, callback)` | `LuaActionButton` (compound button) |
 | `_systemImage(symbol, description, size, weight, color)` | `NSImageView` with SF Symbol |
-| `_symbolToggle(symbol, tooltip, state, callback?)` | `NSButton` (toggle) with SF Symbol, fires callback with sender |
 | `_textView()` | `NSScrollView` wrapping `NSTextView` + `SyntaxTextStorage` |
 | `_textViewGetText(textView)` | Reads `NSTextView.string` |
 | `_textViewSetText(textView, str)` | Sets `NSTextView.string` |
@@ -1266,28 +1265,6 @@ ns.Picker {
   end,
 }
 ```
-
-### `SymbolToggle(symbol, tooltip, is_on, action?)`
-
-Creates an `NSButton` toggle with an SF Symbol instead of a text label. Uses
-`NSButtonTypeOnOff` with `NSBezelStyleRounded` — the symbol appears filled
-when toggled on. **Callbacks receive the sender** for reading `btn.state`.
-
-```lua
-local wrapToggle = bridge._symbolToggle(
-    "arrow.left.and.line.vertical.and.arrow.right",
-    "Toggle Word Wrap",
-    false,
-    function(btn)
-        local wrapped = btn.state == 1
-        bridge._textViewSetWrapMode(editor._view, wrapped)
-    end
-)
-```
-
-This is a low-level bridge function (`bridge._symbolToggle`), not wrapped by
-the embedded AppKit declarative layer. It's intended for ControlBar header
-toggles and similar compact toolbar-like buttons.
 
 ### `Separator()`
 

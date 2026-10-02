@@ -1939,7 +1939,6 @@ local TAG_SCHEMA = {
 -- Tag aliases
 local TAG_ALIASES = {
     Text   = "Label",
-    Switch = "Toggle",
 }
 
 -- ── Tag registry compiler ─────────────────────────────────────────────────

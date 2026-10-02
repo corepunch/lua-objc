@@ -74,22 +74,6 @@ static int bridge_sheet(lua_State *L) {
 	return 1;
 }
 
-static int bridge_panel_style_state(lua_State *L) {
-	id obj = check_objc(L, 1);
-	if (![obj isKindOfClass:[LuaPanel class]]) {
-		return luaL_error(L, "panelStyleState requires a panel");
-	}
-	LuaPanel *panel = (LuaPanel *)obj;
-	lua_newtable(L);
-	lua_pushboolean(L, panel.hasShadow);
-	lua_setfield(L, -2, "usesNativeShadow");
-	lua_pushboolean(L,
-		(panel.styleMask & NSWindowStyleMaskTitled) != 0
-		&& (panel.styleMask & NSWindowStyleMaskFullSizeContentView) != 0);
-	lua_setfield(L, -2, "usesNativeFrame");
-	return 1;
-}
-
 static int bridge_NSWindow_presentPanel_impl(lua_State *L) {
 	id panelObj = check_objc(L, 1);
 	id parentObj = check_objc(L, 2);
