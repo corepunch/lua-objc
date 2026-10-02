@@ -57,7 +57,7 @@ do
 		elseif row.action == "spotlight" then
 			table.insert(items, {title = "Spotlight Settings…", systemImage = "magnifyingglass", action = function() service(page).openSettings("spotlight") end})
 		end
-		for _, item in ipairs(page.actions:folder(row, nil, not row.system and {path = row.path, name = row.name, bytes = row.bytes,
+		for _, item in ipairs(page.rowActions:folder(row, nil, not row.system and {path = row.path, name = row.name, bytes = row.bytes,
 			source = page.analyzed and page.analyzed.name or "Disk"} or nil)) do table.insert(items, item) end
 		return items
 	end
@@ -66,19 +66,18 @@ do
 			local layout = {tiles = presented.tiles}
 			for key, value in pairs(LAYOUT) do layout[key] = value end
 			return layout
-		end, queries = {diskUtility = true, volumeMenu = true, externalMenu = true, contentsMenu = true}, actions = {
+		end, queries = {diskUtility = true, volumeMenu = true, externalMenu = true, contentsMenu = true},
 			diskUtility = function(page) service(page).openDiskUtility() end,
 			volumeMenu = function(page, _, _, row)
-				return {{title = "Copy Device Identifier", systemImage = "doc.on.doc", action = function() service(page).copy(row.detail) end}}
+			return {{title = "Copy Device Identifier", systemImage = "doc.on.doc", action = function() service(page).copy(row.detail) end}}
 			end,
 			externalMenu = function(page, _, _, row)
-				local items = {{title = "Analyze Contents", systemImage = "chart.bar.doc.horizontal", action = function() analyze(page, row) end}}
-				for _, item in ipairs(page.actions:folder(row)) do table.insert(items, item) end
-				return items
+			local items = {{title = "Analyze Contents", systemImage = "chart.bar.doc.horizontal", action = function() analyze(page, row) end}}
+			for _, item in ipairs(page.rowActions:folder(row)) do table.insert(items, item) end
+			return items
 			end,
 			analyze = function(page, _, _, row) if row then analyze(page, row) end end,
-			contentsMenu = contentsMenu,
-		}, load = function(page)
+			contentsMenu = contentsMenu, load = function(page)
 			local volumes = Provider.offers(service(page), "volumes")
 			page.generation = (page.generation or 0) + 1
 			local generation = page.generation
@@ -111,7 +110,7 @@ do
 			local contents = {}
 			if analyzed then
 				local rows, total = VolumeContents.rows(analyzed.path, analyzed.entries)
-				contents = page.actions:annotate(rows)
+				contents = page.rowActions:annotate(rows)
 				texts.contentsTitle = "Contents of " .. analyzed.name
 				texts.contentsDetail = analyzed.loading and "Measuring…" or analyzed.failure
 					or (Format.size(total) .. " in " .. #rows .. " items at the top level. Hidden system folders are explained; their owners manage them.")

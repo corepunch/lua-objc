@@ -119,6 +119,7 @@ end
 function PageController:marksChanged() self:update(self.state) end
 
 function PageController:dispose()
+	if self.context.store then Model.bind(self.context.store) end
 	if self.template and self.request.deactivate then self.request:deactivate() end
 	if self.template then self.template:dispose() end
 	self.template, self.refs = nil, nil

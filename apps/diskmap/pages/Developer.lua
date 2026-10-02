@@ -155,7 +155,7 @@ end
 -- The Xcode page: device support per OS version, DerivedData per project and
 -- archives, read from Xcode's folders when the page opens. Rows are marked
 -- for cleanup from their menu; nothing is removed here.
-local actions = {
+routes.xcode = ListRoute.extend({layout = LAYOUT, statuses = STATUS,
 	openXcode = function(page)
 		local ok, message = page.app.service.openOwner("xcode")
 		if ok == false then page.app.service.showError("Cannot open Xcode", message) end
@@ -167,22 +167,11 @@ local actions = {
 		for _, section in ipairs(SECTIONS) do total = total + Xcode.total(page.rows[section.id]) end
 		return total > 0 and Format.size(total) or nil
 	end,
-}
-for _, section in ipairs(SECTIONS) do
-	actions["bulk_" .. section.id] = function(page)
-		local items = {}
-		for _, row in ipairs(page.rows[section.id]) do
-			if bulkable(section, row) then table.insert(items, item(section, row)) end
-		end
-		page.actions:markAll(items)
-	end
-end
-routes.xcode = ListRoute.extend({layout = LAYOUT, actions = actions, statuses = STATUS,
 	load = function(page) page.generation, page.reading = (page.generation or 0) + 1, true; read(page) end,
 	unload = function(page) page.generation = page.generation + 1 end,
 	menu = function(page, row)
 		for _, section in ipairs(SECTIONS) do
-			if section.id == row.section then return page.actions:folder(row, nil, item(section, row)) end
+			if section.id == row.section then return page.rowActions:folder(row, nil, item(section, row)) end
 		end
 	end,
 	present = function(page, state)
@@ -199,12 +188,12 @@ routes.xcode = ListRoute.extend({layout = LAYOUT, actions = actions, statuses = 
 					row.detail = row.date ~= "" and row.date or "—"
 				end
 			end
-			lists["list_" .. section.id] = page.actions:annotate(rows, section.icon, section.color)
+			lists["list_" .. section.id] = page.rowActions:annotate(rows, section.icon, section.color)
 			total = total + Xcode.total(page.rows[section.id])
 			hidden[section.id .. "Section"] = #page.rows[section.id] == 0
 			local pending = false
 			for _, row in ipairs(page.rows[section.id]) do
-				if bulkable(section, row) and not page.actions:isIncluded(row.path) then pending = true end
+				if bulkable(section, row) and not page.rowActions:isIncluded(row.path) then pending = true end
 			end
 			disabled["bulk_" .. section.id] = not pending
 		end
@@ -212,5 +201,15 @@ routes.xcode = ListRoute.extend({layout = LAYOUT, actions = actions, statuses = 
 			and "No Xcode device support, build data or archives on this Mac."
 			or (Format.size(total) .. " in device support, build data and archives")}}
 	end})
+-- "Mark All" of each section marks its rows that can be marked.
+for _, section in ipairs(SECTIONS) do
+	routes.xcode["bulk_" .. section.id] = function(page)
+		local items = {}
+		for _, row in ipairs(page.rows[section.id]) do
+			if bulkable(section, row) then table.insert(items, item(section, row)) end
+		end
+		page.rowActions:markAll(items)
+	end
+end
 
 return routes

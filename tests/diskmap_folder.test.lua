@@ -190,7 +190,7 @@ local Files = require("apps.diskmap.models.Files")
 local dmg
 for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
 local fileMenu = {}
-for _, item in ipairs(dmg and app.actions:file(dmg) or {}) do if item.title then fileMenu[item.title] = true end end
+for _, item in ipairs(dmg and app.rowActions:file(dmg) or {}) do if item.title then fileMenu[item.title] = true end end
 t.expect(fileMenu["Quick Look"] and fileMenu["Move to…"], "large files can be previewed and offloaded")
 
 os.exit(t.summary() and 0 or 1)

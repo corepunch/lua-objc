@@ -25,7 +25,7 @@ local WatchlistStore = require("apps.diskmap.services.WatchlistStore")
 local Manifest = require("data.manifest")
 local Model = require("data.model")
 local Routes = require("data.routes")
-local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local SheetController = require("apps.diskmap.controllers.SheetController")
 local Sheets = require("apps.diskmap.pages.Sheets")
 local PageController = require("data.pagecontroller")
 local Controller = {}; Controller.__index = Controller
@@ -55,7 +55,7 @@ function Controller.new(service)
 	-- one and fight the user's scrolling.
 	self.scan = ScanJob.new(self.model, service, home, function() self:scanChanged() end, function() self:scanFinished() end)
 	self.notifications = Notifications.new(self.model, service, {
-		mark = function(items) self.actions:markAll(items) end,
+		mark = function(items) self.rowActions:markAll(items) end,
 		review = function() self:openReview() end,
 		show = function() if self.window then self.window:show() end end,
 	})
@@ -109,13 +109,13 @@ function Controller.new(service)
 	}
 	self.context = context
 	-- The sheets of the window, each the model of its own request.
-	local function sheet(id) return SheetRoute.page(Sheets[id], id, context) end
+	local function sheet(id) return SheetController.page(Sheets[id], id, context) end
 	self.settings, self.review, self.history = sheet("settings"), sheet("review"), sheet("history")
 	self.sdks, self.management, self.changesSheet = sheet("sdks"), sheet("management"), sheet("snapshotChanges")
 	self.progress = ScanProgress.new(self.scan)
 	context.review = self.review
 	-- The row menus and marks of the window itself (a drop, a notification).
-	self.actions = Rows({app = context})
+	self.rowActions = Rows({app = context})
 	-- Every page of app.xml is drawn from the page its route builds, the
 	-- first time it is asked for (`request`).
 	local manifest = Manifest.load("apps/diskmap/app.xml")
@@ -146,13 +146,15 @@ function Controller.new(service)
 		exportScan = function() self:exportScan() end,
 		tour = function() self.tour:open(self.window) end,
 	})
+	-- The menu bar enters the window here: every command and validator runs
+	-- with this window's store bound.
 	self.commandActions = self.commands:actions()
+	for name, action in pairs(self.commandActions) do self.commandActions[name] = Model.bound(self.model, action) end
 	return self
 end
 -- Shows a page filtered to `text`, as if typed into the toolbar search:
 -- how Help menu search results open their topic.
 function Controller:search(id, text)
-	Model.bind(self.model)
 	self.query = text or ""
 	if self.searchField then self.searchField.stringValue = self.query end
 	self:show(id, true)
@@ -164,7 +166,6 @@ end
 -- its own, or its category's list with its row selected. An id that names
 -- no resource is a page ("updates").
 function Controller:open(id, filter)
-	Model.bind(self.model)
 	local destination = Locations:destination(id) or self.pages[id] and {page = id}
 	if not destination then return end
 	if destination.page then
@@ -207,7 +208,6 @@ end
 -- Sidebar sizes come from measured categories and from pages that have
 -- already loaded their own inventory.
 function Controller:badges()
-	Model.bind(self.model)
 	local badges = {}
 	local summary = Overview.summary(self.scan.disk, self.capacity)
 	if summary.available then badges.overview = summary.used end
@@ -233,7 +233,6 @@ function Controller:badges()
 	return badges
 end
 function Controller:updateRows()
-	Model.bind(self.model)
 	if self.window then self.window.subtitle = self:subtitle() end
 	-- App facts load once the scan has measured the data folders they need.
 	if self.model.files and not self.model.files.measuring then self:request("applications"):loadFacts() end
@@ -282,12 +281,13 @@ function Controller:collectorDrag(target, targeted)
 	self.dragTargets[target] = targeted or nil
 	self.dragGeneration = (self.dragGeneration or 0) + 1
 	local generation = self.dragGeneration
-	local function update()
-		if generation ~= self.dragGeneration then return end
-		self.collectorDragging = next(self.dragTargets) ~= nil
-		if self.collector then self.collector.collectorArea.hidden = self.review:count() == 0 and not self.collectorDragging end
-	end
-	if targeted then update() else ns.async(function() ns.sleep(0); update() end) end
+	if targeted then self:collectorDragged(generation)
+	else ns.async(function() ns.sleep(0); self:collectorDragged(generation) end) end
+end
+function Controller:collectorDragged(generation)
+	if generation ~= self.dragGeneration then return end
+	self.collectorDragging = next(self.dragTargets) ~= nil
+	if self.collector then self.collector.collectorArea.hidden = self.review:count() == 0 and not self.collectorDragging end
 end
 
 -- Files dropped on the collector are marked for cleanup. A catalog location
@@ -301,7 +301,7 @@ function Controller:dropToMark(paths)
 			if row.path == path then resource = row; break end
 		end
 		local item
-		if resource and self.actions:markableResource(resource) then
+		if resource and self.rowActions:markableResource(resource) then
 			local measured = self.model.measurements[resource.id]
 			item = {path = path, name = resource.name, bytes = measured and measured.bytes, resourceId = resource.id,
 				source = "Dropped", consequence = resource.consequence}
@@ -420,7 +420,6 @@ end
 -- A watched location's sidebar row, "watched:<key>", opens the Watched
 -- page focused on that location.
 function Controller:show(id, remount, fromHistory)
-	Model.bind(self.model)
 	local key = id:match("^watched:(.+)$")
 	local page = self.pages[key and "watched" or id]
 	if not page or not self.content then return end
@@ -532,7 +531,7 @@ function Controller:createWindow()
 	end) end
 	local folder = Provider.folder(App.args())
 	if folder then self:openFolder(folder) end
-	self.tour = SheetRoute.page(Sheets.tour, "tour", self.context)
+	self.tour = SheetController.page(Sheets.tour, "tour", self.context)
 	local exportPath = Provider.exportPath(App.args())
 	if exportPath then
 		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
@@ -549,7 +548,7 @@ function Controller:createWindow()
 		-- First launch without Full Disk Access explains it before the first
 		-- scan and starts the scan once access is granted or declined.
 		-- The welcome tour follows while the scan runs.
-		self.onboarding = SheetRoute.page(Sheets.onboarding, "onboarding", self.context)
+		self.onboarding = SheetController.page(Sheets.onboarding, "onboarding", self.context)
 		if self.onboarding:needed() then self.onboarding:open(self.window)
 		else
 			self.scan:start()
@@ -557,18 +556,33 @@ function Controller:createWindow()
 		end
 	end
 	local scope = ns.Scope.current()
-	if scope then scope:add(self.scan); scope:add({dispose = function()
-		if self.page then self.page:dispose() end
-		local folder = self.requests.folder
-		if folder then folder:cancel() end
-		if onOpen then onOpen(nil) end
-		self.settings:close(); self.management:close(); self.sdks:close()
-		self.review:close(); self.history:close(); self.changesSheet:close(); self.notifications:stop()
-	end}) end
+	if scope then scope:add(self.scan); scope:add({dispose = function() self:dispose() end}) end
 	self.notifications:apply()
 	self.service.monitor(function() return self.window.visible end, function()
 		if self.settings.enabled and not self.scan.job then self.scan:start() end
 	end)
 	return self.window
+end
+-- The window is going: its page, sheets and running work go with it.
+function Controller:dispose()
+	if self.page then self.page:dispose() end
+	local folder = self.requests.folder
+	if folder then folder:cancel() end
+	local onOpen = optional(self.service, "onOpenFiles")
+	if onOpen then onOpen(nil) end
+	self.settings:close(); self.management:close(); self.sdks:close()
+	self.review:close(); self.history:close(); self.changesSheet:close(); self.notifications:stop()
+end
+-- A window's code runs with the window's store bound (lua/data/model.lua),
+-- and this is where it is bound: the window is entered through a method of
+-- its controller or a menu command (bound in `new`). A page's action binds in
+-- the page controller, and the service calling back in Provider.bind.
+for name, method in pairs(Controller) do
+	if type(method) == "function" and name ~= "new" then
+		Controller[name] = function(self, ...)
+			Model.bind(self.model)
+			return method(self, ...)
+		end
+	end
 end
 return Controller

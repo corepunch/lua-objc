@@ -56,7 +56,7 @@ t.assertEqual(decision.decisionAction.title,'Review Marked Items…','covered vi
 t.expect(decision.decisionDetail.text:find('included through a marked folder',1,true),'bulk feedback explains folder coverage')
 t.assertEqual(page:markFiles(),0,'bulk skips covered leaves')
 t.assertEqual(app.review:count(),1,'bulk keeps enclosing folder intact')
-local menu=app.actions:mark(item(liveChild))
+local menu=app.rowActions:mark(item(liveChild))
 t.expect(menu.title:find('Included through',1,true),'covered row has explicit review menu')
 menu.action()
 t.assertEqual(app.review.selected.path,liveFolder,'covered row opens enclosing staged item')
@@ -65,15 +65,15 @@ t.expect(app.review.refs.consequence.text:find('every file',1,true),'review disp
 t.expect(app.review.refs.remove.enabled,'enclosing selection can be explicitly unmarked')
 app.review:close()
 local source={path=liveChild,name='Large file',subtitle='Original folder',icon='doc',bytes=90000000}
-local presented=app.actions:annotate({source})[1]
+local presented=app.rowActions:annotate({source})[1]
 t.expect(presented.subtitle:find('Included through',1,true),'shared rows explain inclusion')
 t.assertEqual(source.subtitle,'Original folder','row feedback does not mutate inventory data')
 app.review:toggle(item(liveFolder))
-presented=app.actions:annotate({source})[1]
+presented=app.rowActions:annotate({source})[1]
 t.assertEqual(presented.subtitle,'Original folder','unmark removes coverage feedback')
 t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 File','parent unmark makes leaf eligible again')
 app.review:toggle({path=liveChild,name='Installer',bytes=90000000,consequence='Check that installation is complete before removing this installer.'})
-t.assertEqual(app.actions:mark(item(liveChild)).title,'Unmark','exact mark keeps its own unmark semantics')
+t.assertEqual(app.rowActions:mark(item(liveChild)).title,'Unmark','exact mark keeps its own unmark semantics')
 app.review:open(window)
 t.assertEqual(app.review.selected.path,liveChild,'opening review selects first pending item')
 t.expect(app.review.refs.consequence.text:find('installation is complete',1,true),'default selection exposes item-specific consequence')

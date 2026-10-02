@@ -171,7 +171,7 @@ t.assertEqual(app.model.includeMedia, false, "media libraries start excluded")
 app.settings:setMedia(true)
 t.expect(app.service.loadFlag("media"), "the choice is saved")
 local relaunched = Store.new(home)
-require("apps.diskmap.pages.SheetRoute").page(require("apps.diskmap.pages.Sheets").settings, "settings", {service = app.service, model = relaunched, notifications = app.notifications})
+require("apps.diskmap.controllers.SheetController").page(require("apps.diskmap.pages.Sheets").settings, "settings", {service = app.service, model = relaunched, notifications = app.notifications})
 t.expect(relaunched.includeMedia,
 	"and restored at the next launch")
 app.settings:setMedia(false)

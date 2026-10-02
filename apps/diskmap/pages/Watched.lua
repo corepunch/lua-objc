@@ -61,36 +61,35 @@ local function contents(page, row)
 	if source then
 		local rows = Categories.rows(source.id)
 		for _, item in ipairs(rows) do item.resourceId, item.detail = item.id, item.policy or "" end
-		return page.actions:annotate(rows), Format.plural(#source:children(), "location") .. " Diskmap measures here. Open one to review it."
+		return page.rowActions:annotate(rows), Format.plural(#source:children(), "location") .. " Diskmap measures here. Open one to review it."
 	end
 	local analyzed = page.analyzed
 	analyzed = analyzed and analyzed.key == row.key and analyzed or {}
 	local rows, total = VolumeContents.rows(row.path, analyzed.entries)
 	local detail = analyzed.loading and "Measuring…" or analyzed.failure
 		or Format.size(total) .. " in " .. Format.plural(#rows, "item") .. " at the top level."
-	return page.actions:annotate(rows), detail, analyzed.loading
+	return page.rowActions:annotate(rows), detail, analyzed.loading
 end
 
 local function menu(page, item)
 	if not item then return {} end
-	if item.resourceId then return page.actions:resource(item.resourceId) end
-	return page.actions:folder(item)
+	if item.resourceId then return page.rowActions:resource(item.resourceId) end
+	return page.rowActions:folder(item)
 end
 
 routes.watched = ListRoute.extend({layout = function(_, presented) return presented.shape end,
-		queries = {showInFinder = true, openCategory = true}, menu = menu, actions = {
+		queries = {showInFinder = true, openCategory = true}, menu = menu,
 			showInFinder = function(page) service(page).reveal(watched(page).path) end,
 			openCategory = function(page) page.app.open(category(page, watched(page)).id) end,
 			unwatch = function(page)
-				local entry = page.app.watchlist:find(key(page))
-				if entry and page.app.watchlist:toggle(entry) then page.app.show("overview") end
+			local entry = page.app.watchlist:find(key(page))
+			if entry and page.app.watchlist:toggle(entry) then page.app.show("overview") end
 			end,
 			openContents = function(page, _, _, item)
-				if not item then return end
-				local resource = item.resourceId and Locations:find(item.resourceId)
-				if resource then page.app.open(resource.id) else service(page).reveal(item.path) end
-			end,
-		}, load = function(page) analyze(page) end, unload = function(page) page.analyzed = nil end,
+			if not item then return end
+			local resource = item.resourceId and Locations:find(item.resourceId)
+			if resource then page.app.open(resource.id) else service(page).reveal(item.path) end
+			end, load = function(page) analyze(page) end, unload = function(page) page.analyzed = nil end,
 		present = function(page)
 			local row = watched(page)
 			page.header = row and {icon = row.icon, color = row.color, title = row.name}

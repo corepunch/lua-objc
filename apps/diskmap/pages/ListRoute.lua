@@ -31,8 +31,8 @@ local Selection = require("apps.diskmap.helpers.Selection")
 --     links     {action = {open = id} | {page = id, filter = n} | {settings = section}
 --               | {handler = name, args = {...}} (a handler of the app's actions)}
 --   }
---   and its actions, as methods; `self.filterIndex` is the filter picker's
---   segment, from 1.
+--   and its actions, as methods like any route's; `self.filterIndex` is the
+--   filter picker's segment, from 1.
 --
 -- A row's menu is its resource's menu, and opening a row goes where
 -- its location sends it; a row that stands for another page
@@ -43,17 +43,15 @@ local ListRoute = {view = "pages/Page", filterIndex = 1}
 ListRoute.queries = {rowMenu = true, open = true, openSelection = true, reveal = true}
 
 -- A list route: `route` over this one, its queries beside the shared ones.
--- `route.actions` are its actions, set as its methods.
 function ListRoute.extend(route)
 	route.queries = setmetatable(route.queries or {}, {__index = ListRoute.queries})
-	for name, action in pairs(route.actions or {}) do route[name] = action end
-	route.actions = nil
 	return Routes.extend(ListRoute, route)
 end
 
--- Every list reads the store; its rows' menus and marks are the Rows flow.
+-- Every list reads the store; its rows' menus and marks are the Rows flow
+-- (flows/Rows.lua), `self.rowActions`.
 function ListRoute:init()
-	self.actions = self:flow("Rows")
+	self.rowActions = self:flow("Rows")
 end
 
 function ListRoute:rowMenu(_, _, row)
@@ -62,7 +60,7 @@ function ListRoute:rowMenu(_, _, row)
 		return {{title = "Open " .. (row.pageName or "Page"), systemImage = "arrow.right.circle",
 			action = function() self.app.showFiltered(row.page, row.filter) end}}
 	end
-	return self.actions:resource(row.id)
+	return self.rowActions:resource(row.id)
 end
 
 function ListRoute:activateRow(row)
