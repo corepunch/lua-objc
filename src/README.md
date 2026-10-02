@@ -29,6 +29,7 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `appkit/platform.m` | PNG rendering, file watching, open panels | `offscreen_render`, `bridge_watch` |
 | `appkit/workspace.m` | context menus, Finder and Trash, clipboard, volumes, opened files, Quick Look, moving items | `LuaApplicationDelegate`, `bridge_quick_look`, `bridge_move_item` |
 | `appkit/syntax_highlight.m` | editor syntax storage | `SyntaxTextStorage` |
+| `shared/formatters.m` | system value formatters for schema type tags: bytes, numbers, percents, dates | `bridge_format_bytes`, `_formatDate` |
 | `shared/scene_view.m` | declarative SceneKit `SceneView` on both platforms: record reconciliation, poses, frame, key and swipe/tap hooks | `LuaSceneView`, `bridge_scene_graph`, `setNodeStates:` |
 | `uikit/bridge.m` | UIKit keys, fragment includes, registration | `luaopen_UIKitNative`, `bridge_lib` |
 | `uikit/constructors.m` | UIKit native stack and leaf-control constructors | `bridge_UIKitControls_*` |

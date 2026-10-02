@@ -37,15 +37,27 @@ static BOOL cell_binding_truthy(id value) {
 	return YES;
 }
 
-/* A path reaches into nested fields; a level that is not a dictionary ends
- * it with nothing, as a missing field. */
-static id cell_binding_field(NSDictionary *row, NSArray<NSString *> *path) {
-	id value = row;
-	for (NSString *key in path) {
-		if (![value isKindOfClass:NSDictionary.class]) return nil;
-		value = value[key];
+/* A path reaches into nested fields. A projected record (lua/data/schema.lua)
+ * flattens a field's parts into dotted keys beside it ("size", "size.color"),
+ * so each level tries the longest dotted key first and then descends. A level
+ * that is not a dictionary ends the path with nothing, as a missing field. */
+static id cell_binding_lookup(NSDictionary *record, NSArray<NSString *> *path, NSUInteger from) {
+	for (NSUInteger to = path.count; to > from; to--) {
+		NSString *key = [[path subarrayWithRange:NSMakeRange(from, to - from)]
+			componentsJoinedByString:@"."];
+		id value = record[key];
+		if (!value || value == NSNull.null) continue;
+		if (to == path.count) return value;
+		if ([value isKindOfClass:NSDictionary.class]) {
+			id found = cell_binding_lookup(value, path, to);
+			if (found) return found;
+		}
 	}
-	return value == NSNull.null ? nil : value;
+	return nil;
+}
+
+static id cell_binding_field(NSDictionary *row, NSArray<NSString *> *path) {
+	return cell_binding_lookup(row, path, 0);
 }
 
 static id cell_binding_value(LuaCellBinding *binding, NSDictionary *row) {
