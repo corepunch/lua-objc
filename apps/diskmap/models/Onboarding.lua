@@ -10,7 +10,7 @@ local SheetPage = require("apps.diskmap.SheetPage")
 -- Diskmap checks access every second and, once it is granted, closes the
 -- sheet and starts the scan by itself. "Continue Without Access" is always
 -- there. `services.onboarded(granted)` starts the scan.
-local Onboarding = SheetPage.define({id = "onboarding", view = "Onboarding", width = 580, height = 390})
+local Onboarding = SheetPage.define({id = "onboarding", view = "sheets/Onboarding", width = 580, height = 390})
 
 Onboarding.interval = 1
 

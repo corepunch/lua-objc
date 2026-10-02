@@ -3,7 +3,7 @@ local OperationLog = require("apps.diskmap.models.OperationLog")
 
 -- The action history sheet: every move, deletion and owner command Diskmap
 -- ran, read back from the operation log each time it is drawn.
-local History = SheetPage.define({id = "history", view = "History", width = 640, height = 480})
+local History = SheetPage.define({id = "history", view = "sheets/History", width = 640, height = 480})
 
 function History.new(_, services)
 	return setmetatable({services = services}, History)

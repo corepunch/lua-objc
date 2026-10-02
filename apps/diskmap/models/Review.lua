@@ -10,9 +10,9 @@ local Verify = require("apps.diskmap.models.Verify")
 -- `toggle`; nothing touches the disk until the sheet's Move to Trash, which
 -- revalidates each item, moves it, logs it, and then offers to empty the
 -- Trash so the freed space can be measured rather than assumed. The sheet is
--- drawn from `data()` (views/Review.etlua); the app hears of marks through
+-- drawn from `data()` (views/sheets/Review.etlua); the app hears of marks through
 -- `services.basketChanged`, of remeasuring through `services.rescan`.
-local Review = SheetPage.define({id = "review", view = "Review", width = 620, height = 560})
+local Review = SheetPage.define({id = "review", view = "sheets/Review", width = 620, height = 560})
 
 function Review.new(_, services)
 	return setmetatable({services = services, storage = services.model, service = services.service,

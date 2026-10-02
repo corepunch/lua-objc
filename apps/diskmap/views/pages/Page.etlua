@@ -36,7 +36,7 @@
 <% if layout.details then %><VStack spacing="0" flexGrow="1" flexBasis="0" flexShrink="1"><% end %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
+    <%- partial("../components/PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
     <% if waiting then %>
     <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
     <% elseif computing then %>
@@ -47,11 +47,11 @@
     <% else %>
     <% for _, slot in ipairs(layout.leads or {}) do %>
     <VStack id="<%= slot %>" spacing="0" alignment="leading">
-      <% if children and children[slot] then %><%- partial(childViews[slot] .. ".etlua", children[slot]) %><% end %>
+      <% if children and children[slot] then %><%- partial("../" .. childViews[slot] .. ".etlua", children[slot]) %><% end %>
     </VStack>
     <% end %>
     <% if not layout.contextAfterSections then %>
-    <%- partial("PageContext.etlua", {layout = layout}) %>
+    <%- partial("../sections/PageContext.etlua", {layout = layout}) %>
     <% end %>
     <% if layout.empty then %>
     <ContentUnavailable id="<%= layout.empty.id %>" title="<%= layout.empty.title %>" systemImage="<%= layout.empty.systemImage %>" description="<%= layout.empty.description %>" />
@@ -60,7 +60,7 @@
     <VStack <% if section.id then %>id="<%= section.id %>" <% end %> spacing="8" alignment="leading">
       <% if section.title then %>
       <HStack spacing="12" alignment="<%= section.sizeId and "bottom" or "center" %>">
-        <%- partial("SectionHeader.etlua", {title = section.title, titleId = section.titleId, detail = section.detail or "", detailId = section.detailId}) %>
+        <%- partial("../components/SectionHeader.etlua", {title = section.title, titleId = section.titleId, detail = section.detail or "", detailId = section.detailId}) %>
         <% if section.sizeId then %>
         <Label id="<%= section.sizeId %>" text="" size="13" weight="semibold" monospacedDigit="true" />
         <% end %>
@@ -75,8 +75,8 @@
         <% end %>
         <% if section.links or section.buttons then %>
         <HStack spacing="12" alignment="center">
-          <%- partial("Buttons.etlua", {buttons = section.links}) %>
-          <%- partial("Buttons.etlua", {buttons = section.buttons}) %>
+          <%- partial("../components/Buttons.etlua", {buttons = section.links}) %>
+          <%- partial("../components/Buttons.etlua", {buttons = section.buttons}) %>
           <Spacer />
         </HStack>
         <% end %>
@@ -88,33 +88,33 @@
       <% if section.collapsed then %>
       <DisclosureGroup id="<%= section.id %>_disclosure" label="<%= section.collapsed %>" expanded="false" spacing="8" indicatorWidth="26" indicatorSpacing="10">
         <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>>
-          <%- partial("ResourceList.etlua", section.list) %>
+          <%- partial("../components/ResourceList.etlua", section.list) %>
         </GroupBox>
       </DisclosureGroup>
       <% else %>
       <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>>
-        <%- partial("ResourceList.etlua", section.list) %>
+        <%- partial("../components/ResourceList.etlua", section.list) %>
       </GroupBox>
       <% end %>
     </VStack>
     <% end %>
     <% if layout.contextAfterSections then %>
-    <%- partial("PageContext.etlua", {layout = layout}) %>
+    <%- partial("../sections/PageContext.etlua", {layout = layout}) %>
     <% end %>
     <% for _, slot in ipairs(layout.slots or {}) do %>
     <VStack id="<%= slot %>" spacing="0">
-      <% if children and children[slot] then %><%- partial(childViews[slot] .. ".etlua", children[slot]) %><% end %>
+      <% if children and children[slot] then %><%- partial("../" .. childViews[slot] .. ".etlua", children[slot]) %><% end %>
     </VStack>
     <% end %>
     <% if layout.footnote then %>
-    <%- partial("Footnote.etlua", layout.footnote) %>
+    <%- partial("../components/Footnote.etlua", layout.footnote) %>
     <% end %>
     <% end %>
   </VStack>
 </ScrollView>
 <% if layout.details then %>
   <VStack id="selectionDetails" spacing="0" padding="14"<% if not details then %> hidden="true"<% end %>>
-    <% if details then %><%- partial("SelectionDetails.etlua", details) %><% end %>
+    <% if details then %><%- partial("../sections/SelectionDetails.etlua", details) %><% end %>
   </VStack>
 </VStack>
 <% end %>

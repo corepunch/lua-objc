@@ -127,7 +127,7 @@ t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "the window subtitle re
 local windowData = ui.commands:data()
 windowData.windowTitle, windowData.subtitle = "Diskmap", "1 TB free"
 windowData.actions = setmetatable({search = function() end, reclaim = function() end}, {__index = ui.commandActions})
-local config = xml.renderFile("apps/diskmap/views/Window.etlua", windowData, ns)
+local config = xml.renderFile("apps/diskmap/views/layouts/Window.etlua", windowData, ns)
 t.assertEqual(bridge._tableCell(ui.navigation.refs.sidebar, 0, 0).badgeField.stringValue, "5.1 MB", "the overview row shows used capacity as a badge")
 t.assertEqual(config.width, 1100, "default window fits sidebar, chart and legend")
 t.assertEqual(config.minWidth, 950, "the sidebar, the Map's list and its rings fit the minimum width")

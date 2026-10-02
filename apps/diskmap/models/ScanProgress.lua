@@ -5,7 +5,7 @@ local Core = require("apps.diskmap.Model")
 -- fills as bytes are measured against the bytes the disk reports as used, the
 -- location being measured, and Stop. Pages say nothing about the scan; they
 -- are drawn when it finishes.
-local ScanProgress = SheetPage.define({id = "scanProgress", view = "ScanProgress", width = 440, height = 168})
+local ScanProgress = SheetPage.define({id = "scanProgress", view = "sheets/ScanProgress", width = 440, height = 168})
 
 function ScanProgress.new(_, services)
 	return setmetatable({services = services}, ScanProgress)

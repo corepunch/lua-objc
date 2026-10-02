@@ -91,7 +91,16 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
     init.lua       ← requires and returns Controller class (framework instantiates)
     Model.lua      ← data, queries, mutations
     Controller.lua ← wires model → views, owns actions
-    views/         ← etlua templates only, including reusable partials
+    views/         ← etlua templates only, sorted like a web frontend:
+      layouts/       app shell (window, sidebar, content frame)
+      pages/         one template per screen
+      sections/      large blocks a page composes (hero, decision, details)
+      components/    small reusable partials (header, button row, tile)
+      sheets/        modal dialogs and popovers
+      cells/         table column content
+      (a folder per other kind, e.g. topics/; no loose files in views/)
+      view names are paths under views/ ("pages/Overview"); partials resolve
+      relative to the including template: partial("../components/X.etlua")
     components/    ← optional etlua components: new tags used by the views
     app.xml        ← optional manifest: models, sections and pages
     resources.xml  ← optional XML constants, referenced as `@name`

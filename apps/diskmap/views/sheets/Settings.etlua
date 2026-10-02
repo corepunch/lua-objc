@@ -22,7 +22,7 @@
       <VStack padding="12" spacing="10" alignment="leading">
         <% for index, row in ipairs(group.rows) do %>
         <% if index > 1 then %><Divider /><% end %>
-        <%- partial("SettingRow.etlua", row) %>
+        <%- partial("../components/SettingRow.etlua", row) %>
         <% end %>
         <% if group.footer then %>
         <Label id="notificationsUnavailable" text="Notifications are available when Diskmap runs as an app." size="11" color="secondary" maxWidth="infinity" lines="2" />

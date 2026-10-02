@@ -25,7 +25,7 @@
   </Column>
   <% end %>
   <Column id="size" title="On disk" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>">
-    <%- partial("cells/Meter.etlua", {title = "On disk"}) %>
+    <%- partial("../cells/Meter.etlua", {title = "On disk"}) %>
   </Column>
   <Column id="more" title="" width="<%= COLUMNS.more %>" minWidth="<%= COLUMNS.more %>" buttonSymbol="ellipsis.circle" buttonMenu="true" />
 </List>

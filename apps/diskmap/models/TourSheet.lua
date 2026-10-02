@@ -6,7 +6,7 @@ local Tour = require("apps.diskmap.models.Tour")
 -- Help > Diskmap Tour opens it. Skip closes it at any page. Pages slide in
 -- from the side they come from: Continue brings the next one in from the
 -- trailing edge, Back the previous one from the leading edge.
-local TourSheet = SheetPage.define({id = "tour", view = "Tour", width = 580, height = 540})
+local TourSheet = SheetPage.define({id = "tour", view = "sheets/Tour", width = 580, height = 540})
 
 function TourSheet.new(_, services)
 	return setmetatable({services = services, service = services.service, page = 1}, TourSheet)

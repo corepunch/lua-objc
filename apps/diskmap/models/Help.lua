@@ -86,7 +86,7 @@ end
 -- menu bar's shortcuts, `context.links` titles the topics' buttons and
 -- `context.command(name)` runs a menu command.
 function Help.page(context)
-	return {id = "help", topic = "HelpTopic", noun = "help topic",
+	return {id = "help", topic = "topics/HelpTopic", noun = "help topic",
 		summary = "How to find what uses your storage and free up space safely. To search help from anywhere, use the Help menu.",
 		present = function(query) return Help.presentation(query, context.shortcuts(), context.links) end,
 		follow = function(topic)

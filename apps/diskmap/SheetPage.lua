@@ -6,7 +6,7 @@ local Sheet = require("apps.diskmap.Sheet")
 
 -- A sheet is a request, like a page: the model of a sheet answers `data()` and
 -- has an action per button; the framework's page controller draws the body
--- template it names into the body host of one shell (views/SheetShell.etlua).
+-- template it names into the body host of one shell (views/sheets/SheetShell.etlua).
 -- What a sheet's model adds to an ordinary one is only this:
 --
 --   open(parent, ...)  present the shell and mount the body (the model's own
@@ -18,7 +18,7 @@ local Sheet = require("apps.diskmap.Sheet")
 --   sync(refs)         optional: touch native views after a draw (a selection,
 --                      a switch the person flipped)
 --
--- `define{id, view, width, height}`: the body is views/<view>.etlua. The model
+-- `define{id, view, width, height}`: the body is views/<view>.etlua, e.g. view = "sheets/Review". The model
 -- is built by the app with `Class.new({}, services)`; `services` is the
 -- app's context table.
 local SheetPage = {}
@@ -35,7 +35,7 @@ end
 
 function SheetPage.open(self, parent)
 	self:close()
-	local sheet, shell = Sheet.present(function() return xml.renderFile(VIEWS .. "SheetShell.etlua", self.shell, ns) end, parent)
+	local sheet, shell = Sheet.present(function() return xml.renderFile(VIEWS .. "sheets/SheetShell.etlua", self.shell, ns) end, parent)
 	self.sheet = sheet
 	-- The page controller asks a graph for its model; a sheet is its own.
 	local graph = {build = function() return {[self.id] = self} end}

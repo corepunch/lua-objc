@@ -70,7 +70,7 @@ end
 -- files unused for a year, installers and media. File Types opens it on one
 -- kind (`focus`).
 return ListPage.class(function()
-	return {id = "files", layout = LAYOUT, children = {lead = "Decision"}, menu = function(page, row) return page.actions:file(row) end,
+	return {id = "files", layout = LAYOUT, children = {lead = "sections/Decision"}, menu = function(page, row) return page.actions:file(row) end,
 	actions = {
 		-- Opens the page narrowed to one File Types kind and one filter.
 		focus = function(page, kind, filterIndex) page.kind, page.filterIndex = kind, filterIndex or 1 end,

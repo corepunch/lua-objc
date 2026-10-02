@@ -1,23 +1,23 @@
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
     <VStack id="hero" spacing="0">
-      <%- partial("Hero.etlua", hero) %>
+      <%- partial("../sections/Hero.etlua", hero) %>
     </VStack>
     <% if measured then %>
     <VStack id="notMeasured" spacing="0" hidden="<%= #unmeasured.items == 0 %>">
-      <% if #unmeasured.items > 0 then %><%- partial("NotMeasured.etlua", unmeasured) %><% end %>
+      <% if #unmeasured.items > 0 then %><%- partial("../sections/NotMeasured.etlua", unmeasured) %><% end %>
     </VStack>
     <% -- An empty section takes no place in the page, so it adds no spacing. %>
     <VStack id="changes" spacing="0" hidden="<%= changes == nil %>">
-      <% if changes then %><%- partial("Changes.etlua", {changes = changes}) %><% end %>
+      <% if changes then %><%- partial("../sections/Changes.etlua", {changes = changes}) %><% end %>
     </VStack>
     <VStack id="categoriesSection" spacing="8" alignment="leading">
-      <%- partial("SectionHeader.etlua", {title = "Categories", detail = coverage, detailId = "coverage"}) %>
+      <%- partial("../components/SectionHeader.etlua", {title = "Categories", detail = coverage, detailId = "coverage"}) %>
       <GroupBox id="categoriesPanel">
         <List id="results" onSelect="select" onActivate="open" onColumnButton="open" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
           <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="28" minWidth="200" />
           <Column id="size" title="On disk" width="270" minWidth="240">
-            <%- partial("cells/Meter.etlua", {title = "On disk"}) %>
+            <%- partial("../cells/Meter.etlua", {title = "On disk"}) %>
           </Column>
           <Column id="info" title="" width="40" minWidth="40" buttonSymbol="chevron.right.circle" />
         </List>
@@ -25,11 +25,11 @@
     </VStack>
     <VStack id="largestSection" spacing="8" hidden="<%= largestHidden %>" alignment="leading">
       <HStack spacing="8" alignment="bottom">
-        <%- partial("SectionHeader.etlua", {title = "Largest items", detail = "Individual resources across every category"}) %>
+        <%- partial("../components/SectionHeader.etlua", {title = "Largest items", detail = "Individual resources across every category"}) %>
         <Button id="showLargest" title="Show All" style="link" action="showLargest" />
       </HStack>
       <GroupBox id="largestPanel">
-        <%- partial("ResourceList.etlua", {id = "largest", menu = "largestMenu", activate = "openLargest", status = true}) %>
+        <%- partial("../components/ResourceList.etlua", {id = "largest", menu = "largestMenu", activate = "openLargest", status = true}) %>
       </GroupBox>
     </VStack>
     <% end %>

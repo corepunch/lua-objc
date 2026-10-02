@@ -90,7 +90,7 @@ many times a second. They should change values, not structure:
 
 Diskmap's overview is the reference case: during a 30-second scan the donut
 is never rebuilt and legend rows never overlap
-(`apps/diskmap/views/Hero.etlua`, `LegendRow.etlua`).
+(`apps/diskmap/views/sections/Hero.etlua`, `LegendRow.etlua`).
 
 ## Testing
 

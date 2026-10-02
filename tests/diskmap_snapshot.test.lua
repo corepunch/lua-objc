@@ -148,7 +148,7 @@ t.assertEqual(baselineTotals["apps-system-other"], 1e9, "and the residual row wi
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local shown = 0
-local _, sectionRefs = xml.renderFile("apps/diskmap/views/Changes.etlua", {changes = overview, actions = {showAllChanges = function() shown = shown + 1 end}}, ns)
+local _, sectionRefs = xml.renderFile("apps/diskmap/views/sections/Changes.etlua", {changes = overview, actions = {showAllChanges = function() shown = shown + 1 end}}, ns)
 t.expect(sectionRefs.showAllChanges ~= nil, "a long comparison offers Show All")
 -- The changed locations share one box, split by vertical separators.
 local changesRow = sectionRefs.changesBox.contentView.subviews[1]
@@ -158,10 +158,10 @@ for _, child in ipairs(changesRow.subviews) do
 end
 t.assertEqual(items, #overview.rows, "one item per changed location in a single box")
 t.assertEqual(dividers, #overview.rows - 1, "with a vertical separator between neighbours")
-local _, historyRefs = xml.renderFile("apps/diskmap/views/Changes.etlua", {changes = {rows = overview.rows, detail = "Since Sep 20 · 3 scans recorded"}, actions = {}}, ns)
+local _, historyRefs = xml.renderFile("apps/diskmap/views/sections/Changes.etlua", {changes = {rows = overview.rows, detail = "Since Sep 20 · 3 scans recorded"}, actions = {}}, ns)
 t.expect(historyRefs.changesSection ~= nil and historyRefs.showAllChanges == nil, "history changes show without Show All")
 local full = Snapshot.changes(model, many)
-local _, sheetRefs = xml.renderFile("apps/diskmap/views/SnapshotChanges.etlua", {title = full.title, detail = full.detail,
+local _, sheetRefs = xml.renderFile("apps/diskmap/views/sheets/SnapshotChanges.etlua", {title = full.title, detail = full.detail,
 	actions = {done = function() end, rowMenu = function() return {} end, reveal = function() end}}, ns)
 sheetRefs.changes:replaceRows(full.rows)
 t.assertEqual(sheetRefs.changes.rowCount, #full.rows, "the sheet lists every changed location")

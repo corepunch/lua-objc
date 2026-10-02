@@ -36,7 +36,7 @@ end
 local model = Model.new(home)
 model.scan = {running = true}
 model.files = {large = {{path = home .. "/Downloads/a.dmg", bytes = 3e9, used = os.time()}}, old = {}, extensions = {}, oldBytes = 0, oldCount = 0}
-local page = open("files", require("apps.diskmap.models.FilesPage"), "Page", nil, model)
+local page = open("files", require("apps.diskmap.models.FilesPage"), "pages/Page", nil, model)
 t.expect(page.refs.waiting ~= nil and page.refs.files == nil, "a running scan draws the empty state, not partial rows")
 model.scan = {running = false}
 page:update({query = ""})
@@ -56,11 +56,11 @@ t.assertEqual(page.model.filterIndex, 1, "focusing without a filter opens the fi
 page:dispose()
 
 -- File Types waits for the scan too.
-local kinds = open("kinds", require("apps.diskmap.models.KindsPage"), "Kinds", nil, model)
+local kinds = open("kinds", require("apps.diskmap.models.KindsPage"), "pages/Kinds", nil, model)
 t.assertEqual(kinds.refs.kinds, nil, "File Types lists what the finished scan measured")
 kinds:dispose()
 model.scan = {running = true}
-kinds = open("kinds", require("apps.diskmap.models.KindsPage"), "Kinds", nil, model)
+kinds = open("kinds", require("apps.diskmap.models.KindsPage"), "pages/Kinds", nil, model)
 t.expect(kinds.refs.waiting ~= nil and kinds.refs.kindsChart == nil, "File Types draws the empty state while the scan runs")
 kinds:dispose()
 
@@ -71,7 +71,7 @@ model.files = {large = {}, old = {}, extensions = {}, oldBytes = 0, oldCount = 0
 local infoDone, idsDone
 local service = {applicationInfo = function(_, done) infoDone = done end, installedBundleIds = function(done) idsDone = done end}
 local apps
-apps = open("applications", require("apps.diskmap.models.ApplicationsPage"), "Page", service, model)
+apps = open("applications", require("apps.diskmap.models.ApplicationsPage"), "pages/Page", service, model)
 t.expect(apps.refs.computing ~= nil and apps.refs.apps == nil, "unanswered requests draw one page-level spinner and no rows")
 model.files.measuring = true
 t.assertEqual(apps.model:summary(), nil, "the Clean Up summary waits for the measured data folders")
@@ -96,7 +96,7 @@ model.scan = {running = false}
 model.resources:add("developer", {id = "proj-node", name = "node_modules", path = home .. "/Developer/app/node_modules", project = home .. "/Developer/app", artifact = "node_modules"})
 model.measurements["proj-node"] = {status = "complete", bytes = 2e9}
 local answers = {}
-local projects = open("projects", require("apps.diskmap.models.ProjectsPage"), "Page", {
+local projects = open("projects", require("apps.diskmap.models.ProjectsPage"), "pages/Page", {
 	projectInfo = function(path, done) table.insert(answers, {path = path, done = done}) end}, model)
 t.expect(projects.refs.computing ~= nil and projects.refs.projects == nil, "projects wait for their git state")
 local generation = projects.model.generation
@@ -117,7 +117,7 @@ local xcodeService = {children = function(path)
 	if path:find("iOS DeviceSupport", 1, true) then return {{name = "17.2 (21C62)", path = path .. "/17.2"}, {name = "18.0 (22A)", path = path .. "/18.0"}} end
 	return {}
 end, measure = function(paths, done) measured = {paths = paths, done = done} end}
-local xcode, _, services = open("xcode", require("apps.diskmap.models.XcodePage"), "Page", xcodeService)
+local xcode, _, services = open("xcode", require("apps.diskmap.models.XcodePage"), "pages/Page", xcodeService)
 t.expect(xcode.refs.computing ~= nil and xcode.refs.list_support == nil, "Xcode shows one spinner while it measures")
 t.assertEqual(xcode.model:badge(), nil, "and has no badge yet")
 t.assertEqual(#measured.paths, 2, "the unsized folders are measured")
@@ -125,7 +125,7 @@ local xcodeModel = xcode.model
 xcode:dispose()
 measured.done({1e9, 2e9})
 t.assertEqual(xcodeModel.rows, nil, "an answer after the visit ended is ignored")
-xcode, _, services = open("xcode", require("apps.diskmap.models.XcodePage"), "Page", xcodeService)
+xcode, _, services = open("xcode", require("apps.diskmap.models.XcodePage"), "pages/Page", xcodeService)
 measured.done({1e9, 2e9})
 xcode:update({query = ""})
 t.assertEqual(xcode.refs.list_support.rowCount, 2, "the answer draws device support")

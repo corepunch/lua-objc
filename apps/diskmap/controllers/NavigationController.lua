@@ -91,7 +91,7 @@ function Controller:rows()
 end
 
 function Controller:render()
-	local view, refs = xml.renderFile("apps/diskmap/views/Sidebar.etlua", {actions = {
+	local view, refs = xml.renderFile("apps/diskmap/views/layouts/Sidebar.etlua", {actions = {
 		navigate = function(_, _, row) if row and row.id then self.show(row.id) end end,
 	}}, ns)
 	self.refs = refs

@@ -16,23 +16,23 @@
 <% end %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
-    <%- partial("PageHeader.etlua", {header = page, summary = summary, summaryId = "summary",
+    <%- partial("../components/PageHeader.etlua", {header = page, summary = summary, summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Look for worktrees again"}}}) %>
     <% if computing then %>
-    <%- partial("Computing.etlua", {status = computing}) %>
+    <%- partial("../components/Computing.etlua", {status = computing}) %>
     <% else %>
     <VStack id="decisionHost" spacing="0" alignment="leading">
-      <%- partial("Decision.etlua", decision) %>
+      <%- partial("../sections/Decision.etlua", decision) %>
     </VStack>
     <ContentUnavailable id="worktreesEmpty" title="No Linked Worktrees" systemImage="arrow.triangle.branch" description="No repository in your project folders has a linked worktree, so there is nothing to clean up here." />
     <VStack id="removeSection" spacing="8" alignment="leading">
-      <%- partial("SectionHeader.etlua", {title = "Ready to remove", detailId = "removeDetail", detail = removeDetail}) %>
+      <%- partial("../components/SectionHeader.etlua", {title = "Ready to remove", detailId = "removeDetail", detail = removeDetail}) %>
       <GroupBox>
 <% list("removeList") %>
       </GroupBox>
     </VStack>
     <VStack id="reviewSection" spacing="8" alignment="leading">
-      <%- partial("SectionHeader.etlua", {title = "Needs your review", detailId = "reviewDetail",
+      <%- partial("../components/SectionHeader.etlua", {title = "Needs your review", detailId = "reviewDetail",
         detail = "Local changes, commits that exist only here, submodules, a recent change, a lock or Keep. Select one to read the evidence."}) %>
       <GroupBox>
 <% list("reviewList") %>
@@ -40,7 +40,7 @@
     </VStack>
     <VStack id="missingSection" spacing="8" alignment="leading">
       <HStack spacing="12" alignment="center">
-        <%- partial("SectionHeader.etlua", {title = "Missing", detail = "Git still lists these, but the directory is gone. Pruning forgets the record; no checkout is deleted."}) %>
+        <%- partial("../components/SectionHeader.etlua", {title = "Missing", detail = "Git still lists these, but the directory is gone. Pruning forgets the record; no checkout is deleted."}) %>
         <Button id="prune" title="Prune Missing…" action="prune" help="Forget registrations whose directory is gone; existing worktrees are not touched" />
       </HStack>
       <GroupBox>
@@ -53,7 +53,7 @@
 <% list("repositoryList") %>
       </GroupBox>
     </DisclosureGroup>
-    <%- partial("Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recent and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
+    <%- partial("../components/Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recent and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
     <% end %>
   </VStack>
 </ScrollView>

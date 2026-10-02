@@ -5,8 +5,9 @@ local xml = require("ui.xml")
 local bridge = require("AppKitNative")
 local Model = require("apps.diskmap.Model")
 local Categories = require("apps.diskmap.models.Categories")
+local FOLDERS = {Hero = "sections", Overview = "pages", Settings = "sheets", ResourceList = "components", Page = "pages"}
 local function render(name, data)
-	return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data, ns)
+	return xml.renderFile("apps/diskmap/views/" .. FOLDERS[name] .. "/" .. name .. ".etlua", data, ns)
 end
 local model = Model.new("/Users/test")
 model.scan.errors = 3

@@ -1,6 +1,6 @@
 <VStack id="changesSection" spacing="8" alignment="leading">
   <HStack spacing="12" alignment="center">
-    <%- partial("SectionHeader.etlua", {title = "Changes", detail = changes.detail}) %>
+    <%- partial("../components/SectionHeader.etlua", {title = "Changes", detail = changes.detail}) %>
     <% if changes.all then %>
     <Button id="showAllChanges" title="Show All" action="showAllChanges" help="List every location that changed since the snapshot" />
     <% end %>

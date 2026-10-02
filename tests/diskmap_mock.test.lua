@@ -138,7 +138,7 @@ local xml, ns = require("ui.xml"), require("AppKit")
 local windowData = app.commands:data()
 windowData.subtitle, windowData.windowTitle = "360 GB free of 1 TB", "Diskmap — Mock HDD"
 windowData.actions = setmetatable({search = function() end, reclaim = function() end}, {__index = app.commandActions})
-local window = xml.renderFile("apps/diskmap/views/Window.etlua", windowData, ns)
+local window = xml.renderFile("apps/diskmap/views/layouts/Window.etlua", windowData, ns)
 t.assertEqual(window.title, "Diskmap — Mock HDD", "the active provider is visible in the window title")
 
 os.exit(t.summary() and 0 or 1)
