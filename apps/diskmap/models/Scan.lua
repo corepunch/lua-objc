@@ -10,6 +10,15 @@ function Scan.new(model, service, home, changed, finished)
 		generation = 0, status = "Preparing a complete storage inventory."}, Scan)
 end
 function Scan:notify() self.changed() end
+-- How far the scan is: bytes measured over the bytes the disk reports as
+-- used, held under 1 until the scan says it is done. nil while the disk's
+-- used size is not known.
+function Scan:fraction()
+	local disk = self.disk
+	local used = disk and disk.totalKb and disk.freeKb and (disk.totalKb - disk.freeKb) * 1024
+	if not used or used <= 0 then return nil end
+	return math.min(Model.total(self.model) / used, 0.99)
+end
 function Scan:cancel(silent)
 	self.generation = self.generation + 1
 	if self.job then self.job.cancelled = true; self.service.cancel(self.job); self.job = nil end

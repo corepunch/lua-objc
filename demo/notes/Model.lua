@@ -78,8 +78,10 @@ function Model:visible()
 	local rows = {}
 	for _, note in ipairs(self.notes) do
 		if matches(note, self.query) then
-			table.insert(rows, {id = note.id, title = note.title, date = note.date, snippet = snippet(note),
-				favorite = note.favorite == true})
+			local text = snippet(note)
+			-- The list's second line: when it was written, then how it starts.
+			table.insert(rows, {id = note.id, title = note.title, date = note.date, snippet = text,
+				subtitle = note.date .. "  " .. text, favorite = note.favorite == true})
 		end
 	end
 	return rows

@@ -417,7 +417,7 @@ views/          ← etlua templates and reusable partials only
 Larger apps sort `views/` the way a web frontend does: `layouts/` (app
 shell), `pages/` (one template per screen), `sections/` (large blocks a page
 composes), `components/` (small reusable partials), `sheets/` (modal dialogs),
-`cells/` (table column content), plus a folder per other kind. A view name is
+plus a folder per other kind. A view name is
 a path under `views/` (`view="pages/Overview"` in `app.xml`). Partials
 resolve relative to the including template, so a page includes
 `partial("../components/Footnote.etlua")`. Diskmap is the reference layout.
@@ -503,8 +503,7 @@ Templates live in `<app-root>/<app>/views/*.etlua`. The renderer:
   `<Resources>` holds `Number`, `String`, `Bool` and `Color` constants; an app
   passes its `resources.xml` (`xml.loadResources(path)`) as `data.resources`,
   and a `<Resources>` child scopes to its parent element's attributes and
-  subtree. `@name` is static, resolved once; `$field` is live row data in a
-  `<Column>` cell template.
+  subtree. `@name` is static, resolved once.
 - Maps each tag to an `ns.*` call via a registry table. The platform module
   (`ns`) is injected by the caller — `<Label>` becomes `ns.Text` on AppKit
   and `ns.Label` (→ UILabel) on UIKit. No conditionals in the template.

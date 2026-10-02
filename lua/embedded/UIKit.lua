@@ -1185,17 +1185,6 @@ function UIKit.List(props)
 	if not columns or type(columns) ~= "table" then
 		error("List requires a 'columns' property (array of {id, title})")
 	end
-	-- Column content templates are AppKit's so far; a templated column
-	-- shows its row text here. Native column specs are plain data.
-	local specs = {}
-	for _, column in ipairs(columns) do
-		local spec = {}
-		for key, value in pairs(column) do
-			if key ~= "template" then spec[key] = value end
-		end
-		table.insert(specs, spec)
-	end
-	columns = specs
 	local width = props.width or 400
 	local height = props.height or 200
 	local tv = bridge._tableview(columns, width, height, {

@@ -23,6 +23,9 @@
 @interface LuaTableCellView : NSTableCellView
 @property (nonatomic, strong) NSTextField *secondaryTextField;
 @property (nonatomic, strong) LuaPathView *curveView;
+@property (nonatomic, strong) LuaLevelIndicator *levelIndicator;
+@property (nonatomic, strong) NSTextField *valueField;
+@property (nonatomic) NSInteger lines;
 @property (nonatomic) CGFloat imageWidth;
 @property (nonatomic, strong) NSProgressIndicator *loadingIndicator;
 @property (nonatomic, strong) NSButton *actionButton;
@@ -31,6 +34,43 @@
 @end
 
 @implementation LuaTableCellView
+
+/* A level cell is one meter, like Spectrum's Meter or SwiftUI's Gauge: a
+ * value (a size such as "52.3 GB") leads and the column text (a share such
+ * as "36%") trails on one line above a full-width capacity bar, as a title
+ * sits over its subtitle in the name column. A value that is a state rather
+ * than a number ("Calculating…", "No access") carries a leading accessory:
+ * the spinner while measuring, otherwise the row's symbol, drawn in the
+ * spinner's square so every state reads the same way. The share keeps its
+ * fitting width; the value truncates first. The bar is always drawn, so a
+ * value never floats in an empty cell. */
+- (void)layoutLevel {
+	NSTextField *text = self.textField;
+	NSSize bounds = self.bounds.size;
+	CGFloat height = ceil(text.intrinsicContentSize.height);
+	CGFloat levelHeight = kTableCellLevelThickness;
+	CGFloat left = kTableCellTextLeadingInset;
+	CGFloat right = bounds.width - kTableCellTextTrailingInset;
+	CGFloat total = height + kTableCellLevelStackSpacing + levelHeight;
+	CGFloat barY = floor((bounds.height - total) / 2);
+	CGFloat textY = barY + levelHeight + kTableCellLevelStackSpacing;
+	_levelIndicator.frame = NSMakeRect(left, barY, MAX(0, right - left), levelHeight);
+	BOOL labelled = text.stringValue.length > 0;
+	CGFloat shareWidth = labelled ? MIN(ceil(text.fittingSize.width), MAX(0, right - left)) : 0;
+	text.frame = NSMakeRect(right - shareWidth, textY, shareWidth, height);
+	self.imageView.frame = NSZeroRect;
+	if (!_valueField) return;
+	CGFloat x = left;
+	CGFloat maxX = right - shareWidth - (labelled ? kTableCellLevelGap : 0);
+	BOOL spinning = _loadingIndicator && !_loadingIndicator.hidden;
+	NSView *accessory = spinning ? _loadingIndicator : (self.imageView.image ? self.imageView : nil);
+	if (accessory) {
+		CGFloat side = kTableCellLevelAccessorySide;
+		accessory.frame = NSMakeRect(x, floor(textY + (height - side) / 2), side, side);
+		x += side + kTableCellLoadingGap;
+	}
+	_valueField.frame = NSMakeRect(x, textY, MAX(0, MIN(ceil(_valueField.fittingSize.width), maxX - x)), height);
+}
 
 - (void)layout {
 	[super layout];
@@ -47,6 +87,10 @@
 	if (_curveView && !_curveView.hidden) {
 		_curveView.frame = NSInsetRect(
 			self.bounds, kTableCellCurveInsetH, kTableCellCurveInsetV);
+		return;
+	}
+	if (_levelIndicator) {
+		[self layoutLevel];
 		return;
 	}
 	// A trailing badge (SwiftUI `.badge`) keeps its fitting width; the title
@@ -79,6 +123,13 @@
 	CGFloat textX = textInset + imageWidth + imageGap;
 	BOOL hasSecondary = _secondaryTextField.stringValue.length > 0;
 	CGFloat height = ceil(text.intrinsicContentSize.height);
+	/* `lines`: the text wraps onto as many lines as it needs, up to that
+	 * many, before it truncates. */
+	if (_lines > 1) {
+		CGFloat width = MAX(0, self.bounds.size.width - textX - kTableCellTextTrailingInset - badgeReserve);
+		height = MIN(self.bounds.size.height, ceil([text.cell
+			cellSizeForBounds:NSMakeRect(0, 0, width, CGFLOAT_MAX)].height));
+	}
 	CGFloat secondaryHeight = hasSecondary
 		? ceil(_secondaryTextField.intrinsicContentSize.height) : 0;
 	CGFloat totalHeight = height + secondaryHeight
@@ -334,14 +385,7 @@ static void table_update_curve(
 	[curve setNeedsDisplay:YES];
 }
 
-static NSView *table_template_cell_view(NSTableView *tableView, NSTableColumn *column,
-	NSDictionary *rowData, id owner);
-
 static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NSDictionary *rowData, id owner, NSInteger rowIndex) {
-
-	// A column with content (SwiftUI `TableColumn { row in ... }`) renders its template.
-	if (objc_getAssociatedObject(column, &kKeys[kColumnTemplateKey]))
-		return table_template_cell_view(tableView, column, rowData, owner);
 
 	NSString *colId = column.identifier;
 	id value = rowData[colId];
@@ -364,6 +408,12 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		tf.editable = NO;
 		tf.selectable = NO;
 		tf.lineBreakMode = NSLineBreakByTruncatingTail;
+		cell.lines = [cellSpec[@"lines"] integerValue];
+		if (cell.lines > 1) {
+			tf.maximumNumberOfLines = cell.lines;
+			tf.lineBreakMode = NSLineBreakByWordWrapping;
+			tf.cell.truncatesLastVisibleLine = YES;
+		}
 
 		[cell addSubview:tf];
 		cell.textField = tf;
@@ -389,6 +439,19 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 			[indicator sizeToFit];
 			[cell addSubview:indicator];
 			cell.loadingIndicator = indicator;
+		}
+		// Reusable native table cells own their embedded Cocoa controls.
+		if (cellSpec[@"level"]) {
+			LuaLevelIndicator *level = [[LuaLevelIndicator alloc] initWithFrame:NSZeroRect];
+			level.thickness = kTableCellLevelThickness;
+			[cell addSubview:level];
+			cell.levelIndicator = level;
+			if (cellSpec[@"value"]) {
+				NSTextField *value = [NSTextField labelWithString:@""];
+				value.lineBreakMode = NSLineBreakByTruncatingTail;
+				[cell addSubview:value];
+				cell.valueField = value;
+			}
 		}
 		if (cellSpec[@"curve"]) {
 			LuaPathView *curve = [[LuaPathView alloc]
@@ -474,12 +537,21 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		? [rowData[primaryColorKey] description] : nil;
 	cell.textField.textColor = primaryColor
 		? semantic_color(primaryColor) : NSColor.labelColor;
+	NSString *valueKey = cellSpec[@"value"];
+	id valueText = valueKey ? rowData[valueKey] : nil;
+	cell.valueField.stringValue = valueText ? [valueText description] : @"";
+	cell.valueField.font = cell.textField.font;
+	cell.valueField.textColor = NSColor.labelColor;
+	/* In a meter the share reads second to the value it is a share of. */
+	if (cell.levelIndicator) cell.textField.textColor = NSColor.secondaryLabelColor;
+	// The spinner belongs to the value when the cell has one.
+	NSTextField *measured = cell.valueField ?: cell.textField;
 	NSString *loadingKey = cellSpec[@"loading"];
 	BOOL loading = loadingKey && [rowData[loadingKey] respondsToSelector:@selector(boolValue)] && [rowData[loadingKey] boolValue];
 	cell.loadingIndicator.hidden = !loading;
 	if (loading) {
 		[cell.loadingIndicator startAnimation:nil];
-		cell.textField.textColor = NSColor.secondaryLabelColor;
+		measured.textColor = NSColor.secondaryLabelColor;
 	} else [cell.loadingIndicator stopAnimation:nil];
 	NSString *secondaryColorKey = cellSpec[@"secondaryColor"];
 	NSString *secondaryColor = secondaryColorKey
@@ -495,8 +567,27 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	table_update_curve(cell.curveView, curveValues,
 		semantic_color(curveColor));
 	// Row-bound symbols let a native source list distinguish navigation destinations.
+	NSString *levelKey = cellSpec[@"level"];
+	id levelValue = levelKey ? rowData[levelKey] : nil;
+	cell.levelIndicator.doubleValue = [levelValue respondsToSelector:@selector(doubleValue)] ? [levelValue doubleValue] : 0;
+	/* An unmeasured row keeps an empty, disabled bar under its state. */
+	cell.levelIndicator.enabled = levelValue != nil;
+	NSString *levelColorKey = cellSpec[@"levelColor"];
+	id levelColor = levelColorKey ? rowData[levelColorKey] : nil;
+	/* A row without a colour takes the accent colour, as a Gauge without a tint does. */
+	cell.levelIndicator.fillColor = levelColor ? semantic_color([levelColor description]) : NSColor.controlAccentColor;
+	NSMutableArray *levelParts = [NSMutableArray array];
+	if (cell.valueField.stringValue.length) [levelParts addObject:cell.valueField.stringValue];
+	if (text.length) [levelParts addObject:text];
+	NSString *levelLabel = [levelParts componentsJoinedByString:@", "];
+	/* The column names what the meter measures, as it names any other cell. */
+	cell.levelIndicator.accessibilityLabel = column.title.length
+		? [NSString stringWithFormat:@"%@: %@", column.title, levelLabel] : levelLabel;
+	[cell.levelIndicator setNeedsDisplay:YES];
 	NSString *imageColorKey = cellSpec[@"imageColor"];
 	cell.imageView.contentTintColor = imageColorKey ? semantic_color(rowData[imageColorKey]) : NSColor.secondaryLabelColor;
+	// A meter's state symbol and its word share one colour.
+	if (cell.valueField && imageColorKey && rowData[imageColorKey]) cell.valueField.textColor = cell.imageView.contentTintColor;
 	NSString *imageKey = cellSpec[@"image"];
 	NSString *symbolName = imageKey && [rowData[imageKey] isKindOfClass:NSString.class]
 		? rowData[imageKey] : objc_getAssociatedObject(column, &kKeys[kColumnSystemImageKey]);

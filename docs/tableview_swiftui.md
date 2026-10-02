@@ -145,7 +145,7 @@ for a width the scroll view no longer occupies.
 | `DisclosureTableColumn` / `.disclosureTableColumn` | `NSTableView.indentationPerLevel` | OutlineView exists |
 | Column sorting (`SortDescriptor`) | `NSTableColumn.sortDescriptorPrototype` | Not yet mapped |
 | `.searchable` | `NSSearchField` in toolbar/header | Not yet mapped |
-| `TableColumn` with custom `content`  | `viewForTableColumn:row:` returning a reusable template cell | `<Column>` child XML; see "Column content templates" (AppKit) |
+| `TableColumn` with custom `content`  | `viewForTableColumn:row:` returning custom NSView | Not mapped: cells are native kinds; see "Cells are native kinds" |
 | Drag-to-reorder rows | `NSTableViewDataSource` drag methods | `<List reorderable="true" reorderContainer="actionName">` sends a `ui.reorder.Difference` |
 
 ## Key takeaways
@@ -162,135 +162,51 @@ for a width the scroll view no longer occupies.
    Horizontal scroll requires explicit `.horizontal` modifier. Our
    `NSScrollView` handles both axes natively.
 
-## Column content templates (AppKit)
+## Cells are native kinds (AppKit)
 
-A `<Column>` with child XML is SwiftUI's `TableColumn { row in ... }`, or a
-WPF `DataTemplate` given as the column's content. The child is one view,
-built from the ordinary tag vocabulary and laid out by the framework's layout
-engine; the column renders it in every row. A column without children keeps
-the text cell that shows `row[id]`.
+A column never hosts a view tree. Its cell is one of the table's own native
+kinds, chosen by the column's key attributes, and each key names the row
+field that fills it. A `<Column>` takes no child XML, and attributes have no
+binding syntax: rows are data.
+
+| Attributes | Cell |
+|---|---|
+| none | Text: `row[id]` |
+| `subtitleKey`, `imageKey`, `imageColorKey`, `badgeColorKey`, `appIconKey`, `fileIconKey`, `imageSize`, `badgeKey` | Text with a subtitle, a leading symbol or icon and a trailing badge |
+| `lines="2"` | Text that wraps onto that many lines before it truncates |
+| `loadingKey` | A native spinner beside the text while the field is true |
+| `labelStyle="iconOnly"` | The row's symbol alone; the text is its tooltip and VoiceOver label |
+| `buttonSymbol`, `buttonMenu` | A row button, or one that opens the row's menu |
+| `levelKey`, `levelColorKey`, `valueKey` | A meter (below) |
+
+The cell is built once per reusable `NSTableCellView` and filled from the
+row's `NSDictionary` in `tableView:viewForTableColumn:row:`. Scrolling runs
+no Lua. A new cell appearance is a new native kind in
+`src/appkit/table_data_source.m` with its key attributes in `Column` in
+`lua/ui/xml.lua`.
+
+### Measured storage cells
+
+`levelKey` names a row's fraction (0–1) and `levelColorKey` its semantic
+colour, making the cell one meter, like Spectrum's Meter or SwiftUI's
+`Gauge`. `valueKey` names the value (for example `52.3 GB`), which leads on a
+line above the bar; the column's `id` supplies the share (for example `39%`),
+which trails in secondary colour.
 
 ```xml
-<List id="volumes" rowHeight="44">
-  <Column id="name" title="Volume" />
-  <Column id="usage" title="Used" width="220">
-    <VStack spacing="3">
-      <HStack maxWidth="infinity">
-        <Label text="$used" truncation="tail" />
-        <Spacer />
-        <Label text="$share" color="secondary" fixedSize="horizontal" />
-      </HStack>
-      <Gauge value="$fraction" tint="$color" enabled="$fraction"
-             accessibilityLabel="$accessibility" maxWidth="infinity" />
-    </VStack>
-  </Column>
-</List>
+<Column id="shareText" title="Size" width="200" levelKey="relative" levelColorKey="color"
+        valueKey="size" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />
 ```
 
-### Row bindings
+The bar is a `LuaLevelIndicator` capsule half the height of AppKit's capacity
+cell. It is always drawn: a row without a fraction leaves it empty and
+disabled, so a value never floats in an empty cell; out-of-range values are
+clamped, and a row without a colour takes the accent colour. `loadingKey`
+puts the native spinner before the value while it is measured; otherwise
+`imageKey`/`imageColorKey` put a state symbol in the spinner's square and
+tint the value to match (Diskmap's "No access"). The share keeps its width;
+the value truncates first. VoiceOver reads the column's title, the value and
+the share together. `List.rowHeight` sets the row height.
+`tests/table_level_text.test.lua` covers the layout.
 
-etlua expressions (`<%= %>`) run once, when the screen renders. An attribute
-written `$field` is resolved for each row instead:
-
-| Form | Meaning |
-|---|---|
-| `$field` | The row's value, typed: a `Gauge` value stays a number, a colour is a semantic colour name |
-| `$size.color` | A path into a nested field; a missing level is a missing field |
-| `$$` | A literal dollar sign (`text="$$3.9k"`) |
-
-An attribute is a literal or exactly one `$path`. There is no interpolation,
-negation or expression: a composed string (`"3 of 4 GB"`, an accessibility
-label) is a row field the model prepares, and a condition is a field with an
-attribute pair:
-
-| Bind | Meaning |
-|---|---|
-| `hidden="$f"` / `visible="$f"` | Hidden when `f` is present / when it is missing |
-| `disabled="$f"` / `enabled="$f"` | Disabled when `f` is present / when it is missing |
-
-Present means not missing, `false` or `""`. Zero is a value. A row without
-the field returns the attribute to the value the view was built with, so a
-reused cell never shows its previous row.
-
-Bindable attributes:
-
-| Tag | Attributes |
-|---|---|
-| any view | `hidden`, `visible`, `opacity`, `disabled`, `enabled`, `help`, `accessibilityLabel` |
-| `Label` | `text`, `color` |
-| `SystemImage` | `name`, `color`, `badgeColor`, `appIcon` |
-| `Gauge` | `value`, `tint` |
-| `ProgressView` | `value` |
-
-Binding any other attribute, writing a `$` that is not one whole `$path` or
-`$$`, or an expression fails when the screen renders. To make an attribute
-bindable, add it to `TAG_BINDINGS` in `lua/ui/xml.lua` with the native
-property it sets and its kind (`string`, `number`, `bool`, `color`); if the
-native class has no such property, add a semantic accessor to the exported
-class, as `LuaSymbolImageView.symbolName` does.
-
-An `id` inside a template becomes the view's accessibility identifier in
-every cell. It is not in the screen's `refs`: a template's views belong to
-cells, which come and go.
-
-### How a cell is made
-
-1. When the screen renders, `xml.lua` keeps the column's child XML as a
-   factory and validates its bindings. Nothing is built yet.
-2. When AppKit has no cell to reuse (`makeViewWithIdentifier:owner:` returns
-   nil), the native source calls the factory once. Lua builds the views with
-   the ordinary constructors and returns them with a list of bindings: view,
-   native property, kind and field.
-3. `LuaTemplateCellView` hosts the views. Its `layout` gives the content the
-   column's width inside the text cells' insets and its own measured height,
-   centred in the row, and runs the framework layout engine. No frames are
-   set by hand.
-4. Each time the cell is given a row, the bindings are applied natively
-   through KVC from the row's `NSDictionary`.
-
-Lua runs once per cell built, never per row shown. Scrolling a 10,000-row
-table builds about one screen of cells (11 for ten visible rows) and makes no
-Lua calls; `tests/table_cell_template.test.lua` asserts both. This keeps the
-reason key-based cells were chosen over per-cell Lua callbacks (see "Design
-rationale" in [PROJECT_REFERENCE.md](PROJECT_REFERENCE.md)).
-
-A template costs more than a hand-written cell, because it has more views
-and they are measured by the general layout engine. Measured on the Diskmap
-meter (eight views) while scrolling 10,000 rows: about 1.3 ms to bind, attach
-and lay out one cell, against 0.4 ms for the native meter it replaced. The
-bindings themselves are under 2% of that. Keep templates shallow in tables
-that scroll fast.
-
-### What the table still owns
-
-- Selection, keyboard navigation, type-to-select, row menus, drag and swipe
-  actions are the row's, and do not change.
-- The selected row's emphasis reaches every label in the template, so text in
-  `label` and `secondary` colours inverts as in a text cell.
-- The cell's `textField` and `imageView` outlets are the template's first
-  label and first image; AppKit reads them for the cell's accessibility.
-- Truncation is the labels' own: `truncation="tail"` on the label that gives
-  way, `fixedSize="horizontal"` on the one that keeps its width.
-- `List.rowHeight` sets the row height. A template does not size its row.
-
-Lua column specs take the same factory: `template = function() return view,
-bindings end`. Application code uses the XML form.
-
-UIKit does not render templates yet; a templated column shows its row text
-there.
-
-### Example: Diskmap's size meter
-
-`apps/diskmap/views/cells/Meter.etlua` is one meter, like Spectrum's Meter:
-the size (`52.3 GB`) leads and its share (`39%`) trails in secondary colour
-on a line above a full-width `Gauge`. The bar is always drawn: a row without
-a fraction leaves it empty and disabled, so a size never floats in an empty
-cell; out-of-range values are clamped by the gauge. While a row is measured
-(`calculating`), a small spinner leads the size; a size that is a state
-(`sizeIcon`, `sizeColor`: Diskmap's "No access") shows its symbol in the
-spinner's square and tints the word to match. VoiceOver reads the bar as the
-column's title, the size and the share. Columns include it with
-`partial("cells/Meter.etlua")`, naming other row fields where a list differs.
-
-The remaining key attributes (`subtitleKey`, `imageKey`, `imageColorKey`,
-`badgeKey`, `loadingKey` and the rest) still configure the text cell.
+UIKit has no meter cell yet; a level column shows its row text there.

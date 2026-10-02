@@ -6,14 +6,6 @@
 	</HStack>
 	<List id="folders" style="fullWidth" header="false" rowHeight="@rowHeight" maxWidth="infinity" height="@listHeight">
 		<Column id="name" title="Name" minWidth="120" imageKey="icon" />
-		<Column id="size" title="Size" width="@meterWidth">
-			<VStack spacing="@meterGap" alignment="leading">
-				<HStack alignment="center" spacing="@meterGap">
-					<ProgressView controlSize="small" visible="$calculating" />
-					<Label text="$size" color="$sizeColor" truncation="tail" />
-				</HStack>
-				<Gauge value="$relative" maxWidth="infinity" />
-			</VStack>
-		</Column>
+		<Column id="share" title="Size" width="@meterWidth" levelKey="relative" valueKey="size" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />
 	</List>
 </VStack>

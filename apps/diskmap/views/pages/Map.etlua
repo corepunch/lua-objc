@@ -59,9 +59,7 @@
         <% end %>
         <List id="mapList" hidden="<%= #rows == 0 and query ~= "" and "true" or "false" %>" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxHeight="infinity">
           <Column id="name" title="Item" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
-          <Column id="size" title="Size" width="<%= MAP.meter %>" minWidth="<%= MAP.meter %>">
-            <%- partial("../cells/Meter.etlua") %>
-          </Column>
+          <Column id="shareText" title="Size" width="<%= MAP.meter %>" minWidth="<%= MAP.meter %>" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />
         </List>
       </VStack>
     </GroupBox>

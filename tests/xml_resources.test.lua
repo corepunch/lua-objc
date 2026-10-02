@@ -41,12 +41,6 @@ local outside = render('<VStack><HStack><Resources><Number id="gap" value="3" />
 t.assertEqual(outside.subviews[2].spacing, 10, "a local resource does not leak to a sibling subtree")
 t.assertEqual(#outside.subviews, 2, "<Resources> is never a view")
 
--- Resources reach cell templates, where `$field` stays per-row.
-local list = render([[<List id="list" style="fullWidth" header="false" rowHeight="40" height="100">
-	<Column id="name"><HStack spacing="@gap"><Label text="$name" /></HStack></Column>
-</List>]])
-t.expect(list ~= nil, "a cell template renders with resources")
-
 -- Errors.
 local function rejects(template, pattern, message, data)
 	local ok, err = pcall(render, template, data)

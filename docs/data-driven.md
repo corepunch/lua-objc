@@ -64,18 +64,13 @@ function Folders:rescan() ... end          -- an action: run, then the request a
   by code written for that case — Diskmap's chart while a scan counts — and every
   list, bar and number is drawn once its data is computed.
 
-## Cell templates (`$field`)
+## Table cells
 
-A `<Column>` with child XML is a cell template rendered natively for every row
-(WPF's DataTemplate), so `$field` is the one place bindings exist: `text="$title"`
-binds the attribute to the row's field, `$size.color` reaches into a nested field,
-`$$` is a literal dollar sign. An attribute is a literal or exactly one `$path`: no
-interpolation, negation or expressions. A composed string is a row field the model
-prepares; a condition is a field plus an attribute pair (`visible` beside `hidden`,
-`enabled` beside `disabled`). A row without the field returns the attribute to the
-value the view was built with. Bindable attributes are listed in
-`docs/tableview_swiftui.md` ("Row bindings"); add one in `TAG_BINDINGS` in
-`lua/ui/xml.lua`.
+A `<Column>` takes no child XML and attributes have no binding syntax. A cell is
+one of the table's native kinds, chosen by key attributes that name row fields
+(`subtitleKey`, `imageKey`, `loadingKey`, `levelKey` with `valueKey` for a meter,
+`lines` for wrapping text). A composed string is a row field the model prepares.
+See "Cells are native kinds" in `docs/tableview_swiftui.md`.
 
 ## Resources
 

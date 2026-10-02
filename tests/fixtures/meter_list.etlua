@@ -1,8 +1,0 @@
-<VStack>
-	<List id="list" style="fullWidth" header="false" rowHeight="44" maxWidth="infinity" height="200">
-		<Column id="name" title="Item" minWidth="140" />
-		<Column id="size" title="Size" width="160" minWidth="120">
-			<%- partial("../../apps/diskmap/views/cells/Meter.etlua") %>
-		</Column>
-	</List>
-</VStack>

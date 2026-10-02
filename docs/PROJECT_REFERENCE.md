@@ -1385,10 +1385,9 @@ We chose **#5** because:
   of flashing the whole table. ObjC gives us this for free; we just need to wrap it.
 - **Column `id` → row dictionary key** — minimal but extensible. Each column's
   `id` maps directly to a key in the row's `NSDictionary`. Cells default to
-  native `NSTextField`s. A column with content is a template: Lua builds its
-  views once per reusable cell, and `$field` bindings are applied natively
-  per row, so custom cells keep approach #3's flexibility without its
-  per-cell Lua traffic.
+  native `NSTextField`s; key attributes (`subtitleKey`, `levelKey`, ...)
+  select the table's other native cell kinds and name the row fields that
+  fill them. A column hosts no view tree and nothing binds per attribute.
 - **Methods via `nsview` metatable `__index`** — instead of returning a Lua
   wrapper table (which can't be added as a subview), we attach the data source
   to the scroll view via `objc_setAssociatedObject`. The `nsview` metatable's
@@ -1455,8 +1454,7 @@ header.
 
 Each column `id` must match a key in the row data tables. Cells render the
 string value of `row[id]`; numbers are converted to strings automatically. A
-`<Column>` with child XML renders that template instead, bound to row fields
-with `$field`; see "Extending: column content templates".
+`<Column>` takes no child XML; see "Extending: native cell kinds".
 Use `<SwipeRow>` for one native swipeable row inside a `VStack`. Both platforms
 use their table row action APIs, so the row keeps system gesture behavior and
 appearance. See [`docs/swipe_actions.md`](swipe_actions.md) for XML and model
@@ -1470,8 +1468,10 @@ font. `<Column loadingKey="calculating">` binds a boolean row field to a native
 spinning progress indicator beside the cell text. Supply the loading label in
 the column's usual row value; the spinner and label share the column alignment.
 Lua column specs use `cell = {controlSize = "small", loading = "calculating"}`.
-A cell that needs more than text, such as a meter with its own spinner, is a
-column content template.
+In a level column (`levelKey`), the spinner sits before the meter's
+`valueKey` text instead; see "Measured storage cells" in
+[tableview_swiftui.md](tableview_swiftui.md). `lines="2"` lets a text cell
+wrap onto a second line before it truncates.
 
 **Column sizing:**
 
@@ -1575,24 +1575,14 @@ ns.Window {
 }
 ```
 
-### Extending: column content templates
+### Extending: native cell kinds
 
-A new cell appearance is a template, not native code: give the `<Column>`
-child XML and bind its attributes to row fields.
-
-```xml
-<Column id="usage" title="Used" width="220">
-  <VStack spacing="3">
-    <Label text="{used}" truncation="tail" />
-    <Gauge value="{fraction}" tint="{color}" />
-  </VStack>
-</Column>
-```
-
-Templates are built from the ordinary views and laid out by the layout
-engine, inside reusable native cells. Keep their height within `rowHeight`.
-Binding syntax, the bindable attributes, the cell lifecycle and measured
-cost are in "Column content templates" in
+A cell is one of the table's native kinds, selected by the column's key
+attributes; a column hosts no view tree. A new appearance is a new kind in
+`src/appkit/table_data_source.m`: build its controls once in the reusable
+`LuaTableCellView`, fill them from the row dictionary, and add the key
+attributes to `Column` in `lua/ui/xml.lua`. The meter (`levelKey`,
+`levelColorKey`, `valueKey`) is the model; see "Cells are native kinds" in
 [tableview_swiftui.md](tableview_swiftui.md).
 
 ### Dynamic updates at runtime
