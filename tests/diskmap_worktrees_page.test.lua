@@ -14,7 +14,7 @@ local confirmations, saved = {}, nil
 service.confirmAction = function(title, message) table.insert(confirmations, {title, message}); return true end
 service.saveKeep = function(kept) saved = kept; return true end
 local changed = 0
-local page = Controller.new(model, service, function() changed = changed + 1 end)
+local page = Controller.new({model = model, service = service, rescan = function() changed = changed + 1 end})
 local published = 0
 page.published = function() published = published + 1 end
 page:mount(ns.VStack {}, {query = ""})
@@ -136,7 +136,7 @@ t.expect(page.result:find("No checkout was deleted", 1, true), "and the result s
 local failing = Mock.new()
 local failModel = Model.new(failing.home)
 failing.confirmAction = function() return true end
-local failedPage = Controller.new(failModel, failing, function() end)
+local failedPage = Controller.new({model = failModel, service = failing, rescan = function() end})
 failedPage:mount(ns.VStack {}, {query = ""})
 local realFailing = failing.command
 local attempts = 0
@@ -156,7 +156,7 @@ t.assertEqual(listed(), 0, "a search with no match shows no rows")
 page:update({query = ""})
 local empty = Mock.new()
 empty.worktreeScan = function(_, done) done({}, {}) end
-local emptyPage = Controller.new(Model.new(empty.home), empty, function() end)
+local emptyPage = Controller.new({model = Model.new(empty.home), service = empty, rescan = function() end})
 emptyPage:mount(ns.VStack {}, {query = ""})
 t.expect(not emptyPage.refs.worktreesEmpty.hidden and emptyPage.refs.removeSection.hidden and emptyPage.refs.reviewSection.hidden, "no worktrees shows its own empty state")
 t.assertEqual(emptyPage.model.worktreePlan.removalCount, 0, "and an empty plan")
@@ -176,7 +176,7 @@ local realScan = delayed.worktreeScan
 delayed.worktreeScan = function(self, roots, done, progress)
 	table.insert(pending, function() realScan(self, roots, done, progress) end)
 end
-local lifecycle = Controller.new(Model.new(delayed.home), delayed, function() end)
+local lifecycle = Controller.new({model = Model.new(delayed.home), service = delayed, rescan = function() end})
 lifecycle:load()
 t.expect(lifecycle.busy and lifecycle.loading, "a background load is pending before the page mounts")
 lifecycle:mount(ns.VStack {}, {query = ""})
@@ -188,7 +188,7 @@ pending[1]()
 t.expect(not lifecycle.busy and lifecycle.loaded, "the pending load finishes after navigating away and back")
 t.assertEqual(lifecycle.refs.removeList.rowCount, 2, "and the mounted page shows its result")
 t.expect(lifecycle.decisionRefs.decisionAction.enabled, "with its review action ready")
-local unmounted = Controller.new(Model.new(delayed.home), delayed, function() end)
+local unmounted = Controller.new({model = Model.new(delayed.home), service = delayed, rescan = function() end})
 unmounted:load(); unmounted:mount(ns.VStack {}, {query = ""}); unmounted:dispose()
 pending[#pending]()
 t.expect(unmounted.loaded and not unmounted.busy and unmounted.model.worktreePlan ~= nil, "a load that finishes while the page is closed still publishes the plan")

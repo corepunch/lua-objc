@@ -64,7 +64,7 @@ t.expect(tips[1].title == "Some files could not be measured" and tips[1].text:fi
 	"access guidance describes filesystem issues and keeps Full Disk Access optional")
 t.assertEqual(tips[2].id, "capacity", "low available space produces a separate tip")
 t.assertEqual(tips[2].action, nil, "low-space guidance stays on the opportunities page")
-local cleanupPage = Recommendations.page(function() return nil end).present(model, {disk = {totalKb = 100, freeKb = 9}})
+local cleanupPage = Recommendations.page({cleanupSources = function() return nil end}).present(model, {disk = {totalKb = 100, freeKb = 9}})
 t.assertEqual(cleanupPage.links.tip_access.settings, "privacy", "the access tip leads to privacy settings")
 t.assertEqual(cleanupPage.children.tips.tips[1].id, "access", "the Clean Up page presents the tips")
 local legend = require("apps.diskmap.models.Overview").chart(model, {totalKb = 2e12 / 1024, freeKb = 1e12 / 1024}).legend

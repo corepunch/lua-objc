@@ -1,1 +1,1 @@
-return require("apps.diskmap.Controller")
+return require("data.app").launcher("apps/diskmap/app.xml")

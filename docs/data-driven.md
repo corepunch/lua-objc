@@ -136,11 +136,28 @@ stays the caller's choice (`ns.withAnimation`).
 </App>
 ```
 
-`init.lua` returns the manifest path (`return "demo/storage/app.xml"`); the host
-turns it into the launch class. From the manifest the framework builds the
+`init.lua` returns the launch class built from the manifest
+(`return require("data.app").launcher("demo/storage/app.xml")`). From the manifest the framework builds the
 window, the sidebar, the Go menu and one generic page controller per page. Every
 manifest app accepts `--page=<id>` and `--isolated` (the page alone, building
 only its models).
+
+### Code-behind pages and a root controller
+
+A `<Page>` with `controller=` may omit `view` and `model`: its controller owns
+what it shows. Other attributes stay in `page.attrs` for the app
+(`workflow="developer"`, `source="Largest"`); `sidebar="Dev tools"` is a shorter
+sidebar name (`title` is then the page header) and `listed="false"` keeps a page
+out of the sidebar and the Go menu. `<App controller="Controller">` names a root
+controller that replaces the framework's launcher for an app that coordinates its
+whole window (services, scanning, sheets); it still reads its pages, sidebar rows
+and Go menu from the manifest. **Diskmap** is built this way: `apps/diskmap/app.xml`
+lists its 24 pages and 6 sections; `NavigationController.destinations`, the Go
+menu and the root controller's page table are all derived from it, and each page
+is built by `Controller.new(context, entry)` from one shared context
+(`model`, `service`, `actions`, `open`, `show`, `rescan`, `pages`, …). Pages that
+only copy model values to views (the SDK sheet) bind through schemas; the others
+are still hand-written controllers.
 
 ## Controllers
 

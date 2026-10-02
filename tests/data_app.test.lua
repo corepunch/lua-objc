@@ -32,6 +32,14 @@ rejects('<App startup="zz"><Model id="m" class="M" />' .. page .. '</App>', "sta
 rejects('<App><Model id="m" class="M" /><Page id="a" title="A" view="V" model="m" key="1" /><Page id="b" title="B" view="V" model="m" key="1" /></App>',
 	"share the key 1", "keys are unique")
 rejects('<App><Model id="m" class="M" /><Menu /></App>', "not part of the manifest", "only manifest tags")
+-- A page may be code-behind only, carry its own attributes and stay out of the sidebar.
+local custom = parse('<App><Page id="a" title="A" controller="AController" workflow="dev" sidebar="Short" />' ..
+	'<Page id="b" title="B" controller="BController" listed="false" /></App>')
+t.assertEqual(custom.pages.a.attrs.workflow, "dev", "other attributes are kept")
+t.assertEqual(#custom.sections[1].pages, 1, "an unlisted page is not in its section")
+t.assertEqual(custom.pages.b.listed, false, "but it is a page")
+t.assertEqual(#custom.order, 2, "and in the page order")
+rejects('<App><Page id="a" title="A" /></App>', "view and model, or a controller", "a page without a controller needs a view and a model")
 t.assertEqual(Manifest.options({ "--page=settings", "--isolated", "x" }).page, "settings", "--page")
 t.assertEqual(Manifest.options({ "--isolated" }).isolated, true, "--isolated")
 t.assertEqual(Manifest.options({}).page, nil, "no options")

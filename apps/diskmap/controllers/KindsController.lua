@@ -10,8 +10,11 @@ local Controller = Page.extend("kinds", "Kinds")
 -- the largest kind and the top extensions. `showFiles(kindId)` opens Large
 -- Files narrowed to one kind; `show(page, filterName)` opens a page, Large
 -- Files on one of its filters.
-function Controller.new(model, showFiles, show, refresh, clearSearch)
-	return setmetatable({model = model, showFiles = showFiles, show = show, refresh = refresh, clearSearch = clearSearch}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model,
+		showFiles = function(kind) context.pages.files:focus(kind); context.show("files", true) end,
+		show = function(id, filter) context.showFiltered(id, filter and Files.filterIndex(filter)) end,
+		refresh = context.rescan, clearSearch = function() context.search("kinds", "") end}, Controller)
 end
 
 -- The leading decision: the files of yours this page can point at, never a

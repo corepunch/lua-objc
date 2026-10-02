@@ -8,8 +8,9 @@ local Controller = Page.extend("simulators", "Simulators")
 
 -- The Simulators page: devices from CoreSimulator's folders and runtimes from
 -- `simctl runtime list`. `changed` asks the root to remeasure after an action.
-function Controller.new(model, service, changed)
-	return setmetatable({model = model, service = service, changed = changed,
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, changed = context.rescan,
+		log = context.log, published = context.refresh,
 		inventory = {}, runtimes = {}, runtimeList = nil, query = "", filterIndex = 1, planKeep = {}}, Controller)
 end
 

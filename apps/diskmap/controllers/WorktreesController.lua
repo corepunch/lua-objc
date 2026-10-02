@@ -10,8 +10,9 @@ local Controller = Page.extend("worktrees", "Worktrees")
 -- and the tools' own worktree roots, one review flow for removing them and
 -- one for pruning missing registrations. `changed` asks the root to
 -- remeasure after an action; `published` tells Clean Up the plan changed.
-function Controller.new(model, service, changed)
-	return setmetatable({model = model, service = service, changed = changed, entries = {}, facts = {}, rows = {}}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, changed = context.rescan, log = context.log,
+		published = context.refresh, showPage = context.show, entries = {}, facts = {}, rows = {}}, Controller)
 end
 
 local function keepKey(path) return "worktree:" .. path end

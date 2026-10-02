@@ -58,4 +58,12 @@ function Guide.topic(id)
 	end
 end
 
+-- The page a TopicsController presents; `context.open` follows a topic.
+function Guide.page(context)
+	return {id = "guide", topic = "GuideTopic", noun = "guide topic",
+		summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac.",
+		present = function(query) return Guide.presentation(context.model, query) end,
+		follow = function(topic) return topic.open and function() context.open(topic.open) end end}
+end
+
 return Guide

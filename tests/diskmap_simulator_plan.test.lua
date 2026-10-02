@@ -225,7 +225,7 @@ local service = {
 }
 local changed = 0
 local model = DiskModel.new("/Users/test")
-local page = Controller.new(model, service, function() changed = changed + 1 end)
+local page = Controller.new({model = model, service = service, rescan = function() changed = changed + 1 end})
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.planRefs
 t.expect(refs and refs.planDevices, "the minimal device set renders on the Simulators page")

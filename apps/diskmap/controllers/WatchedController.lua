@@ -9,9 +9,9 @@ local Controller = Page.extend("watched")
 -- lists its locations; a folder is measured when the page opens, unless the
 -- scan already broke it down. `handlers.open(id)` opens a category sheet
 -- and `handlers.closed()` leaves the page after Stop Watching.
-function Controller.new(model, service, watchlist, actions, handlers)
-	return setmetatable({model = model, service = service, watchlist = watchlist, actions = actions,
-		handlers = handlers}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, watchlist = context.watchlist,
+		actions = context.actions, handlers = {open = context.open, closed = function() context.show("overview") end}}, Controller)
 end
 
 function Controller:focus(key)

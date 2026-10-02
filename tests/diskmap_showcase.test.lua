@@ -41,9 +41,9 @@ t.expect(derived ~= nil and (derived.bytes or 0) > 0, "catalog measurements matc
 -- `--map-style` picks the Map's initial chart.
 local MapController = require("apps.diskmap.controllers.MapController")
 t.assertEqual(Provider.mapStyle({[1] = "--map-style=rectangles"}), "rectangles", "the map style switch is read")
-t.assertEqual(MapController.new(app.model, app.actions, "rectangles").style, "rectangles", "the map can open as rectangles")
-t.assertEqual(MapController.new(app.model, app.actions, "hexagons").style, "rings", "unknown styles fall back to rings")
-t.assertEqual(MapController.new(app.model, app.actions).style, "rings", "rings stay the default")
+t.assertEqual(MapController.new({model = app.model, actions = app.actions, mapStyle = "rectangles"}).style, "rectangles", "the map can open as rectangles")
+t.assertEqual(MapController.new({model = app.model, actions = app.actions, mapStyle = "hexagons"}).style, "rings", "unknown styles fall back to rings")
+t.assertEqual(MapController.new({model = app.model, actions = app.actions}).style, "rings", "rings stay the default")
 
 -- A capture plan switches the chart at runtime, as the segmented control does.
 app:show("map")

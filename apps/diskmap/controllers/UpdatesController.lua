@@ -7,8 +7,9 @@ local Controller = Page.extend("updates", "Updates")
 -- The Updates & Snapshots page. Software Update's record is read when the
 -- page opens; local snapshots arrive asynchronously from tmutil.
 -- `showPage(id)` opens a page; `sources()` is what Clean Up's totals use.
-function Controller.new(model, service, actions, showPage, sources)
-	return setmetatable({model = model, service = service, actions = actions, showPage = showPage, sources = sources}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, actions = context.actions,
+		showPage = context.show, sources = context.cleanupSources}, Controller)
 end
 
 function Controller:mount(host, state)

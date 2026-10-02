@@ -21,8 +21,9 @@ local LAYOUT = {
 -- markers, grouped by project with git state and age. Marking a project marks
 -- its generated folders, never its sources. `rescan()` rediscovers after the
 -- search folders change.
-function Controller.new(model, service, actions, rescan)
-	return setmetatable({model = model, service = service, actions = actions, review = actions.review, rescan = rescan,
+function Controller.new(context)
+	local actions = context.actions
+	return setmetatable({model = context.model, service = context.service, actions = actions, review = actions.review, rescan = context.rescan,
 		info = {}, filterIndex = 1}, Controller)
 end
 

@@ -44,8 +44,8 @@ end
 -- The Xcode page: device support per OS version, DerivedData per project and
 -- archives, read from Xcode's folders when the page opens. Rows are marked
 -- for cleanup from their menu; nothing is removed here.
-function Controller.new(model, service, actions)
-	return setmetatable({model = model, service = service, actions = actions, rows = {}}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, actions = context.actions, rows = {}}, Controller)
 end
 
 function Controller:item(section, row)

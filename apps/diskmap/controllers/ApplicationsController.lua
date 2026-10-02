@@ -22,9 +22,11 @@ local LAYOUT = {
 -- The Applications page and the app facts other pages need. Bundle info and
 -- the installed-identifier list load in the background once per set of
 -- discovered bundles; `changed()` asks the root to present them.
-function Controller.new(model, service, actions, changed)
-	return setmetatable({model = model, service = service, actions = actions, changed = changed or function() end,
-		filterIndex = 1}, Controller)
+function Controller.new(context)
+	return setmetatable({model = context.model, service = context.service, actions = context.actions,
+		changed = function(remeasure)
+			if remeasure then context.rescan() else context.refresh() end
+		end, showPage = context.show, filterIndex = 1}, Controller)
 end
 
 function Controller:focus(filterIndex) self.filterIndex = filterIndex or 1 end

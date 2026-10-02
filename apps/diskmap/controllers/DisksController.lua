@@ -31,8 +31,8 @@ end
 -- Disks & Volumes: drive health, the APFS volumes of the startup container
 -- and other mounted disks. Everything is read-only; repairs happen in Disk
 -- Utility. Disk facts are reread each time the page opens.
-function Controller.new(service, actions)
-	return setmetatable({service = service, actions = actions}, Controller)
+function Controller.new(context)
+	return setmetatable({service = context.service, actions = context.actions}, Controller)
 end
 
 function Controller:mount(host, state)
