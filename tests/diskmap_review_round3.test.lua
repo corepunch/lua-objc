@@ -48,12 +48,12 @@ local liveFolder=app.model.home..'/Downloads/review-folder'
 local liveChild=liveFolder..'/cleanup-fixture-nested-archive.zip'
 table.insert(app.model.files.large,{path=liveChild,bytes=90000000,used=os.time()})
 app.review:toggle({path=liveFolder,name='Review folder',bytes=90000000,consequence='Moves this folder and every file inside it.'})
-app:show('files');app.page:update({query='cleanup-fixture-nested-archive.zip'})
+app:show('files');app.session.query='cleanup-fixture-nested-archive.zip';app:updateRows()
 local page=app.page
-local decision=page.decisions.lead.refs
+local decision=page.refs
 t.assertEqual(decision.decisionAction.title,'Review Marked Items…','covered visible file routes to review')
 t.expect(decision.decisionDetail.text:find('included through a marked folder',1,true),'bulk feedback explains folder coverage')
-t.assertEqual(page:markFiles(),0,'bulk skips covered leaves')
+t.assertEqual(app:pageModel("files"):markFiles(),0,'bulk skips covered leaves')
 t.assertEqual(app.review:count(),1,'bulk keeps enclosing folder intact')
 local menu=app.actions:mark(item(liveChild))
 t.expect(menu.title:find('Included through',1,true),'covered row has explicit review menu')
@@ -70,7 +70,7 @@ t.assertEqual(source.subtitle,'Original folder','row feedback does not mutate in
 app.review:toggle(item(liveFolder))
 presented=app.actions:annotate({source})[1]
 t.assertEqual(presented.subtitle,'Original folder','unmark removes coverage feedback')
-t.assertEqual(page.decisions.lead.refs.decisionAction.title,'Mark 1 File','parent unmark makes leaf eligible again')
+t.assertEqual(page.refs.decisionAction.title,'Mark 1 File','parent unmark makes leaf eligible again')
 app.review:toggle({path=liveChild,name='Installer',bytes=90000000,consequence='Check that installation is complete before removing this installer.'})
 t.assertEqual(app.actions:mark(item(liveChild)).title,'Unmark','exact mark keeps its own unmark semantics')
 app.review:open(window)
@@ -99,40 +99,40 @@ app.review:close()
 local savedFiles=app.model.files
 app.model.files=nil;app.model.scan={running=true}
 app:show('files');page=app.page
-page:update({query=''})
-t.assertEqual(page.decisions.lead.refs.decisionAmount.text,'—','loading does not pretend zero bytes')
-t.expect(page.decisions.lead.refs.decisionAction==nil,'loading makes no false-zero marking offer')
+app.session.query='';app:updateRows()
+t.assertEqual(page.refs.decisionAmount.text,'—','loading does not pretend zero bytes')
+t.expect(page.refs.decisionAction.hidden,'loading makes no false-zero marking offer')
 t.expect(not page.refs.filesPanel.hidden and page.refs.fileControls.hidden,'loading keeps native spinner surface and hides controls')
 app:show('kinds')
 t.assertEqual(app.page.refs.summary.text,'Scan in progress','kinds loading has a progress header')
 t.expect(app.page.refs.kinds~=nil and app.page.refs.extensions==nil,'loading has one native table surface')
 app.model.files={large={},old={},extensions={},oldBytes=0,oldCount=0};app.model.scan={running=false}
 app:show('files');page=app.page
-page:update({query=''})
+app.session.query='';app:updateRows()
 t.expect(not page.refs.filesNone.hidden and page.refs.filesPanel.hidden,'completed empty files replace inventory scaffolding')
-t.assertEqual(page.decisions.lead.refs.decisionAction.title,'Open Clean Up','empty files route to another cleanup opportunity')
+t.assertEqual(page.refs.decisionAction.title,'Open Clean Up','empty files route to another cleanup opportunity')
 app:show('kinds')
 t.expect(not app.page.refs.summary.text:find('Measuring',1,true),'completed empty types never claim loading')
 t.expect(app.page.refs.kinds==nil and app.page.refs.extensions==nil and app.page.refs.kindsChart==nil,'empty types suppress empty tables and chart')
 t.assertEqual(app.page.refs.decisionAction.title,'Open Clean Up','empty types give another cleanup route')
 app.model.files={large={},old={},extensions={{extension='txt',bytes=100000,count=2}},oldBytes=0,oldCount=0}
-app:show('files');page=app.page;page:update({query=''})
+app:show('files');page=app.page;app.session.query='';app:updateRows()
 t.expect(not page.refs.filesNone.hidden and page.refs.filesEmpty.hidden,'small files are not presented as a filter mismatch')
-t.expect(page.decisions.lead.refs.decisionDetail.text:find('over 50',1,true),'no large-file result explains the threshold')
+t.expect(page.refs.decisionDetail.text:find('over 50',1,true),'no large-file result explains the threshold')
 app:show('kinds')
 t.expect(app.page.refs.kinds~=nil,'under-threshold files still contribute to types')
 app.model.scan={failure='Scan could not read its roots'}
-app:show('files');page=app.page;page:update({query=''})
-t.expect(page.decisions.lead.refs.decisionDetail.text:find('could not read',1,true),'scan failure is explicit')
-t.assertEqual(page.decisions.lead.refs.decisionAction.title,'Refresh Scan','unavailable files offer refresh')
+app:show('files');page=app.page;app.session.query='';app:updateRows()
+t.expect(page.refs.decisionDetail.text:find('could not read',1,true),'scan failure is explicit')
+t.assertEqual(page.refs.decisionAction.title,'Refresh Scan','unavailable files offer refresh')
 app:show('kinds')
 t.assertEqual(app.page.refs.decisionAction.title,'Refresh Scan','failed types offer refresh')
 app.model.files=nil;app.model.scan={running=false}
 t.assertEqual(Files.state(app.model),'unavailable','no results after scan is unavailable, never empty')
 app.model.files=savedFiles;app.model.scan={running=false}
-app:show('files');page=app.page;page:update({query='no-match-for-review'})
-t.assertEqual(page.decisions.lead.refs.decisionAction.title,'Clear Search','no-match files provide a useful next step')
-app:show('kinds');app.page:update({query='no-match-for-review'})
+app:show('files');page=app.page;app.session.query='no-match-for-review';app:updateRows()
+t.assertEqual(page.refs.decisionAction.title,'Clear Search','no-match files provide a useful next step')
+app:show('kinds');app.session.query='no-match-for-review';app:updateRows()
 t.assertEqual(app.page.refs.decisionAction.title,'Clear Search','no-match file types offer clear search')
 t.expect(app.page.refs.kinds==nil and app.page.refs.extensions==nil,'no-match types suppress inventory scaffolding')
 local Projects=require('apps.diskmap.controllers.ProjectsController')
@@ -146,7 +146,7 @@ t.assertEqual(app.review:count(),1,'project bulk never tries to unmark enclosing
 app.review:toggle(item(liveFolder));project:mark(group)
 t.assertEqual(project:menu(group)[1].title,'Unmark Build Data','direct artifact marks keep their own unmark action')
 app.review.basket:clear();app:basketChanged()
-app.query='';app:show('worktrees');local worktrees=app.worktrees
+app.session.query='';app:show('worktrees');local worktrees=app.worktrees
 worktrees.refs.reviewList:selectRow(0)
 local selected=worktrees.selected
 selected.reasons={string.rep('Review unpublished work with the owning session before deleting. ',25)}
@@ -157,13 +157,13 @@ local document=worktrees.refs.selectedSummary.superview
 local visibleTop=document.size.height-worktrees.refs.selectedSummary.frame.origin.y-worktrees.refs.selectedSummary.size.height
 t.expect(visibleTop<worktrees.refs.selectionEvidence.contentView.bounds.size.height,'selected evidence starts within visible viewport')
 t.expect(worktrees.refs.openOwner.enabled and worktrees.refs.openOwner.size.height>=24,'action remains accessible')
-app:show('files');page=app.page;page:focus('installers');page:update({query=''});bridge._flushLayout()
+app:show('files');page=app.page;app:pageModel("files"):focus('installers');app.session.query='';app:updateRows();bridge._flushLayout()
 t.expect(not page.refs.clearKind.hidden,'real kind focus reveals Show All Kinds')
 local parent=page.refs.clearKind.superview
 local button=page.refs.clearKind.frame
 t.expect(parent.size.height>=button.size.height,'visible kind action fits its controls row')
 t.expect(button.origin.y>=0 and button.origin.y+button.size.height<=parent.size.height,'visible kind action does not overlap filter')
-page.template.actions.clearKind();bridge._flushLayout()
+app:pageModel('files'):clearKind();app:updateRows();bridge._flushLayout()
 t.expect(page.refs.clearKind.hidden,'clearing kind restores hidden route')
 window:close()
 os.exit(t.summary() and 0 or 1)

@@ -1,0 +1,18 @@
+<Schema id="StorageRow">
+	<String id="path" optional="true" />
+	<String id="name" />
+	<String id="subtitle" optional="true" />
+	<Symbol id="icon" optional="true" />
+	<Color id="color" optional="true" />
+	<String id="appIcon" optional="true" />
+	<String id="fileIcon" optional="true" />
+	<String id="detail" optional="true" />
+	<Symbol id="statusIcon" optional="true" />
+	<Color id="statusColor" optional="true" />
+	<String id="size" optional="true" />
+	<String id="shareText" optional="true" />
+	<Number id="relative" optional="true" />
+	<Bool id="calculating" optional="true" />
+	<Symbol id="sizeIcon" optional="true" />
+	<Color id="sizeColor" optional="true" />
+</Schema>

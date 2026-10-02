@@ -104,7 +104,7 @@ app.page:activate({id = "simulators"})
 t.assertEqual(app.destination, "simulators", "Clean Up uses it")
 app:show("cleanup")
 app.page:activate({id = "old-files", page = "files", filter = 2})
-t.expect(app.destination == "files" and app.pages.files.filterIndex == 2, "a row that stands for a page opens it filtered")
+t.expect(app.destination == "files" and app:pageModel("files").filterIndex == 2, "a row that stands for a page opens it filtered")
 -- Inside a category list, a row that lives elsewhere leaves the sheet.
 app:open("developer")
 t.assertEqual(app.management.rootId, "developer", "a category opens its sheet")

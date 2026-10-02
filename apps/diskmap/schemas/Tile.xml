@@ -1,0 +1,4 @@
+<Schema id="Tile">
+	<String id="value" />
+	<String id="detail" />
+</Schema>

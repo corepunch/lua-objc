@@ -206,10 +206,10 @@ window:layout()
 t.expect(ui.refs.page.documentView.frame.size.height > ui.refs.page.contentView.bounds.size.height, "the overview scrolls past the category list")
 Inventory.cancel(ui.model); ui:updateRows()
 t.expect(dofile("tests/fixtures/meter.lua")(bridge._tableCell(ui.refs.results, 1, 0)).spinner.hidden, "cancel removes category spinner")
-ui.query = "no match"; ui:updateRows()
+ui.session.query = "no match"; ui:updateRows()
 t.assertEqual(ui.refs.results.rowCount, 0, "empty category search")
 t.expect(ui.refs.largestSection.hidden, "largest items hide when nothing matches")
-ui.query = ""; ui:updateRows()
+ui.session.query = ""; ui:updateRows()
 ui.model.measurements.derived = {status = "complete", bytes = 4900000}
 -- Rows are found by destination: the order is the sidebar's hierarchy,
 -- checked on its own below.

@@ -1,0 +1,14 @@
+<% --[[ A stat tile: a symbol and a title that do not change, a bound value and
+  detail (schemas/Tile.xml). Tiles in a row share the height of the tallest, so
+  a detail that wraps does not leave its neighbours shorter: the row has
+  fixedSize="vertical" and each tile fills it, as in SwiftUI. ]] %>
+<GroupBox id="<%= id %>" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+  <VStack padding="14" spacing="6" alignment="leading">
+    <HStack spacing="8" alignment="center">
+      <SystemImage name="<%= icon %>" size="22" badgeColor="<%= color %>" />
+      <Label text="<%= title %>" size="13" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="1" />
+    </HStack>
+    <Label id="<%= id %>Value" text="$value" size="20" weight="semibold" design="rounded" monospacedDigit="true" lines="1" />
+    <Label id="<%= id %>Detail" text="$detail" size="11" color="secondary" maxWidth="infinity" lines="0" />
+  </VStack>
+</GroupBox>

@@ -1,9 +1,12 @@
 <App name="Diskmap" startup="overview" controller="Controller">
+	<Model id="storage" class="models.Storage" />
+	<Model id="session" class="models.Session" />
+	<Model id="files" class="models.FilesPage" />
 	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" controller="OverviewController" />
 	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" controller="PageController" source="Recommendations" />
 	<Section title="Free Up Space">
 		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" controller="ApplicationsController" />
-		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" controller="FilesController" />
+		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" model="files" view="Files" />
 		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" controller="DuplicatesController" />
 		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" controller="SimulatorsController" workflow="developer" />
 		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" controller="WorktreesController" workflow="developer" />

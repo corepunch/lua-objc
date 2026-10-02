@@ -19,7 +19,9 @@
 -- Type tags convert (`<Bytes>`, `<Number>`, `<Percent>`, `<Date>` run on the
 -- system formatters); `format` only arranges already converted fields.
 -- A model is validated against its schema, and `project` turns a model into
--- the record views bind to. The record is flat for the native cell binding
+-- the record views bind to. A model may define `prepare()`: it runs before
+-- every validation and projection, so a page computes what its fields share
+-- once instead of once per field. The record is flat for the native cell binding
 -- (src/appkit/table_cell_template.m): a field `size` yields
 --
 --   size            the display string ("1.2 GB", or the active state's text)
@@ -193,6 +195,7 @@ Schema.setterName = setterName
 function Schema:problems(model)
 	local problems = {}
 	if type(model) ~= "table" then return { "the model is not a table" } end
+	if type(model.prepare) == "function" then model:prepare() end
 	for _, field in ipairs(self.fields) do
 		if field.type == "Command" then
 			if type(model[field.id]) ~= "function" then
@@ -251,6 +254,8 @@ end
 -- Projects a model into the record views bind to. `options.now` fixes the
 -- clock for relative dates.
 function Schema:project(model, options)
+	-- A model that works out its fields together does it once per projection.
+	if type(model.prepare) == "function" then model:prepare() end
 	local record = {}
 	local display = {}
 	for _, field in ipairs(self.evaluation) do
