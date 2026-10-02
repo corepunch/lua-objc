@@ -440,33 +440,23 @@ instead of adding app-specific positioning or substitute controls.
 #### Data-driven apps and the state contract
 
 An app may be described as data instead of written as controllers
-([docs/data-driven.md](docs/data-driven.md)): an `app.xml` manifest names its
-models, sections and pages; `schemas/*.xml` declare the fields views may bind
-to; `resources.xml` holds constants; views bind with `$field`, `@name`,
-`action="$command"` and two-way `isOn`/`text`/`selection`. The framework's
-generic page controller (`lua/data/pagecontroller.lua`) and binder
-(`lua/data/binder.lua`) sit between them, so a page that only copies model
-values into views needs no controller class. A class is written only for
+([docs/data-driven.md](docs/data-driven.md)): an `app.xml` manifest names its models,
+sections and pages; `resources.xml` holds constants (`@name`); a page is a request —
+the generic page controller (`lua/data/pagecontroller.lua`) asks the page's model for
+`data(state)` and renders the page's etlua view with it, and an action in the view is
+a method of the model followed by the same request again. A class is written only for
 coordination (sheets, confirmation, multi-step flows).
 
-State is ordinary Lua data. It does not subscribe to property reads and it
-does not invalidate views automatically; propagation stays explicit and
-follows the model graph (`lua/data/model.lua`). A model declares what it needs
-in its own file; the graph builds a page's models transitively, in order
-(a cycle is a startup error). When a model changes — `graph:changed(id)`, which
-commands and accepted writes call — the graph marks it and everything built
-that depends on it stale, calls `invalidate` on the dependents, and rebinds the
-pages bound to stale models. This is WPF's `PropertyChanged` with an empty
-property name (“rebind everything on this context”), not per-property
-observation. Animation remains the caller's choice (`ns.withAnimation`).
-
-Hand-written controllers (the apps not yet on a manifest) still choose when to
-update: mutate a retained view ref for a local change, refresh a native
-collection for row changes, or call the full render path when structure
-changes. A full render reconstructs the window's view tree; calling it for each
-text-field keystroke can make input laggy and discard native control state.
-Invalidate after a meaningful user action, completed async result, or
-structural state change; never from scroll or animation callbacks.
+State is ordinary Lua data. It does not subscribe to property reads and nothing
+notifies: whoever changes state says so by drawing again (`page:update()`), after a
+meaningful user action, a completed async result, or a structural change, never from
+scroll or animation callbacks. Drawing is cheap because pages are retained templates
+(`ui/template.lua`): unchanged data costs nothing and changed data reconciles the
+views that exist. A full render of a window's view tree for each text-field keystroke
+can make input laggy and discard native control state, so buffer such edits in the
+model. Only what must move while work is in progress (a chart while a scan counts) is
+updated in place, by code written for that case; lists, bars and numbers appear once
+computed.
 
 The IDE example is organized as:
 

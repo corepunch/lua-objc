@@ -18,8 +18,8 @@ Read only the material needed for the current task:
   template reconciliation and steady live updates
 - [docs/reels.md](docs/reels.md) — making 3-D promo reels with Reel and
   SceneKit: captures, component motion, camera, traps, performance
-- [docs/data-driven.md](docs/data-driven.md) — manifests, schemas, `$field`
-  and `@name` bindings, commands, two-way binding, the model graph
+- [docs/data-driven.md](docs/data-driven.md) — manifests, pages as requests over
+  models, `@name` resources, cell `$field` bindings, the model graph
 - [docs/components.md](docs/components.md) — components: new XML tags
   written as etlua templates, the bundled set, resolution
 - [docs/scenekit.md](docs/scenekit.md) — `<SceneView>` 3-D scenes: scene
@@ -74,13 +74,13 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
   focused controllers, domain models, and injected services in `controllers/`,
   `models/`, and `services/`. Each must be independently testable; the root
   controller coordinates them. See [ARCHITECTURE.md](ARCHITECTURE.md#app-layer).
-- **Data-driven by default.** Views bind to model fields by name (`$field`),
-  take constants from XML resources (`@name`), and declare their fields in an
-  XML schema; the framework's generic controller sits between them. Write a
-  controller class only to coordinate (sheets, confirmation, batch flows).
-  Constants belong in `resources.xml` or a `<Resources>` element, not in Lua
-  tables at the top of a template. See
-  [docs/data-driven.md](docs/data-driven.md).
+- **Pages are requests.** A page is a view and a model: the framework asks the
+  model for `data(state)` and renders the etlua view with it; an action in the view
+  is a method of the model, followed by the same request again. No bindings, no
+  notifications, no controller that copies model values into views. Constants live
+  in `resources.xml` or a `<Resources>` element (`@name`), not in Lua tables at the
+  top of a template. Write a controller class only to coordinate (sheets,
+  confirmation, batch flows). See [docs/data-driven.md](docs/data-driven.md).
 - **Laravel-style MVC.** Models own domain queries, validation, and mutations;
   controllers coordinate model calls, navigation, and callbacks; etlua views
   own presentation. Models never depend on `ns` or native widgets. Inject
@@ -93,7 +93,6 @@ rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
     Controller.lua ← wires model → views, owns actions
     views/         ← etlua templates only, including reusable partials
     components/    ← optional etlua components: new tags used by the views
-    schemas/       ← optional XML schemas: the fields views bind to
     app.xml        ← optional manifest: models, sections and pages
     resources.xml  ← optional XML constants, referenced as `@name`
   ```

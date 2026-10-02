@@ -29,9 +29,6 @@ local SnapshotController = require("apps.diskmap.controllers.SnapshotController"
 local WatchlistController = require("apps.diskmap.controllers.WatchlistController")
 local OnboardingController = require("apps.diskmap.controllers.OnboardingController")
 local Manifest = require("data.manifest")
-local ModelGraph = require("data.model")
-local PageController = require("data.pagecontroller")
-local Schema = require("data.schema")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/" .. name .. ".etlua", data or {}, ns) end
 -- Services grow optional features; a provider that lacks one simply does not
@@ -44,17 +41,13 @@ function Controller.new(service)
 	service = service or Provider.select(App.args())
 	-- A virtual disk brings its own home folder so catalog paths match it.
 	local home = rawget(service, "home") or os.getenv("HOME") or "/Users"
-	local self = setmetatable({service = service, mock = rawget(service, "mock") == true}, Controller)
-	-- The graph builds the models pages bind to; a page's model needs what it
-	-- reads. Storage and Session are shared by all of them.
-	local classes = {}
-	for id, class in pairs(Manifest.load("apps/diskmap/app.xml").models) do
-		classes[id] = function() return require("apps.diskmap." .. class) end
+	local self = setmetatable({service = service, mock = rawget(service, "mock") == true,
+		model = Model.new(home), query = ""}, Controller)
+	if self.mock then
+		for _, row in ipairs(self.model.resources:leaves()) do row.appIcon = nil end
 	end
-	self.graph = ModelGraph.graph({classes = classes, schemas = Schema.app("apps/diskmap/schemas"),
-		services = {service = service, home = home, mock = self.mock, args = App.args()}})
-	local built = self.graph:build({"storage", "session"})
-	self.model, self.session = built.storage, built.session
+	local loadFolders = optional(service, "loadFolders")
+	self.model.projectRoots = loadFolders and loadFolders("projects") or {}
 	-- Scan ticks arrive many times a second, so they apply immediately: an
 	-- animated transaction would diff the layout of the whole page on each
 	-- one and fight the user's scrolling.
@@ -112,7 +105,6 @@ function Controller.new(service)
 		refresh = function() self:updateRows() end,
 		log = function(...) self.review:log(...) end,
 		cleanupSources = self.cleanupSources,
-		pageModel = function(id) return self:pageModel(id) end,
 		watchlist = self.watchlist,
 		mapStyle = Provider.mapStyle(App.args()),
 		volumeName = function() return self:state().volumeName end,
@@ -122,18 +114,10 @@ function Controller.new(service)
 		command = function(name) self.commandActions[name]() end,
 		links = CommandsController.links(),
 	}
-	self.graph.services.actions = self.actions
-	self.graph.services.review = self.review
 	for _, entry in ipairs(Manifest.load("apps/diskmap/app.xml").order) do
-		if entry.model then
-			-- A page of a model, a schema and a view: the framework fills it.
-			self.pages[entry.id] = PageController.new({page = entry, graph = self.graph, schemas = self.graph.schemas,
-				ns = ns, viewsDir = "apps/diskmap/views/"})
-		else
-			self.pages[entry.id] = require("apps.diskmap.controllers." .. entry.controller).new(context, entry)
-		end
+		self.pages[entry.id] = require("apps.diskmap.controllers." .. entry.controller).new(context, entry)
 	end
-	self.applications = self.pages.applications
+	self.files, self.applications = self.pages.files, self.pages.applications
 	self.simulators, self.worktrees = self.pages.simulators, self.pages.worktrees
 	self.commands = CommandsController.new(self.model, service, {
 		show = function(id) self:show(id) end,
@@ -159,15 +143,11 @@ function Controller.new(service)
 	self.commandActions = self.commands:actions()
 	return self
 end
--- The model behind a bound page, built when first asked for.
-function Controller:pageModel(id)
-	return self.graph:build({id})[id]
-end
 -- Shows a page filtered to `text`, as if typed into the toolbar search:
 -- how Help menu search results open their topic.
 function Controller:search(id, text)
-	self.session.query = text or ""
-	if self.searchField then self.searchField.stringValue = self.session.query end
+	self.query = text or ""
+	if self.searchField then self.searchField.stringValue = self.query end
 	self:show(id, true)
 end
 function Controller:focusSearch()
@@ -190,9 +170,7 @@ end
 -- Shows a page narrowed to one of its filters, as Clean Up's pointers to
 -- Large Files and Applications do.
 function Controller:showFiltered(id, filter)
-	if id == "files" then
-		local files = self:pageModel("files")
-		files:focus(nil); files.filterIndex = filter or 1
+	if id == "files" then self.files:focus(nil); self.files.filterIndex = filter or 1
 	elseif id == "applications" then self.applications:focus(filter) end
 	self:show(id, true)
 end
@@ -200,7 +178,7 @@ end
 function Controller:state()
 	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
 		fullDiskAccess = self.fullDiskAccess, diskAccess = self.diskAccess,
-		query = self.session.query, mock = self.mock, volumeName = self.mock and rawget(self.service, "label") or "Startup Disk",
+		query = self.query, mock = self.mock, volumeName = self.mock and rawget(self.service, "label") or "Startup Disk",
 		status = (rawget(self.service, "badge") and (rawget(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
 end
 function Controller:subtitle()
@@ -240,9 +218,7 @@ function Controller:updateRows()
 	-- App facts load once the scan has measured the data folders they need.
 	if self.model.files and not self.model.files.measuring then self.pages.applications:load() end
 	-- A page may re-render its template, so its refs are read after updating.
-	-- A bound page rebinds when the storage model changes; the others are told.
-	self.model:changed()
-	if self.page and not self.page.binder then self.page:update(self:state()); self.refs = self.page.refs end
+	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
 	self.navigation:setBadges(self:badges())
 	self.navigation:setWatched(self.watchlist:rows())
 	self.navigation:setWorkflows(self:presentWorkflows())
@@ -269,7 +245,6 @@ end
 -- A mark changes the title, the collector and the marked state shown on the
 -- current page.
 function Controller:basketChanged()
-	self.model:changed()
 	if self.window then self.window.subtitle = self:subtitle() end
 	if self.collector then
 		local count = self.review:count()
@@ -490,7 +465,7 @@ function Controller:createWindow()
 		if load then self.changes = History.changes(self.model, History.decode(load()), 30, 4) end
 	end
 	local actions = setmetatable({
-		search = function(value) self.session.query = value or ""; self.session:changed(); self:updateRows() end,
+		search = function(value) self.query = value or ""; self:updateRows() end,
 		reclaim = function() self:show("cleanup") end,
 	}, {__index = self.commandActions})
 	local data = self.commands:data()

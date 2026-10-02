@@ -1,5 +1,0 @@
-<Schema id="SdkList">
-	<String id="query" writable="true" />
-	<String id="status" />
-	<List id="rows" of="SdkRow" />
-</Schema>

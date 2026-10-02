@@ -39,6 +39,7 @@ for _, row in ipairs(Navigation.destinations) do
 		local refs = app.page.refs
 		t.assertEqual(refs.pageTitle.text, row.title or row.name, row.id .. " is titled as its sidebar row")
 		if listPage[row.id] then
+			t.assertEqual(app.page.template.path, "apps/diskmap/views/Page.etlua", row.id .. " is the shared list page")
 			t.expect(refs.page ~= nil and refs.pageContent ~= nil, row.id .. " is one scrolling page")
 			bridge._flushLayout()
 			-- AppKit measures from the bottom, so the top inset is what is left

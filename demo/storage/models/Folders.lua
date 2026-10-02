@@ -1,39 +1,49 @@
 -- The folder list: sample folders with measured, measuring and denied
--- sizes. It needs the settings, whose size threshold hides small folders, so
--- a changed setting makes this model stale.
+-- sizes. It needs the settings, whose size threshold hides small folders.
 local Model = require("data.model")
 
-local Folders = Model.define({ id = "folders", schema = "Folders", needs = {"settings"} })
+local Folders = Model.define({id = "folders", needs = {"settings"}})
 
 local SAMPLE = {
 	{name = "Developer", icon = "hammer.fill", bytes = 56.4e9},
 	{name = "Music", icon = "music.note", bytes = 21.1e9},
 	{name = "Documents", icon = "doc.fill", bytes = 14.0e9},
 	{name = "Downloads", icon = "arrow.down.circle.fill", bytes = 180e6},
-	{name = "Library", icon = "books.vertical.fill", bytesState = "denied"},
-	{name = "Caches", icon = "memorychip", bytesState = "calculating"},
+	{name = "Library", icon = "books.vertical.fill", denied = true},
+	{name = "Caches", icon = "memorychip", calculating = true},
 }
 
-function Folders.new(needs)
-	return setmetatable({settings = needs.settings, measured = SAMPLE, canRescan = true, scans = 0}, Folders)
+local function size(bytes)
+	if bytes >= 1e9 then return string.format("%.1f GB", bytes / 1e9) end
+	return string.format("%.0f MB", bytes / 1e6)
 end
 
--- The folders at or above the settings' threshold; states always show.
+function Folders.new(needs)
+	return setmetatable({settings = needs.settings, scans = 0}, Folders)
+end
+
+-- The folders at or above the settings' threshold; unmeasured ones always show.
 function Folders:rows()
 	local minimum, rows, largest = self.settings:minimumBytes(), {}, 0
-	for _, folder in ipairs(self.measured) do largest = math.max(largest, folder.bytes or 0) end
-	for _, folder in ipairs(self.measured) do
+	for _, folder in ipairs(SAMPLE) do largest = math.max(largest, folder.bytes or 0) end
+	for _, folder in ipairs(SAMPLE) do
 		if not folder.bytes or folder.bytes >= minimum then
-			table.insert(rows, {name = folder.name, icon = folder.icon, bytes = folder.bytes, sizeState = folder.bytesState,
-				relative = folder.bytes and largest > 0 and folder.bytes / largest or 0})
+			table.insert(rows, {
+				name = folder.name, icon = folder.icon, calculating = folder.calculating,
+				size = folder.bytes and size(folder.bytes) or folder.denied and "No access" or "Calculating…",
+				sizeIcon = folder.denied and "lock.fill" or nil, sizeColor = folder.denied and "systemOrange" or nil,
+				relative = folder.bytes and folder.bytes / largest or nil,
+			})
 		end
 	end
 	return rows
 end
 
-function Folders:summary()
-	local count = #self:rows()
-	return string.format("%d folder%s", count, count == 1 and "" or "s") .. (self.scans > 0 and ", scanned " .. self.scans .. "×" or "")
+-- What views/Folders.etlua reads.
+function Folders:data()
+	local rows = self:rows()
+	return {lists = {folders = rows}, summary = string.format("%d folder%s", #rows, #rows == 1 and "" or "s")
+		.. (self.scans > 0 and ", scanned " .. self.scans .. "×" or "")}
 end
 
 function Folders:rescan()

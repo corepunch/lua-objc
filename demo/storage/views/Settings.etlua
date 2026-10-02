@@ -1,10 +1,10 @@
 <VStack spacing="@pageSpacing" padding="@pagePadding" alignment="leading" maxWidth="infinity">
-	<Toggle label="Keep cleanup history" isOn="$history" />
-	<TextField placeholder="Device name" text="$deviceName" width="@meterWidth" />
-	<Picker selection="$threshold">
+	<Toggle label="Keep cleanup history" value="<%= history %>" onChange="setHistory" />
+	<TextField placeholder="Device name" value="<%= deviceName %>" width="@meterWidth" onChange="setDeviceName" />
+	<Picker value="<%= threshold %>" onChange="setThreshold">
 		<Option title="Show every folder" />
 		<Option title="At least 100 MB" />
 		<Option title="At least 1 GB" />
 	</Picker>
-	<Label text="$note" color="secondary" />
+	<Label text="<%= note %>" color="secondary" />
 </VStack>

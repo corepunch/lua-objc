@@ -18,7 +18,6 @@
 local ns = require("ns")
 local xml = require("ui.xml")
 local Resources = require("ui.resources")
-local Schema = require("data.schema")
 local Model = require("data.model")
 local Manifest = require("data.manifest")
 local PageController = require("data.pagecontroller")
@@ -66,20 +65,18 @@ function Launcher.create(path, options)
 		error("--page=" .. startup .. ": the manifest of " .. self.manifest.name .. " has no such page", 0)
 	end
 	self.startup = startup
-	self.schemas = Schema.app(self.dir .. "/schemas")
 	local classes = {}
 	for id, class in pairs(self.manifest.models) do
 		classes[id] = function() return require(self.module .. "." .. class) end
 	end
-	self.graph = Model.graph({ classes = classes, services = options.services or {}, schemas = self.schemas })
+	self.graph = Model.graph({ classes = classes, services = options.services or {} })
 	local resources = xml.source(self.dir .. "/resources.xml")
 	self.resources = resources and Resources.fromNodes(xml.parse(resources)) or nil
-	self.now = options.now
 	return self
 end
 
 function Launcher:context(page)
-	return { page = page, graph = self.graph, schemas = self.schemas, ns = ns, now = self.now,
+	return { page = page, graph = self.graph, ns = ns,
 		viewsDir = self.dir .. "/views/", resources = self.resources, app = self }
 end
 

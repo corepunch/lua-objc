@@ -1,69 +1,78 @@
--- The generic page controller. A page with a view, a model and a schema
--- needs no controller class: this one owns mount, dispose, staleness and
--- command dispatch. Behaviour that needs more is a class of the app, the
--- WPF code-behind: `controller="SheetController"` in the manifest names a
--- class whose `new(context)` receives this generic controller as
--- `context.generic` and mounts it (`context.generic:mount(host)`) beside
--- whatever it coordinates.
+-- The generic page controller: a page is a request. Showing it asks the
+-- page's model for `data(state)` and renders the page's view with it; an
+-- action in the view is a method of the model, run and followed by the same
+-- request again, like a form post and the page it shows next. Nothing is
+-- bound and nothing notifies: the view is plain etlua over plain data, drawn
+-- by a retained template (`ui/template.lua`), which reconciles to the new
+-- description and costs nothing when the data did not change.
 --
--- A model may define `activate()` (called after the page mounts) and
--- `deactivate()` (called when it is disposed).
+--   models/FilesPage.lua    data(state) -> the table the view reads, and the
+--                           methods the view's actions name
+--   views/Files.etlua       <%= summary %>, loops, partials, action="markFiles"
 --
+-- Template data is `data` plus `page` (the app.xml entry) and `actions`.
+-- Rows go to native tables, which reuse their cells: `data.lists = {id = rows}`
+-- is set on the `<List id>` of that name, not copied into the template. A
+-- model method that only reads (a row's menu, a reveal) lists itself in
+-- `queries = {name = true}` and the page is not drawn again after it. A
+-- model with work to start when its page appears (a service to ask) defines
+-- `activate()`, and `deactivate()` for work to cancel when it goes; work that
+-- finishes later says so by calling the app's `services.refresh()`.
+--
+-- Behaviour that needs more than an action is a class of the app, the WPF
+-- code-behind: `controller="SheetController"` in the manifest names a class
+-- whose `new(context)` receives this generic controller as `context.generic`.
 -- Rule against option creep: if a page needs a function to express
--- behaviour, write a controller. This one does not grow a configuration
--- language.
-local xml = require("ui.xml")
-local Binder = require("data.binder")
+-- behaviour, write a controller.
+local Template = require("ui.template")
 
 local PageController = {}
 PageController.__index = PageController
 
--- context: { page, graph, schemas, ns, viewsDir, resources }
+-- context: { page, graph, ns, viewsDir, resources }
 function PageController.new(context)
 	return setmetatable({ context = context, page = context.page }, PageController)
 end
 
-function PageController:mount(host)
+function PageController:mount(host, state)
 	local context = self.context
-	local graph = context.graph
-	local models = graph:build({ self.page.model })
-	self.model = models[self.page.model]
-	local class = graph:class(self.page.model)
-	if not class.schema then error("model " .. class.id .. " has no schema; a bound page needs one", 0) end
-	local schema = context.schemas(class.schema)
-	self.binder = Binder.new({
-		schema = schema, model = self.model, now = context.now,
-		changed = function() graph:post(self.page.model) end,
-	})
-	-- The graph rebinds this page when its model goes stale; the binder does
-	-- not also update itself.
-	self.binder.propagates = true
-	local path = context.viewsDir .. self.page.view .. ".etlua"
-	local root, refs = xml.renderFile(path, { binder = self.binder, resources = context.resources,
-		page = self.page, model = self.model }, context.ns)
-	self.root, self.refs, self.host = root, refs, host
-	context.ns._insertSubview(host, root, 1)
-	self.unsubscribe = graph:subscribe(self.page.model, function() self.binder:update() end)
-	self.binder:update()
-	-- Lifecycle: a model that loads data when its page opens starts there
-	-- and stops when the page goes (stale results compare a generation).
+	self.model = context.graph:build({ self.page.model })[self.page.model]
+	self.template = Template.new(host, context.viewsDir .. self.page.view .. ".etlua", context.ns)
+	self.actions = setmetatable({}, { __index = function(_, name)
+		local method = self.model[name]
+		if type(method) ~= "function" then return nil end
+		return function(...)
+			local results = table.pack(method(self.model, ...))
+			local queries = self.model.queries
+			if not (queries and queries[name]) then self:update(self.state) end
+			return table.unpack(results, 1, results.n)
+		end
+	end })
+	self:update(state)
 	if self.model.activate then self.model:activate() end
-	return refs
+	return self.refs
 end
 
--- Rebinds every view; call after changing the model outside a command.
-function PageController:update()
-	if self.binder then self.binder:update() end
+-- Asks the model again and draws the answer.
+function PageController:update(state)
+	if not self.template then return end
+	self.state = state
+	local data = self.model:data(state or {})
+	-- The page entry without its section, which points back at the page.
+	local page = self.page
+	data.page = { id = page.id, title = page.title, icon = page.icon, color = page.color, key = page.key, attrs = page.attrs }
+	data.actions, data.resources = self.actions, self.context.resources
+	local lists = data.lists
+	data.lists = nil
+	local _, refs = self.template:update(data)
+	self.refs = refs
+	for id, rows in pairs(lists or {}) do refs[id]:replaceRows(rows) end
 end
 
 function PageController:dispose()
-	if self.model and self.root and self.model.deactivate then self.model:deactivate() end
-	if self.unsubscribe then self.unsubscribe(); self.unsubscribe = nil end
-	if self.root then
-		pcall(function() self.root:removeFromSuperview() end)
-		self.root = nil
-	end
-	self.binder, self.refs = nil, nil
+	if self.model and self.model.deactivate then self.model:deactivate() end
+	if self.template then self.template:dispose() end
+	self.template, self.refs, self.model = nil, nil, nil
 end
 
 return PageController

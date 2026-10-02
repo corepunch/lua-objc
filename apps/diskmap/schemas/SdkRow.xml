@@ -1,5 +1,0 @@
-<Schema id="SdkRow">
-	<String id="name" />
-	<String id="platform" />
-	<Bytes id="size" source="bytes" missing="Not measured" />
-</Schema>

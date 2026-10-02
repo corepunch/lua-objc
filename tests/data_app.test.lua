@@ -59,28 +59,24 @@ t.expect(actions.page_settings and actions.isPage_folders, "the Go menu has an a
 t.assertEqual(select(2, actions.isPage_folders()), true, "the current page is checked")
 t.expect(app.graph:get("folders") ~= nil and app.graph:get("settings") ~= nil, "the folders page builds settings, which it needs")
 
--- The folders page binds without a controller.
-local function find(root, id)
-	if root.accessibilityIdentifier == id then return root end
-	for _, child in ipairs(root.subviews or {}) do
-		local found = find(child, id)
-		if found then return found end
-	end
-end
+-- The folders page is a view over its model's data, with no controller.
 t.assertEqual(#app.graph:get("folders"):rows(), 6, "the model has six folders")
 t.assertEqual(app.refs.folders ~= nil, true, "the list is a ref")
 bridge._appkitLayout(window)
+t.assertEqual(app.refs.folders.rowCount, 6, "the page shows every folder")
 
--- A changed setting makes the folders stale and the page rebinds.
+-- An action is a model method followed by the same request again.
 local folders, settings = app.graph:get("folders"), app.graph:get("settings")
 settings.threshold = 2
-app.graph:changed("settings")
-t.assertEqual(#folders:rows(), 5, "a larger threshold hides small folders (states stay)")
+app.page:update()
+t.assertEqual(app.refs.folders.rowCount, 5, "a larger threshold hides small folders (unmeasured ones stay)")
+app.page.actions.rescan()
+t.assertEqual(folders.scans, 1, "an action runs the model's method")
 
 -- Switching pages disposes the old one and builds the new one.
 app:show("settings")
 t.assertEqual(app.current, "settings", "show switches pages")
-t.assertEqual(app.page.binder.model, settings, "the settings page binds the settings model")
+t.assertEqual(app.page.model, settings, "the settings page shows the settings model")
 t.assertEqual(app.sidebar.documentView.selectedRow, 2, "the sidebar follows")
 app:show("folders")
 t.assertEqual(app.current, "folders", "and back")

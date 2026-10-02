@@ -80,8 +80,8 @@ t.expect(#results >= 1 and results[1] == "Find data left by deleted apps", "help
 t.expect(#bridge._searchHelp("preboot") >= 1, "help search includes Storage Guide topics")
 bridge._searchHelp("leftovers", 1)
 t.assertEqual(app.destination, "help", "a help result opens Diskmap Help")
-t.assertEqual(app.session.query, "Find data left by deleted apps", "the result filters help to its topic")
-t.assertEqual(app.searchField.stringValue, app.session.query, "the toolbar search shows the filter")
+t.assertEqual(app.query, "Find data left by deleted apps", "the result filters help to its topic")
+t.assertEqual(app.searchField.stringValue, app.query, "the toolbar search shows the filter")
 t.expect(app.refs.help_leftovers ~= nil and app.refs.help_trash == nil, "only the chosen topic remains")
 
 -- The shortcut topic is generated from the installed menu bar.

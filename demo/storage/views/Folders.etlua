@@ -1,18 +1,18 @@
 <VStack spacing="@pageSpacing" padding="@pagePadding" alignment="leading" maxWidth="infinity" maxHeight="infinity">
 	<HStack alignment="center" spacing="@pageSpacing">
-		<Label text="$summary" color="secondary" />
+		<Label text="<%= summary %>" color="secondary" />
 		<Spacer />
-		<Button title="Scan Again" action="$rescan" />
+		<Button title="Scan Again" action="rescan" />
 	</HStack>
-	<List id="folders" items="$rows" style="fullWidth" header="false" rowHeight="@rowHeight" maxWidth="infinity" height="@listHeight">
+	<List id="folders" style="fullWidth" header="false" rowHeight="@rowHeight" maxWidth="infinity" height="@listHeight">
 		<Column id="name" title="Name" minWidth="120" imageKey="icon" />
 		<Column id="size" title="Size" width="@meterWidth">
 			<VStack spacing="@meterGap" alignment="leading">
 				<HStack alignment="center" spacing="@meterGap">
-					<ProgressView controlSize="small" visible="$size.calculating" />
-					<Label text="$size" color="$size.color" truncation="tail" />
+					<ProgressView controlSize="small" visible="$calculating" />
+					<Label text="$size" color="$sizeColor" truncation="tail" />
 				</HStack>
-				<Gauge value="$share.value" maxWidth="infinity" />
+				<Gauge value="$relative" maxWidth="infinity" />
 			</VStack>
 		</Column>
 	</List>

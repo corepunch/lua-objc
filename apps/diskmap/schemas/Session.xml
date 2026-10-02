@@ -1,3 +1,0 @@
-<Schema id="Session">
-	<String id="query" writable="true" />
-</Schema>
