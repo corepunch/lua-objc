@@ -24,7 +24,7 @@ local STYLES = {"rings", "rectangles"}
 Folder.queries = {chartHover = true, selectRow = true, rowMenu = true, dragPath = true}
 
 function Folder:init()
-	self.service, self.actions = self.app.service, self:flow("Rows")
+	self.service, self.rowActions = self.app.service, self:flow("Rows")
 	self.style, self.coloring, self.generation = STYLES[1], FolderTree.colorings[1].id, 0
 end
 
@@ -168,7 +168,7 @@ function Folder:drillRow(_, _, row) if row and not row.other then self:drill(row
 function Folder:rowMenu(_, _, row)
 	if not row or row.other then return {} end
 	local app = self.app
-	return self.actions:item(self.rowsByPath[row.id] or row, {
+	return self.rowActions:item(self.rowsByPath[row.id] or row, {
 		open = function(item) self:setFocus(item.path); app.refresh() end,
 		changed = function(path) self:changed(path); app.refresh() end,
 		siblings = self:siblings(),
@@ -210,7 +210,7 @@ end
 function Folder:quickLook(path)
 	path = path or self.selected
 	if not path or not (self.tree and self.tree:find(path)) then return false end
-	return self.actions:quickLook(path, self:siblings())
+	return self.rowActions:quickLook(path, self:siblings())
 end
 
 function Folder:canQuickLook()

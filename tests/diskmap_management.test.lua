@@ -10,7 +10,7 @@ local Cleanup = require("apps.diskmap.helpers.Cleanup")
 local Inventory = require("apps.diskmap.helpers.Inventory")
 local AgentFiles = require("apps.diskmap.helpers.AgentFiles")
 local Simulators = require("apps.diskmap.models.Simulators")
-local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local SheetController = require("apps.diskmap.controllers.SheetController")
 local Sheets = require("apps.diskmap.pages.Sheets")
 local Host = require("tests.diskmap_page")
 local model = Store.new("/Users/test")
@@ -96,7 +96,7 @@ model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
 local categoryRefreshes = 0
 local function management(open)
-	return SheetRoute.page(Sheets.management, "management", {model = model, service = service, scanning = function() return false end,
+	return SheetController.page(Sheets.management, "management", {model = model, service = service, scanning = function() return false end,
 		rescan = function() categoryRefreshes = categoryRefreshes + 1 end,
 		keep = function(id) model.kept[id] = not model.kept[id] end, open = open or function() end})
 end

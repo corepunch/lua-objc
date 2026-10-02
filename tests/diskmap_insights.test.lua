@@ -177,22 +177,22 @@ local titles = function(items)
 	for _, item in ipairs(items) do if item.title then result[item.title] = item end end
 	return result
 end
-local derivedMenu = titles(app.actions:resource("derived"))
+local derivedMenu = titles(app.rowActions:resource("derived"))
 t.expect(derivedMenu["Review Move to Trash…"] and derivedMenu["Show in Finder"] and derivedMenu.Keep and derivedMenu["Copy Path"], "resource menus offer review, Finder, Keep and Copy")
 local dmg
 for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
-local fileMenu = app.actions:file(dmg)
+local fileMenu = app.rowActions:file(dmg)
 t.assertEqual(fileMenu[1].title, "Move to Trash…", "own documents can be moved to the Trash from their menu")
 local backup
 for _, row in ipairs(Files:rows("All")) do if row.name == "Manifest.db" then backup = row end end
-local backupMenu = app.actions:file(backup)
+local backupMenu = app.rowActions:file(backup)
 t.expect(backupMenu[1].disabled and backupMenu[1].title:find("belong to apps", 1, true), "a refused trash explains itself in the menu")
 
 -- Trashing a file from its menu moves it and remeasures.
 local originalConfirm = app.service.confirmTrashPath
 app.service.confirmTrashPath = function() return true end
 local before = model.measurements.downloads.bytes
-app.actions:trashFile(dmg)
+app.rowActions:trashFile(dmg)
 t.expect(model.measurements.downloads.bytes < before, "moving a file to the Trash remeasures its location")
 t.expect(model.measurements["user-trash"].bytes and model.measurements["user-trash"].bytes >= dmg.bytes, "the moved file is counted in the Trash")
 app.service.confirmTrashPath = originalConfirm

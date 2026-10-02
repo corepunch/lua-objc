@@ -99,14 +99,14 @@ local function perform(items, title)
 	end
 	return false
 end
-t.expect(perform(app.actions:resource("xcode"), "Watch"), "a category's menu offers Watch")
+t.expect(perform(app.rowActions:resource("xcode"), "Watch"), "a category's menu offers Watch")
 t.assertEqual(sidebar.rowCount, plainRows + 2, "the Watched section and its row lead the sidebar")
 t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Watched", "the section is a native group header")
 t.assertEqual(bridge._tableCell(sidebar, 0, 1).textField.stringValue, "Xcode", "the watched category is listed by name")
 t.expect(bridge._tableCell(sidebar, 0, 1).badgeField.stringValue:find("B$") ~= nil, "its badge is its measured size")
 t.assertEqual(app.destination, "overview", "watching does not navigate away")
 t.assertEqual(sidebar.documentView.selectedRow, app.navigation:index("overview"), "the selection follows the overview down")
-local menu = app.actions:resource("xcode")
+local menu = app.rowActions:resource("xcode")
 t.assertEqual(menu[#menu].title, "Stop Watching", "a watched resource offers Stop Watching after Keep")
 t.assertEqual(#service.watchlist, 1, "the watch is saved at once")
 t.expect(service.watchlist[1].bytes ~= nil, "the saved entry carries its size")
@@ -120,8 +120,8 @@ t.expect(refs.openCategory ~= nil and refs.unwatch ~= nil, "the page opens the c
 
 -- A plain folder: measured on demand, one level down.
 local home = service.home
-t.expect(perform(app.actions:folder({path = home .. "/Library/Developer", name = "Developer"}), "Watch"), "a folder's menu offers Watch")
-t.expect(not perform(app.actions:folder({path = home .. "/notes.txt", name = "notes.txt", directory = false}), "Watch"), "files are not watched")
+t.expect(perform(app.rowActions:folder({path = home .. "/Library/Developer", name = "Developer"}), "Watch"), "a folder's menu offers Watch")
+t.expect(not perform(app.rowActions:folder({path = home .. "/notes.txt", name = "notes.txt", directory = false}), "Watch"), "files are not watched")
 app:show("watched:folder:" .. home .. "/Library/Developer")
 refs = app.page.refs
 t.expect(refs.contents.rowCount >= 1, "a watched folder lists its immediate children")

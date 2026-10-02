@@ -30,7 +30,7 @@ local DEFAULT_HOVER = "Hover over the map for details; click a group to look ins
 function map:init()
 	local style = self.app.mapStyle
 	if style ~= "rectangles" then style = "rings" end
-	self.actions, self.focus, self.style = self:flow("Rows"), "", style
+	self.rowActions, self.focus, self.style = self:flow("Rows"), "", style
 end
 
 -- Pointing, row menus and drags only read; looking inside draws again.
@@ -97,7 +97,7 @@ end
 
 function map:drillRow(_, _, row) if row then self:drill(row.id) end end
 
-function map:rowMenu(_, _, row) return self.actions:resource(row.id) end
+function map:rowMenu(_, _, row) return self.rowActions:resource(row.id) end
 
 -- A mark drags as its folder or file, like a Finder item.
 function map:dragPath(id)
@@ -133,9 +133,9 @@ function map:data(state)
 	end
 	local worth = scanning and {} or MapTree.worthALook(self.focus, 3)
 	for _, item in ipairs(worth) do
-		item.markable = self.actions:markableResource(Locations:find(item.id))
-		item.marked = self.actions:isMarked(item.path)
-		local parent, exact = self.actions:covering(item.path)
+		item.markable = self.rowActions:markableResource(Locations:find(item.id))
+		item.marked = self.rowActions:isMarked(item.path)
+		local parent, exact = self.rowActions:covering(item.path)
 		item.included = parent ~= nil and not exact
 		item.enclosingPath = item.included and parent.path or nil
 	end

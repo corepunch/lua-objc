@@ -10,7 +10,7 @@ local Scan = require("apps.diskmap.services.Scan")
 local Keep = require("apps.diskmap.flows.Keep")
 local Manage = require("apps.diskmap.flows.Manage")
 local Recommendations = require("apps.diskmap.helpers.Recommendations")
-local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local SheetController = require("apps.diskmap.controllers.SheetController")
 local Sheets = require("apps.diskmap.pages.Sheets")
 local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local model = Store.new("/Users/test")
@@ -99,7 +99,7 @@ t.assertEqual(ownerCalls.home, model.home, "owner command uses the active accoun
 t.assertEqual(refreshed, 2, "owner cleanup triggers a fresh measurement")
 model.kept.xcode = true
 t.expect(not inspector:manage("derived"), "kept ancestor prevents mutation")
-local settings = SheetRoute.page(Sheets.settings, "settings", {service = {loadSettings = function() return true end, saveSettings = function() return false end}, model = {}})
+local settings = SheetController.page(Sheets.settings, "settings", {service = {loadSettings = function() return true end, saveSettings = function() return false end}, model = {}})
 t.expect(not settings:toggle() and settings.enabled, "failed setting save preserves previous state")
 local pending, cancelled = {}, 0
 local scanner = Scan.new(Store.new("/Users/test"), {

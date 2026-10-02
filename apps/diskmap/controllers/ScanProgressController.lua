@@ -1,6 +1,6 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
-local Sheet = require("apps.diskmap.Sheet")
+local SheetController = require("apps.diskmap.controllers.SheetController")
 local Controller = {}; Controller.__index = Controller
 
 local VIEW = "apps/diskmap/views/sheets/ScanProgress.etlua"
@@ -9,7 +9,7 @@ local VIEW = "apps/diskmap/views/sheets/ScanProgress.etlua"
 -- the location being measured, and Stop. The window is rendered once; each
 -- scan tick sets the bar's value and the status text on the views it keeps,
 -- and nothing is rendered again. Pages say nothing about the scan; they are
--- drawn when it finishes. `scan` is the app's models/Scan.
+-- drawn when it finishes. `scan` is the app's services/Scan.
 function Controller.new(scan)
 	return setmetatable({scan = scan}, Controller)
 end
@@ -18,7 +18,7 @@ end
 function Controller:show(parent)
 	if not self.sheet then
 		local actions = {stop = function() self.scan:cancel() end}
-		self.sheet, self.refs = Sheet.present(function() return xml.renderFile(VIEW, {actions = actions}, ns) end, parent)
+		self.sheet, self.refs = SheetController.presentSheet(function() return xml.renderFile(VIEW, {actions = actions}, ns) end, parent)
 	end
 	self:update()
 end

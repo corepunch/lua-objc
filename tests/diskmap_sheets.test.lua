@@ -5,7 +5,7 @@ local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
-local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local SheetController = require("apps.diskmap.controllers.SheetController")
 local Sheets = require("apps.diskmap.pages.Sheets")
 
 -- A sheet is a request: its model answers data() and has an action per button,
@@ -19,7 +19,7 @@ local service = {loadSettings = function() return true end, saveSettings = funct
 	showError = function(title) table.insert(errors, title) end,
 	loadFlag = function(name) return flags[name] end, saveFlag = function(name, value) flags[name] = value end}
 local notifications = {available = function() return false end, enabled = function() return false end}
-local settings = SheetRoute.page(Sheets.settings, "settings", {service = service, model = Store.new("/Users/test"), notifications = notifications,
+local settings = SheetController.page(Sheets.settings, "settings", {service = service, model = Store.new("/Users/test"), notifications = notifications,
 	rescan = function() end})
 settings:open(parent)
 t.expect(settings.sheet ~= nil and settings.refs.monitor.state == 1, "Settings opens with the monitor switch on")
@@ -36,7 +36,7 @@ settings:close()
 
 -- History: the log is read each time the sheet draws.
 local lines = {}
-local history = SheetRoute.page(Sheets.history, "history", {service = {operationLog = function() return lines end}})
+local history = SheetController.page(Sheets.history, "history", {service = {operationLog = function() return lines end}})
 history:open(parent)
 t.assertEqual(history.refs.entries.rowCount, 0, "an empty log lists nothing")
 t.expect(history.refs.detail.text:find("not changed anything", 1, true) ~= nil, "and says so")
@@ -49,7 +49,7 @@ history:close()
 local pending
 local sdkService = {bundles = function() return {{path = "/x/A.sdk", name = "A.sdk"}, {path = "/x/B.sdk", name = "B.sdk", bytes = 5}} end,
 	measure = function(_, done) pending = done end}
-local sdks = SheetRoute.page(Sheets.sdks, "sdks", {service = sdkService})
+local sdks = SheetController.page(Sheets.sdks, "sdks", {service = sdkService})
 sdks:open(parent, {path = "/x", name = "Xcode"})
 t.assertEqual(sdks.refs.rows.rowCount, 0, "no half-measured rows while sizes are read")
 t.assertEqual(sdks.refs.status.text, "Measuring SDKs…", "the status says what is happening")
@@ -58,12 +58,12 @@ t.assertEqual(sdks.refs.rows.rowCount, 2, "the list appears once measured")
 t.assertEqual(sdks.refs.title.text, "Xcode", "the sheet is titled with the installation")
 sdks:close()
 pending({2e9})
-t.expect(sdks.body == nil, "an answer after closing is dropped")
+t.expect(sdks.sheet == nil, "an answer after closing is dropped")
 
 -- Management: no lists while the scan measures.
 local scanning = true
 local model = Store.new("/Users/test")
-local manager = SheetRoute.page(Sheets.management, "management", {model = model, service = {}, scanning = function() return scanning end,
+local manager = SheetController.page(Sheets.management, "management", {model = model, service = {}, scanning = function() return scanning end,
 	rescan = function() end, keep = function() end, open = function() end})
 manager:open(parent, "developer")
 t.assertEqual(manager.refs.rows1.rowCount, 0, "a category lists nothing while it is measured")
@@ -74,7 +74,7 @@ t.expect(manager.refs.rows1.rowCount > 0, "its locations appear once the scan is
 manager:close()
 
 -- Snapshot changes: rows and a title from the comparison.
-local changes = SheetRoute.page(Sheets.snapshotChanges, "snapshotChanges", {actions = {resource = function() return {} end}})
+local changes = SheetController.page(Sheets.snapshotChanges, "snapshotChanges", {actions = {resource = function() return {} end}})
 changes:open(parent, {title = "Since Sep 1", detail = "1 location changed", rows = {{id = "derived", name = "DerivedData", before = "1 GB", size = "2 GB", detail = 0.5, text = "+1 GB"}}})
 t.assertEqual(changes.refs.changes.rowCount, 1, "every change is listed")
 t.assertEqual(changes.refs.title.text, "Since Sep 1", "under the comparison's title")

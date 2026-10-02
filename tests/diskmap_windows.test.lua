@@ -35,4 +35,30 @@ t.expect(Locations:find("only-first") == nil, "the second store does not have th
 Model.bind(first.model)
 t.expect(Locations:find("only-first") ~= nil, "the first store does")
 
+-- The window is entered through its controller too (a drop, the toolbar,
+-- the menu bar): each entry reads its own window's store, whichever store
+-- the last callback left bound.
+Model.bind(second.model)
+first:keep("derived")
+t.expect(first.model.kept.derived == true and second.model.kept.derived == nil, "Keep changes the store of the window it was chosen in")
+t.expect(Model.db == first.model, "a controller method binds its window's store")
+
+Model.bind(second.model)
+local derived = Locations:find("derived")
+Model.bind(first.model)
+first.model.kept.derived = nil
+Model.bind(second.model)
+first:dropToMark({derived.path})
+t.expect(first.review:count() == 1, "a drop marks in the window it landed on")
+Model.bind(second.model)
+t.expect(second.review:count() == 0, "and not in the other window")
+
+Model.bind(second.model)
+first.commandActions.canEmptyTrash()
+t.expect(Model.db == first.model, "a menu command binds its window's store")
+
+Model.bind(second.model)
+first.page:dispose()
+t.expect(Model.db == first.model, "a page that goes binds its window's store")
+
 os.exit(t.summary() and 0 or 1)
