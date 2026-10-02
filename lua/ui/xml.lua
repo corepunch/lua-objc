@@ -519,7 +519,29 @@ local TAG_BINDINGS = {
         badgeColor = { "badgeColorName", "string" }, appIcon = { "appBundleId", "string" } },
     Gauge = { value = { "doubleValue", "number" }, tint = { "fillColor", "color" } },
     ProgressView = { value = { "doubleValue", "number" } },
+    -- A list shows its own native spinner while the data it waits for loads.
+    List = { loading = { "loading", "bool", apply = function(view, on)
+        if on then view:showLoading() else view:hideLoading() end
+    end } },
+    Window = { title = { "title", "string" }, subtitle = { "subtitle", "string" } },
 }
+
+-- Attributes that name an event handler. In a page, `$command` binds the
+-- handler to a schema command: `model:command(...)` runs when it fires, with
+-- a list row's arguments replaced by the row's model. `validate` on a menu
+-- item asks the command's `enabled` field instead. A literal names a
+-- controller action as before.
+local EVENTS = {
+    List = { onSelect = true, onActivate = true, onSort = true, rowMenu = true, onColumnButton = true,
+        swipeLeading = true, swipeTrailing = true },
+    MenuItem = { action = true, validate = true },
+    ToolbarItem = { action = true },
+    TextField = { onCommand = true, onFocus = true },
+    SearchField = { onCommand = true },
+}
+local function isEvent(tag, key)
+    return key == "action" or (EVENTS[tag] or {})[key] == true
+end
 
 -- The bindings of the cell being compiled; nil outside a cell template.
 local cellBindings
@@ -612,8 +634,12 @@ local function bindingEntry(node, key, path, scope, page)
     if not spec then
         error("xml: <" .. node.tag .. "> cannot bind " .. key .. " to a field")
     end
+    if spec.apply and not page then
+        error("xml: " .. describe(node, key) .. " binds the page, not a row", 0)
+    end
     local full = scoped(scope, path, spec[2], node, key)
-    return { key = spec[1], kind = spec[2], path = full, negate = spec.inverted == true, outer = spec.outer }
+    return { key = spec[1], kind = spec[2], path = full, negate = spec.inverted == true, outer = spec.outer,
+        apply = spec.apply }
 end
 
 -- Splits a template node's attributes into the static ones its constructor
@@ -627,7 +653,7 @@ local function splitBindings(node, scope, page)
             if path then
                 if page and key == "context" then
                     -- Narrows the data context; compile reads it.
-                elseif page and key == "action" then
+                elseif page and isEvent(node.tag, key) then
                     local full, field = scoped(scope, path, "command", node, key)
                     if field.type ~= "Command" then
                         error("xml: " .. describe(node, key) .. " binds $" .. table.concat(path, ".") ..
@@ -635,7 +661,7 @@ local function splitBindings(node, scope, page)
                     end
                     local prefix = {}
                     for index = 1, #full - 1 do table.insert(prefix, full[index]) end
-                    table.insert(bound, { command = field.id, prefix = prefix, path = full })
+                    table.insert(bound, { command = field.id, prefix = prefix, path = full, event = key })
                 else
                     local entry = bindingEntry(node, key, path, scope, page)
                     if not page and (entry.write or entry.rows) then
@@ -644,11 +670,11 @@ local function splitBindings(node, scope, page)
                     table.insert(bound, entry)
                 end
             else
-                if page and key == "action" and scope and scope.schema then
+                if page and isEvent(node.tag, key) and scope and scope.schema then
                     local field = scope.schema.byId[literal]
                     if field and field.type == "Command" then
                         error("xml: " .. describe(node, key) .. "=\"" .. literal ..
-                            "\" is a literal; bind the command with action=\"$" .. literal .. "\"", 0)
+                            "\" is a literal; bind the command with " .. key .. "=\"$" .. literal .. "\"", 0)
                     end
                 end
                 attrs[key] = literal
@@ -741,17 +767,30 @@ compile = function(nodes, ns, registry, refs)
 			end
 			local overlay
 			if page then
+				-- Rows of a list this node binds, for the events it fires.
+				local rowsPath
+				for _, binding in ipairs(bound) do if binding.rows then rowsPath = binding.path end end
 				for _, binding in ipairs(bound) do
 					if binding.command then
 						overlay = overlay or {}
-						local name = "$command:" .. binding.command
-						overlay[name] = function() binder:invoke(binding.prefix, binding.command) end
-						attrs.action = name
-						table.insert(bound, { key = "enabled", kind = "bool", path = (function()
+						local name = "$command:" .. binding.event .. ":" .. binding.command
+						if binding.event == "validate" then
+							local enabled = { table.unpack(binding.prefix) }
+							table.insert(enabled, binding.command .. ".enabled")
+							overlay[name] = function()
+								return require("data.schema").lookup(binder.record or {}, enabled) ~= false, false
+							end
+						else
+							overlay[name] = function(...)
+								return binder:invoke(binding.prefix, binding.command, rowsPath, ...)
+							end
+						end
+						attrs[binding.event] = name
+						if binding.event == "action" and node.tag ~= "MenuItem" and node.tag ~= "ToolbarItem" then
 							local path = { table.unpack(binding.prefix) }
 							table.insert(path, binding.command .. ".enabled")
-							return path
-						end)() })
+							table.insert(bound, { key = "enabled", kind = "bool", path = path })
+						end
 					elseif binding.write then
 						overlay = overlay or {}
 						local name = "$write:" .. binding.write.id
@@ -834,14 +873,21 @@ compile = function(nodes, ns, registry, refs)
 				end
 			end
 			if bound and #bound > 0 then
-				if type(view) ~= "userdata" then
-					error("xml: <" .. node.tag .. "> cannot bind fields; it renders no view")
-				end
+				local isWindow = type(view) == "table" and view.__isWindowConfig
 				for _, binding in ipairs(bound) do
-					if not binding.command and not (page and binding.write and false) then
-						binding.view = binding.outer and view or paddedLeaves[view] or view
-						binding.outer = nil
-						if page then binder:add(binding) else table.insert(cellBindings, binding) end
+					if not binding.command then
+						if isWindow then
+							-- The window exists once ns.Window(config) runs; its
+							-- owner adds these then (Binder:addWindow).
+							view.bindings = view.bindings or {}
+							table.insert(view.bindings, binding)
+						elseif type(view) ~= "userdata" then
+							error("xml: <" .. node.tag .. "> cannot bind fields; it renders no view")
+						else
+							binding.view = binding.outer and view or paddedLeaves[view] or view
+							binding.outer = nil
+							if page then binder:add(binding) else table.insert(cellBindings, binding) end
+						end
 					end
 				end
 			end

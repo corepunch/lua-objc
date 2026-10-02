@@ -30,7 +30,7 @@ function PageController:mount(host)
 	local schema = context.schemas(class.schema)
 	self.binder = Binder.new({
 		schema = schema, model = self.model, now = context.now,
-		changed = function() graph:changed(self.page.model) end,
+		changed = function() graph:post(self.page.model) end,
 	})
 	-- The graph rebinds this page when its model goes stale; the binder does
 	-- not also update itself.
