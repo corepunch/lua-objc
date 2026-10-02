@@ -140,6 +140,11 @@ static void layout_recursive(UIView *view, CGFloat width);
 	objc_setAssociatedObject(self, &kFixedSizeKey, value.length ? value : nil, OBJC_ASSOCIATION_COPY);
 }
 - (void)setFillHeight:(BOOL)value { objc_setAssociatedObject(self, &kFillHeightKey, @(value), OBJC_ASSOCIATION_RETAIN); }
+/* A ZStack's content in units, like `LuaArcView.fitDiameter`: the stack's
+ * shorter side spans this many units, and each child that does not fill the
+ * stack has its `maxWidth` and its labels' sizes in those units. */
+- (CGFloat)fitDiameter { return [objc_getAssociatedObject(self, &kFitDiameterKey) doubleValue]; }
+- (void)setFitDiameter:(CGFloat)value { objc_setAssociatedObject(self, &kFitDiameterKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)cornerRadius { return [objc_getAssociatedObject(self, &kCornerRadiusKey) doubleValue]; }
 - (void)setCornerRadius:(CGFloat)value {
 	CGFloat radius = MAX(0, value);

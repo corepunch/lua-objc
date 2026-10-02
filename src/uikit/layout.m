@@ -222,6 +222,40 @@ static CGSize layout_flow_children(UIView *view, CGFloat width, BOOL place) {
 
 /* Measurement accepts a proposal; it never inherits the previous frame.
  * The same negotiation is used during placement so wrapped text has one size. */
+static BOOL fills_axis(UIView *view, BOOL horizontal);
+
+/* A ZStack with `fitDiameter` lays the children that do not fill it out in
+ * units, as its arcs draw: the stack's shorter side spans that many units. */
+static BOOL fills_stack(UIView *view) {
+	return fills_axis(view, YES) || fills_axis(view, NO);
+}
+
+/* A label in units draws its declared size times the scale. The pair kept
+ * with the label is its declared font and the scaled one last applied, so a
+ * font set since then becomes the new declared font. */
+static void scale_labels(UIView *view, CGFloat scale) {
+	if ([view isKindOfClass:UILabel.class]) {
+		UILabel *label = (UILabel *)view;
+		NSArray<UIFont *> *fonts = objc_getAssociatedObject(label, &kUnitFontKey);
+		UIFont *declared = fonts && [label.font isEqual:fonts[1]] ? fonts[0] : label.font;
+		UIFont *scaled = [declared fontWithSize:declared.pointSize * scale];
+		objc_setAssociatedObject(label, &kUnitFontKey, @[declared, scaled], OBJC_ASSOCIATION_RETAIN);
+		if (![label.font isEqual:scaled]) label.font = scaled;
+	}
+	for (UIView *child in view.subviews) scale_labels(child, scale);
+}
+
+/* Points per unit for a child laid out in its ZStack's units; 1 elsewhere. */
+static CGFloat view_unit_scale(UIView *view) {
+	NSNumber *scale = objc_getAssociatedObject(view, &kUnitScaleKey);
+	return scale ? scale.doubleValue : 1;
+}
+
+static void set_unit_scale(UIView *view, CGFloat scale) {
+	objc_setAssociatedObject(view, &kUnitScaleKey, @(scale), OBJC_ASSOCIATION_RETAIN);
+	scale_labels(view, scale);
+}
+
 static CGSize measure_size(UIView *view, CGSize proposal) {
 	if (!view || view.hidden) return CGSizeZero;
 	NSNumber *fixedW = objc_getAssociatedObject(view, &kFixedWidthKey);
@@ -242,8 +276,10 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 			size = measure_horizontal_children(view, inner, sizes);
 			free(sizes);
 		} else {
+			/* Content in units takes its size from the stack, not the reverse. */
+			BOOL units = [axis isEqualToString:@"zstack"] && view.fitDiameter > 0;
 			for (UIView *child in view.subviews) {
-				if (uikit_is_hidden(child)) continue;
+				if (uikit_is_hidden(child) || (units && !fills_stack(child))) continue;
 				CGSize childSize = measure_size(child, CGSizeMake(inner.width,
 					[axis isEqualToString:@"vstack"] ? CGFLOAT_MAX : inner.height));
 				size.width = MAX(size.width, childSize.width);
@@ -287,7 +323,7 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 	if (fixedH) size.height = MAX(0, fixedH.doubleValue);
 	NSNumber *maxW = objc_getAssociatedObject(view, &kMaxWidthKey);
 	NSNumber *maxH = objc_getAssociatedObject(view, &kMaxHeightKey);
-	size.width = MAX([objc_getAssociatedObject(view, &kMinWidthKey) doubleValue], maxW ? MIN(size.width, maxW.doubleValue) : size.width);
+	size.width = MAX([objc_getAssociatedObject(view, &kMinWidthKey) doubleValue], maxW ? MIN(size.width, maxW.doubleValue * view_unit_scale(view)) : size.width);
 	size.height = MAX([objc_getAssociatedObject(view, &kMinHeightKey) doubleValue], maxH ? MIN(size.height, maxH.doubleValue) : size.height);
 	return size;
 }
@@ -352,8 +388,11 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 		NSString *alignment = view_alignment(view);
 
 		if ([axis isEqualToString:@"zstack"]) {
+			CGFloat units = view.fitDiameter;
+			CGFloat shorter = MIN(contentW, contentH);
 			for (UIView *sv in children) {
 				if (uikit_is_hidden(sv)) continue;
+				if (units > 0 && shorter > 0 && !fills_stack(sv)) set_unit_scale(sv, shorter / units);
 				CGSize natural = measure_size(sv, CGSizeMake(contentW, contentH));
 				CGFloat childW = fills_axis(sv, YES) ? clamp_fill(sv, contentW, YES) : natural.width;
 				CGFloat childH = fills_axis(sv, NO) ? clamp_fill(sv, contentH, NO) : natural.height;

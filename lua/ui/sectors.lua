@@ -253,7 +253,9 @@ function Sectors.chart(ns, props)
 	state.sectors = Sectors.layout(marks, diameter, props.innerRadius, props.angularInset)
 	state.inset = insetFor(state)
 	local stack = {alignment = "center", fixedWidth = diameter, fixedHeight = diameter}
-	if scalable then stack = {alignment = "center", fillWidth = true, fillHeight = true} end
+	-- A scalable chart's center content is in the chart's units too, so a
+	-- total in the hole grows with the rings.
+	if scalable then stack = {alignment = "center", fillWidth = true, fillHeight = true, fitDiameter = diameter} end
 	for key, value in pairs(props) do
 		if type(key) == "string" and stack[key] == nil and key ~= "scalable" and key ~= "diameter" and key ~= "innerRadius" and key ~= "angularInset"
 			and key ~= "accessibilityLabel" and key ~= "onSelect" and key ~= "onHover" and key ~= "onCenter" and key ~= "onBack" and key ~= "dragItem" then

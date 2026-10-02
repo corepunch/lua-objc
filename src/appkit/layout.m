@@ -467,11 +467,37 @@ static NSSize layout_flow_children(NSView *view, CGFloat width, BOOL place) {
 	return result;
 }
 
+/* A ZStack with `fitDiameter` lays the children that do not fill it out in
+ * units, as its arcs draw: the stack's shorter side spans that many units. */
+static CGFloat view_fit_diameter(NSView *view) {
+	return [objc_getAssociatedObject(view, &kKeys[kFitDiameterKey]) doubleValue];
+}
+
+static BOOL view_fills_stack(NSView *view) {
+	return view_fills_cross_axis(view, YES) || view_fills_cross_axis(view, NO);
+}
+
+static void scale_labels(NSView *view, CGFloat scale) {
+	if ([view isKindOfClass:LuaLabel.class]) ((LuaLabel *)view).fontScale = scale;
+	for (NSView *child in view.subviews) scale_labels(child, scale);
+}
+
+/* Points per unit for a child laid out in its ZStack's units; 1 elsewhere. */
+static CGFloat view_unit_scale(NSView *view) {
+	NSNumber *scale = objc_getAssociatedObject(view, &kKeys[kUnitScaleKey]);
+	return scale ? scale.doubleValue : 1;
+}
+
+static void set_unit_scale(NSView *view, CGFloat scale) {
+	objc_setAssociatedObject(view, &kKeys[kUnitScaleKey], @(scale), OBJC_ASSOCIATION_RETAIN);
+	scale_labels(view, scale);
+}
+
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	if (!view) return NSZeroSize;
 	/* SwiftUI `.frame(maxWidth:)` proposes at most that width to its content,
 	 * so text inside measures, wraps or scales in the width it will get. */
-	CGFloat maxWidth = view_optional_dimension(view, &kKeys[kMaxWidthKey], INFINITY);
+	CGFloat maxWidth = view_optional_dimension(view, &kKeys[kMaxWidthKey], INFINITY) * view_unit_scale(view);
 	if (isfinite(maxWidth) && (constraint.widthMode == LuaMeasureUndefined || constraint.width > maxWidth)) {
 		constraint.width = maxWidth;
 		if (constraint.widthMode == LuaMeasureUndefined) constraint.widthMode = LuaMeasureAtMost;
@@ -524,8 +550,10 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		natural.height += padY;
 	} break;
 	case LayoutAxisZStack: {
+		/* Content in units takes its size from the stack, not the reverse. */
+		BOOL units = view_fit_diameter(view) > 0;
 		for (NSView *child in view.subviews) {
-			if (is_hidden(child)) continue;
+			if (is_hidden(child) || (units && !view_fills_stack(child))) continue;
 			NSSize childSize = measure_view(child, (LuaLayoutConstraint){
 				.width = innerWidth,
 				.height = innerHeight,
@@ -754,7 +782,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	natural.width = clamp_dimension(
 		natural.width,
 		view_optional_dimension(view, &kKeys[kMinWidthKey], 0),
-		view_optional_dimension(view, &kKeys[kMaxWidthKey], INFINITY));
+		maxWidth);
 	natural.height = clamp_dimension(
 		natural.height,
 		view_optional_dimension(view, &kKeys[kMinHeightKey], 0),
@@ -1074,8 +1102,11 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 			free(proposed);
 	} break;
 		case LayoutAxisZStack: {
+			CGFloat units = view_fit_diameter(view);
+			CGFloat shorter = MIN(contentW, contentH);
 			for (NSView *sv in view.subviews) {
 				if (is_hidden(sv)) continue;
+				if (units > 0 && shorter > 0 && !view_fills_stack(sv)) set_unit_scale(sv, shorter / units);
 				NSSize natural = measure_view(sv, (LuaLayoutConstraint){
 					.width = contentW,
 					.height = contentH,
