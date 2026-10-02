@@ -81,9 +81,8 @@ keyframe API.
 
 | Role | Path |
 |---|---|
-| Rasterizer | `src/shared/mesh_gradient.m` |
-| AppKit view | `src/appkit/mesh_gradient.m` |
-| UIKit view | `src/uikit/mesh_gradient.m` |
+| View, rasterizer and bridge (AppKit and UIKit) | `src/shared/mesh_gradient.m` |
+| Lua constructor | `lua/ui/meshgradient.lua` |
 | Demo | `demo/mesh-gradient/views/Window.etlua` |
 | Tests | `tests/mesh_gradient.test.lua` |
 

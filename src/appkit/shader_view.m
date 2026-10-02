@@ -402,7 +402,7 @@ static NSData *shader_float_data(NSArray<NSNumber *> *numbers) {
 @end
 
 /* _shaderView(source, functionName) -> view, or raises the compiler error. */
-static int bridge_AppKitControls_shaderView(lua_State *L) {
+static int bridge_shader_view(lua_State *L) {
 	NSString *source = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
 	NSString *function = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
 	id<MTLDevice> device = MTLCreateSystemDefaultDevice();
@@ -449,7 +449,7 @@ static LuaShaderView *check_shader_view(lua_State *L, lua_Integer *width, lua_In
 /* _shaderFrameTime(view, width, height) -> milliseconds of GPU time for one
  * frame at that pixel size, draws included; the regression hook for
  * expensive scenes. */
-static int bridge_AppKitControls_shaderFrameTime(lua_State *L) {
+static int bridge_shader_frame_time(lua_State *L) {
 	lua_Integer width, height;
 	LuaShaderView *view = check_shader_view(L, &width, &height);
 	double ms = 0;
@@ -461,7 +461,7 @@ static int bridge_AppKitControls_shaderFrameTime(lua_State *L) {
 /* _shaderPixel(view, width, height, x, y) -> r, g, b, a in 0…1 at pixel
  * (x, y) from the top-left of one offscreen frame; lets tests check what the
  * draws and the finishing pass actually produce. */
-static int bridge_AppKitControls_shaderPixel(lua_State *L) {
+static int bridge_shader_pixel(lua_State *L) {
 	lua_Integer width, height;
 	LuaShaderView *view = check_shader_view(L, &width, &height);
 	lua_Integer x = luaL_checkinteger(L, 4), y = luaL_checkinteger(L, 5);
@@ -476,3 +476,8 @@ static int bridge_AppKitControls_shaderPixel(lua_State *L) {
 	lua_pushnumber(L, bgra[3] / 255.0);
 	return 4;
 }
+
+#define LUA_OBJC_SHADER_VIEW_FUNCTIONS \
+	{"_shaderView", bridge_shader_view}, \
+	{"_shaderFrameTime", bridge_shader_frame_time}, \
+	{"_shaderPixel", bridge_shader_pixel},

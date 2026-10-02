@@ -382,30 +382,6 @@ function UIKit.attachReorder(container, children, onReorder)
 	return container
 end
 
-local function lazyCollection(props, isGrid)
-	props = props or {}
-	assert(type(props.itemFactory) == "function", "lazy collection requires itemFactory")
-	local onMove
-	if props.reorderable then
-		assert(type(props.onReorder) == "function", "lazy collection requires onReorder")
-		local Difference = require("ui.reorder").Difference
-		onMove = function(from, to)
-			props.onReorder(Difference.new():move(from, to))
-		end
-	end
-	local view = bridge._lazyCollection(props.itemCount or 0, props.columns,
-		props.rowHeight, props.spacing, props.itemFactory, onMove, isGrid)
-	return applyLayout(view, props)
-end
-
-function UIKit.LazyVStack(props)
-	return lazyCollection(props, false)
-end
-
-function UIKit.LazyVGrid(props)
-	return lazyCollection(props, true)
-end
-
 --- Arranges child views horizontally with sibling spacing.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -692,6 +668,9 @@ end
 -- SwiftUI animation: Animation values, withAnimation, withTransaction,
 -- AnyTransition and the per-view motion modifiers (see ui/animation.lua).
 require("ui.animation").install(UIKit, bridge)
+require("ui.meshgradient").install(UIKit, bridge, applyLayout)
+require("ui.lazy").install(UIKit, bridge, applyLayout)
+require("ui.webpage").install(UIKit, bridge, applyLayout)
 -- Local notifications (see ui/notifications.lua).
 require("ui.notifications").install(UIKit, bridge)
 
@@ -1180,23 +1159,6 @@ function UIKit.LinearGradient(props)
 	return applyLayout(view, props)
 end
 
---- Renders a native animated color mesh from a grid of control points.
---- @prop width number required. Number of grid columns.
---- @prop height number required. Number of grid rows.
---- @prop points table optional. Normalized point coordinates in row-major order.
---- @prop colors table optional. Colors in row-major order.
---- @prop animated boolean optional. Animate interior points when true.
---- @platform AppKit and UIKit.
-function UIKit.MeshGradient(props)
-	props = props or {}
-	local width, height = props.width or 3, props.height or 3
-	local view = bridge._meshGradient(width, height)
-	bridge._meshGradientConfigure(view, width, height, props.points, props.colors,
-		props.animated == true)
-	view.fillWidth, view.fillHeight = true, true
-	return applyLayout(view, props)
-end
-
 --- Hosts content on the requested update schedule.
 --- @prop schedule string optional. `animation` animates a mesh child.
 --- @prop content value required. Hosted view.
@@ -1350,32 +1312,6 @@ function UIKit.Button(props)
 		button.tintColor = bridge._systemColor(props.tint)
 	end
 	return applyLayout(button, props)
-end
-
---- Displays a native WKWebView and optionally binds it to a WebPage.
---- @tag WebView
---- @prop page table optional. Observable `ui.webpage` state object.
---- @prop url string optional. Initial URL when no page object is supplied.
---- @example <WebView page="page" />
---- @platform UIKit WKWebView.
-function UIKit.WebView(props)
-	props = props or {}
-	local page = props.page
-	local url = props.url or (page and page.url) or "about:blank"
-	local weakPage = setmetatable({ page }, { __mode = "v" })
-	local view = bridge._webView(url, function(event, value)
-		local target = weakPage[1]
-		if target then target:_nativeEvent(event, value) end
-	end)
-	view.allowsBackForwardNavigationGestures = props.allowsBackForwardNavigation ~= false
-	if props.pageZoom then view.pageZoom = props.pageZoom end
-	if props.contentBackground == "hidden" then
-		view.backgroundColor = bridge._systemColor("clear")
-		view.scrollView.backgroundColor = bridge._systemColor("clear")
-		view.opaque = false
-	end
-	if page then page:_attachNative(view, bridge._webViewAction) end
-	return applyLayout(view, props)
 end
 
 --- Embeds a view in the current system glass effect.

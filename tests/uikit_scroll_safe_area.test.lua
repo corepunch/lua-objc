@@ -8,7 +8,7 @@ local t = require("TestKit")
 local function read(path) return assert(io.open(path, "r")):read("*a") end
 local layout = read("src/uikit/layout.m")
 local constructors = read("src/uikit/constructors.m")
-local lazy = read("src/uikit/lazy_collection.m")
+local lazy = read("src/shared/lazy_collection.m")
 
 local helper = layout:match("static CGFloat uikit_scroll_bottom_inset%(UIScrollView %*scroll%) {(.-)\n}")
 t.expect(helper ~= nil, "UIKit has one shared scroll bottom-inset rule")

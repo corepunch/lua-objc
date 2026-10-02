@@ -29,7 +29,8 @@ import os
 import re
 import sys
 
-FUNC_RE = re.compile(r"^function\s+([\w\.]+)\s*[\(:]")
+# Functions only: `function Module:method(` is a method, not an entry point.
+FUNC_RE = re.compile(r"^function\s+([\w\.]+)\s*\(")
 PROP_RE = re.compile(r"^(\S+)\s+(\S+)\s+(required\.|optional\.)\s*(.*)$")
 UI_CONSTRUCTORS = {
     "Window", "Panel", "Sheet", "MenuItem", "Preview", "TabView", "VStack",

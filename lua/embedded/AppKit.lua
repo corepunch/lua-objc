@@ -562,30 +562,6 @@ function AppKit.attachReorder(container, children, onReorder)
 	return container
 end
 
-local function lazyCollection(props, isGrid)
-	props = props or {}
-	assert(type(props.itemFactory) == "function", "lazy collection requires itemFactory")
-	local onMove
-	if props.reorderable then
-		assert(type(props.onReorder) == "function", "lazy collection requires onReorder")
-		local Difference = require("ui.reorder").Difference
-		onMove = function(from, to)
-			props.onReorder(Difference.new():move(from, to))
-		end
-	end
-	local view = bridge._lazyCollection(props.itemCount or 0, props.columns,
-		props.rowHeight, props.spacing, props.itemFactory, onMove, isGrid)
-	return applyLayout(view, props)
-end
-
-function AppKit.LazyVStack(props)
-	return lazyCollection(props, false)
-end
-
-function AppKit.LazyVGrid(props)
-	return lazyCollection(props, true)
-end
-
 --- Arranges child views horizontally with sibling spacing.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
@@ -1396,89 +1372,6 @@ function AppKit.LinearGradient(props)
 	return applyLayout(view, props)
 end
 
---- Renders a native animated color mesh from a grid of control points.
---- @prop width number required. Number of grid columns.
---- @prop height number required. Number of grid rows.
---- @prop points table optional. Normalized point coordinates in row-major order.
---- @prop colors table optional. Colors in row-major order.
---- @prop animated boolean optional. Animate interior points when true.
---- @platform AppKit and UIKit.
-function AppKit.MeshGradient(props)
-	props = props or {}
-	local width, height = props.width or 3, props.height or 3
-	local view = bridge._meshGradient(width, height)
-	bridge._meshGradientConfigure(view, width, height, props.points, props.colors,
-		props.animated == true)
-	view.fillWidth, view.fillHeight = true, true
-	return applyLayout(view, props)
-end
-
---- Draws a Metal fragment shader every display frame, like SwiftUI's
---- `TimelineView(.animation)` around a `ShaderLibrary` color effect.
---- The source defines `fragment float4 name(ShaderVertex in [[stage_in]],
---- constant ShaderInputs &inputs [[buffer(0)]])`; `inputs` carries `size`
---- (pixels), `time` (seconds), `count` and `values[256]`. Assign `values`
---- from Lua to animate it. The view is transparent where the shader is.
---- A program can instead be linked from `sources`, `{path = …}` files and
---- `{code = …}` snippets compiled in order as one translation unit, so a
---- shared library, plugin-contributed functions and an entry point can live
---- in separate files. Each chunk opens with a `#line` directive, so compiler
---- errors name the file and line they came from.
----
---- Meshes: with `layers`, the view first renders `draws` into that many
---- offscreen HDR layers (RGBA16Float, cleared to transparent black, with a
---- depth buffer), and `function` finishes the picture from them: layer i is
---- `texture2d<float> [[texture(i - 1)]]`, mipmapped every frame so coarse
---- levels serve as wide blurs. Each draw is a table:
---- `vertex`, `fragment` (function names), `count` (vertices), `instances`
---- (1), `layer` (1), `primitive` (`triangle`, `triangleStrip`, `line`,
---- `lineStrip`, `point`), `blend` (`opaque`, `alpha` premultiplied, `add`),
---- `depth` (`none`, `test`, `write`), `cull` (`none`, `back`, `front`),
---- `data` (floats at `const device float *data [[buffer(1)]]`) and `params`
---- (up to 64 floats at `constant float *params [[buffer(2)]]`). Both stages
---- get `inputs` at buffer(0). Vertices usually come from `vertex_id` and
---- `instance_id`; `fullscreenVertex` covers the view with `ShaderVertex`.
---- Assigning `draws` compiles their pipelines, and a bad list raises
---- without replacing the running one.
---- @prop source string optional. Path of a `.metal` file with the fragment function.
---- @prop sources table optional. `<ShaderSource path="…">` / `<ShaderSource code="…">` chunks, in order.
---- @prop function string required. Fragment function name; with layers, the finishing pass.
---- @prop values table optional. Initial floats for `inputs.values`.
---- @prop layers number optional. Offscreen layers the draws render into, 0…4 (0).
---- @prop draws table optional. Mesh passes, in order (see above).
---- @platform AppKit.
-local function readShader(path)
-	local file = assert(io.open(path, "r"), "ShaderView: cannot read " .. tostring(path))
-	local text = file:read("a")
-	file:close()
-	return text
-end
-
-function AppKit.ShaderView(props)
-	props = props or {}
-	local text
-	if props.sources then
-		assert(props.source == nil, "ShaderView takes source or sources, not both")
-		local chunks = {}
-		for index, chunk in ipairs(props.sources) do
-			assert((chunk.path == nil) ~= (chunk.code == nil), "ShaderSource requires exactly one of path or code")
-			local name = chunk.path or ("code " .. index)
-			table.insert(chunks, string.format('#line 1 "%s"\n%s\n', name, chunk.path and readShader(chunk.path) or chunk.code))
-		end
-		assert(#chunks > 0, "ShaderView sources is empty")
-		text = table.concat(chunks)
-	else
-		text = readShader(assert(props.source, "ShaderView requires source or sources"))
-	end
-	local view = bridge._shaderView(text, assert(props["function"], "ShaderView requires function"))
-	if props.values then view.values = props.values end
-	if props.layers then view.layers = props.layers end
-	if props.draws then view.draws = props.draws end
-	-- Like a gradient, a shader has no intrinsic size and fills its proposal.
-	view.fillWidth, view.fillHeight = true, true
-	return applyLayout(view, props)
-end
-
 --- Hosts content on the requested update schedule.
 --- @prop schedule string optional. `animation` animates a mesh child.
 --- @prop content value required. Hosted view.
@@ -1848,31 +1741,6 @@ function AppKit.GlassEffectContainer(props)
 	local content = props.content or props[1]
 	assert(content, "GlassEffectContainer requires content")
 	return applyLayout(bridge._glassEffectContainer(content, props.spacing or 0), props)
-end
-
---- Displays a native WKWebView and optionally binds it to a WebPage.
---- @tag WebView
---- @prop page table optional. Observable `ui.webpage` state object.
---- @prop url string optional. Initial URL when no page object is supplied.
---- @example <WebView page="page" />
---- @platform AppKit WKWebView.
-function AppKit.WebView(props)
-	props = props or {}
-	local page = props.page
-	local url = props.url or (page and page.url) or "about:blank"
-	local weakPage = setmetatable({ page }, { __mode = "v" })
-	local view = bridge._webView(url, function(event, value)
-		local target = weakPage[1]
-		if target then target:_nativeEvent(event, value) end
-	end)
-	view.allowsBackForwardNavigationGestures = props.allowsBackForwardNavigation ~= false
-	if props.allowsMagnification ~= nil then
-		view.allowsMagnification = props.allowsMagnification
-	end
-	if props.pageZoom then view.pageZoom = props.pageZoom end
-	if props.contentBackground == "hidden" then view.underPageBackgroundColor = bridge._systemColor("clear") end
-	if page then page:_attachNative(view, bridge._webViewAction) end
-	return applyLayout(view, props)
 end
 
 --- Opens or navigates to a destination when activated.
@@ -2336,6 +2204,10 @@ end
 -- SwiftUI animation: Animation values, withAnimation, withTransaction,
 -- AnyTransition and the per-view motion modifiers (see ui/animation.lua).
 require("ui.animation").install(AppKit, bridge)
+require("ui.meshgradient").install(AppKit, bridge, applyLayout)
+require("ui.lazy").install(AppKit, bridge, applyLayout)
+require("ui.webpage").install(AppKit, bridge, applyLayout)
+require("ui.shader").install(AppKit, bridge, applyLayout)
 -- Local notifications (see ui/notifications.lua).
 require("ui.notifications").install(AppKit, bridge)
 

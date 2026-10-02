@@ -338,13 +338,13 @@ static void bridge_set_optional_callback(
 #include "appkit/navigation.m"
 #include "appkit/platform.m"
 #include "appkit/haptics.m"
-#include "appkit/webview.m"
+#include "shared/webview.m"
 
 #include "appkit/workspace.m"
 #include "appkit/constructors.m"
 #include "appkit/motion.m"
 #include "appkit/charts.m"
-#include "appkit/mesh_gradient.m"
+#include "shared/mesh_gradient.m"
 #include "appkit/shader_view.m"
 /* Imported here, after the AppKit fragments: SceneKit declares `target`
  * properties that would make their `target` messages ambiguous. */
@@ -352,7 +352,7 @@ static void bridge_set_optional_callback(
 #include "shared/scene_models.m"
 #include "shared/scene_view.m"
 #include "appkit/reorder_container.m"
-#include "appkit/lazy_collection.m"
+#include "shared/lazy_collection.m"
 #include "shared/parity_batch.m"
 #include "appkit/parity_batch.m"
 #pragma mark - Module registration
@@ -363,8 +363,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_hapticImpact", bridge_haptic_impact},
 	{"_hapticSelection", bridge_haptic_selection},
 	{"_hapticNotification", bridge_haptic_notification},
-	{"_webView", bridge_webview},
-	{"_webViewAction", bridge_webview_action},
+	LUA_OBJC_WEBVIEW_FUNCTIONS
 	{"_testRowSwipe", bridge_test_row_swipe},
 	{"_parityMeasure", bridge_parity_measure},
 	{"_parityCapturePNG", bridge_parity_capture_png},
@@ -387,12 +386,8 @@ static const luaL_Reg bridge_lib[] = {
 	{"_spacer", bridge_AppKitControls_spacer},
 	{"_linearGradient", bridge_AppKitControls_linearGradient},
 	{"_linearGradientColors", bridge_AppKitControls_linearGradientColors},
-	{"_meshGradient", bridge_AppKitControls_meshGradient},
-	{"_meshGradientConfigure", bridge_AppKitControls_meshGradientConfigure},
-	{"_meshGradientSample", bridge_AppKitControls_meshGradientSample},
-	{"_shaderView", bridge_AppKitControls_shaderView},
-	{"_shaderFrameTime", bridge_AppKitControls_shaderFrameTime},
-	{"_shaderPixel", bridge_AppKitControls_shaderPixel},
+	LUA_OBJC_MESH_GRADIENT_FUNCTIONS
+	LUA_OBJC_SHADER_VIEW_FUNCTIONS
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_hostingController", bridge_hosting_controller},
 	{"_navigationStack", bridge_navigation_stack},
@@ -455,8 +450,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tableview", bridge_tableview},
 	{"_attachReorder", bridge_AppKitReorder_attach},
 	{"_testReorderMove", bridge_AppKitReorder_testMove},
-	{"_lazyCollection", bridge_AppKitLazy_collection},
-	{"_lazyCollectionStats", bridge_AppKitLazy_stats},
+	LUA_OBJC_LAZY_COLLECTION_FUNCTIONS
 	{"_actionButton", bridge_action_button},
 	{"_glassEffect", bridge_glass_effect},
 	{"_glassEffectContainer", bridge_glass_effect_container},

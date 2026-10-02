@@ -263,7 +263,7 @@ clean:
 screenshot: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
 	./$(LUA_OBJC_BIN) --screenshot=$(or $(OUT),/tmp/screenshot.png) $(ARGS)
 
-DOC_SRC = lua/embedded/AppKit.lua lua/embedded/UIKit.lua
+DOC_SRC = lua/embedded/AppKit.lua lua/embedded/UIKit.lua lua/ui/meshgradient.lua lua/ui/lazy.lua lua/ui/webpage.lua lua/ui/shader.lua
 DOC_OUT = docs/reference/generated
 
 docs:

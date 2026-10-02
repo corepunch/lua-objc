@@ -1,7 +1,20 @@
-/* Shared mesh-gradient rasterizer used by AppKit and UIKit views.
- * Parameter-space bilinear interpolation over a width×height control grid.
- * Point positions warp the sample coordinates the same way SwiftUI's
- * MeshGradient does for a small animated grid. */
+#pragma mark - MeshGradient
+
+/* SwiftUI's MeshGradient on AppKit and UIKit: a width×height grid of
+ * coloured control points, rasterized by parameter-space bilinear
+ * interpolation. Point positions warp the sample coordinates the way SwiftUI
+ * does for a small animated grid; `animated` moves a 3×3 grid's points from
+ * a display link. The view, its rasterizer and its bridge are all here;
+ * lua/ui/meshgradient.lua is the Lua side. */
+
+#import <QuartzCore/QuartzCore.h>
+#include <math.h>
+
+#if TARGET_OS_IPHONE
+#define MeshView UIView
+#else
+#define MeshView NSView
+#endif
 
 typedef struct {
 	float x, y;
@@ -157,3 +170,148 @@ static CGImageRef mesh_gradient_image(const LuaMeshNode *nodes, int cols, int ro
 	free(pixels);
 	return image;
 }
+
+@class LuaMeshGradientView;
+/* The display link's target, so the link does not retain the view. */
+@interface LuaMeshGradientTicker : NSObject
+@property(nonatomic, weak) LuaMeshGradientView *view;
+- (void)tick:(CADisplayLink *)link;
+@end
+
+@interface LuaMeshGradientView : MeshView
+@property(nonatomic) NSInteger meshWidth;
+@property(nonatomic) NSInteger meshHeight;
+@property(nonatomic) BOOL animated;
+@property(nonatomic) LuaMeshNode *nodes;
+@property(nonatomic, strong) CADisplayLink *displayLink;
+- (void)tick:(CADisplayLink *)link;
+@end
+
+@implementation LuaMeshGradientTicker
+- (void)tick:(CADisplayLink *)link { [self.view tick:link]; }
+@end
+
+@implementation LuaMeshGradientView
+- (instancetype)initWithFrame:(CGRect)frame {
+	self = [super initWithFrame:frame];
+	if (self) {
+#if TARGET_OS_IPHONE
+		self.contentMode = UIViewContentModeRedraw;
+		self.opaque = YES;
+#else
+		self.wantsLayer = YES;
+#endif
+		_meshWidth = 3;
+		_meshHeight = 3;
+		_nodes = malloc(sizeof(kMeshGradientDefaultNodes));
+		if (_nodes) memcpy(_nodes, kMeshGradientDefaultNodes, sizeof(kMeshGradientDefaultNodes));
+	}
+	return self;
+}
+- (void)dealloc {
+	[_displayLink invalidate];
+	free(_nodes);
+}
+#if !TARGET_OS_IPHONE
+- (BOOL)isFlipped { return YES; }
+#endif
+- (void)redraw {
+#if TARGET_OS_IPHONE
+	[self setNeedsDisplay];
+#else
+	self.needsDisplay = YES;
+#endif
+}
+- (void)setAnimated:(BOOL)animated {
+	if (_animated == animated) return;
+	_animated = animated;
+	[_displayLink invalidate];
+	_displayLink = nil;
+	if (animated) {
+		LuaMeshGradientTicker *ticker = [[LuaMeshGradientTicker alloc] init];
+		ticker.view = self;
+#if TARGET_OS_IPHONE
+		_displayLink = [CADisplayLink displayLinkWithTarget:ticker selector:@selector(tick:)];
+#else
+		_displayLink = [self displayLinkWithTarget:ticker selector:@selector(tick:)];
+#endif
+		[_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+	} else {
+		[self redraw];
+	}
+}
+- (void)tick:(__unused CADisplayLink *)link {
+	mesh_gradient_animate_points(_nodes, (int)_meshWidth, (int)_meshHeight,
+		[NSDate date].timeIntervalSince1970);
+	[self redraw];
+}
+- (void)replaceNodes:(LuaMeshNode *)nodes width:(NSInteger)width height:(NSInteger)height {
+	free(_nodes);
+	_nodes = nodes;
+	_meshWidth = width;
+	_meshHeight = height;
+	[self redraw];
+}
+/* Rasterized at half resolution: the gradient has no edges to sharpen. */
+- (void)drawRect:(__unused CGRect)dirty {
+	CGRect bounds = self.bounds;
+	int w = (int)MAX(8, bounds.size.width / 2);
+	int h = (int)MAX(8, bounds.size.height / 2);
+	CGImageRef image = mesh_gradient_image(_nodes, (int)_meshWidth, (int)_meshHeight, w, h);
+	if (!image) return;
+#if TARGET_OS_IPHONE
+	[[UIImage imageWithCGImage:image] drawInRect:bounds];
+#else
+	CGContextRef ctx = [NSGraphicsContext currentContext].CGContext;
+	CGContextSaveGState(ctx);
+	CGContextTranslateCTM(ctx, 0, bounds.size.height);
+	CGContextScaleCTM(ctx, 1, -1);
+	CGContextDrawImage(ctx, bounds, image);
+	CGContextRestoreGState(ctx);
+#endif
+	CGImageRelease(image);
+}
+@end
+
+// _meshGradient(width, height) -> view
+static int bridge_mesh_gradient(lua_State *L) {
+	LuaMeshGradientView *view = [[LuaMeshGradientView alloc] initWithFrame:CGRectZero];
+	view.meshWidth = (NSInteger)luaL_optinteger(L, 1, 3);
+	view.meshHeight = (NSInteger)luaL_optinteger(L, 2, 3);
+#if TARGET_OS_IPHONE
+	push_objc(L, view, "uiview");
+#else
+	push_objc(L, view, "nsview");
+#endif
+	return 1;
+}
+
+// _meshGradientConfigure(view, width, height, points, colors, animated)
+static int bridge_mesh_gradient_configure(lua_State *L) {
+	LuaMeshGradientView *view = (LuaMeshGradientView *)check_view(L, 1);
+	int width = (int)luaL_optinteger(L, 2, view.meshWidth);
+	int height = (int)luaL_optinteger(L, 3, view.meshHeight);
+	if (width < 2 || height < 2) return luaL_error(L, "MeshGradient width and height must be >= 2");
+	LuaMeshNode *nodes = mesh_gradient_nodes_from_lua(L, width, height, 4, 5);
+	[view replaceNodes:nodes width:width height:height];
+	if (lua_isboolean(L, 6)) view.animated = lua_toboolean(L, 6);
+	return 0;
+}
+
+// Test hook: _meshGradientSample(view, u, v) -> r, g, b, a
+static int bridge_mesh_gradient_sample(lua_State *L) {
+	LuaMeshGradientView *view = (LuaMeshGradientView *)check_view(L, 1);
+	float r, g, b, a;
+	mesh_gradient_sample(view.nodes, (int)view.meshWidth, (int)view.meshHeight,
+		(float)luaL_checknumber(L, 2), (float)luaL_checknumber(L, 3), &r, &g, &b, &a);
+	lua_pushnumber(L, r);
+	lua_pushnumber(L, g);
+	lua_pushnumber(L, b);
+	lua_pushnumber(L, a);
+	return 4;
+}
+
+#define LUA_OBJC_MESH_GRADIENT_FUNCTIONS \
+	{"_meshGradient", bridge_mesh_gradient}, \
+	{"_meshGradientConfigure", bridge_mesh_gradient_configure}, \
+	{"_meshGradientSample", bridge_mesh_gradient_sample},

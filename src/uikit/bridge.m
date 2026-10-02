@@ -199,10 +199,11 @@ static void motion_invalidate_layout(UIView *view) {
 #include "controls.m"
 #include "tables.m"
 #include "platform.m"
+#include "../shared/webview.m"
 #include "constructors.m"
 #include "../shared/paragraph.m"
 #include "paragraph.m"
-#include "mesh_gradient.m"
+#include "../shared/mesh_gradient.m"
 #include "text_field.m"
 #include "hosting.m"
 #include "preview.m"
@@ -211,7 +212,7 @@ static void motion_invalidate_layout(UIView *view) {
 #include "private_navigation_palettes.m"
 #include "performance_probe.m"
 #include "reorder_container.m"
-#include "lazy_collection.m"
+#include "../shared/lazy_collection.m"
 #include "../shared/scene_models.m"
 #include "../shared/scene_view.m"
 #include "scene_assets.m"
@@ -278,17 +279,14 @@ static const luaL_Reg bridge_lib[] = {
 	{"_pageControl", bridge_UIKitControls_pageControl},
 	{"_linearGradient", bridge_UIKitControls_linearGradient},
 	{"_linearGradientColors", bridge_UIKitControls_linearGradientColors},
-	{"_meshGradient", bridge_UIKitControls_meshGradient},
-	{"_meshGradientConfigure", bridge_UIKitControls_meshGradientConfigure},
-	{"_meshGradientSample", bridge_UIKitControls_meshGradientSample},
+	LUA_OBJC_MESH_GRADIENT_FUNCTIONS
 	{"_button", bridge_UIKitControls_button},
 	{"_link", bridge_UIKitControls_link},
 	{"_menu", bridge_UIKitControls_menu},
 	{"_materialView", bridge_UIKitControls_materialView},
 	{"_glassEffect", bridge_UIKitControls_glassEffect},
 	{"_glassEffectContainer", bridge_UIKitControls_glassEffectContainer},
-	{"_webView", bridge_UIKitControls_webView},
-	{"_webViewAction", bridge_UIKitControls_webViewAction},
+	LUA_OBJC_WEBVIEW_FUNCTIONS
 	{"_hapticsAvailable", bridge_UIKit_hapticsAvailable},
 	{"_reduceMotionEnabled", bridge_UIKit_reduceMotionEnabled},
 	{"_hapticImpact", bridge_UIKit_hapticImpact},
@@ -333,7 +331,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_benchmarkStart", bridge_UIKitBenchmark_start},
 	{"_attachReorder", bridge_UIKitReorder_attach},
 	{"_testReorderMove", bridge_UIKitReorder_testMove},
-	{"_lazyCollection", bridge_UIKitLazy_collection},
+	LUA_OBJC_LAZY_COLLECTION_FUNCTIONS
 	{"_navigationLink", bridge_UIKitNavigation_link},
 	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
 	{"_dismiss", bridge_UIKitPresentation_dismiss},
