@@ -8,20 +8,7 @@
  * first lines — the same mechanism Pages and Books use for floating objects.
  * The figure is an ordinary view (an image view from Lua) that the paragraph
  * places. */
-@interface LuaParagraphLayoutManager : NSLayoutManager
-@end
-
-@implementation LuaParagraphLayoutManager
-- (void)drawUnderlineForGlyphRange:(NSRange)glyphRange underlineType:(NSUnderlineStyle)underlineVal
-		baselineOffset:(CGFloat)baselineOffset lineFragmentRect:(CGRect)lineRect
-		lineFragmentGlyphRange:(NSRange)lineGlyphRange containerOrigin:(CGPoint)containerOrigin {
-	[super drawUnderlineForGlyphRange:glyphRange underlineType:underlineVal
-		baselineOffset:baselineOffset + kParagraphLinkUnderlineOffset lineFragmentRect:lineRect
-		lineFragmentGlyphRange:lineGlyphRange containerOrigin:containerOrigin];
-}
-@end
-
-@interface LuaParagraphView : UITextView <UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate, LuaParagraphLinking>
+@interface LuaParagraphView : UITextView <UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate, LuaParagraphText>
 - (void)presentActionMenuAtLocation:(NSUInteger)location;
 @property(nonatomic, strong) UIEditMenuInteraction *actionMenu;
 @property(nonatomic, copy) NSString *paragraphText;
@@ -36,8 +23,6 @@
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
 /* The colour of a link's words and the thicker dotted rule under them. */
 @property(nonatomic, strong) UIColor *linkColor;
-/* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
- * the whole paragraph. See `paragraph_revealed_length`. */
 @property(nonatomic) NSInteger revealedCharacters;
 /* Set once the view is initialized; see -rebuild. */
 @property(nonatomic) BOOL ready;
@@ -120,50 +105,6 @@
 	[self applyReveal];
 }
 
-/* The UTF-16 length of the revealed prefix of `text`, never splitting a
- * composed character or surrogate pair. */
-static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
-	if (scalars < 0) return text.length;
-	NSUInteger offset = 0;
-	for (; scalars > 0 && offset < text.length; scalars--)
-		offset += CFStringIsSurrogateHighCharacter([text characterAtIndex:offset]) && offset + 1 < text.length ? 2 : 1;
-	if (offset > 0 && offset < text.length)
-		offset = NSMaxRange([text rangeOfComposedCharacterSequenceAtIndex:offset - 1]);
-	return offset;
-}
-
-- (NSUInteger)revealedBodyLength {
-	return paragraph_revealed_length(_paragraphText, _revealedCharacters);
-}
-
-/* A link's range in the text storage. */
-- (NSRange)bodyRangeOfLink:(LuaParagraphLink *)link {
-	NSUInteger start = paragraph_revealed_length(_paragraphText, MAX(0, link.location));
-	NSUInteger end = paragraph_revealed_length(_paragraphText, MAX(0, link.location) + MAX(0, link.length));
-	end = MIN(end, self.textStorage.length);
-	return start < end ? NSMakeRange(start, end - start) : NSMakeRange(NSNotFound, 0);
-}
-
-- (void)applyLinks {
-	NSTextStorage *storage = self.textStorage;
-	[storage beginEditing];
-	[_links enumerateObjectsUsingBlock:^(LuaParagraphLink *link, __unused NSUInteger index, __unused BOOL *stop) {
-		NSRange range = [self bodyRangeOfLink:link];
-		if (range.location == NSNotFound) return;
-		[storage addAttribute:NSUnderlineStyleAttributeName
-			value:@(NSUnderlineStyleThick | NSUnderlineStylePatternDot) range:range];
-	}];
-	[storage endEditing];
-}
-
-/* The link, if any, whose revealed words include the storage's character. */
-- (LuaParagraphLink *)linkAtCharacterIndex:(NSUInteger)index {
-	if (index >= MIN([self revealedBodyLength], self.textStorage.length)) return nil;
-	for (LuaParagraphLink *link in _links)
-		if (NSLocationInRange(index, [self bodyRangeOfLink:link])) return link;
-	return nil;
-}
-
 - (UIMenu *)menuForLink:(LuaParagraphLink *)link {
 	NSMutableArray<UIMenuElement *> *elements = [NSMutableArray array];
 	[link.titles enumerateObjectsUsingBlock:^(NSString *title, NSUInteger index, __unused BOOL *stop) {
@@ -198,7 +139,7 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	CGRect rect = [self.layoutManager boundingRectForGlyphRange:NSMakeRange(glyph, 1) inTextContainer:self.textContainer];
 	if (!CGRectContainsPoint(rect, point)) return NSNotFound;
 	NSUInteger character = [self.layoutManager characterIndexForGlyphAtIndex:glyph];
-	LuaParagraphLink *link = [self linkAtCharacterIndex:character];
+	LuaParagraphLink *link = paragraph_link_at(self, character);
 	return link.titles.count ? character : NSNotFound;
 }
 
@@ -213,7 +154,7 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 }
 
 - (void)presentActionMenuAtLocation:(NSUInteger)location {
-	if (![self linkAtCharacterIndex:location].titles.count) return;
+	if (!paragraph_link_at(self, location).titles.count) return;
 	if (!UIAccessibilityIsReduceMotionEnabled())
 		uikit_impact_feedback(UIImpactFeedbackStyleLight, kParagraphTapHapticIntensity);
 	UIEditMenuConfiguration *configuration = [UIEditMenuConfiguration
@@ -224,65 +165,31 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 - (UIMenu *)editMenuInteraction:(__unused UIEditMenuInteraction *)interaction
 		menuForConfiguration:(UIEditMenuConfiguration *)configuration
 		suggestedActions:(__unused NSArray<UIMenuElement *> *)suggestedActions {
-	LuaParagraphLink *link = [self linkAtCharacterIndex:[(NSNumber *)configuration.identifier unsignedIntegerValue]];
+	LuaParagraphLink *link = paragraph_link_at(self, [(NSNumber *)configuration.identifier unsignedIntegerValue]);
 	return link ? [self menuForLink:link] : nil;
 }
 
 - (CGRect)editMenuInteraction:(__unused UIEditMenuInteraction *)interaction
 		targetRectForConfiguration:(UIEditMenuConfiguration *)configuration {
-	LuaParagraphLink *link = [self linkAtCharacterIndex:[(NSNumber *)configuration.identifier unsignedIntegerValue]];
+	LuaParagraphLink *link = paragraph_link_at(self, [(NSNumber *)configuration.identifier unsignedIntegerValue]);
 	if (!link) return CGRectNull;
-	NSRange range = [self bodyRangeOfLink:link];
+	NSRange range = paragraph_link_range(self, link);
 	UITextPosition *start = [self positionFromPosition:self.beginningOfDocument offset:range.location];
 	UITextPosition *end = [self positionFromPosition:start offset:range.length];
 	return [self firstRectForRange:[self textRangeFromPosition:start toPosition:end]];
 }
 
 - (void)applyReveal {
-	NSTextStorage *storage = self.textStorage;
-	NSUInteger shown = MIN([self revealedBodyLength], storage.length);
-	[storage beginEditing];
-	[storage addAttribute:NSForegroundColorAttributeName value:_bodyColor range:NSMakeRange(0, shown)];
-	[storage addAttribute:NSForegroundColorAttributeName value:UIColor.clearColor
-		range:NSMakeRange(shown, storage.length - shown)];
-	/* A link is ruled only under the words typed so far. */
-	for (LuaParagraphLink *link in _links) {
-		NSRange range = [self bodyRangeOfLink:link];
-		if (range.location == NSNotFound) continue;
-		NSRange visible = NSIntersectionRange(range, NSMakeRange(0, shown));
-		[storage addAttribute:NSUnderlineColorAttributeName value:UIColor.clearColor range:range];
-		if (!visible.length) continue;
-		UIColor *ink = _linkColor ?: self.tintColor;
-		[storage addAttribute:NSForegroundColorAttributeName value:ink range:visible];
-		[storage addAttribute:NSUnderlineColorAttributeName value:ink range:visible];
-	}
-	[storage endEditing];
+	paragraph_apply_reveal(self, _bodyColor, _linkColor ?: self.tintColor, UIColor.clearColor);
 	_figureView.hidden = _revealedCharacters == 0;
 }
 
 - (NSAttributedString *)bodyString {
-	NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
-	style.lineSpacing = _lineSpacing;
-	style.alignment = _bodyAlignment;
-	style.hyphenationFactor = _hyphenation ? 1.0 : 0.0;
-	return [[NSAttributedString alloc] initWithString:_paragraphText attributes:@{
-		NSFontAttributeName: _bodyFont,
-		NSForegroundColorAttributeName: _bodyColor,
-		NSParagraphStyleAttributeName: style,
-	}];
+	return paragraph_body_string(_paragraphText, _bodyFont, _bodyColor, _lineSpacing, _bodyAlignment, _hyphenation, 0);
 }
 
-/* The figure spans exactly `figureLines` lines, from the first line's top to
- * the last line's bottom, and is as wide as it is tall. */
 - (CGFloat)figureSide {
-	return _figureLines * (_bodyFont.lineHeight + _lineSpacing) - _lineSpacing;
-}
-
-/* Lines beside the figure keep a gap from it; the next line returns to the
- * margin. */
-- (NSArray<UIBezierPath *> *)exclusionForFigure {
-	CGFloat side = [self figureSide];
-	return @[[UIBezierPath bezierPathWithRect:CGRectMake(0, 0, side + kParagraphFigureGap, side + _lineSpacing / 2)]];
+	return paragraph_figure_side(_figureLines, _bodyFont.lineHeight, _lineSpacing);
 }
 
 - (void)rebuild {
@@ -293,11 +200,11 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	if (_figureView) {
 		CGFloat side = [self figureSide];
 		_figureView.frame = CGRectMake(0, 0, side, side);
-		self.textContainer.exclusionPaths = [self exclusionForFigure];
+		self.textContainer.exclusionPaths = @[[UIBezierPath bezierPathWithRect:paragraph_figure_exclusion(side, _lineSpacing)]];
 	} else {
 		self.textContainer.exclusionPaths = @[];
 	}
-	[self applyLinks];
+	paragraph_apply_links(self, NO);
 	[self applyReveal];
 	self.accessibilityValue = _paragraphText;
 	[self invalidateIntrinsicContentSize];
@@ -315,7 +222,8 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:CGSizeMake(unbounded ? CGFLOAT_MAX : width, CGFLOAT_MAX)];
 	container.lineFragmentPadding = 0;
-	if (_figureView) container.exclusionPaths = [self exclusionForFigure];
+	if (_figureView) container.exclusionPaths = @[[UIBezierPath bezierPathWithRect:
+		paragraph_figure_exclusion([self figureSide], _lineSpacing)]];
 	[storage addLayoutManager:manager];
 	[manager addTextContainer:container];
 	[manager ensureLayoutForTextContainer:container];
@@ -354,7 +262,7 @@ static int bridge_test_paragraph_edit_menu(lua_State *L) {
 	LuaParagraphView *view = (LuaParagraphView *)paragraph_check(L, 1);
 	lua_Integer index = luaL_checkinteger(L, 2);
 	if (index < 1 || index > (lua_Integer)view.links.count) return luaL_error(L, "no such paragraph link");
-	NSRange range = [view bodyRangeOfLink:view.links[(NSUInteger)index - 1]];
+	NSRange range = paragraph_link_range(view, view.links[(NSUInteger)index - 1]);
 	/* Fail the Simulator fixture if link tags or delegate overrides steal
 	 * ordinary text selection again. */
 	if (view.delegate != nil || !view.selectable || view.editable)
@@ -363,7 +271,7 @@ static int bridge_test_paragraph_edit_menu(lua_State *L) {
 		atIndex:range.location effectiveRange:NULL])
 		return luaL_error(L, "interactive words must remain untagged for native long press");
 
-	if (range.location != NSNotFound && [view linkAtCharacterIndex:range.location])
+	if (range.location != NSNotFound && paragraph_link_at(view, range.location))
 		[view presentActionMenuAtLocation:range.location];
 	return 0;
 }

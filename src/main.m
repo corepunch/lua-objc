@@ -324,7 +324,7 @@ static void bridge_set_optional_callback(
 #include "appkit/presentation.m"
 #include "appkit/text_field.m"
 #include "appkit/views.m"
-#include "shared/paragraph_links.m"
+#include "shared/paragraph.m"
 #include "appkit/paragraph.m"
 #include "shared/flow_layout.m"
 #include "appkit/layout.m"

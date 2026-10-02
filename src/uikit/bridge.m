@@ -200,7 +200,7 @@ static void motion_invalidate_layout(UIView *view) {
 #include "tables.m"
 #include "platform.m"
 #include "constructors.m"
-#include "../shared/paragraph_links.m"
+#include "../shared/paragraph.m"
 #include "paragraph.m"
 #include "mesh_gradient.m"
 #include "speech_recognition.m"

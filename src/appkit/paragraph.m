@@ -7,20 +7,7 @@
  * whose NSTextContainer.exclusionPaths carve the figure's square out of the
  * first lines — the mechanism Pages uses for floating objects. The figure is
  * an ordinary view (an image view from Lua) that the paragraph places. */
-@interface LuaParagraphLayoutManager : NSLayoutManager
-@end
-
-@implementation LuaParagraphLayoutManager
-- (void)drawUnderlineForGlyphRange:(NSRange)glyphRange underlineType:(NSUnderlineStyle)underlineVal
-		baselineOffset:(CGFloat)baselineOffset lineFragmentRect:(NSRect)lineRect
-		lineFragmentGlyphRange:(NSRange)lineGlyphRange containerOrigin:(NSPoint)containerOrigin {
-	[super drawUnderlineForGlyphRange:glyphRange underlineType:underlineVal
-		baselineOffset:baselineOffset + kParagraphLinkUnderlineOffset lineFragmentRect:lineRect
-		lineFragmentGlyphRange:lineGlyphRange containerOrigin:containerOrigin];
-}
-@end
-
-@interface LuaParagraphView : NSTextView <NSTextViewDelegate, LuaParagraphLinking>
+@interface LuaParagraphView : NSTextView <NSTextViewDelegate, LuaParagraphText>
 @property(nonatomic, copy) NSString *text;
 @property(nonatomic, strong) NSFont *bodyFont;
 @property(nonatomic, strong) NSColor *bodyColor;
@@ -33,8 +20,6 @@
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
 /* The colour of a link's words and the thicker dotted rule under them. */
 @property(nonatomic, strong) NSColor *linkColor;
-/* Characters shown so far, counted as Lua's utf8.len counts them; -1 shows
- * the whole paragraph. See `paragraph_revealed_length`. */
 @property(nonatomic) NSInteger revealedCharacters;
 /* Set once the view is initialized; see -rebuild. */
 @property(nonatomic) BOOL ready;
@@ -78,6 +63,7 @@
 }
 
 - (void)setText:(NSString *)text { _text = [text copy] ?: @""; [self rebuild]; }
+- (NSString *)paragraphText { return _text; }
 - (void)setBodyFont:(NSFont *)font { _bodyFont = font ?: _bodyFont; [self rebuild]; }
 - (void)setBodyColor:(NSColor *)color { _bodyColor = color ?: NSColor.labelColor; [self rebuild]; }
 - (void)setTextAlignment:(NSInteger)alignment { _textAlignment = alignment; [self rebuild]; }
@@ -116,49 +102,6 @@
 - (NSColor *)textColor { return _bodyColor; }
 - (void)setTextColor:(NSColor *)color { if (_ready) self.bodyColor = color; else [super setTextColor:color]; }
 
-/* The UTF-16 length of the revealed prefix of `text`, never splitting a
- * composed character or surrogate pair. */
-static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
-	if (scalars < 0) return text.length;
-	NSUInteger offset = 0;
-	for (; scalars > 0 && offset < text.length; scalars--)
-		offset += CFStringIsSurrogateHighCharacter([text characterAtIndex:offset]) && offset + 1 < text.length ? 2 : 1;
-	if (offset > 0 && offset < text.length)
-		offset = NSMaxRange([text rangeOfComposedCharacterSequenceAtIndex:offset - 1]);
-	return offset;
-}
-
-- (NSUInteger)revealedBodyLength {
-	return paragraph_revealed_length(_text, _revealedCharacters);
-}
-
-- (NSRange)bodyRangeOfLink:(LuaParagraphLink *)link {
-	NSUInteger start = paragraph_revealed_length(_text, MAX(0, link.location));
-	NSUInteger end = paragraph_revealed_length(_text, MAX(0, link.location) + MAX(0, link.length));
-	end = MIN(end, self.textStorage.length);
-	return start < end ? NSMakeRange(start, end - start) : NSMakeRange(NSNotFound, 0);
-}
-
-- (void)applyLinks {
-	NSTextStorage *storage = self.textStorage;
-	[storage beginEditing];
-	[_links enumerateObjectsUsingBlock:^(LuaParagraphLink *link, NSUInteger index, __unused BOOL *stop) {
-		NSRange range = [self bodyRangeOfLink:link];
-		if (range.location == NSNotFound) return;
-		[storage addAttribute:NSLinkAttributeName value:@(index).stringValue range:range];
-		[storage addAttribute:NSUnderlineStyleAttributeName
-			value:@(NSUnderlineStyleThick | NSUnderlineStylePatternDot) range:range];
-	}];
-	[storage endEditing];
-}
-
-- (LuaParagraphLink *)linkAtCharacterIndex:(NSUInteger)index {
-	if (index >= MIN([self revealedBodyLength], self.textStorage.length)) return nil;
-	for (LuaParagraphLink *link in _links)
-		if (NSLocationInRange(index, [self bodyRangeOfLink:link])) return link;
-	return nil;
-}
-
 - (void)chooseLinkItem:(NSMenuItem *)item {
 	[(LuaParagraphLink *)item.representedObject performItem:(NSUInteger)item.tag];
 }
@@ -180,9 +123,9 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 
 /* A click on a link opens its menu below the words, as a pull-down does. */
 - (BOOL)textView:(__unused NSTextView *)textView clickedOnLink:(__unused id)value atIndex:(NSUInteger)index {
-	LuaParagraphLink *link = [self linkAtCharacterIndex:index];
+	LuaParagraphLink *link = paragraph_link_at(self, index);
 	if (!link || link.titles.count == 0) return YES;
-	NSRange glyphs = [self.layoutManager glyphRangeForCharacterRange:[self bodyRangeOfLink:link]
+	NSRange glyphs = [self.layoutManager glyphRangeForCharacterRange:paragraph_link_range(self, link)
 		actualCharacterRange:NULL];
 	NSRect words = [self.layoutManager boundingRectForGlyphRange:glyphs inTextContainer:self.textContainer];
 	[[self menuForLink:link] popUpMenuPositioningItem:nil
@@ -191,24 +134,7 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 }
 
 - (void)applyReveal {
-	NSTextStorage *storage = self.textStorage;
-	NSUInteger shown = MIN([self revealedBodyLength], storage.length);
-	[storage beginEditing];
-	[storage addAttribute:NSForegroundColorAttributeName value:_bodyColor range:NSMakeRange(0, shown)];
-	[storage addAttribute:NSForegroundColorAttributeName value:NSColor.clearColor
-		range:NSMakeRange(shown, storage.length - shown)];
-	/* A link is ruled only under the words typed so far. */
-	for (LuaParagraphLink *link in _links) {
-		NSRange range = [self bodyRangeOfLink:link];
-		if (range.location == NSNotFound) continue;
-		NSRange visible = NSIntersectionRange(range, NSMakeRange(0, shown));
-		[storage addAttribute:NSUnderlineColorAttributeName value:NSColor.clearColor range:range];
-		if (!visible.length) continue;
-		NSColor *ink = _linkColor ?: NSColor.controlAccentColor;
-		[storage addAttribute:NSForegroundColorAttributeName value:ink range:visible];
-		[storage addAttribute:NSUnderlineColorAttributeName value:ink range:visible];
-	}
-	[storage endEditing];
+	paragraph_apply_reveal(self, _bodyColor, _linkColor ?: NSColor.controlAccentColor, NSColor.clearColor);
 	_figureView.hidden = _revealedCharacters == 0;
 	self.needsDisplay = YES;
 }
@@ -218,31 +144,12 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 }
 
 - (NSAttributedString *)bodyString {
-	NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
-	style.lineSpacing = _lineSpacing;
-	style.alignment = (NSTextAlignment)_textAlignment;
-	style.hyphenationFactor = _hyphenation ? 1.0 : 0.0;
-	/* Fixed line heights keep the lines beside the figure on the same
-	 * pitch the figure was sized for. */
-	style.minimumLineHeight = style.maximumLineHeight = [self bodyLineHeight];
-	return [[NSAttributedString alloc] initWithString:_text attributes:@{
-		NSFontAttributeName: _bodyFont,
-		NSForegroundColorAttributeName: _bodyColor,
-		NSParagraphStyleAttributeName: style,
-	}];
+	return paragraph_body_string(_text, _bodyFont, _bodyColor, _lineSpacing, (NSTextAlignment)_textAlignment,
+		_hyphenation, [self bodyLineHeight]);
 }
 
-/* The figure spans exactly `figureLines` lines, from the first line's top to
- * the last line's bottom, and is as wide as it is tall. */
 - (CGFloat)figureSide {
-	return _figureLines * ([self bodyLineHeight] + _lineSpacing) - _lineSpacing;
-}
-
-/* Lines beside the figure keep a gap from it; the next line returns to the
- * margin. */
-- (NSArray<NSBezierPath *> *)exclusionForFigure {
-	CGFloat side = [self figureSide];
-	return @[[NSBezierPath bezierPathWithRect:NSMakeRect(0, 0, side + kParagraphFigureGap, side + _lineSpacing / 2)]];
+	return paragraph_figure_side(_figureLines, [self bodyLineHeight], _lineSpacing);
 }
 
 - (void)rebuild {
@@ -252,11 +159,11 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	if (_figureView) {
 		CGFloat side = [self figureSide];
 		_figureView.frame = NSMakeRect(0, 0, side, side);
-		self.textContainer.exclusionPaths = [self exclusionForFigure];
+		self.textContainer.exclusionPaths = @[[NSBezierPath bezierPathWithRect:paragraph_figure_exclusion(side, _lineSpacing)]];
 	} else {
 		self.textContainer.exclusionPaths = @[];
 	}
-	[self applyLinks];
+	paragraph_apply_links(self, YES);
 	[self applyReveal];
 	[self setAccessibilityValue:_text];
 	[self invalidateIntrinsicContentSize];
@@ -273,7 +180,8 @@ static NSUInteger paragraph_revealed_length(NSString *text, NSInteger scalars) {
 	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:NSMakeSize(unbounded ? CGFLOAT_MAX : width, CGFLOAT_MAX)];
 	container.lineFragmentPadding = 0;
-	if (_figureView) container.exclusionPaths = [self exclusionForFigure];
+	if (_figureView) container.exclusionPaths = @[[NSBezierPath bezierPathWithRect:
+		paragraph_figure_exclusion([self figureSide], _lineSpacing)]];
 	[storage addLayoutManager:manager];
 	[manager addTextContainer:container];
 	[manager ensureLayoutForTextContainer:container];
