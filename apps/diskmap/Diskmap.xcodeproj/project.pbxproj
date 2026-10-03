@@ -94,7 +94,7 @@
 				D1500000000000000000E005 /* Exceptions for "Launcher" folder in "Diskmap" target */,
 			);
 			name = Launcher;
-			path = ../../scripts/diskmap;
+			path = ../../scripts/launcher;
 			sourceTree = "<group>";
 		};
 		D15000000000000000001003 /* Framework Lua */ = {
@@ -268,7 +268,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Lua sources and app data are copied as trees, so new files need no project edit.\nset -e\nroot=\"$SRCROOT/../..\"\nresources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncopy() {\n\tmkdir -p \"$resources/$2\"\n\trsync -a --delete --delete-excluded --prune-empty-dirs --exclude=Build/ --include='*/' --include='*.lua' --include='*.etlua' --include='*.bin' --include='*.jpg' --exclude='*' \"$root/$1/\" \"$resources/$2/\"\n}\ncopy lua lua\ncopy apps/diskmap apps/diskmap\n";
+			shellScript = "# Lua sources and app data are copied as trees, so new files need no project edit.\nset -e\nroot=\"$SRCROOT/../..\"\nresources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncopy() {\n\tmkdir -p \"$resources/$2\"\n\trsync -a --delete --delete-excluded --prune-empty-dirs --exclude=Build/ --include='*/' --include='*.lua' --include='*.etlua' --include='*.xml' --include='*.metal' --include='*.bin' --include='*.jpg' --exclude='*' \"$root/$1/\" \"$resources/$2/\"\n}\ncopy lua lua\ncopy apps/diskmap apps/diskmap\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -353,6 +353,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = BM2R8F5YHC;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				OTHER_LDFLAGS = "-Wl,-needed_framework,CoreServices";
@@ -369,6 +370,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = BM2R8F5YHC;
 				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				OTHER_LDFLAGS = "-Wl,-needed_framework,CoreServices";

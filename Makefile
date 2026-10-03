@@ -338,14 +338,24 @@ diskmap-xcode-build:
 		OBJROOT="$(DISKMAP_XCODE_ROOT)/Intermediates" \
 		build
 
+# A GitHub release build of an app, as .github/workflows/release.yml makes
+# it: `make release TAG=dnb/1.2.3`. UNSIGNED=1 skips Developer ID and
+# notarization (see scripts/release/release.sh).
+TAG ?=
+.PHONY: release
+release:
+	scripts/release/release.sh $(TAG)
+
 APP ?=
 TARGET ?=
 .PHONY: xcode
 xcode:
 	@if [ "$(APP)" = diskmap ] && [ "$(TARGET)" = macos ]; then \
 		open $(DISKMAP_XCODE_PROJECT); \
+	elif [ "$(APP)" = dnb ] && [ "$(TARGET)" = macos ]; then \
+		open apps/dnb/DrumAndBass.xcodeproj; \
 	else \
-		echo "usage: make xcode APP=diskmap TARGET=macos" >&2; exit 2; \
+		echo "usage: make xcode APP=diskmap|dnb TARGET=macos" >&2; exit 2; \
 	fi
 
 # Diskmap showreel (reels/diskmap, rendered with modules/reel): `make
