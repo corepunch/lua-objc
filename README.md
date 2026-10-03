@@ -521,6 +521,36 @@ The Diskmap Xcode Cloud workflow builds only for tags beginning with
 reads a tag like `diskmap/1.2.3` and sets the app version to `1.2.3`. The start
 condition lives in Xcode Cloud (App Store Connect), not in the repository.
 
+### GitHub releases of Diskmap and Drum & Bass
+
+A tag `diskmap/1.2.3` or `dnb/1.2.3` runs
+[`.github/workflows/release.yml`](.github/workflows/release.yml): it builds
+the app's Xcode project (`apps/diskmap/Diskmap.xcodeproj`,
+`apps/dnb/DrumAndBass.xcodeproj`) with
+[`scripts/release/release.sh`](scripts/release/release.sh), signs it with
+Developer ID, notarizes and staples it, and attaches
+`<Product>-<version>.dmg` to a GitHub release named after the tag. Both
+projects run the shared launcher `scripts/launcher/launcher.c`, which starts
+the Lua entry point the app's `Info.plist` names as `LuaObjCEntry`.
+
+```sh
+git tag dnb/1.0.0 && git push origin dnb/1.0.0
+make release TAG=dnb/1.0.0 UNSIGNED=1   # local, ad-hoc signed, no notarization
+```
+
+Signing needs a **Developer ID Application** certificate (created by the
+team's Account Holder) and an App Store Connect API key with the Developer
+role for notarization. Store them as repository secrets; until they exist the
+workflow publishes an ad-hoc signed draft prerelease instead:
+
+```sh
+base64 -i DeveloperID.p12 | gh secret set MACOS_CERTIFICATE_P12
+gh secret set MACOS_CERTIFICATE_PASSWORD
+base64 -i AuthKey_XXXXXXXXXX.p8 | gh secret set NOTARY_KEY_P8
+gh secret set NOTARY_KEY_ID
+gh secret set NOTARY_ISSUER_ID
+```
+
 ### Adventure Arena tour screenshots
 
 The first-launch guide uses real iPhone reader captures in light and dark.

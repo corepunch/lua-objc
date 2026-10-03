@@ -8,6 +8,8 @@
 	<string>Diskmap</string>
 	<key>CFBundleExecutable</key>
 	<string>Diskmap</string>
+	<key>LuaObjCEntry</key>
+	<string>apps/diskmap/init.lua</string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>

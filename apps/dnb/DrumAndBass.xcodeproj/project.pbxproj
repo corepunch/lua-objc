@@ -1,0 +1,464 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D1600000000000000000B001 /* AppKit.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1600000000000000000F002 /* AppKit.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D1600000000000000000B002 /* AudioStream.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1600000000000000000F003 /* AudioStream.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D1600000000000000000C001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D1600000000000000000A000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D1600000000000000000A002;
+			remoteInfo = AppKit;
+		};
+		D1600000000000000000C002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D1600000000000000000A000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D1600000000000000000A003;
+			remoteInfo = AudioStream;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D16000000000000000004004 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				D1600000000000000000B001 /* AppKit.dylib in Embed Libraries */,
+				D1600000000000000000B002 /* AudioStream.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		D1600000000000000000F001 /* DrumAndBass.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DrumAndBass.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1600000000000000000F002 /* AppKit.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = AppKit.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1600000000000000000F003 /* AudioStream.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = AudioStream.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1600000000000000000F005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D1600000000000000000E001 /* Exceptions for "Native" folder in "AppKit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				embedded_lua_module.c,
+				main.m,
+			);
+			target = D1600000000000000000A002 /* AppKit */;
+		};
+		D1600000000000000000E002 /* Exceptions for "Native" folder in "AudioStream" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				plugins/audio/AudioStream.m,
+			);
+			target = D1600000000000000000A003 /* AudioStream */;
+		};
+		D1600000000000000000E003 /* Exceptions for "Lua 5.4" folder in "AppKit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				lua.c,
+				luac.c,
+				Makefile,
+			);
+			target = D1600000000000000000A002 /* AppKit */;
+		};
+		D1600000000000000000E005 /* Exceptions for "Launcher" folder in "DrumAndBass" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				launcher.c,
+			);
+			target = D1600000000000000000A001 /* DrumAndBass */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D16000000000000000001002 /* Launcher */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D1600000000000000000E005 /* Exceptions for "Launcher" folder in "DrumAndBass" target */,
+			);
+			name = Launcher;
+			path = ../../scripts/launcher;
+			sourceTree = "<group>";
+		};
+		D16000000000000000001003 /* Framework Lua */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			name = "Framework Lua";
+			path = ../../lua;
+			sourceTree = "<group>";
+		};
+		D16000000000000000001004 /* Native */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D1600000000000000000E001 /* Exceptions for "Native" folder in "AppKit" target */,
+				D1600000000000000000E002 /* Exceptions for "Native" folder in "AudioStream" target */,
+			);
+			name = Native;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		D16000000000000000001005 /* Lua 5.4 */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D1600000000000000000E003 /* Exceptions for "Lua 5.4" folder in "AppKit" target */,
+			);
+			name = "Lua 5.4";
+			path = "../../vendor/lua-5.4.8/src";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXGroup section */
+		D16000000000000000001000 = {
+			isa = PBXGroup;
+			children = (
+				D16000000000000000001001 /* DrumAndBass */,
+				D16000000000000000001002 /* Launcher */,
+				D16000000000000000001003 /* Framework Lua */,
+				D16000000000000000001004 /* Native */,
+				D16000000000000000001005 /* Lua 5.4 */,
+				D16000000000000000001009 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D16000000000000000001001 /* DrumAndBass */ = {
+			isa = PBXGroup;
+			children = (
+				D1600000000000000000F005 /* Info.plist */,
+			);
+			name = DrumAndBass;
+			sourceTree = "<group>";
+		};
+		D16000000000000000001009 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D1600000000000000000F001 /* DrumAndBass.app */,
+				D1600000000000000000F002 /* AppKit.dylib */,
+				D1600000000000000000F003 /* AudioStream.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D1600000000000000000A001 /* DrumAndBass */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D16000000000000000003001 /* Build configuration list for PBXNativeTarget "DrumAndBass" */;
+			buildPhases = (
+				D16000000000000000004001 /* Sources */,
+				D16000000000000000004002 /* Resources */,
+				D16000000000000000004003 /* Copy Lua */,
+				D16000000000000000004004 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D1600000000000000000D001 /* PBXTargetDependency */,
+				D1600000000000000000D002 /* PBXTargetDependency */,
+			);
+			name = DrumAndBass;
+			productName = DrumAndBass;
+			productReference = D1600000000000000000F001 /* DrumAndBass.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D1600000000000000000A002 /* AppKit */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D16000000000000000003002 /* Build configuration list for PBXNativeTarget "AppKit" */;
+			buildPhases = (
+				D16000000000000000004005 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D16000000000000000001005 /* Lua 5.4 */,
+			);
+			name = AppKit;
+			productName = AppKit;
+			productReference = D1600000000000000000F002 /* AppKit.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+		D1600000000000000000A003 /* AudioStream */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D16000000000000000003003 /* Build configuration list for PBXNativeTarget "AudioStream" */;
+			buildPhases = (
+				D16000000000000000004006 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AudioStream;
+			productName = AudioStream;
+			productReference = D1600000000000000000F003 /* AudioStream.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D1600000000000000000A000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = D16000000000000000003000 /* Build configuration list for PBXProject "DrumAndBass" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D16000000000000000001000;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D16000000000000000001009 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D1600000000000000000A001 /* DrumAndBass */,
+				D1600000000000000000A002 /* AppKit */,
+				D1600000000000000000A003 /* AudioStream */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D16000000000000000004002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D16000000000000000004003 /* Copy Lua */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Lua";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Lua sources and app data are copied as trees, so new files need no project edit.\nset -e\nroot=\"$SRCROOT/../..\"\nresources=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\ncopy() {\n\tmkdir -p \"$resources/$2\"\n\trsync -a --delete --delete-excluded --prune-empty-dirs --exclude=Build/ --include='*/' --include='*.lua' --include='*.etlua' --include='*.xml' --include='*.metal' --include='*.bin' --include='*.jpg' --exclude='*' \"$root/$1/\" \"$resources/$2/\"\n}\ncopy lua lua\ncopy apps/dnb apps/dnb\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D16000000000000000004001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D16000000000000000004005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D16000000000000000004006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D1600000000000000000D001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D1600000000000000000A002 /* AppKit */;
+			targetProxy = D1600000000000000000C001 /* PBXContainerItemProxy */;
+		};
+		D1600000000000000000D002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D1600000000000000000A003 /* AudioStream */;
+			targetProxy = D1600000000000000000C002 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D16000000000000000002001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = LUA_USE_MACOSX;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OBJROOT = "$(PROJECT_DIR)/../../build/xcode-project/Intermediates";
+				SDKROOT = macosx;
+				SYMROOT = "$(PROJECT_DIR)/../../build/xcode-project/Products";
+			};
+			name = Debug;
+		};
+		D16000000000000000002002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = LUA_USE_MACOSX;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/../../vendor/lua-5.4.8/src";
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OBJROOT = "$(PROJECT_DIR)/../../build/xcode-project/Intermediates";
+				SDKROOT = macosx;
+				SYMROOT = "$(PROJECT_DIR)/../../build/xcode-project/Products";
+			};
+			name = Release;
+		};
+		D16000000000000000002011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = BM2R8F5YHC;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				OTHER_LDFLAGS = "-Wl,-needed_framework,CoreServices";
+				PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.dnb;
+				PRODUCT_NAME = DrumAndBass;
+			};
+			name = Debug;
+		};
+		D16000000000000000002012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = BM2R8F5YHC;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				OTHER_LDFLAGS = "-Wl,-needed_framework,CoreServices";
+				PRODUCT_BUNDLE_IDENTIFIER = org.luaobjc.dnb;
+				PRODUCT_NAME = DrumAndBass;
+			};
+			name = Release;
+		};
+		D16000000000000000002021 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/AppKit.dylib";
+				PRODUCT_NAME = AppKit;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		D16000000000000000002022 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/AppKit.dylib";
+				PRODUCT_NAME = AppKit;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		D16000000000000000002031 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/AudioStream.dylib";
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+					"-framework",
+					AVFAudio,
+					"-framework",
+					Accelerate,
+				);
+				PRODUCT_NAME = AudioStream;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		D16000000000000000002032 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LD_DYLIB_INSTALL_NAME = "@rpath/AudioStream.dylib";
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+					"-framework",
+					AVFAudio,
+					"-framework",
+					Accelerate,
+				);
+				PRODUCT_NAME = AudioStream;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D16000000000000000003000 /* Build configuration list for PBXProject "DrumAndBass" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D16000000000000000002001 /* Debug */,
+				D16000000000000000002002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D16000000000000000003001 /* Build configuration list for PBXNativeTarget "DrumAndBass" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D16000000000000000002011 /* Debug */,
+				D16000000000000000002012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D16000000000000000003002 /* Build configuration list for PBXNativeTarget "AppKit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D16000000000000000002021 /* Debug */,
+				D16000000000000000002022 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D16000000000000000003003 /* Build configuration list for PBXNativeTarget "AudioStream" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D16000000000000000002031 /* Debug */,
+				D16000000000000000002032 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D1600000000000000000A000 /* Project object */;
+}
