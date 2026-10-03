@@ -26,7 +26,7 @@ function EmptyTrash:run()
 		status = "The Trash could not be emptied."
 		self.app.service.showError("Could not empty Trash", detail or "Check permissions.")
 	end
-	self.app.rescan()
+	if ok then self.app.removed(Model.db.home .. "/.Trash") end
 	return ok, status
 end
 

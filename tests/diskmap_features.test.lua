@@ -37,6 +37,7 @@ model.kept.xcode = true
 t.assertEqual(#Suggestions:ranked(), 0, "keeping parent suppresses all descendant recommendations")
 model.kept.xcode = nil
 local saved, refreshed = 0, 0
+local trashedPath, trashedBytes, remeasured
 local keepMessage
 local cleanup = Keep({app = {service = require("apps.diskmap.services.Contract").stub({saveKeep = function() saved = saved + 1; return true end})}})
 t.assertEqual(Suggestions:presentation().decisions[1].id, "simulators", "clean up keeps resource identity")
@@ -77,22 +78,23 @@ t.expect(details.text:find("Review threshold", 1, true) ~= nil, "inspector reuse
 t.expect(details.canManage, "fresh measurement allows live actions")
 local deletes = 0
 local inspector = Manage({app = {service = require("apps.diskmap.services.Contract").stub({confirmTrash = function() return true end,
-	trash = function() deletes = deletes + 1; return true end}), rescan = function() refreshed = refreshed + 1 end}})
+	trash = function() deletes = deletes + 1; return true end}), trashed = function(path, bytes) trashedPath, trashedBytes = path, bytes end}})
 model.measurements.derived.bytes = 2e9
 inspector:manage("derived")
 t.assertEqual(deletes, 1, "allowed action uses injected filesystem service")
-t.assertEqual(refreshed, 1, "successful mutation requests fresh full inventory")
+t.assertEqual(trashedPath, Locations:find("derived").path, "the trashed location leaves the model")
+t.assertEqual(trashedBytes, 2e9, "with the size the scan measured")
 local ownerCalls = {}
 model.measurements.npm = {bytes = 20e6, status = "complete"}
 local ownerInspector = Manage({app = {service = require("apps.diskmap.services.Contract").stub({
 	confirmOwnerCleanup = function(row, size) ownerCalls.confirmed = row.id == "npm" and size == "20.0 MB"; return true end,
 	runOwnerCleanup = function(commandId, home, done) ownerCalls.commandId, ownerCalls.home = commandId, home; done(true) end,
-}), rescan = function() refreshed = refreshed + 1 end}})
+}), remeasure = function(id) remeasured = id end}})
 ownerInspector:manage("npm")
 t.expect(ownerCalls.confirmed, "owner command requires review of measured cache size")
 t.assertEqual(ownerCalls.commandId, "npm-cache", "npm resource routes to its fixed owner command")
 t.assertEqual(ownerCalls.home, model.home, "owner command uses the active account location")
-t.assertEqual(refreshed, 2, "owner cleanup triggers a fresh measurement")
+t.assertEqual(remeasured, "npm", "owner cleanup measures only the location it cleaned")
 model.kept.xcode = true
 t.expect(not inspector:manage("derived"), "kept ancestor prevents mutation")
 local settings = require("tests.diskmap_sheet").new("settings", {service = require("apps.diskmap.services.Contract").stub({loadSettings = function() return true end, saveSettings = function() return false end}), model = {}})
@@ -106,7 +108,8 @@ local scanner = Scan.new(Store.new("/Users/test"), require("apps.diskmap.service
 }), "/Users/test")
 scanner:start()
 pending[1].progress({completed = 3, total = 153})
-t.expect(scanner.status:find("3 of 153 locations measured", 1, true) == 1, "worker progress reports measured locations without suggesting a time estimate")
+pending[1].progress({completed = 4, total = 153, currentPath = "/Users/test/.gradle"})
+t.assertEqual(scanner.status, "~/.gradle", "worker progress names only the location being measured")
 scanner:start(); local status = scanner.status
 pending[1].progress({completed = 100, total = 153}); pending[1].done({failure = "Old failure"})
 t.assertEqual(scanner.status, status, "cancelled generation cannot overwrite status")

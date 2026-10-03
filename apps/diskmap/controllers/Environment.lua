@@ -10,6 +10,7 @@ local Store = require("apps.diskmap.Store")
 local Contract = require("apps.diskmap.services.Contract")
 local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
+local Scans = require("apps.diskmap.models.Scans")
 local Categories = require("apps.diskmap.models.Categories")
 local History = require("apps.diskmap.helpers.History")
 local Workflows = require("apps.diskmap.models.Workflows")
@@ -46,6 +47,9 @@ function Environment.new(service, launch, router)
 	context.request = function(id) return self:page(id) end
 	context.scanning = function() return self.scan.job ~= nil end
 	context.rescan = function() self.scan:start() end
+	context.removed = function(path, bytes, to) self:removed(path, bytes, to) end
+	context.trashed = function(path, bytes) self:removed(path, bytes, self.model.home .. "/.Trash") end
+	context.remeasure = function(id) self:remeasure(id) end
 	context.volumeName = function() return self:state().volumeName end
 	context.cleanupSources = function() return self:sources() end
 	local function sheet(id)
@@ -78,6 +82,29 @@ function Environment.new(service, launch, router)
 	local path = service.savedSnapshotPath()
 	if not self.mock and path then self.snapshots = self:snapshotComparison(path, true) end
 	return self
+end
+
+-- A removal changes the measured store. Refresh only the cheap volume query;
+-- the disk is walked again only when the user requests another scan.
+function Environment:removed(path, bytes, to)
+	if self.closed then return end
+	Scans:remove(path, bytes, to)
+	self.scan.disk = self.service.diskSpace(self.model.home)
+	self.router.refresh()
+end
+
+-- Owner cleanup measures its one location, with the same lifetime guard as
+-- the scan's inventory callbacks.
+function Environment:remeasure(id)
+	local row = Locations:find(id)
+	if self.closed or not row or not row.path then return end
+	local scan, generation = self.model.scan, self.scan.generation
+	self.service.measure({row.path}, function(sizes)
+		if self.closed or self.model.scan ~= scan or self.scan.generation ~= generation then return end
+		Scans:resize(id, sizes and sizes[1] or 0)
+		self.scan.disk = self.service.diskSpace(self.model.home)
+		self.router.refresh()
+	end)
 end
 
 function Environment:sources()

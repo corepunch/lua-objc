@@ -60,13 +60,10 @@ function Scan:start()
 		end, function(progress)
 			if generation ~= self.generation or type(progress) ~= "table" or type(progress.total) ~= "number" or progress.total <= 0 then return end
 			Scans:progress(ids, progress)
-			local completed = math.min(progress.completed or 0, progress.total)
-			-- Location counts are not an estimate of time remaining: the final
-			-- location can hold more files than every earlier one combined.
-			self.status = string.format("%d of %d locations measured · %s items checked · %d sec elapsed",
-				completed, progress.total, Format.count(progress.visited or 0), math.floor(progress.seconds or 0))
+			-- The bar says how far the scan is; the line under it names only the
+			-- location being measured.
 			if type(progress.currentPath) == "string" and progress.currentPath ~= "" then
-				self.status = self.status .. " · Measuring " .. Format.tilde(progress.currentPath, self.home)
+				self.status = Format.tilde(progress.currentPath, self.home)
 			end
 			self:notify()
 		end)

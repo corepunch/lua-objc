@@ -22,19 +22,21 @@ t.assertEqual(sectors[2].startAngle, 0, "the next sector continues clockwise")
 t.assertEqual(sectors[2].endAngle, 270, "sectors close the circle")
 t.assertEqual(sectors[2].fraction, 0.75, "fractions are shares of the total")
 
-local inset = Sectors.layout({{value = 1}, {value = 1}}, 180, 0.6, 2)
+-- As in SwiftUI, each sector gives up the angular inset at each side, so
+-- neighbours are twice it apart.
+local inset = Sectors.layout({{value = 1}, {value = 1}}, 180, 0.6, 1)
 local gap = inset[2].startAngle - inset[1].endAngle
-t.expect(math.abs(math.rad(gap) * 54 - 2) < 1e-9, "angular inset is a point gap at the inner edge, so no separator is thinner")
-local pie = Sectors.layout({{value = 1}, {value = 1}}, 180, 0, 2)
-t.expect(math.abs(math.rad(pie[2].startAngle - pie[1].endAngle) * 45 - 2) < 1e-9, "a pie measures its inset at mid-radius")
+t.expect(math.abs(math.rad(gap) * 54 - 2) < 1e-9, "an inset of 1 is a 2pt gap at the inner edge, so no separator is thinner")
+local pie = Sectors.layout({{value = 1}, {value = 1}}, 180, 0, 1)
+t.expect(math.abs(math.rad(pie[2].startAngle - pie[1].endAngle) * 45 - 2) < 1e-9, "a pie measures its gap at mid-radius")
 local band = Sectors.band(200, 0.5, 1, 3)
 t.expect(math.abs(band.lineWidth - (band.outer - band.inner)) < 1e-9, "a band spans its ring; the arcs' inset separates rings")
 local twoRings = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.4,
 	{__sectorMark = true, id = "a", value = 1}, {__sectorMark = true, id = "a1", parent = "a", ring = 2, value = 1}}
 t.assertEqual(twoRings.subviews[1].inset, 2, "rings are separated by a 2pt gap, not a hairline")
-local oneRing = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.4, angularInset = 3,
+local oneRing = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.4, angularInset = 1.5,
 	{__sectorMark = true, id = "a", value = 1, cornerRadius = 4}, {__sectorMark = true, id = "b", value = 1}}
-t.assertEqual(oneRing.subviews[1].inset, 3, "the angular inset separates neighbours")
+t.assertEqual(oneRing.subviews[1].inset, 3, "SwiftUI's 1.5 inset leaves 3pt between neighbours")
 t.assertEqual(oneRing.subviews[1].cornerRadius, 4, "a mark rounds its own corners")
 t.assertEqual(oneRing.subviews[2].cornerRadius, 0, "and only its own")
 -- A sector is filled: its ink is the band of its share less half the inset
@@ -119,8 +121,8 @@ local over = {}
 for _, sector in ipairs(overflow) do over[sector.id] = sector end
 t.expect(math.abs(over.a2.endAngle - over.a.endAngle) < 1e-9, "overflowing children end at their parent's edge")
 
--- Interactive charts raise the hovered sector, leave the others alone, and
--- report selection.
+-- Interactive charts keep the hovered sector, fade the others, and report
+-- selection.
 local chosen, hoveredId, centered
 local interactive = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
 	{__sectorMark = true, id = "a", value = 3, color = "systemBlue"},
@@ -132,17 +134,41 @@ local pointer = interactive.subviews[#interactive.subviews]
 t.assertEqual(pointer.className, "LuaPointerView", "an interactive chart places a pointer view on top")
 bridge._pointerSend(pointer, "hover", 100, 40)
 t.assertEqual(hoveredId, "a", "hover names the sector under the pointer")
-t.assertEqual(interactive.subviews[1].strokeAlpha, 1, "the hovered sector is opaque")
-t.assertEqual(interactive.subviews[2].strokeAlpha, 1, "other sectors do not dim")
+t.assertEqual(interactive.subviews[1].strokeAlpha, 1, "an opaque hovered sector keeps its opacity")
+t.expect(interactive.subviews[2].strokeAlpha < 1, "so hover shows by fading the other sectors")
 bridge._pointerSend(pointer, "hover")
 t.assertEqual(interactive.subviews[1].strokeAlpha, 1, "leaving restores every sector")
+t.assertEqual(interactive.subviews[2].strokeAlpha, 1, "including the faded ones")
 local faded = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
 	{__sectorMark = true, id = "a", value = 3, color = "systemBlue", opacity = 0.5},
 	{__sectorMark = true, id = "b", value = 1, color = "systemGreen", opacity = 0.5},
 	onHover = function() end}
 bridge._pointerSend(faded.subviews[#faded.subviews], "hover", 100, 40)
-t.assertEqual(faded.subviews[1].strokeAlpha, 0.75, "a flat chart moves the hovered sector halfway to opaque")
-t.assertEqual(faded.subviews[2].strokeAlpha, 0.5, "and keeps the others at their own opacity")
+t.assertEqual(faded.subviews[1].strokeAlpha, 0.5, "a translucent hovered sector keeps its own opacity")
+t.expect(faded.subviews[2].strokeAlpha < 0.5, "and the others recede below theirs")
+-- In a sunburst the hovered sector keeps its lineage: the parent it sits in
+-- and the children inside it. Siblings and cousins recede.
+local burst = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3,
+	{__sectorMark = true, id = "a", value = 1, color = "systemBlue"},
+	{__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
+	{__sectorMark = true, id = "a1", parent = "a", ring = 2, value = 1, color = "systemBlue"},
+	{__sectorMark = true, id = "a2", parent = "a", ring = 2, value = 1, color = "systemBlue"},
+	{__sectorMark = true, id = "b1", parent = "b", ring = 2, value = 1, color = "systemGreen"},
+	{__sectorMark = true, id = "a1x", parent = "a1", ring = 3, value = 1, color = "systemBlue"},
+	onHover = function() end}
+local burstArcs = {}
+for index, id in ipairs({"a", "b", "a1", "a2", "b1", "a1x"}) do burstArcs[id] = burst.subviews[index] end
+Sectors.highlight(burst, "a1")
+t.assertEqual(burstArcs.a1.strokeAlpha, 1, "the hovered sector keeps its opacity")
+t.assertEqual(burstArcs.a.strokeAlpha, 1, "its parent stays")
+t.assertEqual(burstArcs.a1x.strokeAlpha, 1, "its child stays")
+t.expect(burstArcs.a2.strokeAlpha < 1, "its sibling recedes")
+t.expect(burstArcs.b.strokeAlpha < 1 and burstArcs.b1.strokeAlpha < 1, "another branch recedes")
+Sectors.highlight(burst, "a")
+t.assertEqual(burstArcs.a2.strokeAlpha, 1, "hovering a first-ring sector keeps all its children")
+t.expect(burstArcs.b1.strokeAlpha < 1, "but not another sector's")
+Sectors.highlight(burst, nil)
+t.assertEqual(burstArcs.b1.strokeAlpha, 1, "no highlight restores the whole chart")
 bridge._pointerSend(pointer, "click", 100, 40, 1)
 t.expect(chosen and chosen[1] == "a" and chosen[2] == 1, "clicking selects a sector")
 bridge._pointerSend(pointer, "click", 100, 100, 1)
@@ -150,7 +176,6 @@ t.expect(centered, "clicking the hole calls onCenter")
 
 -- New data moves the existing arcs, as SwiftUI Charts does, instead of
 -- rebuilding the chart and replaying its entrance.
-local Sectors = require("ui.sectors")
 local live = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
 	{__sectorMark = true, id = "a", value = 1, color = "systemBlue"},
 	{__sectorMark = true, id = "b", value = 1, color = "systemGreen"},

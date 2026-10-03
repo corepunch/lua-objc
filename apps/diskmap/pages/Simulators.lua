@@ -200,8 +200,7 @@ function Page:run(commands, targets, validate)
 	local function step(index)
 		if index > #commands then
 			self.busy = false
-			self.app.rescan()
-			self:load()
+			self:load(true)
 			return
 		end
 		local allowed, why = validate(targets[index])
@@ -213,10 +212,10 @@ function Page:run(commands, targets, validate)
 			self.app.log(table.concat(commands[index], " ", 3), ok, targets[index].bytes, targets[index].name or targets[index].id, not ok and output or nil)
 			if not ok then
 				self.busy, self.error = false, "Action failed: " .. tostring(output):sub(1, 220)
-				self.app.rescan()
 				self.app.refresh()
 				return
 			end
+			self.app.removed(targets[index].path, targets[index].bytes)
 			step(index + 1)
 		end)
 	end
@@ -285,6 +284,7 @@ function Page:planReview()
 		execute = function(entry, done)
 			self.service.command({"/usr/bin/xcrun", "simctl", "delete", entry.id}, function(success, output)
 				self.app.log("simctl delete " .. entry.id, success, entry.bytes, entry.name, not success and output or nil)
+				if success then self.app.removed(entry.path, entry.bytes) end
 				done(success, output)
 			end)
 		end,
@@ -294,7 +294,6 @@ function Page:planReview()
 		self.busy, self.planResult = false, Batch.report(result, "Deleted", "device")
 			.. ". Kept devices and the shared runtime were not touched; simulators are deleted at once, not moved to the Trash. "
 			.. Outcome.freeText(freeBefore, Outcome.free(self.service, Model.db.home), result.removed > 0) .. "."
-		self.app.rescan()
 		self:load(true)
 	end)
 	return true

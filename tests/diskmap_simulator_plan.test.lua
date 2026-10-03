@@ -225,7 +225,8 @@ local service = require("apps.diskmap.services.Contract").stub({
 })
 local changed = 0
 local storage = Store.new("/Users/test")
-local page, model = Host.new("simulators", {model = storage, service = service, rescan = function() changed = changed + 1 end})
+local page, model = Host.new("simulators", {model = storage, service = service,
+	rescan = function() error("deleting devices never measures the disk again") end, removed = function() changed = changed + 1 end})
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.refs
 t.expect(refs and refs.planDevices, "the minimal device set renders on the Simulators page")
@@ -263,5 +264,5 @@ t.assertEqual(#deletions, 1, "the device that began running was never deleted")
 t.expect(fixture[udid(3)] and fixture[udid(1)] and fixture[udid(2)] and fixture[udid(5)], "kept, protected and running devices survive")
 t.expect(model.planResult:find("Skipped", 1, true) and model.planResult:find("Failed", 1, true), "skips and failures are reported separately: " .. tostring(model.planResult))
 t.assertEqual(page.refs.planStatus.text, model.planResult, "and the page states them")
-t.expect(changed > 0, "the root is told to remeasure")
+t.assertEqual(changed, 0, "a device that failed to delete stays in the model")
 os.exit(t.summary() and 0 or 1)

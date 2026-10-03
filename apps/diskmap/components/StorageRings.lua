@@ -1,5 +1,5 @@
 local GEOMETRY = {minimumHole = 0.3, thickness = 0.7 / 3, opacity = {1, 0.72, 0.5}, otherFade = 0.55}
-local Rings = {props = {diameter = {type = "num", default = 360}, corner = {type = "num", default = 6}},
+local Rings = {props = {diameter = {type = "num", default = 360}, corner = {type = "num", default = 5}},
 	records = {StorageSector = {id = "str", parent = "str", value = "num", color = "str", label = "str", ring = "num", other = "bool"}}}
 function Rings.data(props, records)
 	local rings, sectors = 1, {}

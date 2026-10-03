@@ -5,7 +5,9 @@ local Format = require("apps.diskmap.helpers.Format")
 -- Acting on the one location a person chose: move it to the Trash, empty the
 -- Trash, run its owner's cleanup, open its owner or reveal it. A flow
 -- (lua/data/flow.lua) over a page or the app: it asks the app's service,
--- `self.app.service`, and remeasures with `self.app.rescan()` after a change.
+-- `self.app.service`, and takes what left the disk out of the model with
+-- `self.app.trashed`, `self.app.removed` or `self.app.remeasure`: the disk
+-- is not measured again.
 --
 --   Manage(page):manage("derived")
 local Operations = require("apps.diskmap.flows.Operations")
@@ -47,7 +49,8 @@ function Manage:manage(id)
 		if not valid or not self.app.service.confirmTrash(row) then return false end
 		local ok, err = self:moveToTrash(row.id)
 		if not ok then self.app.service.showError("Could not move to Trash", err and err.message or "Check permissions."); return false end
-		self.app.rescan()
+		local measured = Model.db.measurements[row.id]
+		self.app.trashed(row.path, measured and measured.bytes)
 	elseif row.action == "empty" then
 		local valid, validation = row:validateEmpty()
 		if not valid then self.app.service.showError("Trash is already empty", validation and validation.message or "Nothing to remove."); return false end
@@ -61,7 +64,7 @@ function Manage:manage(id)
 		self.app.service.runOwnerCleanup(row.commandId, Model.db.home, function(ok, output)
 			Operations(self):log("Clear " .. row.name, ok, measured.bytes, row.path, not ok and output or nil)
 			if not ok then self.app.service.showError("Could not clear " .. row.name, output or "Check that the package manager is installed."); return end
-			self.app.rescan()
+			self.app.remeasure(row.id)
 		end)
 	elseif row.action == "settings" then self.app.service.openSettings(row.settingsSection)
 	elseif row.action == "xcode" or row.action == "docker" then

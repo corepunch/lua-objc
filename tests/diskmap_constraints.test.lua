@@ -55,7 +55,7 @@ local controller = Manage({app = {service = require("apps.diskmap.services.Contr
 	end,
 	trash = function() controllerCalls = controllerCalls + 1; return true end,
 	showError = function() errors = errors + 1 end,
-}), rescan = function() refreshes = refreshes + 1 end}})
+}), trashed = function() refreshes = refreshes + 1 end}})
 model.kept.xcode = nil; t.expect(not controller:manage("derived"), "changed Keep after confirmation blocks IO")
 t.assertEqual(controllerCalls, 0, "stale confirmation never reaches IO")
 t.assertEqual(errors, 1, "stale mutation reports a structured service error")

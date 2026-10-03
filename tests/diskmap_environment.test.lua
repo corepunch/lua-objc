@@ -108,6 +108,31 @@ t.assertEqual(reviewed.name, "review", "a duplicate covered by a mark opens revi
 t.assertEqual(reviewed.args[1], copy, "duplicate review focuses the enclosing marked item")
 t.expect(not Keeps:valid("worktree:/Users/test/.."), "Keep refuses a worktree traversal at the end of a path")
 marked.env:dispose()
+-- Current main's removal contract belongs to the scan environment, and a
+-- stale single-location remeasure must not overwrite a replacement scan.
+local mutations = Harness.env()
+Model.bind(mutations.env.model)
+local home = mutations.env.model.home
+mutations.env.model.measurements.downloads = {bytes = 100, status = "complete"}
+mutations.env.model.measurements["user-trash"] = {bytes = 20, status = "complete"}
+mutations.env.context.trashed(home .. "/Downloads/file.iso", 30)
+t.assertEqual(mutations.env.model.measurements.downloads.bytes, 70, "a trash action updates the measured store")
+t.assertEqual(mutations.env.model.measurements["user-trash"].bytes, 50, "the Trash receives the moved bytes")
+local generation = mutations.env.scan.generation
+mutations.env.context.removed(home .. "/.Trash")
+t.assertEqual(mutations.env.model.measurements["user-trash"].bytes, 0, "emptying clears the Trash measurement")
+t.assertEqual(mutations.env.scan.generation, generation, "a removal does not start another disk scan")
+local measuredReply
+mutations.env.service.measure = function(paths, done) measuredReply = done end
+mutations.env.model.measurements.derived = {bytes = 500, status = "complete"}
+mutations.env.context.remeasure("derived")
+measuredReply({200})
+t.assertEqual(mutations.env.model.measurements.derived.bytes, 200, "owner cleanup measures only its location")
+mutations.env.context.remeasure("derived")
+mutations.env.scan.generation = generation + 1
+measuredReply({999})
+t.assertEqual(mutations.env.model.measurements.derived.bytes, 200, "a replacement scan rejects old cleanup measurements")
+mutations.env:dispose()
 for name, keys in pairs(modelKeys) do
 	for key in pairs(require("apps.diskmap.models." .. name)) do t.expect(keys[key], name .. " gains no module state: " .. tostring(key)) end
 end

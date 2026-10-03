@@ -12,7 +12,8 @@ local Host = {}
 -- `params` are the page's app.xml attributes (`{workflow = "music"}`).
 function Host.new(id, services, params)
 	local controller
-	local context = {rescan = function() end, log = function() end, show = function() end,
+	local context = {rescan = function() end, removed = function() end, trashed = function() end, remeasure = function() end,
+		log = function() end, show = function() end,
 		refresh = function() if controller.template then controller:update(controller.state) end end}
 	for key, value in pairs(services) do context[key] = value end
 	if not pcall(require("apps.diskmap.services.Contract").check, context.service) then

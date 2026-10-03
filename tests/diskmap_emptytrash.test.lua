@@ -57,11 +57,14 @@ local service = require("apps.diskmap.services.Contract").stub({
 	emptyTrash = function() calls = calls + 1; return true end,
 	showError = function() error("must not fail") end,
 })
-local controller = Manage({app = {service = service, rescan = function() refreshes = refreshes + 1 end}})
+local removedPath
+local controller = Manage({app = {service = service, rescan = function() error("emptying never measures the disk again") end,
+	removed = function(path) refreshes = refreshes + 1; removedPath = path end}})
 t.expect(controller:manage("user-trash"), "confirmed emptying succeeds")
 t.assertEqual(confirmed, 1, "controller confirms before emptying")
 t.assertEqual(calls, 2, "confirmed emptying reaches the service")
-t.assertEqual(refreshes, 1, "confirmed emptying refreshes measurements")
+t.assertEqual(refreshes, 1, "confirmed emptying takes the Trash out of the model")
+t.assertEqual(removedPath, Locations:find("user-trash").path, "the Trash location is what leaves")
 
 local serviceCalls = 0
 local denied = Manage({app = {service = require("apps.diskmap.services.Contract").stub({

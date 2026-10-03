@@ -2239,7 +2239,7 @@ end
 --- Each sector is a native Arc stroke; array views other than marks are
 --- centered over the chart, typically a total inside the hole.
 --- @prop innerRadius number optional. Hole radius as a fraction of the outer radius (0 draws a pie).
---- @prop angularInset number optional. Gap between neighbouring sectors, in points.
+--- @prop angularInset number optional. Points each sector gives up at each side, as in SwiftUI; neighbours are twice it apart.
 --- @prop scalable boolean optional. Lays the sectors out in `diameter` units and scales them to fill the room the chart is given, centered.
 --- @prop diameter number optional. With `scalable`, the chart's geometry in units (default 360).
 --- @prop accessibilityLabel string optional. Summary read by VoiceOver.

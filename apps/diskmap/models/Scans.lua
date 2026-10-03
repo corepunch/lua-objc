@@ -147,6 +147,90 @@ function Scans:apply(ids, result)
 	end
 end
 
+-- The scan measures once; after that the model is changed, not measured
+-- again. `remove` takes `path` out of every measurement once it has left
+-- the disk or moved: locations at or under it measure zero, the location
+-- holding it, that location's immediate child holding it and the file
+-- rankings lose what it took. `bytes` is what the path took, as the page
+-- that removed it measured it. `to`, when given, is where it went (the
+-- Trash, a folder picked for Move to…): the location holding `to` grows by
+-- as much, so moving to the Trash frees nothing until the Trash is emptied.
+local function within(path, root) return path == root or path:sub(1, #root + 1) == root .. "/" end
+local function parentOf(path) return path:match("^(.+)/[^/]+$") end
+local function shrink(m, bytes)
+	if not m or not m.bytes then return end
+	m.bytes = math.max(0, m.bytes - bytes)
+	if m.logicalBytes then m.logicalBytes = math.max(0, m.logicalBytes - bytes) end
+end
+function Scans:remove(path, bytes, to)
+	local model = Model.db
+	if type(path) ~= "string" or path == "" then return end
+	bytes = bytes or 0
+	local nested = 0
+	for _, row in ipairs(Locations:leaves()) do
+		local m = row.path and within(row.path, path) and model.measurements[row.id]
+		if m then
+			nested = nested + (m.bytes or 0)
+			model.measurements[row.id] = {bytes = 0, status = "complete"}
+			if model.breakdowns then model.breakdowns[row.id] = nil end
+		end
+	end
+	local rest = math.max(0, bytes - nested)
+	local owner = parentOf(path) and Locations:owner(parentOf(path))
+	if owner and rest > 0 then
+		shrink(model.measurements[owner.id], rest)
+		local children = model.breakdowns and model.breakdowns[owner.id]
+		for index = #(children or {}), 1, -1 do
+			local child = children[index]
+			local childPath = owner.path .. "/" .. child.name
+			if childPath == path then table.remove(children, index)
+			elseif within(path, childPath) then child.kb = math.max(0, child.kb - rest / 1024) end
+		end
+	end
+	local files = model.files
+	if files then
+		local extensions = {}
+		for _, row in ipairs(files.extensions or {}) do extensions[row.extension] = row end
+		local function drop(list, old)
+			for index = #(list or {}), 1, -1 do
+				local file = list[index]
+				if within(file.path, path) then
+					table.remove(list, index)
+					if old then
+						files.oldBytes, files.oldCount = math.max(0, (files.oldBytes or 0) - file.bytes), math.max(0, (files.oldCount or 0) - 1)
+					else
+						local extension = extensions[(file.path:match("[^/]%.([^./]+)$") or ""):lower()]
+						if extension then
+							extension.bytes, extension.count = math.max(0, extension.bytes - file.bytes), math.max(0, extension.count - 1)
+						end
+					end
+				end
+			end
+		end
+		drop(files.large, false)
+		drop(files.old, true)
+	end
+	local destination = to and Locations:owner(to)
+	local m = destination and model.measurements[destination.id]
+	if m and m.bytes then m.bytes = m.bytes + bytes end
+end
+
+-- A location whose owner cleaned it (a package manager's cache command)
+-- takes the size measured of that one folder afterward.
+function Scans:resize(id, bytes)
+	local model = Model.db
+	model.measurements[id] = {bytes = bytes, status = "complete"}
+	if model.breakdowns then model.breakdowns[id] = nil end
+	if model.files then
+		local row = Locations:find(id)
+		if row and row.path then
+			for _, list in ipairs({model.files.large or {}, model.files.old or {}}) do
+				for index = #list, 1, -1 do if within(list[index].path, row.path) then table.remove(list, index) end end
+			end
+		end
+	end
+end
+
 -- Volume summary for the hero card. Capacity numbers come from the system
 -- volume query; measured totals come from the ledger and never replace them.
 function Scans:summary(disk, capacity)

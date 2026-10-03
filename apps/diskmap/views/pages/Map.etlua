@@ -69,7 +69,7 @@
         <% for _, node in ipairs(nodes) do %>
         <StorageSector id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" other="<%= node.other and "true" or "false" %>" label="<%= node.label %>" />
         <% end %>
-        <ChartCenter total="<%= total %>" caption="<%= #trail > 1 and "Click to go up" or "Measured" %>" />
+        <ChartCenter titleId="mapCenterTitle" detailId="mapCenterDetail" total="<%= center.title %>" caption="<%= center.detail %>" />
       </StorageRings>
       </VStack>
       <% end %>

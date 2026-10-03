@@ -348,8 +348,8 @@ filesystem for repeatable testing; use `--export-mock` to create a local snapsho
 of this Mac.
 
 Scans publish live file and extension findings before a location finishes.
-The status names the current location, checked items and elapsed time instead
-of presenting completed locations as a percentage of remaining work. Live
+The progress window's bar shows how much of the used space is measured; the
+line under it names only the location being measured (`~/.gradle`). Live
 rankings say they are incomplete; incomplete coverage is not called unexplained
 disk use. When less than 10% of the disk is free, launch bypasses the automatic
 tour and offers Review Cleanup while measuring. The Help menu still opens the
@@ -418,7 +418,15 @@ reassign hard-link ownership and corrupt totals.
 
 DerivedData, recognized agent download caches and user-owned offline developer documentation offer reviewed Move to Trash. npm and pip caches invoke their package manager's cache command after confirmation; Homebrew remains a reversible Trash review because its cleanup command also removes installed old versions. Other entries reveal their location or open the owner/system
 settings. Your Trash offers reviewed Empty Trash with the measured size up front;
-Finder performs the deletion and Diskmap remeasures afterward. Diskmap never
+Finder performs the deletion and Diskmap takes it out of its totals.
+
+The disk is measured once, at launch or on Refresh. Moving an item to the
+Trash, moving it elsewhere, emptying the Trash, removing a worktree or a
+simulator changes the model (`Scans:remove` in `models/Scans.lua`): its
+location shrinks, a Trash move grows the Trash by as much, and every page is
+drawn from the model again without a rescan. A package manager's cache
+command changes an unknown amount, so only that one location is measured
+again. Diskmap never
 deletes SDK internals, removes protected assets, or disables system
 protections. Moving to Trash does not free space.
 Keep suppresses suggestions for a resource and its descendants and persists

@@ -41,4 +41,10 @@ function Overview.hidden(disk, capacity, snapshotCount, readErrors, cloudBytes, 
 	return rows
 end
 
+-- What the ring's hole says while no sector is pointed at: the used space
+-- and the disk's capacity.
+function Overview.center(summary)
+	return {title = summary.used, detail = summary.available and (summary.total .. " total") or "Capacity unavailable"}
+end
+
 return Overview

@@ -70,7 +70,7 @@ local calls, confirmed, refreshed = {}, false, 0
 local service = require("apps.diskmap.services.Contract").stub({command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
 	reveal = function() end, openSettings = function() end, openOwner = function() end})
-local _, controller = Host.new("simulators", {model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
+local _, controller = Host.new("simulators", {model = model, service = service, rescan = function() error("a simulator action never measures the disk again") end, removed = function() error("a failed action removes nothing") end, refresh = function() refreshed = refreshed + 1 end})
 controller.stock.inventory = data; controller.selected = Simulators.rows(data)[1]
 t.expect(not controller:erase(), "cancel confirmation never launches a command")
 t.assertEqual(#calls, 0, "cancel has no side effects")
@@ -82,7 +82,7 @@ t.assertEqual(#calls, 1, "only selected unavailable device is targeted")
 t.assertEqual(calls[1].argv[4], other, "unavailable command is a concrete ID, never an expanding selector")
 t.expect(not controller:unavailable(), "duplicate clicks cannot start concurrent mutations")
 calls[1].done(false, "device busy")
-t.assertEqual(refreshed, 1, "failed action refreshes potentially changed totals")
+t.assertEqual(refreshed, 1, "a failed action draws the page again with its error")
 t.expect(controller.error:find("device busy", 1, true), "command failures remain visible")
 service.simulatorRuntimes = function(completion) table.insert(calls, {done = completion}) end
 controller:load(); local pending = calls[#calls]; pending.done({})

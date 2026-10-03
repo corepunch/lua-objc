@@ -35,7 +35,7 @@ local function trashLeftover(page, row)
 	local moved, message = service.trash(row.path)
 	page.app.log("Move to Trash", moved, row.bytes, row.path, message)
 	if not moved then service.showError("Could not move to Trash", message or "macOS protects some containers. Remove it in Finder instead."); return end
-	page.app.rescan()
+	page.app.trashed(row.path, row.bytes)
 end
 
 -- The Applications page and the app facts other pages need. Bundle info and

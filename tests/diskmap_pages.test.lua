@@ -188,10 +188,12 @@ t.assertEqual(hero.refs.chart.subviews[#hero.refs.chart.subviews].className, "Lu
 heroActions.chartHover("developer")
 t.expect(hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1, "a hovered sector names itself under the ring")
 t.expect(hero.refs.chartDetail.text:find("%d+%%$") ~= nil, "with its size and share")
-t.assertEqual(hero.refs.chartCenter.subviews[1].text, usedTotal, "the center keeps the used total")
-t.assertEqual(hero.refs.chartCenter.subviews[2].text, usedCaption, "and its caption")
+t.assertEqual(hero.refs.usedTotal.text, "Developer", "the hole names the hovered sector, as Apple's SectorMark sample does")
+t.expect(hero.refs.usedCaption.text ~= usedCaption and hero.refs.usedCaption.text:find("B$") ~= nil, "with its size")
 heroActions.chartHover(nil)
 t.assertEqual(hero.refs.chartDetail.text, "", "leaving it clears the line")
+t.assertEqual(hero.refs.usedTotal.text, usedTotal, "and returns the hole to the used total")
+t.assertEqual(hero.refs.usedCaption.text, usedCaption, "and its caption")
 heroActions.chartSelect("free")
 t.assertEqual(app.destination, "overview", "free space has nothing inside to open")
 heroActions.chartSelect("developer")
@@ -202,6 +204,19 @@ app.pages.overview.actions.chartCenter()
 t.assertEqual(app.destination, "map", "the center opens the Map")
 t.assertEqual(app.env:page("map").focusId, "", "at the whole disk")
 
+-- The Map's hole names the pointed sector and its size, as Apple's
+-- SectorMark sample does, and returns to the measured total.
+app:show("map")
+local mapPage = app.env:page("map")
+local mapTitle, mapDetail = mapPage.refs.mapCenterTitle.text, mapPage.refs.mapCenterDetail.text
+local mapNode = mapPage.nodeById.developer
+app.pages.map.actions.chartHover("developer")
+t.assertEqual(mapPage.refs.mapCenterTitle.text, mapNode.label, "the Map's hole names the hovered sector")
+t.assertEqual(mapPage.refs.mapCenterDetail.text, mapNode.detail, "with its size")
+app.pages.map.actions.chartHover(nil)
+t.assertEqual(mapPage.refs.mapCenterTitle.text, mapTitle, "leaving returns the hole to the total")
+t.assertEqual(mapPage.refs.mapCenterDetail.text, mapDetail, "and its caption")
+
 -- The keyboard does the same: focus names a sector, Return opens it, and
 -- Delete, which has no level to go up to here, stays on the page.
 app:show("overview")
@@ -210,7 +225,7 @@ local heroPointer = hero.refs.chart.subviews[#hero.refs.chart.subviews]
 t.expect(heroPointer.acceptsFirstResponder, "the overview ring takes keyboard focus")
 bridge._pointerSend(heroPointer, "key", "tab")
 t.expect(hero.refs.chartDetail.text ~= "", "a focused sector names itself under the ring")
-t.assertEqual(hero.refs.chartCenter.subviews[2].text, usedCaption, "the center keeps its caption")
+t.expect(hero.refs.usedTotal.text ~= usedTotal, "and in the hole")
 bridge._pointerSend(heroPointer, "key", "delete")
 t.assertEqual(app.destination, "overview", "delete stays on the overview")
 -- Tab starts at the largest sector, space no category accounts for.
