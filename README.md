@@ -514,6 +514,13 @@ install it. The `ci_pre_xcodebuild.sh` script reads tags in the form
 increasing build numbers. Push the tag only after the release commit and
 submodules are available from the connected repository.
 
+### Diskmap releases
+
+The Diskmap Xcode Cloud workflow builds only for tags beginning with
+`diskmap/`, not for branch pushes. `apps/diskmap/ci_scripts/ci_pre_xcodebuild.sh`
+reads a tag like `diskmap/1.2.3` and sets the app version to `1.2.3`. The start
+condition lives in Xcode Cloud (App Store Connect), not in the repository.
+
 ### Adventure Arena tour screenshots
 
 The first-launch guide uses real iPhone reader captures in light and dark.

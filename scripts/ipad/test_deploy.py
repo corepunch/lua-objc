@@ -32,6 +32,9 @@ class DiscoveryTests(unittest.TestCase):
         for tag in ('v1.2.3', 'release/1.2', 'release/1.2.3/extra'):
             with self.assertRaises(ValueError):
                 version_from_tag(tag)
+        self.assertEqual(version_from_tag('diskmap/2.0.1', 'diskmap'), '2.0.1')
+        with self.assertRaises(ValueError):
+            version_from_tag('release/1.2.3', 'diskmap')
         with TemporaryDirectory() as directory:
             path = Path(directory) / 'Info.plist'
             path.write_bytes(plistlib.dumps({'CFBundleShortVersionString': '1.0', 'CFBundleVersion': '1'}))

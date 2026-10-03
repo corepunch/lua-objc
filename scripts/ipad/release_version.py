@@ -6,13 +6,10 @@ import plistlib
 import re
 
 
-TAG_PATTERN = re.compile(r'release/([0-9]+\.[0-9]+\.[0-9]+)\Z')
-
-
-def version_from_tag(tag: str) -> str:
-    match = TAG_PATTERN.fullmatch(tag)
+def version_from_tag(tag: str, prefix: str = 'release') -> str:
+    match = re.fullmatch(re.escape(prefix) + r'/([0-9]+\.[0-9]+\.[0-9]+)', tag)
     if not match:
-        raise ValueError('Expected a tag like release/1.2.3')
+        raise ValueError(f'Expected a tag like {prefix}/1.2.3')
     return match[1]
 
 
@@ -26,8 +23,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tag')
     parser.add_argument('plist', type=Path)
+    parser.add_argument('--prefix', default='release', help='tag prefix before the version')
     args = parser.parse_args()
-    set_version(args.plist, version_from_tag(args.tag))
+    set_version(args.plist, version_from_tag(args.tag, args.prefix))
 
 
 if __name__ == '__main__':
