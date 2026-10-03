@@ -1,4 +1,5 @@
 local Model = require("data.model")
+local Knowledge = require("apps.diskmap.knowledge.Paths")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
 
@@ -26,7 +27,7 @@ end
 -- volume's own used space from `model.volumeUsage` instead of a walk.
 function Scans:plan()
 	local model = Model.db
-	local paths, ids, exclusions = {}, {}, {"/Volumes", "/dev", "/System/Volumes"}
+	local paths, ids, exclusions = {}, {}, {table.unpack(Knowledge.scanExclusions)}
 	local protected = {}
 	for _, location in ipairs(model.protected or {}) do
 		protected[location.path] = true
@@ -48,7 +49,7 @@ function Scans:plan()
 		end
 	end
 	if not model.includeMedia then
-		for _, relative in ipairs({"/Library/Photos", "/Library/Music", "/Library/MediaLibrary", "/Library/Containers/com.apple.Photos", "/Library/Containers/com.apple.Music", "/Library/Containers/com.apple.AMPArtworkAgent", "/Library/Group Containers/group.com.apple.Photos", "/Library/Group Containers/group.com.apple.Music"}) do
+		for _, relative in ipairs(Knowledge.mediaLibraries) do
 			table.insert(exclusions, model.home .. relative)
 		end
 	end

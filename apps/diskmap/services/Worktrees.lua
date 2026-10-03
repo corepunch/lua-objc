@@ -1,4 +1,5 @@
 local Worktrees = require("apps.diskmap.helpers.Worktrees")
+local Knowledge = require("apps.diskmap.knowledge.Paths")
 local Service = {}
 
 -- Git queries for the worktree review. Every function takes `run(argv,
@@ -21,12 +22,11 @@ local function trim(value) return ((value or ""):gsub("^%s+", ""):gsub("%s+$", "
 -- dependencies. Identified by Git's common directory, so two roots reaching
 -- one repository, or a repository and its worktrees, list it once.
 Service.depth = 5
-local PRUNE = {"node_modules", ".Trash", "Pods", ".build", "target", ".venv", "venv", "DerivedData", ".cache", ".npm"}
 function Service.repositories(run, roots, completion)
 	local argv = {"/usr/bin/find"}
 	for _, root in ipairs(roots) do table.insert(argv, root) end
 	for _, value in ipairs({"-maxdepth", tostring(Service.depth), "("}) do table.insert(argv, value) end
-	for index, name in ipairs(PRUNE) do
+	for index, name in ipairs(Knowledge.repositoryPrune) do
 		if index > 1 then table.insert(argv, "-o") end
 		table.insert(argv, "-name"); table.insert(argv, name)
 	end
