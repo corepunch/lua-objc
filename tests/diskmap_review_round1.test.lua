@@ -44,6 +44,20 @@ t.expect(refs.projectRoots.frame.size.width > 400, 'project explanation keeps re
 t.expect(not refs.projectRoots.text:find('Searching', 1, true), 'completed discovery does not say Searching')
 t.assertEqual(refs.markStale.title, 'Mark Old Build Data', 'bulk action names the generated data')
 t.expect(refs.filter.superview ~= refs.projectRoots.superview, 'filters do not compress the heading')
+for _, width in ipairs({950, 1100, 1400}) do
+	window.size = ns.Size(width, 580); window:layout(); bridge._flushLayout()
+	local controls = refs.filter.superview
+	t.assertEqual(refs.markStale.superview, controls, 'project marking and filtering share a row at ' .. width)
+	t.assertEqual(refs.markStale.frame.origin.x, 0, 'project marking starts at the leading edge at ' .. width)
+	t.assertEqual(refs.filter.frame.origin.x + refs.filter.frame.size.width, controls.frame.size.width,
+		'project filters end at the trailing edge at ' .. width)
+	t.expect(refs.markStale.frame.origin.x + refs.markStale.frame.size.width <= refs.filter.frame.origin.x,
+		'project marking and filters do not overlap at ' .. width)
+	t.expect(math.abs(refs.markStale.frame.origin.y + refs.markStale.frame.size.height / 2
+		- refs.filter.frame.origin.y - refs.filter.frame.size.height / 2) < 0.01,
+		'project marking and filters share a center line at ' .. width)
+end
+window.size = ns.Size(950, 580); window:layout()
 
 -- Selection evidence is a fixed sibling of the scrolling list, immediately
 -- accessible even when the list has many worktrees.

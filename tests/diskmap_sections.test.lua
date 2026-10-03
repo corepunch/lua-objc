@@ -226,12 +226,16 @@ for _, id in ipairs({"add", "stats", "oneTileValue", "firstSection", "firstTitle
 end
 t.assertEqual(fullRefs.filter.className, "NSSegmentedControl", "filters are a segmented control")
 t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden and not fullRefs.bulk.enabled, "hidden and disabled come from the layout")
--- Filters and actions take separate rows under the heading, so neither
--- the heading's detail nor the controls get squeezed in a narrow window.
+-- Actions lead and filters trail on one centered row below the heading.
 fullRefs.page.size = ns.Size(620, 600); fullRefs.page:layout(620)
 local filterRow, titleRow = fullRefs.filter.superview, fullRefs.firstTitle.superview.superview
 t.expect(filterRow ~= titleRow, "the filter is not on the heading's row")
-t.assertEqual(fullRefs.bulk.superview.superview, filterRow, "section buttons share the filter's controls block")
+t.assertEqual(fullRefs.bulk.superview, filterRow, "section buttons share the filter's row")
+t.expect(fullRefs.bulk.frame.origin.x < fullRefs.filter.frame.origin.x, "the action precedes the trailing filter")
+t.expect(math.abs(fullRefs.bulk.frame.origin.y + fullRefs.bulk.frame.size.height / 2
+	- fullRefs.filter.frame.origin.y - fullRefs.filter.frame.size.height / 2) < 0.01, "actions and filters share a center line")
+t.assertEqual(fullRefs.filter.frame.origin.x + fullRefs.filter.frame.size.width, filterRow.frame.size.width,
+	"the filter ends at the row's trailing edge")
 t.expect(fullRefs.bulk.superview ~= titleRow, "section actions stay below the heading")
 t.expect(fullRefs.firstDetail.frame.size.width > 400, "the heading's detail keeps the section's width beside no controls")
 t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intrinsicContentSize.height, "the detail stays on one line")
