@@ -95,7 +95,10 @@ glass. The **arrangement strip** has eight rows, one to a channel, each
 named after what the playing track has on it ("Amen", "Reese", "Rhodes").
 Clips scroll right to left past a fixed playhead and show the fade or filter
 sweep riding them; beside the playhead each channel has a level meter; the
-headline names the next event of the track.
+headline names the next event of the track. It shows 32 bars; the wheel or a
+swipe looks ahead to the end of the next track or back to the set's start,
+and a click plays from the bar under it (on the next bar line while
+playing).
 
 **Groove**: Pitch moves the tempo a few percent either way, as a
 turntable does, and the pitch of the drum loops with it. Energy and

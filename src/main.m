@@ -154,6 +154,9 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kArcShapeFrameRate            60
 #define kPointerDragThreshold         3.0
 #define kPointerDragIconSize          32.0
+/* ----- ShaderView ----- */
+/* Points one line of a notched mouse wheel scrolls a ShaderView. */
+#define kShaderScrollLine             16.0
 /* ----- Treemap ----- */
 #define kTreemapGap                      0
 #define kTreemapCornerRadius             3

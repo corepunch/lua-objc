@@ -390,7 +390,7 @@ local function layoutProps(attrs)
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
         "spacing", "alignment", "maxRows", "fixedSize",
         "flexGrow", "flexShrink", "flexBasis",
-        "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe",
+        "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe", "onScroll",
         "opacity", "offsetX", "offsetY",
         "help", "dropExternalOnly",
     }
@@ -435,7 +435,7 @@ local function layoutProps(attrs)
 
         props.onClick = renderData.actions[attrs.onClick]
     end
-    bindActions(props, attrs, { "onDrop", "onFileDragChanged" })
+    bindActions(props, attrs, { "onDrop", "onFileDragChanged", "onScroll" })
     for _, key in ipairs({ "onTap", "onDrag", "onEdgeSwipe" }) do
         if attrs[key] and type(attrs[key]) == "string" and renderData and renderData.actions then
             props[key] = renderData.actions[attrs[key]]

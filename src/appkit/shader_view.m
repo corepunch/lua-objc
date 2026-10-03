@@ -21,7 +21,13 @@
  * curves, planets and terrain at full resolution.
  *
  * The layer is transparent, so shader output composites over whatever sits
- * behind the view. */
+ * behind the view.
+ *
+ * Pointer: `onClick(view, x, y)` and `onScroll(view, dx, dy)` report in the
+ * view's top-left points, so a picture that draws a ruler or a strip can map
+ * a point back to what it shows. Scroll deltas are the system's, with the
+ * user's scrolling direction applied; a notched wheel's lines count
+ * kShaderScrollLine points. Without a handler the event passes on. */
 
 static NSString *const kShaderViewPrelude =
 	@"#include <metal_stdlib>\n"
@@ -86,6 +92,8 @@ typedef struct {
 @property(nonatomic, copy) NSArray<NSDictionary *> *draws;
 @property(nonatomic) CFTimeInterval startTime;
 @property(nonatomic) CFTimeInterval valuesTime;
+@property(nonatomic, strong) LuaReg *clickReg;
+@property(nonatomic, strong) LuaReg *scrollReg;
 @end
 
 @implementation LuaShaderTicker
@@ -166,6 +174,29 @@ static NSData *shader_float_data(NSArray<NSNumber *> *numbers) {
 }
 
 - (BOOL)isFlipped { return YES; }
+
+- (void)send:(LuaReg *)reg x:(CGFloat)x y:(CGFloat)y context:(const char *)context {
+	lua_State *L = lua_reg_live_state(reg);
+	if (!L || !lua_reg_push(reg)) return;
+	push_objc(L, self, "nsview");
+	lua_pushnumber(L, x);
+	lua_pushnumber(L, y);
+	lua_objc_pcall(L, 3, 0, context);
+}
+
+- (BOOL)acceptsFirstMouse:(NSEvent *)event { (void)event; return self.clickReg != nil; }
+
+- (void)mouseDown:(NSEvent *)event {
+	if (!self.clickReg) { [super mouseDown:event]; return; }
+	NSPoint point = [self convertPoint:event.locationInWindow fromView:nil];
+	[self send:self.clickReg x:point.x y:point.y context:"shader click"];
+}
+
+- (void)scrollWheel:(NSEvent *)event {
+	if (!self.scrollReg) { [super scrollWheel:event]; return; }
+	CGFloat line = event.hasPreciseScrollingDeltas ? 1.0 : kShaderScrollLine;
+	[self send:self.scrollReg x:event.scrollingDeltaX * line y:event.scrollingDeltaY * line context:"shader scroll"];
+}
 
 - (void)setValues:(NSArray<NSNumber *> *)values {
 	_values = [values copy];
@@ -401,7 +432,8 @@ static NSData *shader_float_data(NSArray<NSNumber *> *numbers) {
 }
 @end
 
-/* _shaderView(source, functionName) -> view, or raises the compiler error. */
+/* _shaderView(source, functionName, onClick, onScroll) -> view, or raises
+ * the compiler error. */
 static int bridge_shader_view(lua_State *L) {
 	NSString *source = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
 	NSString *function = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
@@ -432,8 +464,24 @@ static int bridge_shader_view(lua_State *L) {
 	view.delegate = view;
 	view.paused = YES;
 	view.enableSetNeedsDisplay = NO;
+	view.clickReg = lua_reg_opt(L, 3);
+	view.scrollReg = lua_reg_opt(L, 4);
 	push_objc(L, view, "nsview");
 	return 1;
+}
+
+/* Test hook: _shaderSend(view, "click" | "scroll", a, b) delivers a click at
+ * (a, b) or a scroll by (a, b) points without a window or events. */
+static int bridge_shader_send(lua_State *L) {
+	NSView *view = check_view(L, 1);
+	if (![view isKindOfClass:[LuaShaderView class]]) luaL_argerror(L, 1, "ShaderView expected");
+	LuaShaderView *shader = (LuaShaderView *)view;
+	const char *kind = luaL_checkstring(L, 2);
+	BOOL click = strcmp(kind, "click") == 0;
+	luaL_argcheck(L, click || strcmp(kind, "scroll") == 0, 2, "click or scroll");
+	[shader send:click ? shader.clickReg : shader.scrollReg x:luaL_checknumber(L, 3) y:luaL_checknumber(L, 4)
+		context:"shader test"];
+	return 0;
 }
 
 static LuaShaderView *check_shader_view(lua_State *L, lua_Integer *width, lua_Integer *height) {
@@ -480,4 +528,5 @@ static int bridge_shader_pixel(lua_State *L) {
 #define LUA_OBJC_SHADER_VIEW_FUNCTIONS \
 	{"_shaderView", bridge_shader_view}, \
 	{"_shaderFrameTime", bridge_shader_frame_time}, \
-	{"_shaderPixel", bridge_shader_pixel},
+	{"_shaderPixel", bridge_shader_pixel}, \
+	{"_shaderSend", bridge_shader_send},

@@ -226,21 +226,27 @@ function Controller:present(refs, stage)
 end
 
 -- The arrangement strip around set bar `n` of `composer`, the playhead
--- `fraction` into it and moving at `barsPerSecond`. Clips and channel names
--- change only when another track comes into view or starts to play; the
--- playhead and the meters move every frame.
+-- `fraction` into it and moving at `barsPerSecond`, the view scrolled
+-- `timelineOffset` bars from it. Clips and channel names change only when
+-- another track comes into view or starts to play; the playhead and the
+-- meters move every frame.
 function Controller:showTimeline(composer, n, fraction, barsPerSecond)
 	local timeline = self.timeline
 	if not timeline then return end
-	local plans = Timeline.plans(composer, n)
-	local key = tostring(composer) .. ":" .. plans[1].track .. ":" .. #plans
+	self.timelineAt = {composer = composer, bar = n, fraction = fraction, speed = barsPerSecond}
+	local least, greatest = Timeline.offsetRange(composer, n)
+	self.timelineOffset = math.max(least, math.min(greatest, self.timelineOffset or 0))
+	local plans = Timeline.plans(composer, n, self.timelineOffset)
+	local tracks = {}
+	for _, plan in ipairs(plans) do table.insert(tracks, plan.track) end
+	local key = tostring(composer) .. ":" .. table.concat(tracks, ",")
 	local headline = Timeline.headline(plans, n)
 	local refs = timeline.refs
 	if self.timelineKey ~= key then
 		self.timelineKey = key
 		self.timelineRows = Timeline.rows(plans)
 		refs = select(2, timeline:update({rows = self.timelineRows, headline = headline,
-			rowHeight = TIMELINE.rowHeight, labelWidth = TIMELINE.labelWidth}))
+			rowHeight = TIMELINE.rowHeight, labelWidth = TIMELINE.labelWidth, actions = self:timelineActions()}))
 		local data = Timeline.instances(plans)
 		refs.timelineCanvas.draws = {{vertex = "timelineBlockVertex", fragment = "timelineBlockFragment",
 			count = 6, instances = #data // Timeline.stride, data = data, blend = "alpha"}}
@@ -254,7 +260,35 @@ function Controller:showTimeline(composer, n, fraction, barsPerSecond)
 		end
 	end
 	refs.timelineCanvas.values = Timeline.values(n + fraction, barsPerSecond, self.timelineRows,
-		self.window and self.window.backingScaleFactor or TIMELINE.scale, levels)
+		self.window and self.window.backingScaleFactor or TIMELINE.scale, levels, self.timelineOffset)
+end
+
+function Controller:timelineActions()
+	return {
+		seekTimeline = function(view, x) self:seekTimeline(view.frame.size.width, x) end,
+		scrollTimeline = function(view, dx, dy) self:scrollTimeline(view.frame.size.width, dx, dy) end,
+	}
+end
+
+-- A click on the strip plays from the bar under it: at once while stopped,
+-- on the next bar line while playing, as Next Track does. The view returns
+-- to the playhead.
+function Controller:seekTimeline(width, x)
+	local at = self.timelineAt
+	if not at or width <= 0 then return end
+	local bar = Timeline.barAt(at.bar + at.fraction, self.timelineOffset, x, width)
+	self.timelineOffset = 0
+	self.synth.composerBar = bar
+	if not self.playing then self:showIdle() end
+end
+
+-- The wheel or a swipe looks ahead or back without moving the music. While
+-- playing the next display frame shows it; stopped, the strip redraws now.
+function Controller:scrollTimeline(width, dx, dy)
+	local at = self.timelineAt
+	if not at then return end
+	self.timelineOffset = Timeline.scroll(at.composer, at.bar, self.timelineOffset or 0, dx, dy, width)
+	if not self.playing then self:showTimeline(at.composer, at.bar, at.fraction, 0) end
 end
 
 function Controller:showPlayhead(bar, played)

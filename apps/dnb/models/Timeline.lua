@@ -13,7 +13,7 @@ local Timeline = {}
 
 -- The window: bars in view and how many of them lie behind the playhead,
 -- so the next section change shows well before it lands.
-Timeline.window = {bars = 16, behind = 4}
+Timeline.window = {bars = 32, behind = 8}
 Timeline.rowCount = Model.channels
 
 -- A meter spans this many decibels below full level.
@@ -28,15 +28,54 @@ local EVENT_TITLES = {valley = "Breakdown", ["return"] = "Full band", lift = "Ke
 -- does.
 Timeline.stride = 7
 
---- The plans in view around set bar `n`: the playing track's and, once its
---- end is inside the window, the next one's.
-function Timeline.plans(composer, n)
-	local plan = composer:arrangement(composer:trackAt(n).index)
-	local plans = {plan}
-	if plan.start + plan.length - n <= Timeline.window.bars then
-		table.insert(plans, composer:arrangement(plan.track + 1))
+--- The first set bar in view with the playhead at set bar `n` and the view
+--- scrolled `offset` bars ahead of it (behind it when negative).
+function Timeline.left(n, offset)
+	return n - Timeline.window.behind + (offset or 0)
+end
+
+--- The plans in view around set bar `n`, scrolled by `offset`: the playing
+--- track's first, then every other track the window reaches, in order.
+function Timeline.plans(composer, n, offset)
+	local playing = composer:trackAt(n).index
+	local left = Timeline.left(n, offset)
+	local first = composer:trackAt(math.max(0, left)).index
+	local last = composer:trackAt(math.max(0, left + Timeline.window.bars - 1)).index
+	local plans = {composer:arrangement(playing)}
+	for k = first, last do
+		if k ~= playing then table.insert(plans, composer:arrangement(k)) end
 	end
 	return plans
+end
+
+--- How far the view may scroll from the playhead at set bar `n`: back to
+--- the set's first bar (or no further than the playhead's own view, which
+--- near the start shows a little before it), ahead to the end of the track
+--- after the playing one. Returns the least and the greatest offset.
+function Timeline.offsetRange(composer, n)
+	local window = Timeline.window
+	local playing = composer:trackAt(n).index
+	local stop = composer:trackStart(playing + 2)
+	local least = math.min(0, window.behind - n)
+	return least, math.max(least, stop - window.bars + window.behind - n)
+end
+
+--- The offset after a scroll of `dx`, `dy` points over a strip `width`
+--- points wide, kept within the range around set bar `n`. Content follows
+--- the fingers: moving them left (or a wheel down) brings later bars in.
+function Timeline.scroll(composer, n, offset, dx, dy, width)
+	if width <= 0 then return offset end
+	local least, greatest = Timeline.offsetRange(composer, n)
+	local moved = offset - (dx + dy) / width * Timeline.window.bars
+	return math.max(least, math.min(greatest, moved))
+end
+
+--- The set bar under point `x` of a strip `width` points wide, with the
+--- playhead at `playhead` (a set bar and its fraction) and the view
+--- scrolled by `offset`: the bar a click asks to play from.
+function Timeline.barAt(playhead, offset, x, width)
+	local bar = Timeline.left(playhead, offset) + math.max(0, math.min(1, x / width)) * Timeline.window.bars
+	return math.max(0, math.floor(bar))
 end
 
 --- The eight rows, named after the channels of the playing track (the
@@ -116,11 +155,12 @@ end
 
 --- The values the shader reads: the playhead (a set bar and its fraction),
 --- its speed in bars per second to extrapolate between updates, the row
---- count, the window, the display scale, then for each row its meter
---- (0…1) and its colour. `rows` are Timeline.rows'; `levels` maps a role
---- to its channel's peak.
-function Timeline.values(playhead, barsPerSecond, rows, scale, levels)
-	local values = {playhead, barsPerSecond, #rows, Timeline.window.bars, Timeline.window.behind, scale or 1}
+--- count, the window, the display scale, how far the view is scrolled from
+--- the playhead in bars, then for each row its meter (0…1) and its colour.
+--- `rows` are Timeline.rows'; `levels` maps a role to its channel's peak.
+function Timeline.values(playhead, barsPerSecond, rows, scale, levels, offset)
+	local values = {playhead, barsPerSecond, #rows, Timeline.window.bars, Timeline.window.behind, scale or 1,
+		offset or 0}
 	for _, row in ipairs(rows) do
 		table.insert(values, row.role and Timeline.meter(levels and levels[row.role]) or 0)
 	end
