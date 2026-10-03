@@ -2,16 +2,19 @@ name: Release apps
 
 # A tag like diskmap/1.2.3 or dnb/1.2.3 builds that app with
 # scripts/release/release.sh: signed with Developer ID, notarized, stapled,
-# in a DMG attached to a GitHub release named after the tag. Diskmap's App
-# Store build runs separately in Xcode Cloud from the same tags.
+# in a DMG attached to the GitHub release named after the tag by
+# scripts/release/publish.sh. Diskmap's App Store build runs separately in
+# Xcode Cloud from the same tags.
 #
 # Secrets (Settings → Secrets and variables → Actions):
-#   MACOS_CERTIFICATE_P12       base64 of the Developer ID Application .p12
+#   MACOS_CERTIFICATE_P12       base64 of a Developer ID Application .p12
 #   MACOS_CERTIFICATE_PASSWORD  the .p12's export password
 #   NOTARY_KEY_P8               base64 of an App Store Connect API key (.p8)
 #   NOTARY_KEY_ID, NOTARY_ISSUER_ID  that key's ID and its issuer
-# Until they are set, the run builds an ad-hoc signed DMG and publishes it
-# as a draft prerelease, so the pipeline can be checked without them.
+# Without them the run only checks that the app builds, and keeps an ad hoc
+# DMG as a workflow artifact: a release signed on a Mac with `make release`
+# and `make publish` (Xcode's cloud-managed certificate, which cannot be
+# exported) is never overwritten.
 
 on:
   push:
@@ -53,7 +56,7 @@ jobs:
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
         run: |
           if [ -z "$CERTIFICATE" ] || [ -z "$NOTARY_KEY_P8" ]; then
-            echo "No signing secrets: building an ad-hoc signed draft."
+            echo "No signing secrets: checking the build only."
             echo "unsigned=1" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -83,21 +86,17 @@ jobs:
           echo "dmg=$dmg" >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
+        if: steps.signing.outputs.unsigned == '0'
         env:
           GH_TOKEN: ${{ github.token }}
-          DMG: ${{ steps.build.outputs.dmg }}
-          UNSIGNED: ${{ steps.signing.outputs.unsigned }}
-        run: |
-          app=${TAG%%/*}
-          version=${TAG#*/}
-          name=$(/usr/libexec/PlistBuddy -c "Print CFBundleDisplayName" "apps/$app/Info.plist")
-          flags=""
-          if [ "$UNSIGNED" = 1 ]; then flags="--draft --prerelease"; fi
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$DMG" --clobber
-          else
-            gh release create "$TAG" "$DMG" --title "$name $version" --generate-notes $flags
-          fi
+        run: scripts/release/publish.sh "$TAG"
+
+      - name: Keep the unsigned build
+        if: steps.signing.outputs.unsigned == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-dmg
+          path: ${{ steps.build.outputs.dmg }}
 
       - name: Remove the signing keychain
         if: always()

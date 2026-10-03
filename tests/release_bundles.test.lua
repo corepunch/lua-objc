@@ -76,5 +76,9 @@ for app, product in pairs(RELEASES) do
 	end
 end
 t.expect(not exists("scripts/diskmap/launcher.c"), "one launcher, shared by every bundled app")
+-- A run without signing secrets never publishes, so it cannot replace a DMG
+-- signed and notarized on a Mac.
+t.expect(workflow:find("if: steps.signing.outputs.unsigned == '0'\n        env:\n          GH_TOKEN", 1, true) ~= nil,
+	"the workflow publishes only signed builds")
 
 t.summary()
