@@ -1,5 +1,6 @@
 local Locations = require("apps.diskmap.models.Locations")
 local ns = require("AppKit")
+local Knowledge = require("apps.diskmap.knowledge.Paths")
 local Owners = require("apps.diskmap.services.Owners")
 local System = {}
 -- The person's home folder. Inside the App Sandbox HOME names Diskmap's
@@ -79,16 +80,10 @@ end
 function System.exportMockSnapshot(outputPath, completion)
 	local disk = ns.diskSpace("/")
 	if not disk then completion({failure = "Could not read internal disk capacity."}); return end
-	local paths = {
-		"/", "/Users", "/Applications", "/Library", "/private", "/opt", "/usr/local",
-		"/System/Volumes/Data", "/System/Volumes/Preboot", "/System/Volumes/Recovery",
-		"/System/Volumes/Update", "/System/Volumes/xarts", "/System/Volumes/Hardware", "/System/Volumes/iSCPreboot",
-	}
-	local exclusions = {"/Volumes", "/dev", "/System/Volumes"}
-	local ok, job = pcall(Scanner.startExport, paths, exclusions, outputPath, {
+	local ok, job = pcall(Scanner.startExport, Knowledge.snapshotRoots, Knowledge.scanExclusions, outputPath, {
 		capacityBytes = disk.totalKb * 1024,
 		availableBytes = disk.freeKb * 1024,
-		logicalRoots = { ["/System/Volumes/Data"] = "/" },
+		logicalRoots = { [Knowledge.startupData] = "/" },
 	})
 	if not ok then completion({failure = tostring(job)}); return end
 	System.await(job, completion)
@@ -517,11 +512,10 @@ end
 -- /System/Volumes/Data and joined to "/" by firmlinks; "/" itself is the
 -- sealed system volume. The scan stays on one volume, so "/" is measured
 -- through the Data volume and reported under the paths people know.
-local STARTUP_DATA = "/System/Volumes/Data"
 function System.scanFolder(path, options, completion, progress)
 	local root, scanOptions = path, {}
 	for key, value in pairs(options or {}) do scanOptions[key] = value end
-	if path == "/" then root, scanOptions.logicalRoots = STARTUP_DATA, {[STARTUP_DATA] = "/"} end
+	if path == "/" then root, scanOptions.logicalRoots = Knowledge.startupData, {[Knowledge.startupData] = "/"} end
 	local ok, job = pcall(Scanner.start, {root}, {}, scanOptions)
 	if not ok then completion(nil, tostring(job), {errors = 0, visited = 0}); return nil end
 	ns.async(function()
