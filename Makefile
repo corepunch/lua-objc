@@ -338,13 +338,16 @@ diskmap-xcode-build:
 		OBJROOT="$(DISKMAP_XCODE_ROOT)/Intermediates" \
 		build
 
-# A GitHub release build of an app, as .github/workflows/release.yml makes
-# it: `make release TAG=dnb/1.2.3`. UNSIGNED=1 skips Developer ID and
-# notarization (see scripts/release/release.sh).
+# A GitHub release of an app: `make release TAG=dnb/1.2.3` builds, signs and
+# notarizes its DMG (scripts/release/release.sh; UNSIGNED=1 for an ad hoc
+# build), `make publish TAG=dnb/1.2.3` attaches it to the release.
 TAG ?=
-.PHONY: release
+.PHONY: release publish
 release:
 	scripts/release/release.sh $(TAG)
+
+publish:
+	scripts/release/publish.sh $(TAG)
 
 APP ?=
 TARGET ?=
