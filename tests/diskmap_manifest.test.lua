@@ -17,10 +17,10 @@ local app = Controller.new(Mock.new())
 local expected = 0
 for _, entry in ipairs(manifest.order) do
 	expected = expected + 1
-	t.expect(app.pages[entry.id] ~= nil, entry.id .. " has a page controller")
+	t.expect(app.env.manifest.pages[entry.id] ~= nil, entry.id .. " is registered")
 end
 local built = 0
-for _ in pairs(app.pages) do built = built + 1 end
+for _ in pairs(app.env.manifest.pages) do built = built + 1 end
 t.assertEqual(built, expected, "the page table holds exactly the manifest's pages")
 
 -- The sidebar rows are the manifest's, in order, with headers for sections.

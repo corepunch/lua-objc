@@ -49,12 +49,7 @@
   </GroupBox>
   <Label id="planStatus" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="0" hidden="<%= status == "" and "true" or "false" %>" />
   <GroupBox>
-    <List id="planDevices" onSelect="planSelect" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
-      <Column id="name" title="Device" subtitleKey="reason" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
-      <Column id="roleLabel" title="Plan" width="90" minWidth="80" />
-      <Column id="lastUse" title="Last used" width="150" minWidth="150" />
-      <Column id="size" title="Apps &amp; data" width="110" minWidth="100" alignment="trailing" />
-    </List>
+    <InventoryList id="planDevices" onSelect="planSelect" kind="plan" />
   </GroupBox>
   <HStack spacing="8" alignment="center">
     <Button id="planKeepThis" title="Keep This One" action="planKeepThis" help="Make the selected device the one kept for its family" />

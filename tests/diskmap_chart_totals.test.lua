@@ -18,7 +18,7 @@ local _, refs = xml.renderFile("apps/diskmap/views/pages/Kinds.etlua", {
 }, ns)
 local chart = refs.kindsChart
 chart:layout(chart.frame.size.width)
-local label = refs.kindsTotal
+local label = refs.kindsCenter.subviews[1]
 t.assertEqual(label.maximumNumberOfLines, 1, "the File Types total is a single line")
 t.expect(label.font.pointSize < 15, "a wide total shrinks rather than wrapping")
 t.expect(label.frame.size.height < label.font.pointSize * 2, "the total occupies one line of height")

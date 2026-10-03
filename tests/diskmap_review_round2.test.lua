@@ -37,12 +37,12 @@ t.expect(command:find('open -b',1,true) and command:find('com.openai.codex',1,tr
 local service = Mock.new()
 local app = Root.new(service)
 local window = app:createWindow()
-app.scan:start()
+app.env.scan:start()
 window.size = ns.Size(950,580); window:layout()
 app:show('kinds'); app.page.actions.showInstallers()
 local files, changes = app.page.request, 0
-local originalChanged = app.review.app.basketChanged
-app.review.app.basketChanged = function() changes=changes+1; originalChanged() end
+local originalChanged = app.env.review.app.basketChanged
+app.env.review.app.basketChanged = function() changes=changes+1; originalChanged() end
 local total = #files.visible
 local button = app.page.refs.decisionAction
 t.assertEqual(button.title,'Mark ' .. Format.plural(total,'File'),'initial bulk action uses eligible visible count')
@@ -52,16 +52,16 @@ button = app.page.refs.decisionAction
 t.assertEqual(button.title,'Review Marked Items…','staged files offer review immediately')
 t.expect(button.enabled,'review remains available')
 local item = Marks:rows()[1]
-app.review:toggle(item)
+app.env.basket:toggle(item)
 t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 File','individual unmark refreshes count')
 app.query='Old macOS Installer'; app:updateRows()
 t.assertEqual(#files.visible,1,'search narrows displayed files')
 local row = files.visible[1]
-if app.review:isMarked(row.path) then app.review:toggle(row) end
+if app.env.basket:isMarked(row.path) then app.env.basket:toggle(row) end
 files:markFiles()
 t.assertEqual(app.page.refs.decisionAction.title,'Review Marked Items…','filtered staging stays current')
 local reviewed = 0
-app.context.openReview = function() reviewed=reviewed+1 end
+app.env.context.openReview = function() reviewed=reviewed+1 end
 ns._invokeAction(app.page.refs.decisionAction)
 t.assertEqual(reviewed,1,'review action routes to existing review sheet')
 app:show('applications'); Marks:clear(); app:basketChanged()
@@ -86,11 +86,11 @@ Marks:clear(); app:basketChanged()
 local leftovers = app.page.request.visibleLeftovers
 local high
 for _, value in ipairs(leftovers) do if value.tier=='high' then high=value;break end end
-app.review:toggle({path=high.path,name=high.name,bytes=high.bytes,source='Leftovers',leftover=true,consequence='Leftover'})
+app.env.basket:toggle({path=high.path,name=high.name,bytes=high.bytes,source='Leftovers',leftover=true,consequence='Leftover'})
 t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 Likely Leftover','leftover action counts only remaining folders')
 
 app:show('worktrees')
-local worktrees = app:request("worktrees")
+local worktrees = app.env:page("worktrees")
 local page = app.page
 page.refs.reviewList:selectRow(0)
 local selected = worktrees.selected

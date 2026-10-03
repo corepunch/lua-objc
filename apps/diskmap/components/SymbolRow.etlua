@@ -1,0 +1,4 @@
+<HStack spacing="<%= symbol.gap %>" alignment="center">
+  <SystemImage name="<%= name %>" size="<%= size %>" color="<%= color %>" width="<%= symbol.column %>" />
+  <ContentPresenter />
+</HStack>

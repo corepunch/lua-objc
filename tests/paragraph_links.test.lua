@@ -22,7 +22,7 @@ local SOURCE = [[
 		<% for _, link in ipairs(links) do %>
 		<Hyperlink location="<%= link.location %>" length="<%= link.length %>" label="<%= link.label %>">
 			<% for _, item in ipairs(link.items) do %>
-			<MenuItem title="<%= item.title %>" action="<%= item.action %>" />
+			<MenuItem title="<%= item.title %>" <% if item.action then %>action="<%= item.action %>"<% end %> disabled="<%= item.disabled and "true" or "false" %>" />
 			<% end %>
 		</Hyperlink>
 		<% end %>
@@ -32,7 +32,7 @@ local SOURCE = [[
 local LINKS = {
 	{ location = 11, length = 12, label = "plaque", items = {
 		{ title = "Examine plaque", action = "examine" }, { title = "Read plaque", action = "read" },
-		{ title = "Unavailable", action = "missing" },
+		{ title = "Unavailable", disabled = true },
 	} },
 	{ location = 62, length = 5, label = "north", items = { { title = "Go north", action = "north" } } },
 }

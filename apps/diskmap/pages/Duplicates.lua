@@ -1,5 +1,4 @@
 local Model = require("data.model")
-local Provider = require("apps.diskmap.services.Provider")
 local Duplicates = require("apps.diskmap.helpers.Duplicates")
 local Files = require("apps.diskmap.models.Files")
 local Format = require("apps.diskmap.helpers.Format")
@@ -46,13 +45,13 @@ local function search(page)
 end
 
 local function addFolder(page)
-	local pick = Provider.offers(service(page), "pickFolder")
-	local path = pick and pick("Choose a Folder to Compare")
+	local pick = service(page).pickFolder
+	local path = pick("Choose a Folder to Compare")
 	if not path then return end
 	for _, root in ipairs(page.roots) do if root == path then return end end
 	table.insert(page.roots, path)
-	local save = Provider.offers(service(page), "saveFolders")
-	if save then save("duplicates", page.roots) end
+	local save = service(page).saveFolders
+	save("duplicates", page.roots)
 	page.result = nil
 end
 
@@ -69,7 +68,7 @@ local function menu(page, row)
 	local reveal = service(page).reveal
 	local menu = {{title = marking and ("Mark " .. #available .. (#available == 1 and " Copy" or " Copies") .. " for Cleanup") or "Review Marked Items…",
 		systemImage = marking and "plus.circle" or "checkmark.circle",
-		action = function() if marking then page.rowActions:markAll(available) else page.page.app.openReview(enclosing) end end}}
+		action = function() if marking then page.rowActions:markAll(available) else page.app.openReview(enclosing) end end}}
 	table.insert(menu, {title = "Show Kept Copy", systemImage = "folder", action = function() reveal(keep.path) end})
 	for _, item in ipairs(items) do
 		table.insert(menu, {title = "Show " .. Format.tilde(item.path, Model.db.home), systemImage = "doc", action = function() reveal(item.path) end})
@@ -91,8 +90,8 @@ routes.duplicates = ListRoute.extend({layout = LAYOUT,
 	search = function(page) if page.job then page.job.cancel(); page.job, page.progress = nil, nil else search(page) end end, menu = menu, present = function(page, state)
 		local storage = Model.db
 		if not page.roots then
-			local load = Provider.offers(service(page), "loadFolders")
-			page.roots = load and load("duplicates") or {}
+			local load = service(page).loadFolders
+			page.roots = load("duplicates") or {}
 		end
 		local presented = {texts = {search = page.job and "Stop" or "Find Duplicates"}, disabled = {addFolder = page.job ~= nil, search = #page.roots == 0}}
 		if page.job then

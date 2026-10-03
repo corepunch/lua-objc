@@ -102,25 +102,25 @@ t.assertEqual(#navigation:list(), plain, "nothing else changed")
 
 -- The app hides them on a Mac without that data.
 local Controller = require("apps.diskmap.Controller")
-local service = {monitor = function() end, start = function() return {} end, await = function() end, cancel = function() end,
-	diskSpace = function() return {totalKb = 10000, freeKb = 5000} end, exists = function() return false end}
+local service = require("apps.diskmap.services.Contract").stub({monitor = function() end, start = function() return {} end, await = function() end, cancel = function() end,
+	diskSpace = function() return {totalKb = 10000, freeKb = 5000} end, exists = function() return false end})
 local app = Controller.new(service)
 app:createWindow()
 local sidebar = app.navigation.refs.sidebar
 t.assertEqual(sidebar.rowCount, plain, "an ordinary Mac's sidebar has no Developer or creative pages")
-app.model.measurements.derived = {status = "complete", bytes = 900e6}
+app.env.model.measurements.derived = {status = "complete", bytes = 900e6}
 app:updateRows()
 t.assertEqual(sidebar.rowCount, plain + 6, "the section appears once developer data is measured")
 t.assertEqual(bridge._tableCell(sidebar, 0, app.navigation:index("developer") - 1).textField.stringValue, "Developer", "under its own header")
-app.model.measurements["steam-games"] = {status = "complete", bytes = 40e9}
+app.env.model.measurements["steam-games"] = {status = "complete", bytes = 40e9}
 app:updateRows()
 t.assertEqual(sidebar.rowCount, plain + 8, "Games appears once games are measured")
 -- A rescan clears sizes; the pages stay.
-app.model.measurements.derived = {status = "calculating"}
-app.model.measurements["steam-games"] = {status = "calculating"}
+app.env.model.measurements.derived = {status = "calculating"}
+app.env.model.measurements["steam-games"] = {status = "calculating"}
 app:updateRows()
 t.assertEqual(sidebar.rowCount, plain + 8, "pages stay while a rescan measures again")
 app:show("games")
-t.expect(app.refs.list_installed ~= nil or app.refs.workflowEmpty ~= nil, "the Games page mounts")
+t.expect(app.page.refs.list_installed ~= nil or app.page.refs.workflowEmpty ~= nil, "the Games page mounts")
 
 os.exit(t.summary() and 0 or 1)

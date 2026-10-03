@@ -1,4 +1,3 @@
-local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
 local Volumes = require("apps.diskmap.helpers.Volumes")
 local Format = require("apps.diskmap.helpers.Format")
@@ -31,13 +30,13 @@ function Scan:start()
 	self:cancel(true)
 	local generation = self.generation
 	self.startedAt = os.time()
-	if Provider.offers(self.service, "agentEntries") then
+	do
 		local added, err = require("apps.diskmap.models.Locations"):addAgentFiles(self.service.agentEntries(self.model))
 		if not added then self.status = "Could not register discovered resource: " .. (err and err.message or "unknown error"); self:notify(); return end
 	end
 	-- Locations macOS keeps from every app are named, not walked.
-	local protected = Provider.offers(self.service, "protectedLocations")
-	self.model.protected = protected and protected() or {}
+	local protected = self.service.protectedLocations
+	self.model.protected = protected()
 	local function walk()
 		local paths, ids, exclusions = Scans:plan()
 		if #paths == 0 then return end
@@ -79,8 +78,8 @@ function Scan:start()
 		if generation ~= self.generation or not usageReady then return end
 		walk()
 	end
-	local apfs = Provider.offers(self.service, "apfsVolumes")
-	if apfs then
+	local apfs = self.service.apfsVolumes
+	do
 		apfs(function(list, container)
 			if generation ~= self.generation then return end
 			self.model.volumeUsage = Volumes.usage(list, container) or {}
@@ -88,10 +87,8 @@ function Scan:start()
 			self:notify()
 			if discovered then walk() end
 		end)
-	else
-		self.model.volumeUsage, usageReady = {}, true
 	end
-	if Provider.offers(self.service, "discoverEntries") then
+	do
 		local _, initialIds = Scans:plan()
 		Scans:begin(initialIds)
 		self.status = "Discovering project build data and installers…"; self:notify()
@@ -101,8 +98,6 @@ function Scan:start()
 			if not ok then self.status = "Could not register discovered resource: " .. err.message; self:notify(); return end
 			measure()
 		end, self.model.projectRoots)
-	else
-		measure()
 	end
 end
 -- Registers discovered resources once each, however many searched roots

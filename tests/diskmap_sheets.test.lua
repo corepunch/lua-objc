@@ -14,11 +14,11 @@ local parent = ns.Window {visible = false, width = 1000, height = 700}
 -- Settings: a switch the person flipped goes back when the change is refused.
 local saved, errors = true, {}
 local flags = {}
-local service = {loadSettings = function() return true end, saveSettings = function() return saved end,
+local service = require("apps.diskmap.services.Contract").stub({loadSettings = function() return true end, saveSettings = function() return saved end,
 	showError = function(title) table.insert(errors, title) end,
-	loadFlag = function(name) return flags[name] end, saveFlag = function(name, value) flags[name] = value end}
+	loadFlag = function(name) return flags[name] end, saveFlag = function(name, value) flags[name] = value end})
 local notifications = {available = function() return false end, enabled = function() return false end}
-local settings = SheetController.page(Sheets.settings, "settings", {service = service, model = Store.new("/Users/test"), notifications = notifications,
+local settings = require("tests.diskmap_sheet").new("settings", {service = service, model = Store.new("/Users/test"), notifications = notifications,
 	rescan = function() end})
 settings:open(parent)
 t.expect(settings.sheet ~= nil and settings.refs.monitor.state == 1, "Settings opens with the monitor switch on")
@@ -35,7 +35,7 @@ settings:close()
 
 -- History: the log is read each time the sheet draws.
 local lines = {}
-local history = SheetController.page(Sheets.history, "history", {service = {operationLog = function() return lines end}})
+local history = require("tests.diskmap_sheet").new("history", {service = require("apps.diskmap.services.Contract").stub({operationLog = function() return lines end})})
 history:open(parent)
 t.assertEqual(history.refs.entries.rowCount, 0, "an empty log lists nothing")
 t.expect(history.refs.detail.text:find("not changed anything", 1, true) ~= nil, "and says so")
@@ -48,7 +48,7 @@ history:close()
 local pending
 local sdkService = {bundles = function() return {{path = "/x/A.sdk", name = "A.sdk"}, {path = "/x/B.sdk", name = "B.sdk", bytes = 5}} end,
 	measure = function(_, done) pending = done end}
-local sdks = SheetController.page(Sheets.sdks, "sdks", {service = sdkService})
+local sdks = require("tests.diskmap_sheet").new("sdks", {service = sdkService})
 sdks:open(parent, {path = "/x", name = "Xcode"})
 t.assertEqual(sdks.refs.rows.rowCount, 0, "no half-measured rows while sizes are read")
 t.assertEqual(sdks.refs.status.text, "Measuring SDKs…", "the status says what is happening")
@@ -62,7 +62,7 @@ t.expect(sdks.sheet == nil, "an answer after closing is dropped")
 -- Management: no lists while the scan measures.
 local scanning = true
 local model = Store.new("/Users/test")
-local manager = SheetController.page(Sheets.management, "management", {model = model, service = {}, scanning = function() return scanning end,
+local manager = require("tests.diskmap_sheet").new("management", {model = model, service = require("apps.diskmap.services.Contract").stub({}), scanning = function() return scanning end,
 	rescan = function() end, keep = function() end, open = function() end})
 manager:open(parent, "developer")
 t.assertEqual(manager.refs.rows1.rowCount, 0, "a category lists nothing while it is measured")
@@ -73,7 +73,7 @@ t.expect(manager.refs.rows1.rowCount > 0, "its locations appear once the scan is
 manager:close()
 
 -- Snapshot changes: rows and a title from the comparison.
-local changes = SheetController.page(Sheets.snapshotChanges, "snapshotChanges", {actions = {resource = function() return {} end}})
+local changes = require("tests.diskmap_sheet").new("snapshotChanges", {actions = {resource = function() return {} end}})
 changes:open(parent, {title = "Since Sep 1", detail = "1 location changed", rows = {{id = "derived", name = "DerivedData", before = "1 GB", size = "2 GB", detail = 0.5, text = "+1 GB"}}})
 t.assertEqual(changes.refs.changes.rowCount, 1, "every change is listed")
 t.assertEqual(changes.refs.title.text, "Since Sep 1", "under the comparison's title")
@@ -82,20 +82,20 @@ changes:close()
 -- Review: remeasuring marked items shows one progress state in the list.
 local app = Controller.new(Mock.new())
 app:createWindow()
-local home = app.model.home
-app.review:toggle({path = home .. "/Downloads/a.zip", name = "a.zip", bytes = 10})
-app.review:open(app.window)
-t.assertEqual(app.review.refs.items.rowCount, 1, "the sheet lists the marked item")
-t.assertEqual(app.review.selected.path, home .. "/Downloads/a.zip", "and selects it")
-app.review.busy = true
-app.review:draw()
-t.assertEqual(app.review.refs.items.rowCount, 0, "while sizes are measured again the list gives way to one progress state")
-t.expect(not app.review.refs.trash.enabled and not app.review.refs.clear.enabled, "and the buttons wait")
-app.review.busy = false
-app.review:draw()
-t.assertEqual(app.review.refs.items.rowCount, 1, "the item returns")
-app.review:close()
-t.expect(app.review.sheet == nil, "Close dismisses the sheet")
-t.assertEqual(app.review:count(), 1, "the basket outlives its sheet")
+local home = app.env.model.home
+app.env.basket:toggle({path = home .. "/Downloads/a.zip", name = "a.zip", bytes = 10})
+app.env.review:open(app.window)
+t.assertEqual(app.env.review.refs.items.rowCount, 1, "the sheet lists the marked item")
+t.assertEqual(app.env.review.selected.path, home .. "/Downloads/a.zip", "and selects it")
+app.env.review.busy = true
+app.env.review:draw()
+t.assertEqual(app.env.review.refs.items.rowCount, 0, "while sizes are measured again the list gives way to one progress state")
+t.expect(not app.env.review.refs.trash.enabled and not app.env.review.refs.clear.enabled, "and the buttons wait")
+app.env.review.busy = false
+app.env.review:draw()
+t.assertEqual(app.env.review.refs.items.rowCount, 1, "the item returns")
+app.env.review:close()
+t.expect(app.env.review.sheet == nil, "Close dismisses the sheet")
+t.assertEqual(app.env.basket:count(), 1, "the basket outlives its sheet")
 
 os.exit(t.summary() and 0 or 1)

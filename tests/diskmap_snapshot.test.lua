@@ -72,7 +72,7 @@ t.assertEqual(overview.since, "the Sep 25 snapshot", "reminders can name the sna
 -- The controller measures a snapshot once, caches the totals and compares.
 measure({derived = 6e9, simulators = 11e9})
 local stored
-local service = {loadSnapshotSummary = function() return stored or "" end, saveSnapshotSummary = function(text) stored = text; return true end}
+local service = require("apps.diskmap.services.Contract").stub({loadSnapshotSummary = function() return stored or "" end, saveSnapshotSummary = function(text) stored = text; return true end})
 local measured, reported = 0, nil
 local function controller(options)
 	options.measure = options.measure or function(path, live)
@@ -163,7 +163,7 @@ local _, historyRefs = xml.renderFile("apps/diskmap/views/sections/Changes.etlua
 t.expect(historyRefs.changesSection ~= nil and historyRefs.showAllChanges == nil, "history changes show without Show All")
 local full = Locations:changesSince(many)
 local _, sheetRefs = xml.renderFile("apps/diskmap/views/sheets/SnapshotChanges.etlua", {title = full.title, detail = full.detail,
-	actions = {done = function() end, rowMenu = function() return {} end, reveal = function() end}}, ns)
+	actions = {close = function() end, rowMenu = function() return {} end, reveal = function() end}}, ns)
 sheetRefs.changes:replaceRows(full.rows)
 t.assertEqual(sheetRefs.changes.rowCount, #full.rows, "the sheet lists every changed location")
 

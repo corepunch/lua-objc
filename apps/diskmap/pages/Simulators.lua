@@ -1,3 +1,4 @@
+local Inventories = require("apps.diskmap.models.Inventories")
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
@@ -21,7 +22,7 @@ local FAMILY_IDS = {iPhone = "Phone", iPad = "Pad"}
 
 function Page:init()
 	self.service = self.app.service
-	self.inventory, self.filterIndex, self.keep = {}, 1, {}
+	self.stock, self.filterIndex = Inventories:state("simulators"), 1
 end
 
 -- The page is read again whenever it opens, like a request.
@@ -30,16 +31,7 @@ function Page:activate() self:load() end
 -- The plan for the inventory and the choices made so far. Its totals are also
 -- published for Clean Up: the same removal set the page offers, so the two
 -- screens cannot disagree about eligibility or recoverable bytes.
-function Page:plan()
-	local plan = SimulatorPlan.build(self.inventory, {runtime = self.chosenRuntime, keep = self.keep,
-		protected = function(udid)
-			local catalog = Locations:find("simulators")
-			return (catalog and catalog:isKept()) or Locations.keeps(Simulators.keepKey(udid))
-		end})
-	Model.db.simulatorPlan = self.loaded and {removalBytes = plan.removalBytes, removalCount = #plan.removal,
-		blockedBytes = plan.blockedBytes, complete = plan.complete, runtime = plan.runtime} or nil
-	return plan
-end
+function Page:plan() return Inventories:simulatorPlan() end
 
 -- The row of `rows` that stands for `row`, which an earlier read produced.
 local function pick(rows, row)
@@ -97,44 +89,44 @@ end
 
 -- The header's totals and the explanation of the device list.
 local function texts(self, runtimes)
-	local summary = Simulators.summary(self.inventory, runtimes)
-	local runtimeSummary = self.runtimeList and (Format.size(summary.runtimeBytes) .. " in " .. Format.plural(summary.runtimes, "runtime"))
+	local summary = Simulators.summary(self.stock.inventory, runtimes)
+	local runtimeSummary = self.stock.runtimeList and (Format.size(summary.runtimeBytes) .. " in " .. Format.plural(summary.runtimes, "runtime"))
 		or "runtime storage could not be measured"
 	local detail = {"Erase keeps a device and removes its apps and data; Delete removes the device."}
 	if summary.stale > 0 then table.insert(detail, Format.plural(summary.stale, "device") .. " unused for " .. Simulators.staleDays .. " days.") end
 	if summary.unknownAvailability > 0 then table.insert(detail, Format.plural(summary.unknownAvailability, "device") .. " could not be checked for availability.")
 	elseif summary.unavailable > 0 then table.insert(detail, Format.plural(summary.unavailable, "device") .. " unavailable, " .. Format.size(summary.unavailableBytes) .. " of apps and data.") end
-	return self.error or ((self.busy and "Refreshing · " or "") .. Format.size(summary.deviceBytes) .. " stored in "
+	return self.error or self.stock.error or ((self.busy and "Refreshing · " or "") .. Format.size(summary.deviceBytes) .. " stored in "
 		.. Format.plural(summary.devices, "device") .. " · " .. runtimeSummary), table.concat(detail, " ")
 end
 
 function Page:data(state)
 	-- Nothing is known until the first read ends: a zero would read as a measurement.
-	if not self.loaded and not self.error then
+	if not self.stock.loaded and not self.error then
 		self.lists = {}
 		return {computing = "Reading simulator devices and runtimes…", disabled = {retry = true}}
 	end
-	local inventory, query = self.inventory, state.query or ""
+	local inventory, query = self.stock.inventory, state.query or ""
 	local rows = Simulators.rows(inventory, query, Simulators.filters[self.filterIndex])
-	local allRuntimes = Simulators.runtimeRows(self.runtimeList, inventory)
-	local runtimes = query == "" and allRuntimes or Simulators.runtimeRows(self.runtimeList, inventory, query)
+	local allRuntimes = Simulators.runtimeRows(self.stock.runtimeList, inventory)
+	local runtimes = query == "" and allRuntimes or Simulators.runtimeRows(self.stock.runtimeList, inventory, query)
 	local plan = self:plan()
 	self.selected, self.selectedRuntime = pick(rows, self.selected), pick(runtimes, self.selectedRuntime)
 	self.planSelected = pick(plan.devices, self.planSelected)
 	self.lists = {devices = rows, runtimes = runtimes, planDevices = #plan.runtimes > 0 and plan.devices or nil}
-	local selected, runtime, allowed = self.selected, self.selectedRuntime, not self.busy
+	local selected, runtime, allowed = self.selected, self.selectedRuntime, not (self.busy or self.stock.busy)
 	local _, deviceReason = Simulators.validate("delete", selected, Locations.keeps)
 	local _, runtimeReason = Simulators.validateRuntime(runtime, Locations.keeps)
-	local status = self.deviceError or (#rows == 0 and "No matching devices." or Format.plural(#rows, "device"))
+	local status = self.stock.deviceError or (#rows == 0 and "No matching devices." or Format.plural(#rows, "device"))
 	if selected then status = deviceReason and deviceReason.message or (selected.name .. " · " .. selected.state) end
 	local summary, detail = texts(self, allRuntimes)
 	local row = self.planSelected
 	return {
 		filters = Simulators.filters, filter = self.filterIndex - 1, summary = summary, devicesDetail = detail, status = status,
-		runtimeStatus = runtime and runtimeReason and runtimeReason.message or self.runtimeError or "",
+		runtimeStatus = runtime and runtimeReason and runtimeReason.message or self.stock.runtimeError or "",
 		plan = planView(self, plan),
 		lists = self.lists,
-		hidden = {runtimesSection = self.runtimeList ~= nil and #allRuntimes == 0},
+		hidden = {runtimesSection = self.stock.runtimeList ~= nil and #allRuntimes == 0},
 		disabled = {
 			erase = not (allowed and Simulators.command("erase", selected, Locations.keeps)),
 			delete = not (allowed and Simulators.command("delete", selected, Locations.keeps)),
@@ -160,7 +152,7 @@ function Page:filter(index) self.filterIndex = (index or 0) + 1 end
 function Page:select(_, _, row) self.selected = row end
 function Page:selectRuntime(_, _, row) self.selectedRuntime = row end
 function Page:planSelect(_, _, row) self.planSelected = row end
-function Page:retry() self:load() end
+function Page:retry() self:load(true) end
 
 function Page:reveal()
 	if self.selected and self.selected.path then self.service.reveal(self.selected.path) end
@@ -173,11 +165,11 @@ end
 
 function Page:planRuntime(index)
 	local runtime = self:plan().runtimes[(index or 0) + 1]
-	if runtime then self.chosenRuntime, self.keep, self.planResult = runtime.identifier, {}, nil end
+	if runtime then self.stock.chosenRuntime, self.stock.keep, self.planResult = runtime.identifier, {}, nil end
 end
 
 function Page:chooseKeep(family, index)
-	self.keep[family] = (choices(self:plan(), family))[(index or 0) + 1] or nil
+	self.stock.keep[family] = (choices(self:plan(), family))[(index or 0) + 1] or nil
 	self.planResult = nil
 end
 function Page:planPhone(index) self:chooseKeep("iPhone", index) end
@@ -186,60 +178,21 @@ function Page:planPad(index) self:chooseKeep("iPad", index) end
 function Page:planKeepThis()
 	local row = self.planSelected
 	if not row or not row.family then return end
-	self.keep[row.family], self.planResult = row.id, nil
+	self.stock.keep[row.family], self.planResult = row.id, nil
 end
 
 -- Keep for one device persists with the other Keep choices.
 function Page:planPreserve()
 	local row = self.planSelected
 	if not row or not row.family then return end
-	Locations:toggleKeep(Simulators.keepKey(row.id))
-	if self.service.saveKeep then self.service.saveKeep(Model.db.kept) end
+	self:flow("Keep"):toggle(Simulators.keepKey(row.id))
 	self.planResult = nil
 end
 
 -- A read belongs to the inventory, not to one visit of the page: it may start
 -- before the page opens and end after it was left. Coming back shows what was
 -- read last time while it is read again; only the first visit has nothing.
-function Page:load()
-	if self.busy then return end
-	self.busy = true
-	self.error, self.deviceError, self.runtimeError = nil, nil, nil
-	if not self.loaded then self.inventory = {} end
-	local service, runtimeList, inventory, pending = self.service, nil, nil, 2
-	local function done()
-		pending = pending - 1
-		if pending > 0 then return end
-		self.busy, self.runtimeList = false, runtimeList
-		if type(inventory) == "table" and type(inventory.devices) == "table" then self.inventory, self.loaded = inventory, true
-		else self.error = "Simulator folders could not be read." end
-		self:plan()
-		self.app.refresh()
-	end
-	if type(service.simulatorRuntimes) == "function" then
-		service.simulatorRuntimes(function(value, error) runtimeList, self.runtimeError = value, error; done() end)
-	else done() end
-	local function discover(listed, error)
-		self.deviceError = error
-		local ok, discovered = pcall(SimulatorService.discover, service, Model.db.home, listed)
-		if not ok then done(); return end
-		inventory = discovered
-		local paths, slots = {}, {}
-		for _, devices in pairs(discovered.devices or {}) do
-			for _, device in ipairs(devices) do
-				if device.dataPathSize == nil and device.measurePath then
-					table.insert(paths, device.measurePath); table.insert(slots, device)
-				end
-			end
-		end
-		if #paths == 0 or type(service.measure) ~= "function" then done(); return end
-		service.measure(paths, function(sizes)
-			for index, device in ipairs(slots) do device.dataPathSize = sizes[index] end
-			done()
-		end)
-	end
-	if type(service.simulatorDevices) == "function" then service.simulatorDevices(discover) else discover() end
-end
+function Page:load(force) self.app.inventories:load("simulators", force) end
 
 -- Runs validated commands one at a time, revalidating each target first.
 function Page:run(commands, targets, validate)
@@ -247,10 +200,14 @@ function Page:run(commands, targets, validate)
 	local function step(index)
 		if index > #commands then
 			self.busy = false
-			self:load()
+			self:load(true)
 			return
 		end
-		if not validate(targets[index]) then self.busy = false; self.app.refresh(); return end
+		local allowed, why = validate(targets[index])
+		if not allowed then
+			self.busy, self.error = false, "Skipped: " .. (why and why.message or "This target is no longer eligible.")
+			self.app.refresh(); return
+		end
 		self.service.command(commands[index], function(ok, output)
 			self.app.log(table.concat(commands[index], " ", 3), ok, targets[index].bytes, targets[index].name or targets[index].id, not ok and output or nil)
 			if not ok then
@@ -269,7 +226,7 @@ end
 -- The unavailable devices that may be deleted now.
 function Page:unavailableDevices()
 	local rows = {}
-	for _, row in ipairs(Simulators.rows(self.inventory, nil, "Unavailable")) do
+	for _, row in ipairs(Simulators.rows(self.stock.inventory, nil, "Unavailable")) do
 		if Simulators.command("delete", row, Locations.keeps) then table.insert(rows, row) end
 	end
 	return rows
@@ -315,7 +272,6 @@ function Page:planReview()
 		label = function(entry) return entry.name end,
 		bytes = function(entry) return entry.bytes end,
 		refresh = function(entry, done)
-			if type(self.service.simulatorState) ~= "function" then done(entry); return end
 			self.service.simulatorState(entry.id, function(record)
 				if not record then done(nil); return end
 				local state, running = record.state, nil
@@ -338,7 +294,7 @@ function Page:planReview()
 		self.busy, self.planResult = false, Batch.report(result, "Deleted", "device")
 			.. ". Kept devices and the shared runtime were not touched; simulators are deleted at once, not moved to the Trash. "
 			.. Outcome.freeText(freeBefore, Outcome.free(self.service, Model.db.home), result.removed > 0) .. "."
-		self:load()
+		self:load(true)
 	end)
 	return true
 end

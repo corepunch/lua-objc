@@ -98,14 +98,14 @@ t.assertEqual(segments[#segments].bytes, 157e9, "free space represented separate
 t.expect(segments[#segments-1].bytes > 0, "unclassified and other bytes remain visible")
 t.assertEqual(#Categories:distribution({totalKb = 1, freeKb = 0}), 0, "overcount does not fabricate a capacity chart")
 local startCalls = 0
-local service = {monitor = function() end, start = function() startCalls = startCalls + 1; return {} end,
+local service = require("apps.diskmap.services.Contract").stub({monitor = function() end, start = function() startCalls = startCalls + 1; return {} end,
 	await = function(job, completion) job.complete = completion end,
 	cancel = function() end, diskSpace = function() return {totalKb = 10000, freeKb = 5000} end,
 	-- A Mac with developer data, so the Developer section is listed.
-	exists = function(path) return path:find("/Library/Developer", 1, true) ~= nil end}
+	exists = function(path) return path:find("/Library/Developer", 1, true) ~= nil end})
 local app = Controller.new(service)
-app.scan:start(); local old = app.scan.job
-app.scan:start(); local current = app.scan.job
+app.env.scan:start(); local old = app.env.scan.job
+app.env.scan:start(); local current = app.env.scan.job
 local _, scanIds = Scans:plan()
 local function measuredResult(id, kb)
 	local result = {trees = {}, rootStates = {}}
@@ -116,16 +116,17 @@ local function measuredResult(id, kb)
 	return result
 end
 old.complete(measuredResult("derived", 200))
-t.assertEqual(app.model.measurements.derived.status, "calculating", "late completion cannot change pending measurement")
+t.assertEqual(app.env.model.measurements.derived.status, "calculating", "late completion cannot change pending measurement")
 current.complete(measuredResult("npm", 300))
-t.assertEqual(app.model.measurements.npm.bytes, 307200, "current result accepted")
+t.assertEqual(app.env.model.measurements.npm.bytes, 307200, "current result accepted")
 local ui = Controller.new(service)
 local window = ui:createWindow()
 t.assertEqual(startCalls, 3, "every window launch starts a fresh scan")
-ui.scan.job.complete(measuredResult("derived", 4900000))
+ui.env.scan.job.complete(measuredResult("derived", 4900000))
 t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "the window subtitle reports free space beneath the title")
 local windowData = ui.commands:data()
 windowData.windowTitle, windowData.subtitle = "Diskmap", "1 TB free"
+windowData.navigation = true
 windowData.actions = setmetatable({search = function() end, reclaim = function() end}, {__index = ui.commandActions})
 local config = xml.renderFile("apps/diskmap/views/layouts/Window.etlua", windowData, ns)
 t.assertEqual(bridge._tableCell(ui.navigation.refs.sidebar, 0, 0).badgeField.stringValue, "5.1 MB", "the overview row shows used capacity as a badge")
@@ -145,88 +146,88 @@ t.assertEqual(sidebar.rowCount, 24, "sidebar lists sections and destinations")
 t.assertEqual(sidebar.documentView.selectedRow, 0, "the overview row starts selected")
 t.assertEqual(bridge._tableCell(sidebar, 0, 1).textField.stringValue, "Clean Up", "Overview and Clean Up lead the sidebar without a header")
 t.assertEqual(bridge._tableCell(sidebar, 0, 2).textField.stringValue, "Free Up Space", "sidebar sections are native group headers")
-t.expect(ui.refs.results ~= nil and ui.refs.largest ~= nil, "overview shows categories and largest items")
+t.expect(ui.page.refs.results ~= nil and ui.page.refs.largest ~= nil, "overview shows categories and largest items")
 t.expect(ui.pages.overview.refs.chart ~= nil, "overview leads with the storage chart")
 t.expect(ui.pages.overview.refs.chart.subviews[1].className == "LuaArcView", "the overview chart uses calm flat sectors")
-local categoryRows = ui.refs.results.rowCount
-t.expect(not ui.refs.results.hasVerticalScroller, "the category list has no scrollbar of its own")
-t.expect(ui.refs.results.scrollDisabled, "the category list is declared scrollDisabled")
-t.expect(ui.refs.results.frame.size.height >= categoryRows * 44, "category rows extend with the page")
+local categoryRows = ui.page.refs.results.rowCount
+t.expect(not ui.page.refs.results.hasVerticalScroller, "the category list has no scrollbar of its own")
+t.expect(ui.page.refs.results.scrollDisabled, "the category list is declared scrollDisabled")
+t.expect(ui.page.refs.results.frame.size.height >= categoryRows * 44, "category rows extend with the page")
 -- Clean Up is a sidebar page; the toolbar button and the hero both open it.
 ui:show("cleanup")
 t.assertEqual(ui.destination, "cleanup", "suggested cleanups open as a page")
-t.expect(ui.refs.list_rebuildable ~= nil and ui.refs.list_checked ~= nil and ui.refs.tips ~= nil, "clean up lists suggestions, the checked list and tips")
-t.expect(ui.refs.list_rebuildable.scrollDisabled and ui.refs.page ~= nil, "clean up scrolls as one page")
+t.expect(ui.page.refs.list_rebuildable ~= nil and ui.page.refs.list_checked ~= nil and ui.page.refs.tips ~= nil, "clean up lists suggestions, the checked list and tips")
+t.expect(ui.page.refs.list_rebuildable.scrollDisabled and ui.page.refs.page ~= nil, "clean up scrolls as one page")
 window.subtitle = "stale"
 ui:updateRows()
 t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "scan updates continue while clean up is shown")
 t.assertEqual(#Suggestions:presentation("DerivedData").rebuildable, 1, "clean up search finds a matching measured candidate")
 t.assertEqual(#Suggestions:presentation("no match").rebuildable, 0, "clean up search can empty a section")
-t.expect(#bridge._tableRowMenu(ui.refs.list_rebuildable, 1) > 0, "each suggestion has a row menu")
+t.expect(#bridge._tableRowMenu(ui.page.refs.list_rebuildable, 1) > 0, "each suggestion has a row menu")
 ui:show("overview")
-t.assertEqual(ui.refs.results.rowCount, categoryRows, "category rows remain after returning from clean up")
+t.assertEqual(ui.page.refs.results.rowCount, categoryRows, "category rows remain after returning from clean up")
 ui:openSettings()
-t.expect(ui.settings.sheet ~= nil and ui.settings.refs.monitor ~= nil, "settings open in a sheet")
-ui.settings:close()
-t.assertEqual(ui.refs.access.title, "Scan access…", "access settings are offered without implying Full Disk Access is required")
-ui.model.scan.errors = 7; ui:updateRows()
-t.assertEqual(ui.refs.access.title, "Review scan access…", "access guidance becomes specific when scan issues exist")
-ui.model.scan.errors = 0; ui:updateRows()
+t.expect(ui.env.settings.sheet ~= nil and ui.env.settings.refs.monitor ~= nil, "settings open in a sheet")
+ui.env.settings:close()
+t.assertEqual(ui.page.refs.access.title, "Scan access…", "access settings are offered without implying Full Disk Access is required")
+ui.env.model.scan.errors = 7; ui:updateRows()
+t.assertEqual(ui.page.refs.access.title, "Review scan access…", "access guidance becomes specific when scan issues exist")
+ui.env.model.scan.errors = 0; ui:updateRows()
 ui:open("developer")
-t.assertEqual(ui.management.rootId, "developer", "opening a category shows its sheet")
-t.assertEqual(ui.management.refs.categoryName.text, "Developer", "selected category appears in its sheet")
-local naturalSheetWidth = ui.management.sheet.size.width
+t.assertEqual(ui.env.management.rootId, "developer", "opening a category shows its sheet")
+t.assertEqual(ui.env.management.refs.categoryName.text, "Developer", "selected category appears in its sheet")
+local naturalSheetWidth = ui.env.management.sheet.size.width
 t.expect(naturalSheetWidth <= ui.window.size.width - 80, "category sheet fits 80 points inside a wide window")
-ui.management:close()
+ui.env.management:close()
 -- A window narrower than the sheet plus its margin clamps the sheet.
 local wideWindow = ui.window.size
 ui.window.size = ns.Size(naturalSheetWidth, wideWindow.height)
 ui:open("developer")
-t.assertEqual(ui.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than a narrow window")
-ui.management:close()
+t.assertEqual(ui.env.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than a narrow window")
+ui.env.management:close()
 ui.window.size = wideWindow
 local meterOf = dofile("tests/fixtures/meter.lua")
-local sizeCell = meterOf(bridge._tableCell(ui.refs.results, 1, 0))
+local sizeCell = meterOf(bridge._tableCell(ui.page.refs.results, 1, 0))
 t.expect(sizeCell.value ~= nil and sizeCell.bar ~= nil, "size, share and bar are one meter cell")
-t.expect(bridge._pressColumnButton(ui.refs.results, 2, 0), "category rows open with a trailing button")
-t.expect(ui.management.sheet ~= nil, "the row button opens that category")
-ui.management:close()
+t.expect(bridge._pressColumnButton(ui.page.refs.results, 2, 0), "category rows open with a trailing button")
+t.expect(ui.env.management.sheet ~= nil, "the row button opens that category")
+ui.env.management:close()
 t.expect(sizeCell.spinner.hidden, "loaded category has no spinner")
-t.expect(not meterOf(bridge._tableCell(ui.refs.results, 1, 0)).bar.hidden, "measured categories show a share bar")
+t.expect(not meterOf(bridge._tableCell(ui.page.refs.results, 1, 0)).bar.hidden, "measured categories show a share bar")
 local _, loadingIds = Scans:plan()
 -- A running scan is shown by the app's progress window, not by half-filled lists:
 -- the Overview draws its empty state and is drawn again when the scan finishes.
 Scans:begin(loadingIds); ui:updateRows()
-t.assertEqual(ui.refs.results, nil, "while the scan runs the Overview draws no category list")
-t.assertEqual(ui.refs.largestSection, nil, "nor the largest items")
+t.assertEqual(ui.page.refs.results, nil, "while the scan runs the Overview draws no category list")
+t.assertEqual(ui.page.refs.largestSection, nil, "nor the largest items")
 Scans:cancel(); ui:updateRows()
-t.assertEqual(ui.refs.results.rowCount, 22, "the categories return with the scan's end")
+t.assertEqual(ui.page.refs.results.rowCount, 22, "the categories return with the scan's end")
 window:layout()
-t.expect(ui.refs.page.documentView.frame.size.height > ui.refs.page.contentView.bounds.size.height, "the overview scrolls past the category list")
-t.expect(dofile("tests/fixtures/meter.lua")(bridge._tableCell(ui.refs.results, 1, 0)).spinner.hidden, "a finished scan leaves no category spinner")
+t.expect(ui.page.refs.page.documentView.frame.size.height > ui.page.refs.page.contentView.bounds.size.height, "the overview scrolls past the category list")
+t.expect(dofile("tests/fixtures/meter.lua")(bridge._tableCell(ui.page.refs.results, 1, 0)).spinner.hidden, "a finished scan leaves no category spinner")
 ui.query = "no match"; ui:updateRows()
-t.assertEqual(ui.refs.results.rowCount, 0, "empty category search")
-t.expect(ui.refs.largestSection.hidden, "largest items hide when nothing matches")
+t.assertEqual(ui.page.refs.results.rowCount, 0, "empty category search")
+t.expect(ui.page.refs.largestSection.hidden, "largest items hide when nothing matches")
 ui.query = ""; ui:updateRows()
-ui.model.measurements.derived = {status = "complete", bytes = 4900000}
+ui.env.model.measurements.derived = {status = "complete", bytes = 4900000}
 -- Rows are found by destination: the order is the sidebar's hierarchy,
 -- checked on its own below.
 local function row(id) return ui.navigation:index(id) end
 sidebar:selectRow(row("developer"))
 t.assertEqual(ui.destination, "developer", "selecting a sidebar row shows its page")
-t.expect(ui.refs.list_xcode ~= nil and ui.refs.list_xcode.scrollDisabled, "developer sections are lists inside the page scroll")
+t.expect(ui.page.refs.list_xcode ~= nil and ui.page.refs.list_xcode.scrollDisabled, "developer sections are lists inside the page scroll")
 local developerRows = {}
-for index = 1, ui.refs.list_xcode.rowCount do developerRows[bridge._tableCell(ui.refs.list_xcode, 0, index - 1).textField.stringValue] = true end
+for index = 1, ui.page.refs.list_xcode.rowCount do developerRows[bridge._tableCell(ui.page.refs.list_xcode, 0, index - 1).textField.stringValue] = true end
 t.expect(developerRows["Xcode DerivedData"], "developer lists present Xcode resources")
-local developerMenu = bridge._tableRowMenu(ui.refs.list_xcode, 1)
+local developerMenu = bridge._tableRowMenu(ui.page.refs.list_xcode, 1)
 t.expect(#developerMenu >= 3, "developer rows keep their actions in the row menu")
 sidebar:selectRow(row("simulators"))
 t.assertEqual(ui.destination, "simulators", "simulators are a sidebar destination")
-t.expect(ui.refs.devices ~= nil and ui.refs.runtimes ~= nil and ui.refs.filter.className == "NSSegmentedControl",
+t.expect(ui.page.refs.devices ~= nil and ui.page.refs.runtimes ~= nil and ui.page.refs.filter.className == "NSSegmentedControl",
 	"the simulators page lists devices and runtimes with a segmented filter")
 sidebar:selectRow(row("updates"))
 t.assertEqual(ui.destination, "updates", "updates and snapshots are a sidebar destination")
-t.expect(ui.refs.updateTitle ~= nil and ui.refs.snapshotTitle ~= nil, "the updates page shows Software Update and snapshots")
+t.expect(ui.page.refs.updateTitle ~= nil and ui.page.refs.snapshotTitle ~= nil, "the updates page shows Software Update and snapshots")
 t.assertEqual(bridge._tableCell(sidebar, 0, row("disks") - 1).textField.stringValue, "System", "system pages have their own section")
 t.assertEqual(bridge._tableCell(sidebar, 0, row("developer") - 1).textField.stringValue, "Developer", "developer pages follow the system pages")
 t.expect(row("developer") > row("updates"), "the Developer section follows System")
@@ -234,14 +235,14 @@ sidebar:selectRow(row("disks"))
 t.assertEqual(ui.destination, "disks", "disks and volumes are a sidebar destination")
 sidebar:selectRow(row("worktrees"))
 t.assertEqual(ui.destination, "worktrees", "worktrees are a sidebar destination")
-t.expect(ui.refs.removeList ~= nil and ui.refs.decisionHost ~= nil, "the worktrees page lists worktrees under its review decision")
+t.expect(ui.page.refs.removeList ~= nil and ui.page.refs.decisionHost ~= nil, "the worktrees page lists worktrees under its review decision")
 sidebar:selectRow(row("guide"))
 t.assertEqual(ui.destination, "guide", "the storage guide is a sidebar destination")
-t.expect(ui.refs.topic_preboot ~= nil and ui.refs.details_preboot ~= nil, "guide topics disclose their details")
+t.expect(ui.page.refs.topic_preboot ~= nil and ui.page.refs.details_preboot ~= nil, "guide topics disclose their details")
 for _, id in ipairs({"files", "kinds", "duplicates", "cleanup", "applications"}) do
 	sidebar:selectRow(row(id))
 	t.assertEqual(ui.destination, id, "sidebar opens " .. id)
-	t.expect(ui.refs.page ~= nil and ui.refs.page.documentView ~= nil, id .. " scrolls as one page")
+	t.expect(ui.page.refs.page ~= nil and ui.page.refs.page.documentView ~= nil, id .. " scrolls as one page")
 end
 for _, id in ipairs({"map", "xcode", "projects"}) do sidebar:selectRow(row(id)) end
 t.assertEqual(ui.destination, "projects", "map, Xcode and projects are sidebar destinations")
@@ -252,12 +253,12 @@ ui.navigation:forward()
 t.assertEqual(ui.destination, "projects", "forward returns again")
 sidebar:selectRow(row("largest"))
 t.assertEqual(ui.destination, "largest", "largest items are a sidebar destination")
-t.expect(ui.refs.largest.scrollDisabled and ui.refs.page.documentView ~= nil, "largest items scroll with the page, not inside it")
-t.assertEqual(ui.refs.reveal, nil, "largest items keep actions in row menus instead of buttons under the list")
+t.expect(ui.page.refs.largest.scrollDisabled and ui.page.refs.page.documentView ~= nil, "largest items scroll with the page, not inside it")
+t.assertEqual(ui.page.refs.reveal, nil, "largest items keep actions in row menus instead of buttons under the list")
 sidebar:selectRow(row("overview"))
 window.size = ns.Size(900, 600); window:layout()
-t.expect(ui.refs.page.frame.origin.y >= 0, "small window keeps the overview within content")
-t.expect(ui.refs.results.contentView.clipsToBounds, "rows clip within native scroll viewport")
+t.expect(ui.page.refs.page.frame.origin.y >= 0, "small window keeps the overview within content")
+t.expect(ui.page.refs.results.contentView.clipsToBounds, "rows clip within native scroll viewport")
 window:close()
 -- Real scanner: parent residual excludes named children and hard links count once.
 local pipe = assert(io.popen("/usr/bin/mktemp -d /private/tmp/diskmap-test.XXXXXXXX"))

@@ -1,0 +1,11 @@
+<HStack spacing="6" alignment="center">
+  <% for index, crumb in ipairs(records) do %>
+  <% if index > 1 then %><SystemImage name="chevron.right" size="10" color="tertiary" /><% end %>
+  <% if crumb.current then %>
+  <Label text="<%= crumb.name %>" size="13" weight="semibold" lines="1" />
+  <% else %>
+  <Button title="<%= crumb.name %>" style="link" size="13" action="<%= crumb.action %>" help="Show <%= crumb.name %>" />
+  <% end %>
+  <% end %>
+  <ContentPresenter />
+</HStack>

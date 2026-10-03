@@ -57,9 +57,9 @@ end
 local xcode = app.pages.xcode
 app:show("xcode")
 local model = xcode.request
-local generation = model.generation
+local stock = model.stock
 app:show("overview")
-t.expect(model.generation ~= generation and xcode.template == nil and xcode.refs == nil, "leaving a page ends its visit")
+t.expect(model.stock == stock and xcode.template == nil and xcode.refs == nil, "leaving a page ends its visit")
 
 -- Filters sit in one place with one ref on every page that has them.
 for _, id in ipairs({"files", "applications", "projects"}) do

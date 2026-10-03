@@ -1,7 +1,7 @@
 <% --[[ Scan accounting belongs beside totals or after the ranked rows, depending
   on the page. Its own disclosure never hides the actual cleanup decision. ]] %>
 <% if layout.contextDisclosure then %>
-<DisclosureGroup id="scanDetails" label="<%= layout.contextDisclosure %>" expanded="false" indicatorWidth="26" indicatorSpacing="10">
+<Disclosure id="scanDetails" label="<%= layout.contextDisclosure %>" expanded="false">
   <VStack spacing="12" alignment="leading">
 <% end %>
 <% if layout.scopeNote then %>
@@ -14,5 +14,5 @@
 <% end %>
 <% if layout.contextDisclosure then %>
   </VStack>
-</DisclosureGroup>
+</Disclosure>
 <% end %>

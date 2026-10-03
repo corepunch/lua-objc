@@ -90,7 +90,7 @@ t.assertEqual(overview.refs.chartDetail.text, "", "leaving the chart clears the 
 -- "other" is a category too: its sector and legend row are its own, never
 -- the folded categories'.
 local mapped = {}
-local map = app:request("map")
+local map = app.env:page("map")
 map.setFocus = function(self, id) table.insert(mapped, id) end
 overview.actions.chartSelect("other")
 t.assertEqual(mapped[1], "other", "the Other category's sector opens the Map inside it")
@@ -107,7 +107,7 @@ mapPage.actions.chartHover("developer")
 t.assertEqual(map.selectedId, "developer", "the Map's wedge and rows share one token")
 t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, Selection.index(map.rows, "developer"),
 	"hovering a wedge selects its row")
-t.assertEqual(map.focus, "", "without looking inside it")
+t.assertEqual(map.focusId, "", "without looking inside it")
 mapPage.actions.chartHover("developer#other")
 t.assertEqual(map.selectedId, nil, "a folded remainder is no resource")
 t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, -1, "and selects no row")

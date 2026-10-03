@@ -1,8 +1,5 @@
 <VStack id="topic_<%= topic.id %>" padding="12" spacing="6" alignment="leading">
-  <HStack spacing="10" alignment="center">
-    <% --[[ Symbols differ in width; a fixed column starts every title at one
-      edge. The disclosure triangle below is centered in the same column. ]] %>
-    <SystemImage name="<%= topic.icon %>" size="18" color="accent" width="26" />
+  <SymbolRow name="<%= topic.icon %>" size="18" color="accent">
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
       <Label text="<%= topic.title %>" size="13" weight="semibold" maxWidth="infinity" lines="1" />
       <Label text="<%= topic.summary %>" size="12" color="secondary" maxWidth="infinity" lines="2" />
@@ -15,14 +12,14 @@
       <% if topic.open then %>
       <Button systemImage="arrow.right.circle" symbolSize="15" foregroundStyle="secondary" style="plain" accessibilityLabel="Show <%= topic.title %> in Diskmap" help="Show in Diskmap" action="open_<%= topic.id %>" />
       <% end %>
-    </HStack>
+    </SymbolRow>
   </HStack>
-  <DisclosureGroup id="details_<%= topic.id %>" label="Details" expanded="<%= expanded and "true" or "false" %>" spacing="8" indicatorWidth="26" indicatorSpacing="10">
+  <Disclosure id="details_<%= topic.id %>" label="Details" expanded="<%= expanded and "true" or "false" %>" spacing="8">
     <%- partial("../components/GuideParagraph.etlua", {heading = "What it is", text = topic.what}) %>
     <%- partial("../components/GuideParagraph.etlua", {heading = "Why it grows", text = topic.why}) %>
     <%- partial("../components/GuideParagraph.etlua", {heading = "What to do", text = topic.action}) %>
     <% if topic.paths ~= "" then %>
     <Label text="<%= topic.paths %>" size="11" design="monospaced" color="secondary" maxWidth="infinity" lines="0" />
     <% end %>
-  </DisclosureGroup>
+  </Disclosure>
 </VStack>

@@ -6,8 +6,7 @@ local Outcome = {}
 
 -- Free bytes on the disk holding `home`, or nil when the service cannot say.
 function Outcome.free(service, home)
-	local read = type(service.diskSpace) == "function" and service.diskSpace
-	local disk = read and read(home)
+	local disk = service.diskSpace(home)
 	return type(disk) == "table" and disk.freeKb and disk.freeKb * 1024 or nil
 end
 

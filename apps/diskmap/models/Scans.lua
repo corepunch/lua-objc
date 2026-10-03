@@ -257,6 +257,7 @@ function Scans:summary(disk, capacity)
 		result.short = result.availableText .. " available of " .. result.total
 	end
 	result.lowSpace = free / total < 0.1
+	result.lowSpaceMessage = result.lowSpace and "Less than 10% of this disk is free" or nil
 	return result
 end
 
@@ -337,7 +338,7 @@ function Scans:tips(disk)
 		table.insert(tips, {id = "capacity", icon = "externaldrive.badge.exclamationmark", title = "Available space is low",
 			text = "Less than 10% of this disk is available. Review the measured candidates on this page and back up personal data before removing anything."})
 	end
-	local count = 0; for _, kept in pairs(model.kept) do if kept then count = count + 1 end end
+	local count = require("apps.diskmap.models.Keeps"):resourceCount()
 	if count > 0 then
 		table.insert(tips, {id = "kept", icon = "checkmark.shield", title = "Kept resources stay protected",
 			text = tostring(count) .. " resources are marked Keep. Their descendants are excluded from cleanup suggestions.", action = "storage", actionTitle = "Browse resources"})

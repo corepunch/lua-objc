@@ -20,6 +20,7 @@ end
 function Template.new(host, path, ns)
 	local self = setmetatable({host = host, path = path, ns = ns, actions = {}}, Template)
 	self.dispatch = setmetatable({}, {__index = function(_, name)
+		if type(self.actions[name]) ~= "function" then return nil end
 		return function(...)
 			local action = self.actions[name]
 			if action and not self.closed then return action(...) end
@@ -33,6 +34,7 @@ function Template:update(data)
 	data = data or {}
 	local bindings = {}; for k, v in pairs(data) do if k ~= "actions" then bindings[k] = copy(v) end end
 	local description = xml.describeFile(self.path, data)
+	xml.validateActions(description)
 	if self.description and self.description.source == description.source and equal(self.bindings, bindings) then
 		self.actions = data.actions or {}
 		return self.view, self.refs

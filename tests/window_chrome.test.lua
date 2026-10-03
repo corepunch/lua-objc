@@ -46,7 +46,7 @@ t.assertEqual(closed, 1, "onClose runs when the window closes")
 
 -- An ordinary window keeps its whole content view.
 local plainConfig, plainRefs = xml.render([[
-<Window title="Plain" width="300" height="200">
+<Window title="Plain" width="300" height="200" transparentTitlebar="false">
 	<VStack id="body" maxWidth="infinity" maxHeight="infinity" />
 </Window>]], {}, ns)
 local plain = ns.Window(plainConfig)

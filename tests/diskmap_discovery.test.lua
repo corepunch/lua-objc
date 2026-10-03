@@ -117,7 +117,7 @@ t.assertEqual(appEntries["/Applications/Install macOS Tahoe.app"].reviewThreshol
 
 local model = Store.new("/Users/test")
 local measuredPaths
-local scanner = Scan.new(model, {
+local scanner = Scan.new(model, require("apps.diskmap.services.Contract").stub({
 	discoverEntries = function(_, done)
 		done({
 			{id = "discovered-node-modules", parentId = "developer", name = "Node modules · demo", subtitle = "Project dependencies", path = "/Users/test/Developer/demo/node_modules", action = "finder", policy = "Review"},
@@ -134,7 +134,7 @@ local scanner = Scan.new(model, {
 	end,
 	cancel = function() end,
 	diskSpace = function() return {totalKb = 0, freeKb = 0} end,
-}, "/Users/test")
+}), "/Users/test")
 scanner:start()
 t.assertEqual(Locations:find("discovered-node-modules"):parent().id, "developer", "generated folder belongs to Developer")
 t.assertEqual(Locations:find("discovered-installer"):parent().id, "apps-system", "installer belongs to shared Applications")

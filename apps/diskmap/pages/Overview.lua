@@ -49,8 +49,7 @@ end
 -- the folded categories and the center open the whole map. Free and
 -- unattributed space have nothing inside to show.
 function overview:showMap(id)
-	self.app.request("map"):setFocus(id)
-	self.app.show("map")
+	self.app.show("map", {focus = id})
 end
 
 function overview:chartSelect(id)

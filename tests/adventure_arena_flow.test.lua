@@ -218,7 +218,7 @@ local _, systemRefs = renderFile("apps/adventure-arena/views/pages/Session.etlua
 	gameTitle = "Zork", gameDescription = "A story", ink = "accent", tint = "accent",
 	roomTitle = "Gate", progress = "Score 0 · 0 moves",
 	speechAvailable = false,
-	actions = { disappear = function() end, readingSettings = function() end },
+	actions = { disappear = function() end, readingSettings = function() end, look = function() end, inventory = function() end, close = function() end, inputChanged = function() end, inputCommand = function() end, inputFocused = function() end, submit = function() end },
 }, ns)
 t.expect(systemRefs.back == nil, "the navigation bar owns the back button")
 local _, titleRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {

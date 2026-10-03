@@ -274,7 +274,7 @@ function Suggestions:presentation(query, sources)
 	local files = Files:summary()
 	local elsewhere = {}
 	if files and files.reviewableOldBytes > 0 then
-		table.insert(elsewhere, candidate({id = "old-files", name = "Documents unused for a year", page = "files", filter = Files.filters:index("Unused for a year"),
+		table.insert(elsewhere, candidate({id = "old-files", name = "Documents unused for a year", page = "files", filter = "Unused for a year",
 			subtitle = Format.count(files.reviewableOld) .. " of your own files over " .. Format.size(require("apps.diskmap.models.Scans").fileSummary.minimumFileBytes)
 				.. " were not opened or changed in a year. Review them; they may be your only copy.",
 			icon = "clock.fill", color = "systemOrange", bytes = files.reviewableOldBytes, detail = "Large Files"},
@@ -287,7 +287,7 @@ function Suggestions:presentation(query, sources)
 		installers = installers + 1; installerBytes = installerBytes + row.bytes
 	end
 	if installerBytes > 0 then
-		table.insert(elsewhere, candidate({id = "installers", name = "Installers & archives", page = "files", filter = Files.filters:index("Installers & archives"),
+		table.insert(elsewhere, candidate({id = "installers", name = "Installers & archives", page = "files", filter = "Installers & archives",
 			subtitle = installers .. " disk images, installers and archives in your folders. Once installed or expanded they are rarely needed.",
 			icon = "opticaldiscdrive.fill", color = "systemTeal", bytes = installerBytes, detail = "Large Files"},
 			{eligibleBytes = installerBytes, confidence = "Medium", effort = "Low", kind = "decision"}))
@@ -310,7 +310,7 @@ function Suggestions:presentation(query, sources)
 				effort = "Medium", kind = "decision"}))
 	end
 	if apps and apps.unused and apps.unused > 0 then
-		table.insert(elsewhere, candidate({id = "unused-apps", name = "Apps unused for 6 months", page = "applications", filter = 2,
+		table.insert(elsewhere, candidate({id = "unused-apps", name = "Apps unused for 6 months", page = "applications", filter = "Unused for 6 months",
 			subtitle = Format.plural(apps.unused, "app") .. " with a known last-use date over six months ago, and their data. Apps with an unknown last use are not counted.",
 			icon = "hourglass", color = "systemBlue", bytes = apps.unusedBytes, detail = "Applications"},
 			{confidence = "Low", effort = "Medium", kind = "decision"}))

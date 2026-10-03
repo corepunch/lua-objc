@@ -1,6 +1,7 @@
 local FileKind = require("apps.diskmap.helpers.FileKind")
 local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
+local Scans = require("apps.diskmap.models.Scans")
 local Format = require("apps.diskmap.helpers.Format")
 -- The files the last scan ranked: every file over the size threshold, and
 -- the ones unused for a year, each {path, bytes, used}. The store's `files`
@@ -226,5 +227,48 @@ function Files:summary(now)
 	return {count = count, bytes = bytes, oldBytes = summary.oldBytes, oldCount = summary.oldCount,
 		reviewableOld = old, reviewableOldBytes = oldBytes, partial = summary.partial}
 end
+
+-- The leading decision: the files of yours this page can point at, never a
+-- kind's whole inventory. Disk images share an extension with system and
+-- app images, so only the user-owned subset is offered.
+function Files:kindsDecision(kinds)
+	local data = {id = "decision", icon = "opticaldiscdrive.fill", color = "systemTeal"}
+	if #kinds == 0 then
+		local state, reason = Files:state()
+		data.amount, data.amountCaption = "—", "not measured"
+		if state == "empty" then
+			data.title, data.detail, data.amountCaption = "No files found in the measured locations", "Clean Up can still guide you through rebuildable data and owner-managed storage.", "scan finished"
+			data.actionTitle, data.action = "Open Clean Up", "cleanup"
+		else
+			data.title, data.detail = "File type results unavailable", reason or "No extension totals were recorded. Refresh the scan to try again."
+			data.actionTitle, data.action = "Refresh Scan", "refresh"
+		end
+		return data
+	end
+	local installers = Files:rows("Installers & archives")
+	local removable = 0
+	for _, row in ipairs(installers) do removable = removable + row.bytes end
+	local files = Files:summary()
+	if removable > 0 then
+		data.title = "Review " .. (#installers == 1 and "1 installer or archive" or (#installers .. " installers and archives")) .. " in your folders"
+		data.detail = "Check that you have installed or extracted them before moving them to the Trash."
+		data.amount, data.amountCaption = Format.size(removable), "could recover"
+		data.actionTitle, data.action = "Show Installers", "showInstallers"
+	elseif files and files.reviewableOld > 0 then
+		data.icon, data.color = "clock.fill", "systemOrange"
+		data.title = "Review " .. Format.plural(files.reviewableOld, "file") .. " of yours unused for a year"
+		data.detail = "No installer or archive in your folders is large enough to list. These files were not opened or changed in a year; they may be your only copy."
+		data.amount, data.amountCaption = Format.size(files.reviewableOldBytes), "to review"
+		data.actionTitle, data.action = "Show Unused Files", "showOld"
+	else
+		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
+		data.title = "No large file of yours to review"
+		data.detail = "No user-owned file over " .. Format.size(Scans.fileSummary.minimumFileBytes) .. " was ranked. Clean Up lists other places their owners can clear."
+		data.amount, data.amountCaption = Format.size(0), "could recover"
+		data.actionTitle, data.action = "Open Clean Up", "cleanup"
+	end
+	return data
+end
+
 
 return Files

@@ -1,0 +1,4 @@
+<HStack spacing="12" alignment="center">
+  <% if icon then %><SystemImage name="<%= icon %>" size="28" badgeColor="<%= color %>" /><% end %>
+  <ContentPresenter />
+</HStack>

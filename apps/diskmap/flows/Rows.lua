@@ -1,6 +1,5 @@
 local Model = require("data.model")
 local Flow = require("data.flow")
-local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
 local Files = require("apps.diskmap.models.Files")
@@ -22,9 +21,9 @@ local Rows = Flow:extend()
 -- row to the marks (models/Marks.lua), and nothing touches the disk until
 -- that sheet.
 
-function Rows:isMarked(path) return self.app.review ~= nil and self.app.review:isMarked(path) end
+function Rows:isMarked(path) return self.app.basket ~= nil and self.app.basket:isMarked(path) end
 function Rows:covering(path)
-	if self.app.review then return self.app.review:covering(path) end
+	if self.app.basket then return self.app.basket:covering(path) end
 end
 function Rows:isIncluded(path) return self:covering(path) ~= nil end
 
@@ -32,8 +31,8 @@ function Rows:isIncluded(path) return self:covering(path) ~= nil end
 -- resourceId}. A refusal (a system folder, a parent already marked) is
 -- shown as an alert rather than failing silently.
 function Rows:mark(item)
-	if not self.app.review or not item or not item.path then return nil end
-	local marked = self.app.review:isMarked(item.path)
+	if not self.app.basket or not item or not item.path then return nil end
+	local marked = self.app.basket:isMarked(item.path)
 	local parent, exact = self:covering(item.path)
 	if parent and not exact then
 		return {title = "Included through Marked Folder — Review…", systemImage = "folder.badge.checkmark",
@@ -41,14 +40,29 @@ function Rows:mark(item)
 	end
 	return {title = marked and "Unmark" or "Mark for Cleanup", systemImage = marked and "minus.circle" or "plus.circle",
 		action = function()
-			local _, reason = self.app.review:toggle(item)
+			local _, reason = self.app.basket:toggle(item)
 			if reason and not marked then self.app.service.showError("Cannot mark for cleanup", reason) end
 		end}
 end
 
 -- Marks every item in `items` that is not marked yet; returns how many.
 function Rows:markAll(items)
-	return self.app.review and self.app.review:markAll(items) or 0
+	return self.app.basket and self.app.basket:markAll(items) or 0
+end
+
+-- Bulk actions receive the current visible rows, so searching and marking
+-- use one population. Composite rows (Projects) supply several items; the
+-- basket validates all of them and publishes one change and one refusal.
+function Rows:bulk(rows, eligible, toItem)
+	local items = {}
+	for _, row in ipairs(rows) do
+		if eligible(row) then
+			local item = toItem(row)
+			if item.path then table.insert(items, item)
+			else for _, child in ipairs(item) do table.insert(items, child) end end
+		end
+	end
+	return self:markAll(items)
 end
 
 -- Prepares rows for ResourceList: share bars relative to the largest row,
@@ -68,13 +82,13 @@ function Rows:annotate(rows, icon, color)
 		row.shareText = row.shareText or ""
 		row.color = row.color or color
 		row.icon = row.icon or icon
-		if self:isMarked(row.path) then
+		if row.marked or self:isMarked(row.path) then
 			row.icon, row.color = "checkmark.circle.fill", "systemBlue"
 			row.subtitle = "Marked for cleanup · " .. (row.subtitle or "")
-		elseif self:isIncluded(row.path) then
+		elseif row.included or self:isIncluded(row.path) then
 			local parent = self:covering(row.path)
 			row.icon, row.color = "folder.badge.checkmark", "systemBlue"
-			row.subtitle = "Included through marked folder " .. (parent.name or parent.path) .. " · " .. (row.subtitle or "")
+			row.subtitle = "Included through marked folder " .. (parent and (parent.name or parent.path) or "") .. " · " .. (row.subtitle or "")
 		end
 		table.insert(presented, row)
 	end
@@ -106,12 +120,11 @@ end
 -- panel's arrow keys step through, starting at `path`. A provider without
 -- Quick Look offers none.
 function Rows:quickLookItem(path, paths)
-	if type(Provider.offers(self.app.service, "quickLook")) ~= "function" then return nil end
 	return {title = "Quick Look", systemImage = "eye", action = function() self:quickLook(path, paths) end}
 end
 
 function Rows:quickLook(path, paths)
-	if type(Provider.offers(self.app.service, "quickLook")) ~= "function" or not path then return false end
+	if not path then return false end
 	paths = paths and #paths > 0 and paths or {path}
 	local index = 1
 	for position, candidate in ipairs(paths) do if candidate == path then index = position; break end end
@@ -124,7 +137,6 @@ end
 -- page's own policy for what may leave its place; `moved(destination)`
 -- updates the page once the move finished. Nothing is ever replaced.
 function Rows:moveItem(row, validate, moved)
-	if type(Provider.offers(self.app.service, "moveItem")) ~= "function" then return nil end
 	local ok, reason = validate(row.path)
 	return {title = ok and "Move to…" or ("Move to… — " .. tostring(reason)), systemImage = "folder.badge.plus", disabled = not ok,
 		action = function() self:move(row, validate, moved) end}
@@ -138,7 +150,7 @@ function Rows:move(row, validate, moved)
 	local allowed, why = FolderTree.validateDestination(row.path, folder)
 	if not allowed then self.app.service.showError("Cannot move " .. (row.name or "this item"), why); return end
 	self.app.service.moveItem(row.path, folder, function(done, message, destination)
-		if self.app.review then self.app.review:log("Move", done, row.bytes, row.path, done and destination or message) end
+		if self.app.basket then self.app.log("Move", done, row.bytes, row.path, done and destination or message) end
 		if not done then self.app.service.showError("Could not move " .. (row.name or "this item"), message or "Check permissions."); return end
 		if moved then moved(destination) end
 		self.app.removed(row.path, row.bytes, destination)
@@ -153,7 +165,7 @@ function Rows:trashItem(row, validate, trashed)
 	if not self.app.service.confirmTrashPath("Move " .. (row.name or row.path) .. " to Trash?", row.path,
 		Format.size(row.bytes) .. ". Moving to Trash does not free space until you empty it.") then return end
 	local moved, message = self.app.service.trash(row.path)
-	if self.app.review then self.app.review:log("Move to Trash", moved, row.bytes, row.path, message) end
+	self.app.log("Move to Trash", moved, row.bytes, row.path, message)
 	if not moved then self.app.service.showError("Could not move to Trash", message or "Check permissions."); return end
 	if trashed then trashed() end
 	self.app.trashed(row.path, row.bytes)
@@ -251,6 +263,7 @@ function Rows:trashFile(row)
 	if not self.app.service.confirmTrashPath("Move " .. row.name .. " to Trash?", row.path,
 		Format.size(row.bytes) .. " · last used " .. (row.lastUse or "unknown"):lower() .. ". Moving to Trash does not free space until you empty it.") then return end
 	local moved, message = self.app.service.trash(row.path)
+	self.app.log("Move to Trash", moved, row.bytes, row.path, message)
 	if not moved then self.app.service.showError("Could not move to Trash", message or "Check permissions."); return end
 	self.app.trashed(row.path, row.bytes)
 end

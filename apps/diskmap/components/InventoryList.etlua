@@ -1,0 +1,6 @@
+<List scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
+  <Column id="name" title="<%= nameTitle %>" subtitleKey="<%= subtitle %>" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="<%= columns.name %>" />
+  <Column id="<%= role %>" title="<%= roleTitle %>" width="<%= columns.role %>" minWidth="<%= columns.roleMinimum %>" />
+  <Column id="lastUse" title="<%= dateTitle %>" width="<%= columns.date %>" minWidth="<%= columns.date %>" />
+  <Column id="size" title="<%= sizeTitle %>" width="<%= columns.size %>" minWidth="<%= columns.sizeMinimum %>" alignment="trailing" />
+</List>

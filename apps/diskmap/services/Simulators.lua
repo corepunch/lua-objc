@@ -19,7 +19,7 @@ end
 function SimulatorService.discover(service, home, listed)
 	home = home or service.home or "/Users"
 	local root = expand("~/Library/Developer/CoreSimulator/Devices", home)
-	local children = service.children and service.children(root) or {}
+	local children = service.children(root)
 	local devices, names, records = {}, {}, {}
 	for runtime, rows in pairs(listed and listed.devices or {}) do
 		for _, row in ipairs(rows) do records[row.udid] = {device = row, runtime = runtime} end
@@ -27,7 +27,7 @@ function SimulatorService.discover(service, home, listed)
 	for _, entry in ipairs(children) do
 		if type(entry.name) == "string" and entry.name:lower():match(UUID) then
 			local info = {name = entry.name, runtime = "unknown"}
-			local plist = service.readPropertyList and service.readPropertyList(entry.path .. "/device.plist") or nil
+			local plist = service.readPropertyList(entry.path .. "/device.plist")
 			local named = type(plist) == "table" and type(plist.name) == "string" and plist.name ~= ""
 			if named then
 				info.name = plist.name
@@ -37,7 +37,6 @@ function SimulatorService.discover(service, home, listed)
 			end
 			local known = records[entry.name]
 			local record, runtime = known and known.device, known and known.runtime
-			if not record and service.simulatorRecord then record, runtime = service.simulatorRecord(entry.name) end
 			if record then
 				if not named then info.name = record.name or info.name end
 				if info.runtime == "unknown" and type(runtime) == "string" then info.runtime = runtime end

@@ -1,4 +1,3 @@
-local Provider = require("apps.diskmap.services.Provider")
 local Watchlist = require("apps.diskmap.models.Watchlist")
 local WatchlistStore = {}; WatchlistStore.__index = WatchlistStore
 
@@ -6,17 +5,17 @@ local WatchlistStore = {}; WatchlistStore.__index = WatchlistStore
 -- each finished scan; watched folders are measured right after it. Every
 -- change is saved at once, and `changed()` refreshes the sidebar and page.
 function WatchlistStore.new(model, service, changed)
-	local load = Provider.offers(service, "loadWatchlist")
+	local load = service.loadWatchlist
 	return setmetatable({model = model, service = service, changed = changed,
-		list = Watchlist:restore(load and load() or {})}, WatchlistStore)
+		list = Watchlist:restore(load())}, WatchlistStore)
 end
 
 function WatchlistStore:rows() return self.list:rows() end
 function WatchlistStore:find(key) return self.list:find(key) end
 
 function WatchlistStore:save()
-	local save = Provider.offers(self.service, "saveWatchlist")
-	return not save or save(self.list:encode())
+	local save = self.service.saveWatchlist
+	return save(self.list:encode())
 end
 
 -- `entry` is {kind = "resource", id} or {kind = "folder", path, name}.
@@ -40,20 +39,24 @@ function WatchlistStore:menuItem(entry)
 end
 
 function WatchlistStore:measure(entries)
-	local measure = Provider.offers(self.service, "measure")
-	if not measure or #entries == 0 then return end
-	local exists = Provider.offers(self.service, "exists")
+	local measure = self.service.measure
+	if #entries == 0 then return end
+	local exists = self.service.exists
 	local paths = {}
+	local scan = self.model.scan
 	for _, entry in ipairs(entries) do table.insert(paths, entry.path) end
 	measure(paths, function(sizes)
+		if self.closed or self.model.scan ~= scan then return end
 		for index, entry in ipairs(entries) do
-			local present = not exists or exists(entry.path)
+			local present = exists(entry.path)
 			self.list:record(Watchlist.key(entry), sizes[index], present)
 		end
 		self:save()
 		self.changed()
 	end)
 end
+
+function WatchlistStore:dispose() self.closed = true end
 
 -- After a finished scan: this session's sizes replace what is stored, so
 -- the next launch compares with how this one ended.

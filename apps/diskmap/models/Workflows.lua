@@ -23,7 +23,7 @@ local function pageRow(model, value)
 	local row = {id = value.id, name = value.name, subtitle = value.subtitle, icon = value.icon or "doc",
 		color = value.color or "systemGray", appIcon = value.appIcon, path = value.path, bytes = value.bytes or 0, size = value.size,
 		calculating = value.calculating == true, status = value.status, group = group,
-		detail = model.kept[value.id] and "Kept" or group and "Group" or POLICY[value.policy] or "Review"}
+		detail = Locations:find(value.id):isKept() and "Kept" or group and "Group" or POLICY[value.policy] or "Review"}
 	if row.status == "complete" and row.bytes == 0 then return nil end
 	if row.status == "notMeasured" or row.status == "excluded" then return nil end
 	Status.apply(row)

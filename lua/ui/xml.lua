@@ -1033,9 +1033,7 @@ local TAG_SCHEMA = {
 			tint = "str",
         },
         transform = function(props, attrs)
-            if attrs.action and renderData and renderData.actions then
-                props.action = renderData.actions[attrs.action]
-            end
+            bindActions(props, attrs, { "action" })
         end,
     },
     Toggle = {
@@ -1097,10 +1095,7 @@ local TAG_SCHEMA = {
             if #children > 0 then rec.items = children end
         end,
 		transform = function(props, attrs)
-			if attrs.action and renderData and renderData.actions then
-				props.action = renderData.actions[attrs.action]
-			end
-			bindActions(props, attrs, { "validate" })
+			bindActions(props, attrs, { "action", "validate" })
 		end,
     },
     Separator = {
@@ -1654,7 +1649,7 @@ local TAG_SCHEMA = {
             if renderData and renderData.actions then
                 for _, item in ipairs(cfg.toolbar or {}) do
                     if type(item.action) == "string" then
-                        item.action = renderData.actions[item.action]
+                        bindActions(item, { action = item.action }, { "action" })
                     end
                 end
             end
@@ -2137,6 +2132,29 @@ function M.describe(src, data, sourceName)
              :gsub("^%s*<!DOCTYPE[^>]*>%s*", "")
 
     return {source = src, data = data}
+end
+
+-- Validate a retained render even when its source and geometry did not
+-- change: removing an action must fail before reconciliation mutates views.
+function M.validateActions(description)
+    local actions = description.data.actions
+    if not actions then return end
+    local function walk(nodes)
+        for _, node in ipairs(nodes) do
+            if node.kind == "element" then
+                for name, value in pairs(node.attrs) do
+                    if name:match("^on%u") or name == "rowMenu" or name == "dragItem" or name == "validate"
+                        or (name == "action" and (node.tag == "Button" or node.tag == "MenuItem" or node.tag == "ToolbarItem")) then
+                        if type(actions[value]) ~= "function" then
+                            error("xml: " .. name .. "=\"" .. value .. "\" requires a controller action", 0)
+                        end
+                    end
+                end
+                walk(node.children)
+            end
+        end
+    end
+    walk(expandComponents(parseXML(description.source), description))
 end
 
 function M.renderDescription(description, ns)

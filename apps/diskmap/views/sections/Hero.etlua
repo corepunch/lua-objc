@@ -39,10 +39,7 @@
         <% for _, mark in ipairs(chart.marks) do %>
         <SectorMark cornerRadius="<%= HERO.corner %>" id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
         <% end %>
-        <VStack spacing="0" alignment="center">
-          <Label id="usedTotal" text="<%= center.title %>" size="<%= HERO.total %>" minimumScaleFactor="<%= HERO.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
-          <Label id="usedCaption" text="<%= center.detail %>" size="<%= HERO.caption %>" minimumScaleFactor="<%= HERO.captionScale %>" lines="1" color="secondary" />
-        </VStack>
+        <ChartCenter id="chartCenter" titleId="usedTotal" detailId="usedCaption" total="<%= center.title %>" caption="<%= center.detail %>" totalSize="44" captionSize="20" totalScale="<%= HERO.totalScale %>" captionScale="<%= HERO.captionScale %>" />
       </SectorChart>
       <Label id="chartDetail" text="" size="<%= HERO.detail.size %>" color="secondary" monospacedDigit="true" maxWidth="infinity" height="<%= HERO.detail.height %>" alignment="center" lines="1" truncation="middle" />
     </VStack>
@@ -55,14 +52,14 @@
         <% if summary.lowSpace then %>
         <HStack spacing="<%= HERO.symbol.gap %>" alignment="center">
           <SystemImage name="exclamationmark.triangle.fill" size="12" color="systemOrange" width="<%= HERO.symbol.column %>" />
-          <Label id="lowSpace" text="Less than 10% of this disk is free" size="12" color="systemOrange" lines="1" />
+          <Label id="lowSpace" text="<%= summary.lowSpaceMessage %>" size="12" color="systemOrange" lines="1" />
         </HStack>
         <% end %>
       </VStack>
       <% if #chart.legend > 0 then %>
       <VStack id="legend" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
         <% for _, item in ipairs(chart.legend) do %>
-        <%- partial("../components/LegendRow.etlua", {item = item, symbol = HERO.symbol}) %>
+        <LegendRow key="legend-<%= item.id %>" label="<%= item.name %>" color="<%= item.color %>" sizeText="<%= item.size %>" share="<%= item.share %>" linked="<%= item.id ~= "#other" and "true" or "false" %>" action="category_<%= item.id %>" column="<%= HERO.symbol.column %>" gap="<%= HERO.symbol.gap %>" />
         <% end %>
       </VStack>
       <% else %>

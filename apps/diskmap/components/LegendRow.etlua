@@ -1,0 +1,11 @@
+<HStack height="<%= legend.row %>" spacing="<%= symbolGap %>" alignment="center">
+  <SystemImage name="circle.fill" size="9" color="<%= color %>" width="<%= symbolColumn %>" />
+  <% if linked then %>
+  <Button title="<%= label %>" style="link" size="12" action="<%= action %>" help="Show <%= label %>" />
+  <% else %>
+  <Label text="<%= label %>" size="12" lines="1" minWidth="<%= legend.name %>" flexShrink="1" />
+  <% end %>
+  <Spacer />
+  <Label text="<%= sizeText %>" size="12" monospacedDigit="true" width="<%= legend.size %>" alignment="trailing" lines="1" />
+  <Label text="<%= share %>" size="11" color="secondary" monospacedDigit="true" width="<%= legend.share %>" alignment="trailing" />
+</HStack>

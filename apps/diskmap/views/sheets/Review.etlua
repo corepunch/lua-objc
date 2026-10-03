@@ -1,13 +1,12 @@
 <% local DETAILS = {maximumHeight = 144} %>
 <VStack maxHeight="infinity" padding="20" spacing="12">
-  <HStack spacing="12" alignment="center">
-    <SystemImage name="tray.full.fill" size="28" badgeColor="systemBlue" />
+  <SheetHeader icon="tray.full.fill" color="systemBlue">
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
       <Label text="Marked for Cleanup" size="17" weight="semibold" />
       <Label id="reviewSummary" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="0" />
     </VStack>
     <Button id="history" title="History…" action="history" help="Every action Diskmap has taken" />
-  </HStack>
+  </SheetHeader>
   <List id="items" onSelect="select" style="inset" header="false" alternatingRows="false" rowHeight="44" flexGrow="1" flexBasis="0" maxHeight="infinity">
     <Column id="name" title="Item" subtitleKey="subtitle" minWidth="220" />
     <Column id="result" title="" width="120" minWidth="90" />

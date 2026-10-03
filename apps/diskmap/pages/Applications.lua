@@ -1,5 +1,5 @@
+local Inventories = require("apps.diskmap.models.Inventories")
 local Model = require("data.model")
-local Provider = require("apps.diskmap.services.Provider")
 local Applications = require("apps.diskmap.models.Applications")
 local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
@@ -25,12 +25,6 @@ local LAYOUT = {
 local WAITING = {title = "Applications Not Measured Yet", systemImage = "square.grid.3x3", description = "Apps and the data they keep are listed when the scan finishes."}
 local LINKS = {cleanup = {page = "cleanup"}, reviewMarked = {handler = "review"}}
 
--- `leftover` lets the cleanup skip it if its app is installed again.
-local function leftoverItem(row)
-	return {path = row.path, name = row.name, bytes = row.bytes, source = "Leftovers · " .. row.source, leftover = true,
-		consequence = "Settings, caches and documents of an app that is no longer installed. Reinstalling the app starts it fresh. Confidence: "
-			.. row.confidence .. " (" .. row.reason .. ")."}
-end
 
 local function trashLeftover(page, row)
 	local service = page.app.service
@@ -39,6 +33,7 @@ local function trashLeftover(page, row)
 	if not service.confirmTrashPath("Move " .. row.name .. " to Trash?", row.path,
 		row.size .. ". No installed app uses this identifier, but an app on another disk or reinstalled later would lose these settings and data. Moving to Trash does not free space until you empty it.") then return end
 	local moved, message = service.trash(row.path)
+	page.app.log("Move to Trash", moved, row.bytes, row.path, message)
 	if not moved then service.showError("Could not move to Trash", message or "macOS protects some containers. Remove it in Finder instead."); return end
 	page.app.trashed(row.path, row.bytes)
 end
@@ -47,53 +42,25 @@ end
 -- the installed-identifier list load in the background once per set of
 -- discovered bundles, and the page is drawn again when they arrive.
 routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sections/Decision"}, load = function(page)
-		page:loadFacts()
-		if (page.pending or 0) > 0 then page.app.refresh() end
+		page.app.inventories:load("applications")
+		if (page.stock.pending or 0) > 0 then page.app.refresh() end
 	end,
 	menu = function(page, row)
 		if not row.tier then return page.rowActions:application(row) end
-		return page.rowActions:folder(row, function(value) trashLeftover(page, value) end, leftoverItem(row))
+		return page.rowActions:folder(row, function(value) trashLeftover(page, value) end, Applications.leftoverItem(row))
 	end,
 	-- File Types and Clean Up open the page on one filter.
-	focus = function(page, filterIndex) page.filterIndex = filterIndex or 1 end,
+	focus = function(page, params) page.filterIndex = params.filter and assert(Applications.filters:index(params.filter), "Unknown application filter") or 1 end,
 	unusedFilter = function(page) page.filterIndex = 2 end,
 	markHigh = function(page)
-		local items = {}
-		for _, row in ipairs(page.visibleLeftovers or {}) do
-			if row.tier == "high" then table.insert(items, leftoverItem(row)) end
-		end
-		page.rowActions:markAll(items)
+		return page.rowActions:bulk(page.visibleLeftovers or {}, function(row) return row.tier == "high" end, Applications.leftoverItem)
 	end,
-	-- Loads bundle info for the currently discovered apps, once per bundle
-	-- set, and the installed identifiers once per session.
-	loadFacts = function(page)
-		local service, paths = page.app.service, {}
-		for _, bundle in ipairs(Applications:all()) do table.insert(paths, bundle.path) end
-		table.sort(paths)
-		local key = table.concat(paths, "\n")
-		if key ~= page.loadedKey and Provider.offers(service, "applicationInfo") then
-			page.loadedKey, page.pending = key, (page.pending or 0) + 1
-			service.applicationInfo(paths, function(info)
-				page.pending = page.pending - 1
-				if page.loadedKey == key then Model.db.applicationInfo = info; page.app.refresh() end
-			end)
-		end
-		if not page.installedRequested and Provider.offers(service, "installedBundleIds") then
-			page.installedRequested, page.pending = true, (page.pending or 0) + 1
-			service.installedBundleIds(function(ids) page.pending = page.pending - 1; Model.db.installedBundleIds = ids; page.app.refresh() end)
-		end
-	end,
-	-- Summary for the Clean Up page; nil until the scan has measured data folders.
-	summary = function(page)
-		local model = Model.db
-		if not model.files or model.files.measuring then return nil end
-		return Applications.summary(Applications:rows("All"), Applications:leftovers())
-	end, present = function(page, state)
+	init = function(page) ListRoute.init(page); page.stock = Inventories:state("applications") end,	present = function(page, state)
 		local model = Model.db
 		-- Nothing is listed until the scan has measured the apps and Spotlight has told their facts.
 		page.visibleLeftovers = {}
 		if model.scan.running then return {waiting = WAITING} end
-		if (page.pending or 0) > 0 then return {computing = "Reading installed applications…"} end
+		if (page.stock.pending or 0) > 0 then return {computing = "Reading installed applications…"} end
 		local leftovers = Applications:leftovers(state.query)
 		page.visibleLeftovers = leftovers or {}
 		local unmarkedHigh, markedHigh = 0, 0

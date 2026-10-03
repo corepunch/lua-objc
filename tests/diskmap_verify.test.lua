@@ -75,27 +75,27 @@ local iso, pkg = mhome .. "/Downloads/ubuntu-24.04-desktop-arm64.iso", mhome .. 
 local cache = mhome .. "/Library/Caches/com.mock.oldeditor"
 local site = mhome .. "/Documents/website/node_modules"
 for _, path in ipairs({iso, pkg, cache}) do
-	t.expect(app.review:toggle({path = path, name = path:match("([^/]+)$"), bytes = 1}), "marks " .. path:match("([^/]+)$"))
+	t.expect(app.env.basket:toggle({path = path, name = path:match("([^/]+)$"), bytes = 1}), "marks " .. path:match("([^/]+)$"))
 end
-t.expect(app.review:toggle({path = site, name = "Node modules · website", resourceId = "mock-website-node-modules"}), "marks a discovered build folder")
+t.expect(app.env.basket:toggle({path = site, name = "Node modules · website", resourceId = "mock-website-node-modules"}), "marks a discovered build folder")
 t.expect(Marks:find(iso).identity ~= nil, "an item's identity is recorded when it is marked")
 service.runningApps = {"com.mock.oldeditor"}
 service.replace(pkg)
 service.trash(mhome .. "/Documents/website/package.json")
 app:openReview()
-t.expect(app.review:trash(), "the cleanup runs")
-t.expect(app.review.done[iso] == "Moved to Trash", "an unchanged item moves")
+t.expect(app.env.review:trash(), "the cleanup runs")
+t.expect(app.env.review.done[iso] == "Moved to Trash", "an unchanged item moves")
 t.assertEqual(Marks:find(iso), nil, "a moved item leaves the basket")
-t.assertEqual(app.review.results[pkg], "Skipped", "a replaced item is skipped")
-t.assertEqual(app.review.results[cache], "Skipped", "a cache whose app is open is skipped")
+t.assertEqual(app.env.review.results[pkg], "Skipped", "a replaced item is skipped")
+t.assertEqual(app.env.review.results[cache], "Skipped", "a cache whose app is open is skipped")
 t.expect(Marks:find(pkg) and Marks:find(cache), "skipped items stay marked")
-local summary = app.review.refs.reviewSummary.text
-t.assertEqual(app.review.results[site], "Skipped", "a build folder whose project file is gone is skipped")
+local summary = app.env.review.refs.reviewSummary.text
+t.assertEqual(app.env.review.results[site], "Skipped", "a build folder whose project file is gone is skipped")
 t.expect(summary:find("moved to the Trash · 1 item", 1, true), "the sheet says what moved")
 t.expect(summary:find("skipped because the project file that identified it is gone", 1, true), "the sheet explains a lost proof")
 t.expect(summary:find("skipped because a different item is at its place now", 1, true), "the sheet explains a replaced item")
 t.expect(summary:find("skipped because com.mock.oldeditor was open", 1, true), "the sheet names the open app")
 t.expect(summary:find("After emptying the Trash, up to", 1, true), "the sheet shows free space after emptying")
-app.review:close()
+app.env.review:close()
 
 os.exit(t.summary() and 0 or 1)

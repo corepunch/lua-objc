@@ -13,7 +13,7 @@ app:createWindow()
 
 -- Updates & Snapshots asks for installers and snapshots each visit.
 app:show("updates")
-local updates = app:request("updates")
+local updates = app.env:page("updates")
 t.expect(app.page.refs.computing == nil and app.page.refs.decisionAction ~= nil, "answered, the page is drawn in full")
 updates.installerFiles = nil
 t.assertEqual(updates:data({}).computing, "Looking for installers and local snapshots…", "an unanswered request is one status line")
@@ -29,7 +29,7 @@ t.expect(updates.installerFiles == nil, "leaving the page forgets its answers")
 
 -- Disks & Volumes waits for the disk read.
 app:show("disks")
-local disks = app:request("disks")
+local disks = app.env:page("disks")
 t.expect(app.page.refs.volumes ~= nil and disks.volumes ~= nil, "the disk read fills the page")
 disks.volumes = nil
 t.assertEqual(disks:data({}).computing, "Reading disk information…", "before the read the page computes")
@@ -38,10 +38,10 @@ t.expect(disks.volumes == nil, "each visit reads the disk again")
 
 -- macOS Folders measures what no scan covers, once the scan is done; while
 -- the scan runs the rows say Not measured and nothing spins.
-local filesystem = {model = app:request("filesystem")}
-app.model.scan.running, app.model.folderSizes = true, nil
+local filesystem = {model = app.env:page("filesystem")}
+app.env.model.scan.running, app.env.model.folderSizes = true, nil
 t.expect(filesystem.model:data({}).computing == nil, "a running scan is not the page's request")
-app.model.scan.running = false
+app.env.model.scan.running = false
 t.assertEqual(filesystem.model:data({}).computing, "Measuring folders…", "its own measurement is")
 local data = filesystem.model:data({})
 local first = data.areas[1].rows[1]
@@ -63,7 +63,7 @@ t.expect(cancelled and duplicates.refs.search.title == "Find Duplicates", "stopp
 
 -- The Guide and Help are asked again only when the search or a scan changes.
 app:show("guide")
-local guide = app:request("guide")
+local guide = app.env:page("guide")
 local before = guide:data({}).chapters
 t.expect(guide:data({}).chapters == before, "the same search is the same answer")
 t.expect(guide:data({query = "swap"}).chapters ~= before, "another search is asked again")

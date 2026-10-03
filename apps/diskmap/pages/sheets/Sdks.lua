@@ -1,5 +1,6 @@
 local Format = require("apps.diskmap.helpers.Format")
 local Sdks = require("apps.diskmap.helpers.Sdks")
+local Discovery = require("apps.diskmap.services.Sdks")
 local SheetRoute = require("apps.diskmap.pages.SheetRoute")
 
 -- The SDKs one installation holds (an Xcode, the Command Line Tools). Sizes
@@ -15,12 +16,12 @@ end
 
 function SdksSheet:open(parent, row)
 	self.root, self.title, self.query = row.path, row.name, ""
-	self.rows = Sdks.discover(self.service, self.root)
+	self.rows = Discovery.discover(self.service, self.root)
 	self.unknown = {}
 	for _, sdk in ipairs(self.rows) do
 		if sdk.bytes == nil then table.insert(self.unknown, sdk) end
 	end
-	self.measuring = #self.unknown > 0 and type(self.service.measure) == "function"
+	self.measuring = #self.unknown > 0
 	SheetRoute.open(self, parent)
 end
 

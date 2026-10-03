@@ -1,7 +1,6 @@
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Model = require("data.model")
-local Routes = require("data.routes")
 local PageController = require("data.pagecontroller")
 
 -- Presents one sheet of the window. The sheet itself is a route
@@ -30,11 +29,8 @@ end
 -- The sheet `id` built from `route`, with the app's services as `self.app`
 -- and its presenter as `self.presenter`. `app.model`, the window's store, is
 -- the one the sheet reads.
-function SheetController.page(route, id, app)
-	if app.model then Model.bind(app.model) end
-	local page = Routes.page(route, {id = id}, app, "apps.diskmap")
-	page.presenter = setmetatable({page = page, store = app.model}, SheetController)
-	return page
+function SheetController.attach(page, store)
+	page.presenter = setmetatable({page = page, store = store}, SheetController)
 end
 
 -- Presents the shell over `parent` and draws the route into it; returns the sheet.
@@ -45,7 +41,8 @@ function SheetController:present(parent)
 	end, parent)
 	self.sheet = sheet
 	self.body = PageController.new({page = {id = page.id}, request = page, ns = ns, viewsDir = VIEWS, store = self.store or Model.db})
-	self.body:mount(shell.body)
+	local ok, failure = pcall(function() self.body:mount(shell.body) end)
+	if not ok then self:dismiss(); error(failure, 0) end
 	return sheet
 end
 

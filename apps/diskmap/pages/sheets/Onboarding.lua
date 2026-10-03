@@ -1,4 +1,3 @@
-local Provider = require("apps.diskmap.services.Provider")
 local SheetRoute = require("apps.diskmap.pages.SheetRoute")
 
 -- First-launch access onboarding (#52, after Headroom's), shown before the
@@ -22,15 +21,10 @@ function Onboarding:init()
 	self.service = self.app.service
 end
 
-local function call(service, name, ...)
-	local fn = Provider.offers(service, name)
-	if type(fn) == "function" then return fn(...) end
-end
-
 -- "disk" while a provider that can tell (the sandboxed Mac) has no access
 -- to the startup disk, otherwise "fullDisk".
 function Onboarding:stage()
-	if call(self.service, "hasDiskAccess") == false then return "disk" end
+	if self.service.hasDiskAccess() == false then return "disk" end
 	return "fullDisk"
 end
 
@@ -38,9 +32,9 @@ end
 -- disk does not) and it is missing: the disk on every launch, Full Disk
 -- Access until onboarding has been shown.
 function Onboarding:needed()
-	if type(Provider.offers(self.service, "hasFullDiskAccess")) ~= "function" then return false end
+	if self.service.hasFullDiskAccess() == nil then return false end
 	if self:stage() == "disk" then return true end
-	if call(self.service, "loadFlag", "onboarded") == true then return false end
+	if self.service.loadFlag("onboarded") == true then return false end
 	return self.service.hasFullDiskAccess() ~= true
 end
 
@@ -65,8 +59,8 @@ end
 -- The open panel for the startup disk. Once it is chosen the sheet moves on
 -- to Full Disk Access, or closes when that is already on.
 function Onboarding:chooseDisk()
-	if not call(self.service, "requestDiskAccess") then return false end
-	if self.service.hasFullDiskAccess() == true or call(self.service, "loadFlag", "onboarded") == true then
+	if not self.service.requestDiskAccess() then return false end
+	if self.service.hasFullDiskAccess() == true or self.service.loadFlag("onboarded") == true then
 		self:finish(self.service.hasFullDiskAccess() == true)
 		return true
 	end
@@ -83,8 +77,7 @@ end
 -- Starts a new instance and quits once it runs; the new one skips the
 -- sheet if access now works, or shows it again.
 function Onboarding:restart()
-	local relaunch = Provider.offers(self.service, "relaunch")
-	if type(relaunch) ~= "function" then return false end
+	local relaunch = self.service.relaunch
 	relaunch(function(message) self.service.showError("Diskmap could not restart", message or "Quit and open Diskmap again.") end)
 	return true
 end
@@ -93,7 +86,7 @@ function Onboarding:skip() self:finish(false) end
 
 function Onboarding:finish(granted)
 	if not self.sheet then return end
-	call(self.service, "saveFlag", "onboarded", true)
+	self.service.saveFlag("onboarded", true)
 	self:close()
 	self.app.onboarded(granted)
 end

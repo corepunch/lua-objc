@@ -180,7 +180,7 @@ static int bridge_set_window_workspace(lua_State *L) {
 		return luaL_error(L, "setWindowWorkspace requires a window");
 	}
 	NSWindow *window = obj;
-	NSView *sidebar = check_view(L, 2);
+	NSView *sidebar = lua_isnoneornil(L, 2) ? nil : check_view(L, 2);
 	NSView *content = check_view(L, 3);
 	NSView *accessory = lua_isnoneornil(L, 4)
 		? nil : check_view(L, 4);
@@ -196,6 +196,19 @@ static int bridge_set_window_workspace(lua_State *L) {
 	 * a detail pane and no fixed detail width, the content column keeps
 	 * this width and the detail takes the rest. */
 	CGFloat middleWidth = luaL_optnumber(L, 9, 0);
+
+	// A single content pane uses the same safe-area host as a split workspace.
+	// NSViewController owns titlebar/toolbar insets; no synthetic sidebar or
+	// application frame adjustments are needed.
+	if (!sidebar) {
+		NSRect frame = window.frame;
+		window.contentViewController = workspace_pane_controller(content, NO);
+		[window setFrame:frame display:NO animate:NO];
+		[window.contentView layoutSubtreeIfNeeded];
+		observe_workspace_pane(content);
+		layout_recursive(content, content.bounds.size.width);
+		return 0;
+	}
 
 	/* Keep the semantic split items full height so AppKit owns their glass,
 	 * but place app content below the current toolbar and tab-bar safe area.

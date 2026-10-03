@@ -75,7 +75,9 @@ end
 -- kind (`focus`).
 routes.files = ListRoute.extend({layout = LAYOUT, children = {lead = "sections/Decision"}, menu = function(page, row) return page.rowActions:file(row) end,
 	-- Opens the page narrowed to one File Types kind and one filter.
-	focus = function(page, kind, filterIndex) page.kind, page.filterIndex = kind, filterIndex or 1 end,
+	focus = function(page, params)
+		page.kind, page.filterIndex = params.kind, params.filter and assert(Files.filters:index(params.filter), "Unknown file filter") or 1
+	end,
 	clearKind = function(page) page.kind = nil end,
 	-- Mark only the visible, user-owned subset. This stages the files; the
 	-- existing basket supplies the review and confirmation before removal.

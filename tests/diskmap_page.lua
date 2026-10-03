@@ -16,7 +16,16 @@ function Host.new(id, services, params)
 		log = function() end, show = function() end,
 		refresh = function() if controller.template then controller:update(controller.state) end end}
 	for key, value in pairs(services) do context[key] = value end
+	if not pcall(require("apps.diskmap.services.Contract").check, context.service) then
+		context.service = require("apps.diskmap.services.Contract").stub(context.service)
+	end
 	if context.model then Model.bind(context.model) end
+	context.inventories = context.inventories or require("apps.diskmap.services.Inventories").new(context.service, context.refresh, function() return 0 end)
+	context.basketChanged = context.basketChanged or context.refresh
+	if not context.basket then
+		context.basket = require("apps.diskmap.flows.Basket")({app = context})
+		context.basket.results, context.basket.done = {}, {}
+	end
 	local entry = {id = id, title = id, icon = "circle", color = "systemBlue", attrs = params or {}}
 	local page = Routes.page(Routes.find(require("apps.diskmap.routes"), entry), entry, context, "apps.diskmap")
 	controller = PageController.new({page = entry, request = page, ns = ns, viewsDir = "apps/diskmap/views/", store = context.model})

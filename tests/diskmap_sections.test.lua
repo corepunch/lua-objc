@@ -30,7 +30,8 @@ t.assertEqual(chart.legend[1].id, "applications", "largest category leads the le
 t.assertEqual(chart.legend[2].id, "developer", "next largest category follows")
 t.assertEqual(chart.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ring")
-local chartActions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
+local chartActions = {reclaim = function() end,chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
+for _, item in ipairs(chart.legend) do chartActions["category_" .. item.id] = function() end end
 local hero, heroRefs = render("Hero", {summary = Scans:summary(disk), center = Overview.center(Scans:summary(disk)), chart = chart,
 	reclaim = Suggestions:reclaim(), volumeName = "Startup Disk", actions = chartActions,
 	hiddenSpace = Overview.hidden(disk, {important = 110e9}, 2, 3)})
@@ -38,11 +39,11 @@ t.assertEqual(chart.marks[1].id, chart.legend[1].id, "a mark carries its categor
 t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
 t.assertEqual(#heroRefs.hiddenSpace.subviews, 3, "purgeable space, snapshots and unreadable locations are listed")
 t.assertEqual(heroRefs.heroCard.className, "NSBox", "the hero uses the native rounded group")
-t.assertEqual(heroRefs.usedTotal.text, "100.0 GB", "the chart hole shows used capacity")
+t.assertEqual(heroRefs.chartCenter.subviews[1].text, "100.0 GB", "the chart hole shows used capacity")
 t.expect(heroRefs.cleanUp.bezelColor ~= nil, "the cleanup call to action is the prominent button")
 hero.size = ns.Size(760, 320); hero:layout(760)
 -- The total fits the chart's hole once laid out.
-t.expect(heroRefs.usedTotal.font.pointSize >= heroRefs.freeSpace.font.pointSize, "capacity stays readable beneath the cleanup action")
+t.expect(heroRefs.chartCenter.subviews[1].font.pointSize >= heroRefs.freeSpace.font.pointSize, "capacity stays readable beneath the cleanup action")
 local buttons = {}
 local function collect(view)
 	if view.className == "NSButton" and not view.bordered then table.insert(buttons, view) end
@@ -72,7 +73,7 @@ t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains 
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
 local _, refs = render("Overview", {status = "Measured", measured = true, coverage = "", largestHidden = false, accessTitle = "Scan access…", accessHidden = false,
-	unmeasured = {items = {}}, hero = {summary = Scans:summary(disk), center = Overview.center(Scans:summary(disk)), chart = chart, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
+	unmeasured = {items = {}}, hero = {summary = Scans:summary(disk), center = Overview.center(Scans:summary(disk)), chart = {marks = chart.marks, legend = {}, explanation = "Measured"}, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
 	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")
@@ -225,12 +226,16 @@ for _, id in ipairs({"add", "stats", "oneTileValue", "firstSection", "firstTitle
 end
 t.assertEqual(fullRefs.filter.className, "NSSegmentedControl", "filters are a segmented control")
 t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden and not fullRefs.bulk.enabled, "hidden and disabled come from the layout")
--- Filters and actions take separate rows under the heading, so neither
--- the heading's detail nor the controls get squeezed in a narrow window.
+-- Actions lead and filters trail on one centered row below the heading.
 fullRefs.page.size = ns.Size(620, 600); fullRefs.page:layout(620)
 local filterRow, titleRow = fullRefs.filter.superview, fullRefs.firstTitle.superview.superview
 t.expect(filterRow ~= titleRow, "the filter is not on the heading's row")
-t.assertEqual(fullRefs.bulk.superview.superview, filterRow, "section buttons share the filter's controls block")
+t.assertEqual(fullRefs.bulk.superview, filterRow, "section buttons share the filter's row")
+t.expect(fullRefs.bulk.frame.origin.x < fullRefs.filter.frame.origin.x, "the action precedes the trailing filter")
+t.expect(math.abs(fullRefs.bulk.frame.origin.y + fullRefs.bulk.frame.size.height / 2
+	- fullRefs.filter.frame.origin.y - fullRefs.filter.frame.size.height / 2) < 0.01, "actions and filters share a center line")
+t.assertEqual(fullRefs.filter.frame.origin.x + fullRefs.filter.frame.size.width, filterRow.frame.size.width,
+	"the filter ends at the row's trailing edge")
 t.expect(fullRefs.bulk.superview ~= titleRow, "section actions stay below the heading")
 t.expect(fullRefs.firstDetail.frame.size.width > 400, "the heading's detail keeps the section's width beside no controls")
 t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intrinsicContentSize.height, "the detail stays on one line")

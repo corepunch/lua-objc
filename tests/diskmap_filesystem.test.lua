@@ -5,6 +5,7 @@ local ns = require("AppKit")
 local Mock = require("apps.diskmap.services.Mock")
 local Simulators = require("apps.diskmap.helpers.Simulators")
 local Sdks = require("apps.diskmap.helpers.Sdks")
+local Discovery = require("apps.diskmap.services.Sdks")
 
 local function writeSnapshot(path, items)
 	table.sort(items, function(a, b) return a[1] < b[1] end)
@@ -43,6 +44,7 @@ plist:write([[<?xml version="1.0" encoding="UTF-8"?>
 </dict></plist>
 ]])
 plist:close()
+mock.readPropertyList = ns.readPropertyList
 local named = SimulatorService.discover(mock, home)
 local namedDevice = named.devices["com.apple.CoreSimulator.SimRuntime.iOS-26-0"][1]
 t.assertEqual(namedDevice.name, "iPhone 17", "device.plist supplies the simulator name")
@@ -50,14 +52,14 @@ t.assertEqual(Simulators.rows(named)[1].runtime, "iOS 26.0", "runtime identifier
 t.assertEqual(Simulators.rows(named, nil, nil, os.time({year = 2026, month = 9, day = 25, hour = 12}))[1].lastUse, "Used 5 days ago", "last use comes from device.plist")
 t.assertEqual(namedDevice.dataPathSize, 5000000000, "plist metadata does not replace the snapshot size")
 
-local xcode = Sdks.discover(mock, "/Applications/Xcode.app")
+local xcode = Discovery.discover(mock, "/Applications/Xcode.app")
 t.assertEqual(#xcode, 2, "Xcode review lists SDK bundles inside that installation")
 t.assertEqual(xcode[1].name, "iPhoneOS", "largest SDK is listed first")
 t.assertEqual(xcode[1].platform, "iOS", "iPhoneOS SDK is labeled iOS")
 t.assertEqual(xcode[1].bytes, 800000000, "SDK size includes the bundle contents")
 t.assertEqual(xcode[2].name, "MacOSX", "MacOSX SDK is listed beside iPhoneOS")
 t.assertEqual(xcode[2].platform, "macOS", "MacOSX SDK is labeled macOS")
-local tools = Sdks.discover(mock, "/Library/Developer/CommandLineTools")
+local tools = Discovery.discover(mock, "/Library/Developer/CommandLineTools")
 t.assertEqual(#tools, 1, "Command Line Tools review lists its own SDKs")
 t.assertEqual(tools[1].name, "MacOSX26", "versioned SDK directories keep their name")
 t.assertEqual(tools[1].platform, "Command Line Tools", "Command Line Tools SDKs name their installation")

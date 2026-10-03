@@ -22,7 +22,7 @@
       <VStack padding="12" spacing="10" alignment="leading">
         <% for index, row in ipairs(group.rows) do %>
         <% if index > 1 then %><Divider /><% end %>
-        <%- partial("../components/SettingRow.etlua", row) %>
+        <SettingRow title="<%= row.title %>" detail="<%= row.detail %>" action="<%= row.action %>" toggleId="<%= row.id or "" %>" button="<%= row.button and "true" or "false" %>" />
         <% end %>
         <% if group.footer then %>
         <Label id="notificationsUnavailable" text="Notifications are available when Diskmap runs as an app." size="11" color="secondary" maxWidth="infinity" lines="2" />
@@ -31,8 +31,5 @@
     </GroupBox>
   </VStack>
   <% end %>
-  <HStack>
-    <Spacer />
-    <Button id="done" title="Done" action="close" keyboardShortcut="defaultAction" />
-  </HStack>
+  <SheetFooter />
 </VStack>

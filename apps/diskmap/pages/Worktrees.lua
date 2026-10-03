@@ -1,3 +1,4 @@
+local Inventories = require("apps.diskmap.models.Inventories")
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
@@ -18,37 +19,15 @@ Page.queries = {reveal = true, cleanup = true}
 
 function Page:init()
 	self.service = self.app.service
-	self.entries, self.facts, self.rows = {}, {}, {}
+	self.stock = Inventories:state("worktrees")
 end
 
 function Page:activate()
-	if not self.loaded then self:load() end
+	if not self.stock.loaded then self:load() end
 end
 
 local function keepKey(path) return "worktree:" .. path end
 function Page:isKept(path) return Model.db.kept[keepKey(path)] == true end
-
--- Artifacts the scan discovered inside a worktree are its generated output;
--- the checkout total includes them, so they are split out, never added.
-function Page:generatedBytes(path)
-	local total = 0
-	for _, row in ipairs(Locations:leaves()) do
-		if row.artifact and row.path and row.path:sub(1, #path + 1) == path .. "/" then
-			local m = Model.db.measurements[row.id]
-			total = total + (m and m.bytes or 0)
-		end
-	end
-	return total
-end
-
--- The rows for what was read, and the plan published for Clean Up.
-function Page:rebuild()
-	for path, facts in pairs(self.facts) do facts.generatedBytes = math.max(facts.generatedBytes or 0, self:generatedBytes(path)) end
-	self.rows = Worktrees.rows(self.entries, self.facts, {now = os.time(), kept = function(path) return self:isKept(path) end})
-	local plan = Worktrees.plan(self.rows)
-	Model.db.worktreePlan = {removalBytes = plan.removalBytes, removalCount = #plan.removal, reviewBytes = plan.reviewBytes,
-		reviewCount = #plan.review, pruneCount = #plan.prune}
-end
 
 local function detail(row)
 	local parts = {row.name .. " · " .. (row.branch or "Detached HEAD"), row.path, table.concat(row.reasons, " ")}
@@ -90,12 +69,12 @@ local function decision(self, plan)
 end
 
 function Page:data(state)
-	if not self.loaded then
+	if not self.stock.loaded then
 		self.lists = {}
-		return {computing = self.progress or "Looking for Git worktrees…", hidden = {selectionSection = true}, disabled = {retry = true}}
+		return {computing = self.stock.progress or "Looking for Git worktrees…", hidden = {selectionSection = true}, disabled = {retry = true}}
 	end
 	local needle = (state.query or ""):lower()
-	local plan = Worktrees.plan(self.rows)
+	local plan = Worktrees.plan(self.stock.rows)
 	local function only(rows)
 		local found = {}
 		for _, row in ipairs(rows) do
@@ -110,7 +89,7 @@ function Page:data(state)
 		if row.state == "primary" then table.insert(primary, row) else table.insert(review, row) end
 	end
 	review = only(review)
-	for _, row in ipairs(self.rows) do
+	for _, row in ipairs(self.stock.rows) do
 		if row.state ~= "primary" then linked, stored = linked + 1, stored + row.bytes end
 	end
 	local lists = {removeList = only(plan.removal), reviewList = review, missingList = only(plan.prune), repositoryList = only(primary)}
@@ -123,7 +102,7 @@ function Page:data(state)
 	local idle = not self.busy
 	return {
 		summary = (self.busy and "Working · " or "") .. Format.plural(linked, "linked worktree") .. " in "
-			.. Format.plural(self.repositories or 0, "repository") .. " · " .. Format.size(stored) .. " stored", decision = decision(self, plan), status = self.result or "",
+			.. Format.plural(self.stock.repositories or 0, "repository") .. " · " .. Format.size(stored) .. " stored", decision = decision(self, plan), status = self.result or "",
 		removeDetail = "Clean, every commit published, and unchanged for " .. Format.plural(Worktrees.recentDays, "day")
 			.. ". Source " .. Format.size(plan.sourceBytes) .. ", generated output " .. Format.size(plan.generatedBytes) .. ", Git record " .. Format.size(plan.gitBytes) .. ".",
 		selection = selected and {title = selected.name .. " · " .. (selected.branch or "Detached HEAD"),
@@ -148,7 +127,7 @@ end
 
 function Page:select(_, _, row) self.selected = row end
 function Page:cleanup() self.app.show("cleanup") end
-function Page:retry() self.result = nil; self:load() end
+function Page:retry() self.result = nil; self:load(true) end
 
 function Page:reveal()
 	if self.selected then self.service.reveal(self.selected.path) end
@@ -165,46 +144,21 @@ function Page:keep()
 	local row = self.selected
 	if not row or row.state == "primary" then return end
 	local key = keepKey(row.path)
-	Model.db.kept[key] = not Model.db.kept[key] or nil
-	if self.service.saveKeep then self.service.saveKeep(Model.db.kept) end
-	self:rebuild()
+	self:flow("Keep"):toggle(key)
+	Inventories:rebuildWorktrees()
 end
 
 -- A load belongs to the inventory, not to one visit of the page: it may end
 -- after the page was left or opened again, and the page shows the result
 -- whenever it is open.
-function Page:load()
-	if self.busy then return end
-	self.busy, self.progress = true, nil
-	if type(self.service.worktreeScan) ~= "function" then
-		self.busy, self.loaded = false, true
-		self:rebuild()
-		return
-	end
-	local roots = Catalog.projectRoots(Model.db.home, Model.db.projectRoots, false)
-	self.service.worktreeScan(roots, function(entries, facts)
-		self.busy, self.loaded, self.progress = false, true, nil
-		self.entries, self.facts = entries or {}, facts or {}
-		local repositories, count = {}, 0
-		for _, entry in ipairs(self.entries) do
-			if entry.commonDir and not repositories[entry.commonDir] then repositories[entry.commonDir] = true; count = count + 1 end
-		end
-		self.repositories = count
-		self:rebuild()
-		self.app.refresh()
-	end, function(done, total)
-		-- Discovery reads several facts per worktree; say how far it is.
-		self.progress = total == 0 and "No linked worktrees found yet." or ("Reading the evidence for " .. Format.plural(total, "worktree") .. ": " .. done .. " done.")
-		if not self.loaded then self.app.refresh() end
-	end)
-end
+function Page:load(force) self.app.inventories:load("worktrees", force) end
 
 -- One confirmation for the whole removal set, then each worktree is read
 -- again from Git and revalidated just before its own removal. A refused or
 -- failed worktree is reported and the rest continue; nothing is forced.
 function Page:review()
 	if self.busy then return false end
-	local plan = Worktrees.plan(self.rows)
+	local plan = Worktrees.plan(self.stock.rows)
 	if not plan.ready then return false end
 	if not self.service.confirmAction("Remove leftover worktrees", Worktrees.confirmation(plan)) then return false end
 	self.busy, self.result = true, "Removing…"
@@ -230,7 +184,7 @@ function Page:review()
 		self.result = Batch.report(result, "Removed", "worktree")
 			.. ". The repositories and every other worktree were left as they were; removed worktrees are deleted at once, not moved to the Trash. "
 			.. Outcome.freeText(freeBefore, Outcome.free(self.service, Model.db.home), result.removed > 0) .. "."
-		self:load()
+		self:load(true)
 	end)
 	return true
 end
@@ -239,7 +193,7 @@ end
 -- Git's record only, never a checkout.
 function Page:prune()
 	if self.busy then return false end
-	local plan = Worktrees.plan(self.rows)
+	local plan = Worktrees.plan(self.stock.rows)
 	if #plan.prune == 0 then return false end
 	local names, repositories = {}, {}
 	for _, row in ipairs(plan.prune) do
@@ -255,9 +209,13 @@ function Page:prune()
 		if index > #commands then
 			self.busy = false
 			self.result = failed == 0 and ("Pruned " .. Format.plural(#plan.prune, "registration") .. ". No checkout was deleted.") or ("Prune failed for " .. failed .. " repositories.")
-			self:load(); return
+			self:load(true); return
 		end
-		self.service.command(commands[index], function(ok) if not ok then failed = failed + 1 end; step(index + 1) end)
+		self.service.command(commands[index], function(ok, output)
+			self.app.log("git worktree prune", ok, 0, commands[index][3], not ok and output or nil)
+			if not ok then failed = failed + 1 end
+			step(index + 1)
+		end)
 	end
 	step(1)
 	return true

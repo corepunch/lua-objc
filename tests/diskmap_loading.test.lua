@@ -49,12 +49,12 @@ t.assertEqual(model.measurements[ids[1]].bytes, 0, "worker failure keeps already
 t.assertEqual(model.measurements[ids[#ids]].status, "failed", "worker failure clears pending state")
 t.assertEqual(model.measurements[ids[#ids]].bytes, nil, "worker failure cannot restore cached data")
 local pending
-local scanner = Scan.new(model, {
+local scanner = Scan.new(model, require("apps.diskmap.services.Contract").stub({
 	start = function() return {} end,
 	await = function(job, done, progress) pending = {done = done, progress = progress} end,
 	cancel = function() end,
 	diskSpace = function() return {totalKb = 100, freeKb = 50} end,
-}, "/Users/test")
+}), "/Users/test")
 scanner:start()
 pending.progress(result)
 t.expect(not Categories:rows()[1].calculating, "controller applies incremental measurement")
@@ -62,18 +62,18 @@ t.expect(Categories:rows()[2].calculating, "controller leaves other categories p
 t.expect(not scanner.status:find("locations measured", 1, true), "the progress bar, not the status line, says how far the scan is")
 scanner:cancel()
 local completion
-local finished = Scan.new(model, {
+local finished = Scan.new(model, require("apps.diskmap.services.Contract").stub({
 	start = function() return {} end,
 	await = function(job, done) completion = done end,
 	cancel = function() end,
 	diskSpace = function() return {totalKb = 100, freeKb = 50} end,
-}, "/Users/test")
+}), "/Users/test")
 finished:start()
 completion({trees = {}, rootStates = {}, errors = 3, seconds = 70})
 t.expect(finished.status:find("finished in 1 min 10 sec", 1, true) ~= nil, "finished scan reports elapsed time")
 t.expect(finished.status:find("Partial lower bound", 1, true) == 1, "partial snapshots identify the finished measurement as a lower bound")
 t.expect(finished.status:find("filesystem read issues", 1, true) == nil, "finished status does not duplicate the coverage issue count")
-local failure = Scan.new(model, {start = function() error("No worker") end}, "/Users/test")
+local failure = Scan.new(model, require("apps.diskmap.services.Contract").stub({start = function() error("No worker") end}), "/Users/test")
 failure:start()
 t.assertEqual(Scans:measured(), 0, "start failure does not retain old measurements")
 t.assertEqual(Categories:rows()[1].size, "Unavailable", "failed category reports unavailable rather than access denial")

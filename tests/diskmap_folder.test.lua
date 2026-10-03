@@ -68,11 +68,11 @@ local home = service.home
 local downloads = home .. "/Downloads"
 local app = Controller.new(service)
 app:createWindow()
-local pc = app.pages.folder
-local page = app:request("folder")
 app:show("folder")
+local pc = app.page
+local page = app.env:page("folder")
 t.expect(pc.refs.folderEmpty ~= nil, "the page invites a drop until a folder is open")
-t.assertEqual(Provider.folder({"--folder=/Volumes/Backup"}), "/Volumes/Backup", "--folder opens a folder at launch")
+t.assertEqual(Provider.launch({"--folder=/Volumes/Backup"}).folder, "/Volumes/Backup", "--folder opens a folder at launch")
 
 -- A folder dropped from the Finder anywhere on the window opens here.
 app:show("overview")
@@ -95,7 +95,7 @@ t.expect(pc.refs.folderLegend ~= nil, "kinds come with a legend")
 pc.actions.pickColoring(2)
 t.assertEqual(page.coloring, "age", "the map colors by last use")
 local ages = {}
-for _, row in ipairs(page.tree:legend(page.focus, "age")) do ages[row.name] = row end
+for _, row in ipairs(page.tree:legend(page.focusPath, "age")) do ages[row.name] = row end
 t.expect(ages["1–3 years ago"] ~= nil, "an installer untouched for two years is in the older band")
 pc.actions.pickColoring(0)
 pc.actions.pickStyle(1)
@@ -107,7 +107,7 @@ t.expect(pc.refs.folderList ~= nil, "Rings bring the list back")
 -- Quick Look previews the selection with ⌘Y and steps through its folder.
 local largest = downloads .. "/Old macOS Installer.dmg"
 t.expect(not app.commandActions.canQuickLook(), "Quick Look needs a selection")
-pc.actions.selectRow(nil, nil, page.tree:rows(page.focus, page.coloring)[1])
+pc.actions.selectRow(nil, nil, page.tree:rows(page.focusPath, page.coloring)[1])
 t.expect(app.commandActions.canQuickLook(), "a selected row can be previewed")
 bridge._performMainMenuItem("File", "Quick Look")
 t.expect(service.quickLooked and service.quickLooked.paths[service.quickLooked.index] == largest, "File › Quick Look previews the selected file")
@@ -140,13 +140,13 @@ t.expect(table.concat(service.operationLog(), "\n"):find("Move", 1, true) ~= nil
 t.expect(bridge._tableCell(pc.refs.folderList, 0, 0).textField.stringValue ~= "Old macOS Installer.dmg", "the list follows the move")
 
 -- Move to Trash asks first, then removes the row.
-local first = page.tree:rows(page.focus, page.coloring)[1]
+local first = page.tree:rows(page.focusPath, page.coloring)[1]
 service.confirmTrashPath = function() return true end
 t.expect(perform(pc.refs.folderList, 1, "Move to Trash…"), "Move to Trash… is performed from the row menu")
 t.expect(page.tree:find(first.path) == nil, "the trashed item leaves the map")
 t.expect((service.fileCounts[home .. "/.Trash/" .. first.name] or 0) > 0, "it is in the Trash")
 local remaining
-for _, row in ipairs(page.tree:rows(page.focus, page.coloring)) do if not row.directory and not row.other then remaining = row; break end end
+for _, row in ipairs(page.tree:rows(page.focusPath, page.coloring)) do if not row.directory and not row.other then remaining = row; break end end
 
 -- System locations and standard folders are never moved.
 t.expect(not FolderTree.validateChange(downloads, Model.db.home, Locations:owner(downloads)), "a standard folder is never moved")
@@ -162,11 +162,11 @@ FolderTree.scanOptions = {treeDepth = 1, treeMinimumBytes = options.treeMinimumB
 app:openFolder(home)
 t.expect(page.tree:needsScan(home .. "/Library"), "a folder below the first scan's depth is measured when opened")
 pc.actions.setFocus(home .. "/Library")
-t.assertEqual(page.focus, home .. "/Library", "opening it shows its contents")
+t.assertEqual(page.focusPath, home .. "/Library", "opening it shows its contents")
 t.expect(#page.tree:find(home .. "/Library").children > 0, "its contents join the tree")
-t.assertEqual(#page.tree:trail(page.focus), 2, "the breadcrumb leads back to the folder")
+t.assertEqual(#page.tree:trail(page.focusPath), 2, "the breadcrumb leads back to the folder")
 pc.actions.up()
-t.assertEqual(page.focus, home, "the center goes back up")
+t.assertEqual(page.focusPath, home, "the center goes back up")
 FolderTree.scanOptions = options
 
 -- A dropped file opens its folder with the file selected.
@@ -194,7 +194,7 @@ for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.d
 t.expect(dmg == nil, "a file moved away on the Folder page leaves Large Files without a rescan")
 for _, row in ipairs(Files:rows("All")) do if not dmg and Files:validateTrash(row.path) then dmg = row end end
 local fileMenu = {}
-for _, item in ipairs(dmg and app.rowActions:file(dmg) or {}) do if item.title then fileMenu[item.title] = true end end
+for _, item in ipairs(dmg and app.env.rowActions:file(dmg) or {}) do if item.title then fileMenu[item.title] = true end end
 t.expect(fileMenu["Quick Look"] and fileMenu["Move to…"], "large files can be previewed and offloaded")
 
 os.exit(t.summary() and 0 or 1)

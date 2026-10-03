@@ -1,0 +1,6 @@
+<SectorChart scalable="true" diameter="<%= diameter %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="1.5">
+  <% for _, sector in ipairs(sectors) do %>
+  <SectorMark cornerRadius="<%= corner %>" id="<%= sector.id %>" ring="<%= sector.ring %>" parent="<%= sector.parent or "" %>" value="<%= sector.value %>" color="<%= sector.color %>" opacity="<%= sector.opacity %>" label="<%= sector.label %>" />
+  <% end %>
+  <ContentPresenter />
+</SectorChart>

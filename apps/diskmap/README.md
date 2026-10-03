@@ -232,6 +232,54 @@ Pages switch instantly and scan progress never animates. The only motion is
 the donut and map rings turning to a new level (the arcs' own animation),
 and the tour's system push transition; Reduce Motion turns both off.
 
+Launch a page by itself with `--page=<id> --isolated`. Cross-page actions
+replace the content in that window; Back and Forward still work. The native
+toolbar, search, collector and page actions remain available. Isolated launches
+skip onboarding, the tour, process watchers, automatic refresh, Dock opens and
+storage-history writes. The default size is 1100×760; the minimum is 724×580
+(950×580 with the sidebar). Unknown page ids and `--isolated` without `--page`
+are errors.
+
+```sh
+./lua-objc apps/diskmap/init.lua --showcase --page=developer --isolated
+./lua-objc --capture=/tmp/xcode apps/diskmap/init.lua --showcase --page=xcode --isolated
+./lua-objc --dump-layout=/tmp/xcode.xml apps/diskmap/init.lua --showcase --page=xcode --isolated
+mkdir -p /tmp/diskmap-pages
+DISKMAP_CAPTURE_DIR=/tmp/diskmap-pages ./lua-objc --capture-plan=apps/diskmap/capture.lua apps/diskmap/init.lua --showcase --page=overview --isolated
+```
+
+The capture plan visits every sidebar destination in light and dark at both
+supported sizes, then captures a larger map, rectangles, empty search and
+selection. Omit `--isolated` to capture the full app.
+
+`controllers/Environment.lua` owns one store, checked provider, scan, Keep
+choices, basket, operations, inventories and memoized requests. It loads
+preferences before constructing sheet requests. Inventories refresh when the
+scan finishes, independent of which page is visited. The window controller
+owns native presentation, navigation, search and process facilities; only the
+primary full window attaches those facilities. Pages receive a router and use
+named parameters such as `show("files", {filter = "Installers & archives"})`
+or `show("map", {focus = "developer"})`. Templates receive plain data and
+explicit actions; there are no field bindings or observation subscriptions.
+
+For tests, `tests/support/diskmap.lua` builds a finished environment with a
+recording router and scripted sheet presenters, and mounts any manifest page.
+`Mock.new{deferred = true}` queues completions for `step()` or `settle()` so
+staleness can be checked without timers. Test providers use `Contract.stub{}`;
+System, Mock and showcase implement the same checked contract.
+
+Child previews compute data from those real presentation queries. Supported
+fixtures are `hero`, `notMeasured`, `decision`, `kinds`, `changes`, `tips` and
+`settings`:
+
+```sh
+DISKMAP_FIXTURE=hero ./lua-objc --preview --width=1100 --height=580 --out=/tmp/hero.png tests/support/diskmap_preview.lua
+DISKMAP_FIXTURE=settings ./lua-objc --preview --width=460 --height=684 --out=/tmp/settings.png tests/support/diskmap_preview.lua
+```
+
+Preview page skeletons and Review with the real isolated window so their
+retained refs and native table rows are filled by their controllers.
+
 ```sh
 make
 ./lua-objc apps/diskmap/init.lua

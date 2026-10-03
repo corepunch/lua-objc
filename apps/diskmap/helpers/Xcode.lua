@@ -138,4 +138,51 @@ function Xcode.total(rows, filter)
 	return bytes
 end
 
+-- Three reviewable lists, in the order they are usually worth cleaning.
+Xcode.sections = {
+	{id = "support", title = "Device Support", status = true, icon = "iphone.gen3", color = "systemBlue",
+		detail = "Symbols Xcode copies from each device OS version you debug. The newest version per platform is kept.",
+		bulkTitle = "Mark Older Versions", bulkHelp = "Mark every version except the newest per platform",
+		consequence = "Debug symbols for one OS version. Xcode copies them again the next time you debug a device running it."},
+	{id = "derived", title = "DerivedData", status = true, icon = "hammer", color = "systemOrange",
+		detail = "Build products and indexes per project. Folders whose project no longer exists come first; caches shared by every project come last.",
+		bulkTitle = "Mark Missing Projects", bulkHelp = "Mark build data of projects that no longer exist",
+		consequence = "Build products and the code index. The next build and indexing of this project take longer."},
+	{id = "archives", title = "Archives", detailColumn = true, icon = "archivebox", color = "systemPurple",
+		detail = "Shipped builds with their debug symbols, oldest first. Keep archives for versions people still run.",
+		consequence = "A shipped build and its dSYMs. Without it, crash reports for this version cannot be symbolicated."},
+}
+
+-- Row statuses as Status symbols: the newest device support stays (red);
+-- build data of a missing project is safe to remove (green); older versions
+-- and build data of a present or unknown project need a look (orange).
+-- Caches shared by every project are rebuilt by Xcode (green).
+Xcode.statuses = {["Newest · keep"] = "Keep", Older = "Review", Missing = "Rebuildable", Present = "Review", Unknown = "Review",
+	Shared = "Rebuildable"}
+
+
+function Xcode.item(section, row)
+	return {path = row.path, name = row.name .. (row.subtitle ~= "" and (" · " .. row.subtitle) or ""), bytes = row.bytes,
+		source = "Xcode · " .. section.title, consequence = section.consequence}
+end
+
+function Xcode.bulkable(section, row)
+	if section.id == "support" then return not row.keep end
+	if section.id == "derived" then return row.missing end
+	return false
+end
+
+function Xcode.filtered(rows, query)
+	local needle, kept = query:lower(), {}
+	for _, row in ipairs(rows or {}) do
+		if needle == "" or (row.name .. " " .. (row.subtitle or "") .. " " .. row.path):lower():find(needle, 1, true) then
+			local copy = {}
+			for key, value in pairs(row) do copy[key] = value end
+			table.insert(kept, copy)
+		end
+	end
+	return kept
+end
+
+
 return Xcode

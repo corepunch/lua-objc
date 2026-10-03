@@ -59,8 +59,8 @@ t.expect(find(menu("Go").items, "Large Files").checked, "the checkmark follows n
 
 -- Storage commands validate against the scan and the Trash.
 local storage = menu("Storage").items
-t.assertEqual(find(storage, "Refresh").enabled, app.scan.job == nil, "Refresh is available only between scans")
-t.assertEqual(find(storage, "Stop Measuring").enabled, app.scan.job ~= nil, "Stop is available only while scanning")
+t.assertEqual(find(storage, "Refresh").enabled, app.env.scan.job == nil, "Refresh is available only between scans")
+t.assertEqual(find(storage, "Stop Measuring").enabled, app.env.scan.job ~= nil, "Stop is available only while scanning")
 t.assertEqual(find(storage, "Empty Trash…").modifiers, "command,shift", "Empty Trash uses ⇧⌘⌫")
 t.assertEqual(find(storage, "Empty Trash…").enabled, app.commands:canEmptyTrash(), "Empty Trash validates the Trash")
 bridge._performMainMenuItem("Storage", "Full Disk Access Settings…")
@@ -72,8 +72,8 @@ t.assertEqual(table.concat(calls, ","), "settings:privacy,settings:nil,diskUtili
 t.assertEqual(find(menu("Help").items, "Diskmap Help").keyEquivalent, "?", "Diskmap Help uses ⌘?")
 bridge._performMainMenuItem("Help", "Diskmap Help")
 t.assertEqual(app.destination, "help", "Help › Diskmap Help opens the help page")
-t.expect(app.refs.help_welcome ~= nil and app.refs.help_trash ~= nil, "help lists its topics")
-t.expect(app.refs.link_files ~= nil, "a topic links to its page")
+t.expect(app.page.refs.help_welcome ~= nil and app.page.refs.help_trash ~= nil, "help lists its topics")
+t.expect(app.page.refs.link_files ~= nil, "a topic links to its page")
 
 local results = bridge._searchHelp("leftovers")
 t.expect(#results >= 1 and results[1] == "Find data left by deleted apps", "help search finds a task by keyword")
@@ -82,11 +82,11 @@ bridge._searchHelp("leftovers", 1)
 t.assertEqual(app.destination, "help", "a help result opens Diskmap Help")
 t.assertEqual(app.query, "Find data left by deleted apps", "the result filters help to its topic")
 t.assertEqual(app.searchField.stringValue, app.query, "the toolbar search shows the filter")
-t.expect(app.refs.help_leftovers ~= nil and app.refs.help_trash == nil, "only the chosen topic remains")
+t.expect(app.page.refs.help_leftovers ~= nil and app.page.refs.help_trash == nil, "only the chosen topic remains")
 
 -- The shortcut topic is generated from the installed menu bar.
 bridge._performMainMenuItem("Help", "Keyboard Shortcuts")
-t.expect(app.refs.help_shortcuts ~= nil, "Keyboard Shortcuts opens its help topic")
+t.expect(app.page.refs.help_shortcuts ~= nil, "Keyboard Shortcuts opens its help topic")
 local listed = table.concat((function()
 	local lines = {}
 	for _, entry in ipairs(app.shortcuts) do table.insert(lines, Help.shortcut(entry.key, entry.modifiers) .. " " .. entry.title) end
@@ -105,7 +105,7 @@ for _, chapter in ipairs(Help.chapters) do
 		local target = topic.show or topic.command
 		if target then
 			t.expect(links[target] ~= nil, topic.id .. " links to a known target")
-			t.expect(app.pages[target] ~= nil or app.commandActions[target] ~= nil, topic.id .. " target is actionable")
+			t.expect(app.env.manifest.pages[target] ~= nil or app.commandActions[target] ~= nil, topic.id .. " target is actionable")
 		end
 	end
 end

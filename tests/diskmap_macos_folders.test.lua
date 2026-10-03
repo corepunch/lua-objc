@@ -176,11 +176,11 @@ t.assertEqual(rowOf(volumeless, "/").size, "Not measured", "and says so once APF
 -- Volume sizes are asked for when a scan starts, not after discovery.
 local Scan = require("apps.diskmap.services.Scan")
 local asked, discovering = false, nil
-local service = {
+local service = require("apps.diskmap.services.Contract").stub({
 	apfsVolumes = function(completion) asked = true; completion(list, "disk3") end,
 	discoverEntries = function(_, completion) discovering = completion end,
 	start = function() return {} end, await = function() end, cancel = function() end,
-}
+})
 local scanModel = Store.new(home)
 local scan = Scan.new(scanModel, service, home)
 scan:start()
@@ -195,8 +195,8 @@ t.expect(app.pages.overview.refs.exploreFolders ~= nil, "the card links to macOS
 app.pages.overview.actions.exploreFolders()
 t.assertEqual(app.destination, "filesystem", "which opens the page")
 t.expect(app.pages.filesystem.refs.area_volumes ~= nil and app.pages.filesystem.refs.area_home ~= nil, "every area is on the page")
-t.expect(app.model.folderSizes ~= nil, "the page measures the locations no resource covers")
-app.scan:start()
-t.expect(app.model.folderSizes == nil or app.model.scan.completedAt ~= nil, "a new scan discards the page's sizes")
+t.expect(app.env.model.folderSizes ~= nil, "the page measures the locations no resource covers")
+app.env.scan:start()
+t.expect(app.env.model.folderSizes == nil or app.env.model.scan.completedAt ~= nil, "a new scan discards the page's sizes")
 
 os.exit(t.summary() and 0 or 1)

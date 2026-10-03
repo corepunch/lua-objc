@@ -94,6 +94,10 @@ function Locations.seed(db, definitions)
 	return db.locations
 end
 
+function Locations:findPath(path)
+	for _, row in ipairs(self:leaves()) do if row.path == path then return row end end
+end
+
 function Locations:find(id)
 	local state = index(Model.db)
 	return state and id ~= nil and state.byId[id] or nil
@@ -202,12 +206,7 @@ function Locations.keeps(id)
 	return Model.db.kept[id] == true
 end
 
--- Keeps `key`, or stops keeping it; returns whether it is kept now.
-function Locations:toggleKeep(key)
-	local kept = Model.db.kept
-	kept[key] = not kept[key] or nil
-	return kept[key] == true
-end
+
 
 -- The macOS installer apps among the locations, each {id, name, path, bytes}.
 function Locations:installers()

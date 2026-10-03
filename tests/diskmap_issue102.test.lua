@@ -18,7 +18,7 @@ local Suggestions = require("apps.diskmap.models.Suggestions")
 local service = Mock.new()
 local app = Controller.new(service)
 local window = app:createWindow()
-app.scan:start()
+app.env.scan:start()
 window.size = ns.Size(950, 580); window:layout()
 
 local function source(path) local file = assert(io.open(path)); local text = file:read("a"); file:close(); return text end
@@ -52,7 +52,7 @@ visible("updates", "Updates")
 app:show("cleanup")
 local cleanup = app.page
 t.expect(cleanup.refs.selectionDetails.hidden, "Clean Up has no empty inspector")
-local data = Suggestions:presentation("", app.cleanupSources())
+local data = Suggestions:presentation("", app.env:sources())
 local top = data.lead
 for _, row in ipairs(data.rebuildable) do t.expect(row.score <= top.score, "the lead outranks every rebuildable row: " .. row.id) end
 for _, row in ipairs(data.decisions) do t.expect(row.score <= top.score, "and every decision: " .. row.id) end
@@ -90,7 +90,7 @@ t.assertEqual(badges.cleanup, Format.size(data.eligibleBytes), "Clean Up's badge
 
 -- The Overview's call to action names the same estimate.
 local Overview = require("apps.diskmap.helpers.Overview")
-t.assertEqual(Suggestions:reclaim(app.cleanupSources()).title, Format.size(data.eligibleBytes) .. " could recover",
+t.assertEqual(Suggestions:reclaim(app.env:sources()).title, Format.size(data.eligibleBytes) .. " could recover",
 	"the Overview headline, Clean Up and its badge name one number")
 
 -- Meters: a capsule half the height of AppKit's 18-point capacity cell.
@@ -117,7 +117,7 @@ end
 t.assertEqual(installers.removableBytes, ownInstallers, "the installers kind counts only its own user-owned files")
 t.assertEqual(archives and archives.removableBytes, archives and ownArchives, "and archives theirs")
 local kindsPage = app.page.request
-local decision = kindsPage:decision(kinds)
+local decision = require("apps.diskmap.models.Files"):kindsDecision(kinds)
 t.assertEqual(decision.amount, Format.size(ownInstallers + ownArchives), "the decision's amount is the user-owned review set")
 t.assertEqual(decision.amountCaption, "could recover", "which it names")
 t.expect(decision.detail:find("installed or extracted", 1, true), "the lead explains the review before removal")
@@ -164,14 +164,14 @@ delayed.simulatorRuntimes = function(done) table.insert(replies, function() runt
 local storage = Store.new(delayed.home)
 local simulators, inventory = Host.new("simulators", {model = storage, service = delayed})
 inventory:load()
-t.expect(inventory.busy and not inventory.loaded, "a background read is pending before the page mounts")
+t.expect(inventory.stock.busy and not inventory.stock.loaded, "a background read is pending before the page mounts")
 simulators:mount(ns.VStack {}, {query = ""})
 t.assertEqual(#replies, 1, "mounting during the read does not start another")
 t.assertEqual(simulators.refs.computingStatus.text, "Reading simulator devices and runtimes…", "the page shows the pending read as one progress state")
 simulators:dispose()
 simulators:mount(ns.VStack {}, {query = ""})
 for _, reply in ipairs(replies) do reply() end
-t.expect(not inventory.busy and inventory.loaded, "the read finishes after navigating away and back")
+t.expect(not inventory.stock.busy and inventory.stock.loaded, "the read finishes after navigating away and back")
 t.expect(simulators.refs.summary.text:find("stored in", 1, true), "and the mounted page shows it: " .. simulators.refs.summary.text)
 t.expect(simulators.refs.planReview ~= nil and simulators.refs.planAmount.text ~= "—", "with the plan's amount beside its review button")
 t.expect(storage.simulatorPlan ~= nil, "and the plan is published for Clean Up")
@@ -182,7 +182,7 @@ local closedStorage = Store.new(delayed.home)
 local closed, closedInventory = Host.new("simulators", {model = closedStorage, service = delayed})
 closedInventory:load(); closed:mount(ns.VStack {}, {query = ""}); closed:dispose()
 for _, reply in ipairs(replies) do reply() end
-t.expect(closedInventory.loaded and not closedInventory.busy and closedStorage.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
+t.expect(closedInventory.stock.loaded and not closedInventory.stock.busy and closedStorage.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
 closed:mount(ns.VStack {}, {query = ""})
 t.expect(closed.refs.summary.text:find("stored in", 1, true), "and the next visit shows it at once")
 

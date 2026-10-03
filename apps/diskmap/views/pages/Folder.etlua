@@ -1,14 +1,5 @@
 <%
-  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, inset = 1.5, corner = 5, list = 340, minList = 260, minPane = 320, paneGap = 16, meter = 130, legendSize = 84, legendShare = 34 }
-  -- Every ring keeps the thickness it has among three, so one ring of
-  -- files is a slim ring like the Overview donut, not a thick disc.
-  local rings = 1
-  for _, node in ipairs(nodes) do rings = math.max(rings, node.ring or 1) end
-  local hole = math.max(FOLDER.minimumHole, 1 - rings * FOLDER.ring)
-  -- The Map page's ring fades: outer rings fade so the contents of a folder read
-  -- as part of it, and smaller items keep their folder's hue, faded further.
-  local ringOpacity = { 1, 0.72, 0.5 }
-  local otherFade = 0.55
+  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, list = 340, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
   local buttons = {{id = "openFolder", title = "Open Folder…", systemImage = "folder", action = "openFolder", help = "Choose a folder or disk to measure"}}
   if hasPath then
     table.insert(buttons, measuring and {id = "stop", title = "Stop", systemImage = "stop.circle", action = "stop", help = "Stop measuring"}
@@ -29,16 +20,10 @@
   <% elseif state == "failed" then %>
   <ContentUnavailable id="folderFailed" title="Could Not Measure This Folder" systemImage="exclamationmark.triangle" description="<%= failure %>" />
   <% else %>
-  <HStack id="folderBar" spacing="6" alignment="center">
+  <Breadcrumb id="folderBar">
     <% for index, step in ipairs(trail) do %>
-    <% if index > 1 then %><SystemImage name="chevron.right" size="10" color="tertiary" /><% end %>
-    <% if index < #trail then %>
-    <Button title="<%= step.name %>" style="link" size="13" action="focus_<%= index %>" help="Show <%= step.name %>" />
-    <% else %>
-    <Label id="folderFocus" text="<%= step.name %>" size="13" weight="semibold" lines="1" truncation="middle" />
+    <Crumb name="<%= step.name %>" action="focus_<%= index %>" current="<%= index == #trail and "true" or "false" %>" />
     <% end %>
-    <% end %>
-    <% if loadingDeeper then %><ProgressView id="folderDeeper" /><Label id="folderProgress" text="<%= progress %>" size="12" color="secondary" lines="1" truncation="middle" /><% end %>
     <Spacer />
     <Picker id="folderColoring" style="segmented" value="<%= colorIndex %>" onChange="pickColoring" help="Color the map by folder, by kind of file or by when files were last used">
       <% for _, coloring in ipairs(colorings) do %>
@@ -49,7 +34,7 @@
       <Option title="Rings" />
       <Option title="Rectangles" />
     </Picker>
-  </HStack>
+  </Breadcrumb>
   <% --[[ Rings: the list and the chart share a native split view, so the divider
     moves and the wheel follows. Rectangles already name every item, so the
     treemap takes the whole body and there is no list. ]] %>
@@ -78,15 +63,12 @@
       <% else %>
       <% -- Looking inside a group, or back out, turns the rings to the new level. %>
       <VStack id="folderChartHost" flexGrow="1" flexBasis="0" flexShrink="1" minHeight="<%= FOLDER.minChart %>" maxWidth="infinity" maxHeight="infinity" alignment="center">
-      <SectorChart id="folderSunburst" scalable="true" diameter="<%= FOLDER.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= FOLDER.inset %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <StorageRings id="folderSunburst" diameter="<%= FOLDER.chartUnits %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
-        <SectorMark cornerRadius="<%= FOLDER.corner %>" id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
+        <StorageSector id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" other="<%= node.other and "true" or "false" %>" label="<%= node.label %>" />
         <% end %>
-        <VStack spacing="0" alignment="center">
-          <Label id="folderCenterTitle" text="<%= center.title %>" size="<%= FOLDER.center.total %>" minimumScaleFactor="<%= FOLDER.center.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
-          <Label id="folderCenterDetail" text="<%= center.detail %>" size="<%= FOLDER.center.caption %>" minimumScaleFactor="<%= FOLDER.center.captionScale %>" lines="1" color="secondary" />
-        </VStack>
-      </SectorChart>
+        <ChartCenter titleId="folderCenterTitle" detailId="folderCenterDetail" total="<%= center.title %>" caption="<%= center.detail %>" />
+      </StorageRings>
       </VStack>
       <% end %>
       <% -- Guidance and long paths wrap in a narrow pane rather than lose their middle. %>
@@ -95,13 +77,7 @@
       <GroupBox id="folderLegend">
         <VStack padding="10" spacing="6" alignment="leading">
           <% for _, item in ipairs(legend) do %>
-          <HStack key="legend-<%= item.id %>" spacing="6" alignment="center">
-            <SystemImage name="circle.fill" size="9" color="<%= item.color %>" />
-            <Label text="<%= item.name %>" size="12" lines="1" />
-            <Spacer />
-            <Label text="<%= item.size %>" size="12" monospacedDigit="true" width="<%= FOLDER.legendSize %>" alignment="trailing" lines="1" />
-            <Label text="<%= item.share %>" size="11" color="secondary" monospacedDigit="true" width="<%= FOLDER.legendShare %>" alignment="trailing" />
-          </HStack>
+          <LegendRow key="legend-<%= item.id %>" label="<%= item.name %>" color="<%= item.color %>" sizeText="<%= item.size %>" share="<%= item.share %>" linked="false" />
           <% end %>
         </VStack>
       </GroupBox>
