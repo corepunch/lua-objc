@@ -1,5 +1,5 @@
 <%
-  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, list = 340, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
+  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, inset = 1.5, corner = 5, list = 340, minList = 260, minPane = 320, paneGap = 16, meter = 130, legendSize = 84, legendShare = 34 }
   -- Every ring keeps the thickness it has among three, so one ring of
   -- files is a slim ring like the Overview donut, not a thick disc.
   local rings = 1
@@ -64,7 +64,9 @@
   <% else %>
   <HStack id="folderBody" flexGrow="1" maxHeight="infinity" maxWidth="infinity" spacing="16" alignment="top">
   <% end %>
-    <VStack flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= FOLDER.minPane %>" maxWidth="infinity" maxHeight="infinity" spacing="12" alignment="center">
+    <% --[[ A split view's divider is a hairline, not a stack's spacing, so
+      the chart pane keeps the Map page's gap from the list itself. ]] %>
+    <VStack id="folderChartPane" paddingLeading="<%= style ~= "rectangles" and FOLDER.paneGap or 0 %>" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= FOLDER.minPane %>" maxWidth="infinity" maxHeight="infinity" spacing="12" alignment="center">
       <% if #nodes == 0 then %>
       <ContentUnavailable id="folderNothing" title="Nothing Here Takes Space" systemImage="folder" description="This folder is empty, or everything in it is smaller than the map can show." />
       <% elseif style == "rectangles" then %>
@@ -76,13 +78,13 @@
       <% else %>
       <% -- Looking inside a group, or back out, turns the rings to the new level. %>
       <VStack id="folderChartHost" flexGrow="1" flexBasis="0" flexShrink="1" minHeight="<%= FOLDER.minChart %>" maxWidth="infinity" maxHeight="infinity" alignment="center">
-      <SectorChart id="folderSunburst" scalable="true" diameter="<%= FOLDER.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= FOLDER.gap %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <SectorChart id="folderSunburst" scalable="true" diameter="<%= FOLDER.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= FOLDER.inset %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <SectorMark cornerRadius="<%= FOLDER.corner %>" id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
         <% end %>
         <VStack spacing="0" alignment="center">
-          <Label text="<%= total %>" size="<%= FOLDER.center.total %>" minimumScaleFactor="<%= FOLDER.center.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
-          <Label text="<%= #trail > 1 and "Click to go up" or "Measured" %>" size="<%= FOLDER.center.caption %>" minimumScaleFactor="<%= FOLDER.center.captionScale %>" lines="1" color="secondary" />
+          <Label id="folderCenterTitle" text="<%= center.title %>" size="<%= FOLDER.center.total %>" minimumScaleFactor="<%= FOLDER.center.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
+          <Label id="folderCenterDetail" text="<%= center.detail %>" size="<%= FOLDER.center.caption %>" minimumScaleFactor="<%= FOLDER.center.captionScale %>" lines="1" color="secondary" />
         </VStack>
       </SectorChart>
       </VStack>
