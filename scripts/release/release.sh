@@ -2,10 +2,10 @@
 # Builds a bundled app for download from a GitHub release: archive, sign
 # for Developer ID, notarize, staple, and wrap it in a DMG.
 #
-#   scripts/release/release.sh diskmap/1.2.3
-#   scripts/release/release.sh dnb/1.2.3
+#   scripts/release/release.sh dnb 1.2.3
 #
-# The tag names the app and its version; the DMG is written to
+# The app is a folder listed in scripts/release/apps; every app of a
+# release carries the same version. The DMG is written to
 # build/release/<app>/<Product>-<version>.dmg and its path printed last.
 #
 # Signing, by what the machine has:
@@ -21,22 +21,21 @@
 #   that built it; that is how the pipeline is checked without credentials.
 set -eu
 
-tag=${1:?usage: release.sh <app>/<major.minor.patch>}
-app=${tag%%/*}
-version=${tag#*/}
+app=${1:?usage: release.sh <app> <major.minor.patch>}
+version=${2:?usage: release.sh <app> <major.minor.patch>}
 team=BM2R8F5YHC
 # Minutes to wait for Apple's notary service.
 notaryMinutes=30
 
-# The apps released this way: tag prefix -> product.
-case "$app" in
-	diskmap) product=Diskmap ;;
-	dnb) product=DrumAndBass ;;
-	*) echo "release.sh: no release for '$app' (diskmap, dnb)" >&2; exit 2 ;;
-esac
+root=$(cd "$(dirname "$0")/../.." && pwd)
+cd "$root"
+product=$(awk -v app="$app" '$1 == app { print $2 }' scripts/release/apps)
+if [ -z "$product" ]; then
+	echo "release.sh: '$app' is not in scripts/release/apps" >&2; exit 2
+fi
 case "$version" in
 	[0-9]*.[0-9]*.[0-9]*) ;;
-	*) echo "release.sh: expected a tag like $app/1.2.3, not $tag" >&2; exit 2 ;;
+	*) echo "release.sh: expected a version like 1.2.3, not $version" >&2; exit 2 ;;
 esac
 
 if [ "${UNSIGNED:-0}" = 1 ]; then
@@ -48,8 +47,6 @@ else
 fi
 echo "release.sh: $product $version, signing: $signing" >&2
 
-root=$(cd "$(dirname "$0")/../.." && pwd)
-cd "$root"
 project="apps/$app/$product.xcodeproj"
 out="build/release/$app"
 archive="$out/$product.xcarchive"
@@ -60,7 +57,7 @@ mkdir -p "$out"
 plist="apps/$app/Info.plist"
 cp "$plist" "$out/Info.plist.orig"
 trap 'cp "$out/Info.plist.orig" "$plist"' EXIT
-python3 scripts/ipad/release_version.py --prefix "$app" "$tag" "$plist"
+plutil -replace CFBundleShortVersionString -string "$version" "$plist"
 
 exportOptions() {
 	cat > "$out/ExportOptions.plist" <<EOF

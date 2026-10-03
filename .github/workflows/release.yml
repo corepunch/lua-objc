@@ -1,10 +1,10 @@
 name: Release apps
 
-# A tag like diskmap/1.2.3 or dnb/1.2.3 builds that app with
-# scripts/release/release.sh: signed with Developer ID, notarized, stapled,
-# in a DMG attached to the GitHub release named after the tag by
-# scripts/release/publish.sh. Diskmap's App Store build runs separately in
-# Xcode Cloud from the same tags.
+# A tag like v1.2.3 releases every app in scripts/release/apps at that
+# version: scripts/release/release.sh builds each, signed with Developer ID,
+# notarized and stapled, in a DMG, and scripts/release/publish.sh attaches
+# them all to the GitHub release v1.2.3. Diskmap's App Store build runs
+# separately in Xcode Cloud, from diskmap/ tags.
 #
 # Secrets (Settings → Secrets and variables → Actions):
 #   MACOS_CERTIFICATE_P12       base64 of a Developer ID Application .p12
@@ -19,12 +19,11 @@ name: Release apps
 on:
   push:
     tags:
-      - "diskmap/*"
-      - "dnb/*"
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag, e.g. dnb/1.0.0 (must exist)"
+        description: "Release tag, e.g. v1.0.0 (must exist)"
         required: true
 
 permissions:
@@ -75,28 +74,25 @@ jobs:
           echo "unsigned=0" >> "$GITHUB_OUTPUT"
 
       - name: Build, sign and notarize
-        id: build
         env:
           UNSIGNED: ${{ steps.signing.outputs.unsigned }}
           NOTARY_KEY: ${{ runner.temp }}/notary.p8
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
-        run: |
-          dmg=$(scripts/release/release.sh "$TAG" | tail -n 1)
-          echo "dmg=$dmg" >> "$GITHUB_OUTPUT"
+        run: make release VERSION="${TAG#v}"
 
       - name: Publish the release
         if: steps.signing.outputs.unsigned == '0'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: scripts/release/publish.sh "$TAG"
+        run: scripts/release/publish.sh "${TAG#v}"
 
       - name: Keep the unsigned build
         if: steps.signing.outputs.unsigned == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-dmg
-          path: ${{ steps.build.outputs.dmg }}
+          name: unsigned-dmgs
+          path: build/release/*/*.dmg
 
       - name: Remove the signing keychain
         if: always()

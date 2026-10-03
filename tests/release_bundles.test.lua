@@ -47,15 +47,19 @@ local function runtimeExtensions(dir)
 	return found
 end
 
--- Mirrors the case in scripts/release/release.sh.
-local RELEASES = {diskmap = "Diskmap", dnb = "DrumAndBass"}
+-- The apps a release ships (scripts/release/apps): folder -> product.
+local RELEASES, count = {}, 0
+for line in read("scripts/release/apps"):gmatch("[^\n]+") do
+	local app, product = line:match("^(%w+)%s+(%w+)$")
+	if app then RELEASES[app], count = product, count + 1 end
+end
+t.assertEqual(count, 2, "a release ships Diskmap and Drum & Bass")
+t.assertEqual(RELEASES.diskmap .. " " .. RELEASES.dnb, "Diskmap DrumAndBass", "by their products")
 
-local script = read("scripts/release/release.sh")
 local workflow = read(".github/workflows/release.yml")
+t.expect(workflow:find('"v*.*.*"', 1, true) ~= nil, "one tag, v1.2.3, releases every app at one version")
+t.expect(workflow:find('make release VERSION="${TAG#v}"', 1, true) ~= nil, "the workflow builds them all")
 for app, product in pairs(RELEASES) do
-	t.expect(script:find(app .. ") product=" .. product, 1, true) ~= nil, app .. ": the release script builds " .. product)
-	t.expect(workflow:find('"' .. app .. '/*"', 1, true) ~= nil, app .. ": its tags start the release workflow")
-
 	local dir = "apps/" .. app
 	local plist = read(dir .. "/Info.plist")
 	t.assertEqual(plistString(plist, "CFBundleExecutable"), product, app .. ": the executable is the product")

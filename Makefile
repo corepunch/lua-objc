@@ -338,16 +338,18 @@ diskmap-xcode-build:
 		OBJROOT="$(DISKMAP_XCODE_ROOT)/Intermediates" \
 		build
 
-# A GitHub release of an app: `make release TAG=dnb/1.2.3` builds, signs and
-# notarizes its DMG (scripts/release/release.sh; UNSIGNED=1 for an ad hoc
-# build), `make publish TAG=dnb/1.2.3` attaches it to the release.
-TAG ?=
+# A GitHub release of every app in scripts/release/apps, all at one
+# version: `make release VERSION=1.2.3` builds, signs and notarizes each DMG
+# (scripts/release/release.sh; UNSIGNED=1 for ad hoc builds), `make publish
+# VERSION=1.2.3` attaches them to the release v1.2.3.
+VERSION ?=
+RELEASE_APPS = $(shell awk '!/^\#/ && NF { print $$1 }' scripts/release/apps)
 .PHONY: release publish
 release:
-	scripts/release/release.sh $(TAG)
+	@for app in $(RELEASE_APPS); do scripts/release/release.sh $$app $(VERSION) || exit 1; done
 
 publish:
-	scripts/release/publish.sh $(TAG)
+	scripts/release/publish.sh $(VERSION)
 
 APP ?=
 TARGET ?=
