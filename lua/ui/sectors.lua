@@ -22,7 +22,16 @@ local MINIMUM_SWEEP = 0.1
 -- as dark hairlines on any backdrop.
 -- Content in a donut's hole is offered the side of the square inscribed in
 -- the hole, so a label with a minimum scale factor sizes itself to the hole.
-local STYLE = { ringGap = 2, dimmedAlpha = 0.35, highlightGain = 0.5, holeContent = 1 / math.sqrt(2) }
+-- Hovering fades every sector outside the hovered one's lineage to
+-- `unfocusedAlpha` of its own opacity, the 0.3 of Apple's SectorMark
+-- selection sample: emphasis by receding the rest works whatever opacity a
+-- sector has, where brightening cannot raise a sector that is already
+-- opaque. As in that sample on macOS, the change is not animated.
+--   WWDC23 "Explore pie charts and interactivity in Swift Charts":
+--     https://developer.apple.com/videos/play/wwdc2023/10037/
+--   Its sample, "Visualizing your app's data" (StylesDetails.swift):
+--     https://developer.apple.com/documentation/charts/visualizing-your-app-s-data
+local STYLE = { ringGap = 2, dimmedAlpha = 0.35, unfocusedAlpha = 0.3, holeContent = 1 / math.sqrt(2) }
 
 -- Returns the stroke geometry for a chart `diameter` points wide whose hole is
 -- `innerRadius` (0...1) of the outer radius. A pie (0) strokes from the center.
@@ -58,7 +67,7 @@ local function spread(marks, from, span, total, gapDegrees, ring, band)
 		if value > 0 then
 			local sweep = value / total * span
 			local drawn = sweep - gapDegrees
-			local sector = {id = mark.id, color = mark.color, label = mark.label, value = value,
+			local sector = {id = mark.id, parent = mark.parent, color = mark.color, label = mark.label, value = value,
 				alpha = math.max(0, math.min(1, tonumber(mark.opacity) or 1)),
 				cornerRadius = math.max(0, tonumber(mark.cornerRadius) or 0),
 				fraction = value / total, ring = ring, inner = band.inner, outer = band.outer,
@@ -79,8 +88,10 @@ local function spread(marks, from, span, total, gapDegrees, ring, band)
 end
 
 -- Computes sector angles and radii for `marks` ({id, value, color, label,
--- ring, parent}). `angularInset` is SwiftUI's point gap between neighbours,
--- converted to degrees at each ring's inner edge. Non-positive values occupy
+-- ring, parent}). `angularInset` is SwiftUI's: each sector gives up that
+-- many points at each side, so neighbours are twice it apart (WWDC23 10037:
+-- an inset of 1.5 makes a 3pt gap); the gap is converted to degrees at each
+-- ring's inner edge. https://developer.apple.com/documentation/charts/sectormark Non-positive values occupy
 -- no angle; a lone first-ring sector is a closed ring without a gap. Child
 -- marks share their parent's angle by value; a remainder stays empty, and
 -- children worth more than their parent are scaled down to fit its angle
@@ -95,12 +106,12 @@ function Sectors.layout(marks, diameter, innerRadius, angularInset)
 	end
 	-- A stroked arc's gap is a wedge that narrows towards the center, so the
 	-- inset is measured at the band's inner edge: like SwiftUI's inset shape,
-	-- the separator is never thinner than `angularInset` anywhere. A pie
+	-- the separator is never thinner than its points anywhere. A pie
 	-- (no hole) measures at mid-radius instead.
 	local function gapFor(band)
 		if (angularInset or 0) <= 0 or band.frame <= 0 then return 0 end
 		local radius = band.inner > 0 and band.inner or band.frame / 2
-		return math.deg(angularInset / radius)
+		return math.deg(2 * angularInset / radius)
 	end
 	local result, total = {}, 0
 	for _, mark in ipairs(byRing[1] or {}) do
@@ -212,7 +223,8 @@ end
 local function insetFor(state)
 	local rings = 1
 	for _, sector in ipairs(state.sectors) do rings = math.max(rings, sector.ring or 1) end
-	local inset = math.max(0, tonumber(state.angularInset) or 0)
+	-- An Arc's inset is the whole gap; SwiftUI's angular inset is each side's.
+	local inset = 2 * math.max(0, tonumber(state.angularInset) or 0)
 	return rings > 1 and math.max(inset, STYLE.ringGap) or inset
 end
 
@@ -229,8 +241,8 @@ end
 -- `SectorMark` records or overlay views centered on the chart, like SwiftUI's
 -- `chartBackground` content in the hole. `onSelect(id, clickCount)`,
 -- `onHover(id)`, `onCenter()` (a click in the hole) and `onBack()` (Delete,
--- up a level) make it interactive; the hovered sector
--- brightens where it stands while the others stay as they are, and
+-- up a level) make it interactive; the hovered sector, its parents and its
+-- children keep their opacity while every other sector recedes, and
 -- `Sectors.highlight` does the same from code.
 -- `scalable = true` lays the sectors out in a fixed geometry of `diameter`
 -- units (default 360) and lets the view take whatever room it is given: the
@@ -278,13 +290,33 @@ function Sectors.chart(ns, props)
 	if interactive and type(ns.PointerView) == "function" then
 		local ChartKeys = require("ui.chartkeys")
 		local highlighted
-		-- Hovering or keyboard focus marks one sector, moving it halfway to
-		-- opaque. Only a typed filter dims, marking sectors whose label does
-		-- not match.
+		-- Hovering or keyboard focus marks one sector: it and its lineage, the
+		-- parents it sits in and the children inside it, keep their opacity
+		-- and the rest recede. A typed filter also dims, marking sectors
+		-- whose label does not match.
+		local function lineage()
+			if not highlighted then return nil end
+			local byId, kept = {}, {[highlighted] = true}
+			for _, sector in ipairs(state.sectors) do if sector.id then byId[sector.id] = sector end end
+			local parent = highlighted.parent and byId[highlighted.parent]
+			while parent and not kept[parent] do
+				kept[parent] = true
+				parent = parent.parent and byId[parent.parent]
+			end
+			-- Sectors are laid out ring by ring, so a parent is decided before its children.
+			for _, sector in ipairs(state.sectors) do
+				local parentSector = sector.parent and byId[sector.parent]
+				if parentSector and parentSector.ring < sector.ring and kept[parentSector] and parentSector.ring >= highlighted.ring then
+					kept[sector] = true
+				end
+			end
+			return kept
+		end
 		local function restyle()
+			local kept = lineage()
 			for index, sector in ipairs(state.sectors) do
 				local alpha = sector.alpha
-				if sector == highlighted then alpha = alpha + (1 - alpha) * STYLE.highlightGain end
+				if kept and not kept[sector] then alpha = alpha * STYLE.unfocusedAlpha end
 				local mark = state.keys and state.keys:find(sector.id)
 				if mark and not state.keys:matches(mark) then alpha = alpha * STYLE.dimmedAlpha end
 				if state.arcs[index] then state.arcs[index].strokeAlpha = alpha end

@@ -133,9 +133,16 @@ function Folder:up()
 	if node and node.parent then self:setFocus(node.parent.path) end
 end
 
--- The line under the map names the pointed item.
+-- The hole names the pointed item and its size, as Apple's SectorMark
+-- sample does, and the line under the map its path.
+-- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function Folder:describe(id)
 	if not self.refs or not self.refs.folderHover then return end
+	local node = id and self.nodeById and self.nodeById[id]
+	if self.refs.folderCenterTitle then
+		self.refs.folderCenterTitle.text = node and node.label or self.center.title
+		self.refs.folderCenterDetail.text = node and node.detail or self.center.detail
+	end
 	self.refs.folderHover.text = id and self.tree and self.tree:describe(id) or self.hover or ""
 end
 
@@ -275,9 +282,13 @@ function Folder:data()
 	if phase ~= "loaded" then return data end
 	local now = os.time()
 	local nodes, total = self.tree:nodes(self.focus, self.coloring, now)
-	data.nodes, data.total = nodes, Format.size(total)
+	data.nodes = nodes
 	data.rows = self.tree:rows(self.focus, self.coloring, now, function(path) return self:catalogName(path) end)
 	data.trail = self.tree:trail(self.focus)
+	self.nodeById = {}
+	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
+	self.center = {title = Format.size(total), detail = #data.trail > 1 and "Click to go up" or "Measured"}
+	data.center = self.center
 	data.legend = self.tree:legend(self.focus, self.coloring, now)
 	data.lists = self.style ~= "rectangles" and {folderList = data.rows} or nil
 	self.trail = data.trail

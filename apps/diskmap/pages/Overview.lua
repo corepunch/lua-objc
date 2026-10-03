@@ -60,9 +60,15 @@ end
 
 function overview:chartCenter() self:showMap("") end
 
+-- The hole names the pointed category and its size, as Apple's SectorMark
+-- sample does, and the line under the ring its share.
+-- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function overview:chartHover(id)
 	local mark = id and self.marks[id]
-	if self.refs then self.refs.chartDetail.text = mark and mark.detail or "" end
+	if not self.refs then return end
+	self.refs.chartDetail.text = mark and mark.detail or ""
+	self.refs.usedTotal.text = mark and mark.label or self.center.title
+	self.refs.usedCaption.text = mark and Format.size(mark.value) or self.center.detail
 end
 
 function overview:data(state)
@@ -81,8 +87,10 @@ function overview:data(state)
 	for _, row in ipairs(chart.legend or {}) do
 		if row.id and row.id ~= Categories.folded then handlers["category_" .. row.id] = function() self.app.open(row.id) end end
 	end
+	local summary = Scans:summary(disk, state.capacity)
+	self.center = Figures.center(summary)
 	local data = {status = state.status, accessHidden = state.mock == true, accessTitle = errors > 0 and "Review scan access…" or "Scan access…",
-		hero = {summary = Scans:summary(disk, state.capacity), chart = chart, volumeName = state.volumeName}, handlers = handlers}
+		hero = {summary = summary, center = self.center, chart = chart, volumeName = state.volumeName}, handlers = handlers}
 	if scanning then return data end
 	data.measured = true
 	self.categoryRows = Categories:shares(disk, state.query)

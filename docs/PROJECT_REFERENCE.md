@@ -1025,7 +1025,9 @@ native `Arc`s in a `ZStack`, on AppKit and UIKit alike (`lua/ui/sectors.lua`).
 Each `<SectorMark value="…" color="…" label="…" />` becomes one arc; the first
 starts at 12 o'clock and marks advance clockwise in data order. `innerRadius`
 is the hole as a fraction of the outer radius (0 draws a pie) and
-`angularInset` is the gap between neighbours in points. As in SwiftUI the gap
+`angularInset` is SwiftUI's: each sector gives up that many points at each
+side, so neighbours are twice it apart (1.5 makes a 3pt gap), as in
+[`SectorMark`](https://developer.apple.com/documentation/charts/sectormark). The gap
 has parallel sides and stays that many points at any chart size, so a large
 chart does not grow wide wedges; sunburst rings are as far apart, at least
 2pt. A mark's `cornerRadius` rounds its corners in points, like SwiftUI's
@@ -1056,7 +1058,14 @@ their aspect and grow with the container (`flexGrow`,
 same units. The Storage Map and Folder Map scale their rings to their pane
 this way.
 
-The hovered sector moves halfway to opaque where it stands;
+Hovering selects as Apple's SectorMark sample does
+([WWDC23 "Explore pie charts and interactivity in Swift Charts"](https://developer.apple.com/videos/play/wwdc2023/10037/),
+sample code [Visualizing your app's data](https://developer.apple.com/documentation/charts/visualizing-your-app-s-data),
+`StylesDetailsChart`): the hovered sector keeps its
+opacity and every other sector fades to 0.3 of its own, without animation on
+macOS. In a sunburst the hovered sector's parents and children stay with it.
+The chart reports the sector to `onHover(id)`, and the page names it in the
+hole, as the sample's center text does.
 `require("ui.sectors").highlight(chart, id)` highlights a sector from code,
 so a list beside the chart can point at it. New marks take the existing arcs
 in place, paired by `id`, and `innerRadius` and `angularInset` update with

@@ -61,10 +61,17 @@ end
 
 function map:pickStyle(index) self:setStyle(STYLES[(index or 0) + 1]) end
 
--- The line under the chart names the pointed resource; its row follows.
+-- The hole names the pointed sector and its size, as Apple's SectorMark
+-- sample does, and the line under the chart its path; its row follows.
+-- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function map:point(id)
 	self.selectedId = Selection.index(self.rows, id) and id or nil
 	if self.refs then
+		local node = id and self.nodeById and self.nodeById[id]
+		if self.refs.mapCenterTitle then
+			self.refs.mapCenterTitle.text = node and node.label or self.center.title
+			self.refs.mapCenterDetail.text = node and node.detail or self.center.detail
+		end
 		self.refs.mapHover.text = id and Categories:describe(id, self.total) or self.hover
 		Selection.show(self.refs.mapList, self.rows, self.selectedId)
 	end
@@ -139,6 +146,9 @@ function map:data(state)
 		item.enclosingPath = item.included and parent.path or nil
 	end
 	self.trail, self.worth, self.rows, self.total = trail, worth, rows, total
+	self.nodeById = {}
+	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
+	self.center = {title = Format.size(total), detail = #trail > 1 and "Click to go up" or "Measured"}
 	-- The breadcrumb and "worth a look" buttons are named by position
 	-- (`focus_2`, `worth_1`).
 	local handlers = {}
@@ -152,7 +162,7 @@ function map:data(state)
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	return {nodes = nodes, rows = rows, trail = trail, worth = worth, style = self.style, hover = self.hover,
-		total = Format.size(total), query = query,
+		center = self.center, query = query,
 		-- Rectangles have no list beside them.
 		lists = self.style ~= "rectangles" and {mapList = rows} or nil,
 		subtitle = (focusRow and (focusRow.name .. " · ") or "") .. Format.size(total) .. " measured"
@@ -235,6 +245,9 @@ end
 
 -- The pointer over a sector points at its row; leaving the chart returns to
 -- the kind that was kept.
+-- The hole names the pointed kind and its size, or the kept kind's, as
+-- Apple's SectorMark sample names the selected sector or its default.
+-- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function kinds:chartHover(id)
 	local refs = self.refs
 	if not refs then return end
@@ -242,6 +255,11 @@ function kinds:chartHover(id)
 	Selection.show(refs.kinds, self.kinds, id or self.selectedId)
 	self.pointing = false
 	if not id and refs.kindsChart then Sectors.highlight(refs.kindsChart, self.selectedId) end
+	local mark = self.markById and self.markById[id or self.selectedId]
+	if refs.kindsTotal then
+		refs.kindsTotal.text = mark and mark.name or self.center.title
+		refs.kindsCaption.text = mark and Format.size(mark.bytes) or self.center.detail
+	end
 end
 
 -- The leading decision: the files of yours this page can point at, never a
@@ -348,7 +366,11 @@ function kinds:data(state)
 	elseif model.files and model.files.partial then summary = summary .. " · scan coverage is incomplete" end
 	local lists = {extensions = #extensions > 0 and Selection.extensions(extensions, self.selectedId) or nil}
 	if #kinds > 0 then lists.kinds = kinds end
-	return {kinds = marks, total = Format.size(all), scope = Scope.text("kinds", Scans:coverage()), summary = summary, hasExtensions = #extensions > 0,
+	self.markById = {}
+	for _, mark in ipairs(marks) do self.markById[mark.id] = mark end
+	self.center = {title = Format.size(all), detail = "in files"}
+	local kept = self.markById[self.selectedId]
+	return {kinds = marks, center = kept and {title = kept.name, detail = Format.size(kept.bytes)} or self.center, scope = Scope.text("kinds", Scans:coverage()), summary = summary, hasExtensions = #extensions > 0,
 		accessibilityLabel = "File types: " .. table.concat(labels, ", "), decision = decision, inventoryNote = inventoryNote,
 		headline = headline and {title = headline.name .. " · " .. headline.size .. " stored"} or {},
 		extensionsDetail = selected and ("The " .. selected.name .. " extensions that use the most space") or "The twelve extensions that use the most space",
