@@ -9,7 +9,7 @@
       <Label text="Measuring storage" size="15" weight="semibold" flexGrow="1" />
     </HStack>
     <ProgressView id="scanBar" value="0" maxWidth="infinity" />
-    <Label id="scanStatus" text="" size="12" color="secondary" maxWidth="infinity" lines="2" truncation="tail" />
+    <Label id="scanStatus" text="" size="12" color="secondary" maxWidth="infinity" lines="1" truncation="middle" />
     <HStack>
       <Spacer />
       <Button id="scanStop" title="Stop" action="stop" keyboardShortcut="cancelAction" />

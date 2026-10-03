@@ -52,11 +52,9 @@ end
 progress(10, 1)
 t.expect(model.files.measuring and model.files.partial, "live file ranking is marked incomplete")
 t.assertEqual(model.files.large[1].bytes, 2e9, "large file is available before a root finishes")
-t.expect(scan.status:find("Measuring ~/Downloads", 1, true) ~= nil, "current location is shown")
-local first = scan.status
+t.assertEqual(scan.status, "~/Downloads", "the status line is only the location being measured")
 progress(50, 8)
-t.expect(first ~= scan.status and scan.status:find("50 items checked", 1, true), "same completed count still advances live counters")
-t.expect(not scan.status:find("%%"), "root count does not masquerade as time progress")
+t.assertEqual(scan.status, "~/Downloads", "counters and elapsed time are left to the progress bar")
 t.expect(not Categories:coverage(scan.disk):find("not attributed", 1, true), "in-progress coverage is not reported as unexplained usage")
 local chart = require("apps.diskmap.models.Categories"):chart(scan.service.diskSpace())
 t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names the pending allocation")

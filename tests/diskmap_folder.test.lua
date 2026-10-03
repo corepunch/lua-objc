@@ -191,6 +191,8 @@ t.expect(pc.refs.folderFailed ~= nil, "a folder that cannot be measured says so"
 local Files = require("apps.diskmap.models.Files")
 local dmg
 for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
+t.expect(dmg == nil, "a file moved away on the Folder page leaves Large Files without a rescan")
+for _, row in ipairs(Files:rows("All")) do if not dmg and Files:validateTrash(row.path) then dmg = row end end
 local fileMenu = {}
 for _, item in ipairs(dmg and app.rowActions:file(dmg) or {}) do if item.title then fileMenu[item.title] = true end end
 t.expect(fileMenu["Quick Look"] and fileMenu["Move to…"], "large files can be previewed and offloaded")

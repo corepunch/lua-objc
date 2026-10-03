@@ -40,7 +40,7 @@ local function trashLeftover(page, row)
 		row.size .. ". No installed app uses this identifier, but an app on another disk or reinstalled later would lose these settings and data. Moving to Trash does not free space until you empty it.") then return end
 	local moved, message = service.trash(row.path)
 	if not moved then service.showError("Could not move to Trash", message or "macOS protects some containers. Remove it in Finder instead."); return end
-	page.app.rescan()
+	page.app.trashed(row.path, row.bytes)
 end
 
 -- The Applications page and the app facts other pages need. Bundle info and

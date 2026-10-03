@@ -169,7 +169,7 @@ function Folder:rowMenu(_, _, row)
 	local app = self.app
 	return self.rowActions:item(self.rowsByPath[row.id] or row, {
 		open = function(item) self:setFocus(item.path); app.refresh() end,
-		changed = function(path) self:changed(path); app.refresh() end,
+		changed = function(path) self:changed(path) end,
 		siblings = self:siblings(),
 	})
 end
