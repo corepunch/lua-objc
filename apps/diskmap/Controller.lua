@@ -79,6 +79,9 @@ function Controller.new(service)
 		search = function(id, text) self:search(id, text) end,
 		rescan = function() self.scan:start() end,
 		refresh = function() self:updateRows() end,
+		removed = function(path, bytes, to) self:removed(path, bytes, to) end,
+		trashed = function(path, bytes) self:removed(path, bytes, self.model.home .. "/.Trash") end,
+		remeasure = function(id) self:remeasure(id) end,
 		log = function(...) self.review:log(...) end,
 		notifications = self.notifications,
 		basketChanged = function() self:basketChanged() end,
@@ -362,6 +365,26 @@ end
 
 -- A running scan shows in its progress window and nowhere else; the pages
 -- are drawn when it is over.
+-- The disk is measured once, when the window opens or Refresh is chosen;
+-- after that a removal or move changes the model (models/Scans:remove) and
+-- every page is drawn from it again. Only the disk's free space is asked
+-- for again: it is one call, not a walk.
+function Controller:removed(path, bytes, to)
+	Scans:remove(path, bytes, to)
+	self.scan.disk = self.service.diskSpace(self.scan.home)
+	self:updateRows()
+end
+-- A location its owner cleaned (a package manager's cache command) is
+-- measured on its own; nothing else on the disk changed.
+function Controller:remeasure(id)
+	local row, measure = Locations:find(id), optional(self.service, "measure")
+	if not row or not row.path or not measure then return end
+	measure({row.path}, function(sizes)
+		Scans:resize(id, sizes and sizes[1] or 0)
+		self.scan.disk = self.service.diskSpace(self.scan.home)
+		self:updateRows()
+	end)
+end
 function Controller:scanChanged()
 	if self.model.scan.running and self.window then
 		self.progress:show(self.window)

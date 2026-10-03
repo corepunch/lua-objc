@@ -15,7 +15,8 @@ service.confirmAction = function(title, message) table.insert(confirmations, {ti
 service.saveKeep = function(kept) saved = kept; return true end
 local changed, published, page, worktrees = 0, 0, nil, nil
 page, worktrees = Host.new("worktrees", {model = model, service = service,
-	rescan = function() changed = changed + 1 end, refresh = function() published = published + 1; page:update(page.state) end})
+	rescan = function() error("removing worktrees never measures the disk again") end,
+	removed = function() changed = changed + 1 end, refresh = function() published = published + 1; page:update(page.state) end})
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.refs
 t.expect(worktrees.loaded and not worktrees.busy, "the scan completes")
@@ -117,7 +118,7 @@ t.assertEqual(#removedPaths, 1, "the worktree that gained a change was never rem
 for _, argument in ipairs(removedPaths[1]) do t.expect(argument ~= "--force", "removal is never forced") end
 t.expect(worktrees.result:find("Removed 1 worktree", 1, true) and worktrees.result:find("Skipped navigation", 1, true), "the result separates removed from skipped: " .. tostring(worktrees.result))
 t.expect(worktrees.result:find("Free space", 1, true) and worktrees.result:find("not moved to the Trash", 1, true), "the result reports measured free space and that nothing went to the Trash: " .. tostring(worktrees.result))
-t.expect(changed > 0, "the root remeasures")
+t.assertEqual(changed, 1, "the removed worktree leaves the model; the skipped one stays")
 t.assertEqual(#worktrees.rows, 6, "the removed worktree is gone from the next listing")
 t.assertEqual(byName.MockProject ~= nil and worktrees.rows[1] ~= nil, true, "the rest are still listed")
 

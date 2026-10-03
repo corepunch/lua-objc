@@ -221,6 +221,7 @@ function Page:review()
 		execute = function(row, done)
 			self.service.command(Worktrees.removeCommand(row), function(success, output)
 				self.app.log("git worktree remove " .. row.path, success, row.bytes, row.name, not success and output or nil)
+				if success then self.app.removed(row.path, row.bytes) end
 				done(success, output)
 			end)
 		end,
@@ -229,7 +230,6 @@ function Page:review()
 		self.result = Batch.report(result, "Removed", "worktree")
 			.. ". The repositories and every other worktree were left as they were; removed worktrees are deleted at once, not moved to the Trash. "
 			.. Outcome.freeText(freeBefore, Outcome.free(self.service, Model.db.home), result.removed > 0) .. "."
-		self.app.rescan()
 		self:load()
 	end)
 	return true

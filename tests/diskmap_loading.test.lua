@@ -59,7 +59,7 @@ scanner:start()
 pending.progress(result)
 t.expect(not Categories:rows()[1].calculating, "controller applies incremental measurement")
 t.expect(Categories:rows()[2].calculating, "controller leaves other categories pending")
-t.expect(scanner.status:find(string.format("%d of %d locations measured", result.completed, result.total), 1, true) == 1, "scan status gives clear completed and total counts")
+t.expect(not scanner.status:find("locations measured", 1, true), "the progress bar, not the status line, says how far the scan is")
 scanner:cancel()
 local completion
 local finished = Scan.new(model, {

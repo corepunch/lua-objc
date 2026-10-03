@@ -13,7 +13,8 @@ local Verify = require("apps.diskmap.helpers.Verify")
 -- revalidates each item, moves it, logs it, and then offers to empty the
 -- Trash so the freed space can be measured rather than assumed. The sheet is
 -- drawn from `data()` (views/sheets/Review.etlua); the app hears of marks through
--- `app.basketChanged`, of remeasuring through `app.rescan`.
+-- `app.basketChanged`; what moved or was emptied leaves the model through
+-- `app.trashed` and `app.removed`, and the disk is not measured again.
 local routes = {}
 
 local Review = SheetRoute.extend({view = "sheets/Review", width = 620, height = 560})
@@ -194,6 +195,7 @@ function Review:moveAll(paths)
 				result.moved, result.movedBytes = result.moved + 1, result.movedBytes + (item.bytes or 0)
 				self.done[path] = "Moved to Trash"
 				Marks:remove(path)
+				self.app.trashed(path, item.bytes)
 			else
 				if allowed then table.insert(result.skipped, "it could not be moved (" .. tostring(message or "unknown error") .. ")") end
 				self.results[path] = allowed and ("Failed: " .. tostring(message or "unknown error")) or "Skipped"
@@ -208,7 +210,6 @@ function Review:moveAll(paths)
 	self.lastResult = result
 	self.status = Verify.summary(result)
 	self.app.basketChanged()
-	self.app.rescan()
 	self:draw()
 	return true
 end
@@ -233,7 +234,7 @@ function Review:emptyTrash()
 	else
 		self.status = "The Trash could not be emptied."
 	end
-	self.app.rescan()
+	if ok then self.app.removed(home .. "/.Trash") end
 	self:draw()
 	return ok
 end

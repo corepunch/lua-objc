@@ -16,7 +16,8 @@ local Rows = Flow:extend()
 -- A flow (lua/data/flow.lua) over a page: `self:flow("Rows"):resource(id)`.
 -- It acts through the app's services, `self.app`: `open(id)` opens a
 -- resource where its location sends it, `keep(id)` toggles Keep,
--- `watchlist` watches, `rescan()` remeasures, `openReview(path)` shows the
+-- `watchlist` watches, `trashed(path, bytes)` and `removed(path, bytes, to)`
+-- take what left the disk out of the model, `openReview(path)` shows the
 -- marked items, and `review` is the review sheet: "Mark for Cleanup" adds a
 -- row to the marks (models/Marks.lua), and nothing touches the disk until
 -- that sheet.
@@ -140,6 +141,7 @@ function Rows:move(row, validate, moved)
 		if self.app.review then self.app.review:log("Move", done, row.bytes, row.path, done and destination or message) end
 		if not done then self.app.service.showError("Could not move " .. (row.name or "this item"), message or "Check permissions."); return end
 		if moved then moved(destination) end
+		self.app.removed(row.path, row.bytes, destination)
 	end)
 end
 
@@ -154,6 +156,7 @@ function Rows:trashItem(row, validate, trashed)
 	if self.app.review then self.app.review:log("Move to Trash", moved, row.bytes, row.path, message) end
 	if not moved then self.app.service.showError("Could not move to Trash", message or "Check permissions."); return end
 	if trashed then trashed() end
+	self.app.trashed(row.path, row.bytes)
 end
 
 -- A file or folder on the Folder page. `handlers.open(row)` looks inside a
@@ -229,7 +232,7 @@ function Rows:file(row, handlers)
 	table.insert(items, self:moveItem(row, function(path)
 		local allowed, why = Files:validateTrash(path)
 		return allowed, why and why.message
-	end, function() self.app.rescan() end))
+	end))
 	table.insert(items, self:quickLookItem(row.path, handlers and handlers.siblings))
 	table.insert(items, self:reveal(row.path))
 	if row.ownerId then
@@ -249,7 +252,7 @@ function Rows:trashFile(row)
 		Format.size(row.bytes) .. " · last used " .. (row.lastUse or "unknown"):lower() .. ". Moving to Trash does not free space until you empty it.") then return end
 	local moved, message = self.app.service.trash(row.path)
 	if not moved then self.app.service.showError("Could not move to Trash", message or "Check permissions."); return end
-	self.app.rescan()
+	self.app.trashed(row.path, row.bytes)
 end
 
 -- A folder that is not itself a catalog resource: an app's container, a
