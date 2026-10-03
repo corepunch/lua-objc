@@ -1483,16 +1483,48 @@ do
 	end
 	t.expect(named.Breakdown and named.Riser and named["Drums out"], "a set's headlines run through its events")
 end
-local strip = Timeline.values(20.5, 0.7, rows, 2, {drums = 1, bass = 0.1})
-t.assertEqual(strip[1] .. " " .. strip[2] .. " " .. strip[3] .. " " .. strip[6], "20.5 0.7 8 2",
-	"values carry the playhead, its speed, the rows and the scale")
-t.assertEqual(#strip, 6 + 2 * 8, "then a meter and a colour for every row")
-t.assertEqual(strip[7], 1, "a channel at full level fills its meter")
-t.expect(strip[9] > 0.4 and strip[9] < 0.7, "one 20 dB down fills about half")
-t.assertEqual(strip[8], 0, "a silent one none")
-t.assertEqual(strip[6 + 8 + 3], Model.roleIndex.bass - 1, "a row's colour is its role's")
+local strip = Timeline.values(20.5, 0.7, rows, 2, {drums = 1, bass = 0.1}, -3)
+t.assertEqual(strip[1] .. " " .. strip[2] .. " " .. strip[3] .. " " .. strip[6] .. " " .. strip[7], "20.5 0.7 8 2 -3",
+	"values carry the playhead, its speed, the rows, the scale and the scroll")
+t.assertEqual(Timeline.values(20.5, 0.7, rows, 2)[7], 0, "unscrolled by default")
+t.assertEqual(#strip, 7 + 2 * 8, "then a meter and a colour for every row")
+t.assertEqual(strip[8], 1, "a channel at full level fills its meter")
+t.expect(strip[10] > 0.4 and strip[10] < 0.7, "one 20 dB down fills about half")
+t.assertEqual(strip[9], 0, "a silent one none")
+t.assertEqual(strip[7 + 8 + 3], Model.roleIndex.bass - 1, "a row's colour is its role's")
 t.assertEqual(Timeline.meter(0), 0, "silence reads as nothing")
 t.assertEqual(Timeline.meter(1e-9), 0, "and so does what lies under the meter's range")
+
+-- Scrolling and seeking: the strip shows twice the bars it once did, scrolls
+-- from the set's first bar to the end of the next track, and a point on it
+-- names a bar.
+do
+t.assertEqual(Timeline.window.bars, 32, "the strip shows 32 bars")
+t.assertEqual(Timeline.left(20, 0), 20 - Timeline.window.behind, "a few bars of what has played")
+t.assertEqual(Timeline.left(20, 5), 25 - Timeline.window.behind, "scrolled, the view moves ahead")
+local least, greatest = Timeline.offsetRange(tc, 20)
+t.assertEqual(least, Timeline.window.behind - 20, "it scrolls back to the set's first bar")
+t.assertEqual(Timeline.offsetRange(tc, 2), 0, "near the start, no further back than the playhead's own view")
+t.assertEqual(greatest, tc:trackStart(2) - Timeline.window.bars + Timeline.window.behind - 20,
+	"and ahead to the end of the next track")
+t.assertEqual(Timeline.scroll(tc, 20, 0, -100, 0, 400), 8, "a swipe left brings later bars in")
+t.assertEqual(Timeline.scroll(tc, 20, 0, 0, -100, 400), 8, "and so does the wheel")
+t.assertEqual(Timeline.scroll(tc, 20, 0, 1e6, 0, 400), least, "back no further than the first bar")
+t.assertEqual(Timeline.scroll(tc, 20, 0, 0, -1e6, 400), greatest, "ahead no further than the next track")
+t.assertEqual(Timeline.scroll(tc, 20, 3, 50, 0, 0), 3, "a strip without width does not scroll")
+t.assertEqual(Timeline.barAt(20, 0, 0, 400), 20 - Timeline.window.behind, "the left edge is the first bar in view")
+t.assertEqual(Timeline.barAt(20, 0, 200, 400), 20 - Timeline.window.behind + 16, "the middle sixteen bars on")
+t.assertEqual(Timeline.barAt(20.5, 4, 100, 400), math.floor(20.5 - Timeline.window.behind + 4 + 8), "scrolled")
+t.assertEqual(Timeline.barAt(2, 0, 0, 400), 0, "never before the set's first bar")
+t.assertEqual(Timeline.barAt(20, 0, 900, 400), 20 - Timeline.window.behind + 32, "a point past the edge is the edge")
+local scrolledAhead = Timeline.plans(tc, 20, shown.length - 20)
+t.assertEqual(scrolledAhead[1].track .. " " .. scrolledAhead[2].track, "0 1",
+	"scrolled into the next track, the playing one stays first and the next comes into view")
+local scrolledBack = Timeline.plans(tc, tc:trackStart(1) + 4, -16)
+t.assertEqual(scrolledBack[1].track .. " " .. scrolledBack[2].track, "1 0", "and scrolled back, the one before")
+t.assertEqual(Timeline.rows(scrolledBack)[1].name, tc.set:track(1).channels[1].name,
+	"rows keep the playing track's names")
+end
 
 local timelineApp = Controller.new({seed = 9, output = fakeOutput(1024), async = function() end})
 timelineApp:createWindow()
@@ -1503,7 +1535,7 @@ t.assertEqual(canvas.draws[1].instances, #Timeline.instances(Timeline.plans(time
 	"one instance per clip")
 t.assertEqual(#canvas.draws[1].data, canvas.draws[1].instances * Timeline.stride, "whole instances only")
 t.assertEqual(canvas.values[1] .. " " .. canvas.values[2], "0 0", "stopped, the playhead rests on the first bar")
-t.assertEqual(canvas.values[7], 0, "and the meters on nothing")
+t.assertEqual(canvas.values[8], 0, "and the meters on nothing")
 local openingPlan = timelineApp.composer:arrangement(0)
 t.assertEqual(timelineApp.timeline.refs.timelineNext.text,
 	Timeline.headline(Timeline.plans(timelineApp.composer, 0), 0), "the header names what comes next")
@@ -1516,8 +1548,30 @@ for i = 1, 8 do
 		"row " .. i .. " is labelled with its channel")
 end
 local rowPixels = 100 / 8
-local r, _, b = require("AppKitNative")._shaderPixel(canvas, 400, 100, 150, math.floor(rowPixels * 0.5))
+local r, _, b = require("AppKitNative")._shaderPixel(canvas, 400, 100, 200, math.floor(rowPixels * 0.5))
 t.expect(r > 0.2 and r > 2 * b, "the drums' clip draws in its tint on the first row, ahead of the playhead")
+-- The window moves only by its title bar and toolbar.
+do
+t.assertEqual(timelineApp.window.movableByWindowBackground, false, "the window's content does not drag it")
+-- A scroll looks ahead without moving the music; a click plays from the
+-- bar under it and brings the view back to the playhead.
+local AppKitNative = require("AppKitNative")
+local stripWidth = canvas.frame.size.width
+AppKitNative._shaderSend(canvas, "scroll", -stripWidth / 4, 0)
+t.assertEqual(timelineApp.timelineOffset, Timeline.window.bars / 4, "a swipe scrolls the strip a quarter of its bars")
+t.assertEqual(canvas.values[7], Timeline.window.bars / 4, "and the shader draws it scrolled")
+t.assertEqual(canvas.values[1], 0, "the playhead stays")
+t.assertEqual(timelineApp.synth.composerBar, 0, "and so does the music")
+AppKitNative._shaderSend(canvas, "scroll", 0, 1e6)
+t.assertEqual(timelineApp.timelineOffset, 0, "at the set's start it scrolls back no further than the playhead's view")
+AppKitNative._shaderSend(canvas, "scroll", -stripWidth / 4, 0)
+AppKitNative._shaderSend(canvas, "click", stripWidth * 0.75, 10)
+local clicked = Timeline.left(0, Timeline.window.bars / 4) + Timeline.window.bars * 3 // 4
+t.assertEqual(timelineApp.synth.composerBar, clicked, "a click plays from the bar under it")
+t.assertEqual(timelineApp.timelineOffset, 0, "and the view returns to the playhead")
+t.assertEqual(canvas.values[1], clicked, "stopped, the playhead moves there at once")
+t.assertEqual(canvas.values[7], 0, "unscrolled")
+end
 timelineApp:actions().nextTrack()
 t.assertEqual(canvas.values[1], timelineApp.composer:trackStart(1), "Next Track moves the strip to the next track")
 t.assertEqual(timelineApp.timeline.refs.channel1.text, timelineApp.composer.set:track(1).channels[1].name,
@@ -1530,7 +1584,7 @@ local sounding = timelineApp.synth.timeline[1]
 t.expect(math.abs(moving[2] - sounding.tempo / 240) < 1e-9, "playing, the strip scrolls at the bar's tempo")
 timelineApp:stop()
 t.assertEqual(timelineApp.timeline.refs.timelineCanvas.values[2], 0, "stopping freezes it")
-t.assertEqual(timelineApp.timeline.refs.timelineCanvas.values[7], 0, "and rests the meters")
+t.assertEqual(timelineApp.timeline.refs.timelineCanvas.values[8], 0, "and rests the meters")
 local rowsBefore = timelineApp.timeline.refs.timelineCanvas.frame.size.height
 timelineApp:actions().selectStyle(Styles:index("techno") - 1)
 t.expect(timelineApp.timelineKey:find(tostring(timelineApp.composer), 1, true) == 1,

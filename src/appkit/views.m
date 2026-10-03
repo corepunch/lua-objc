@@ -26,8 +26,9 @@ static int bridge_window(lua_State *L) {
 	w.releasedWhenClosed = NO;
 
 	if (transparent_titlebar) {
+		/* Only the title bar and toolbar move the window, as in SwiftUI: a
+		 * full-size content view's clicks belong to its content. */
 		w.titlebarAppearsTransparent = YES;
-		w.movableByWindowBackground = YES;
 	}
 	if (hide_title) {
 		w.titleVisibility = NSWindowTitleHidden;

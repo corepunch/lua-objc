@@ -7,8 +7,9 @@
 //
 // values: [0] playhead (set bar), [1] bars per second, [2] channel rows,
 //         [3] bars in view, [4] bars behind the playhead, [5] display
-//         scale (pixels per point), [6…13] each row's meter (0…1),
-//         [14…21] each row's colour
+//         scale (pixels per point), [6] bars the view is scrolled from
+//         the playhead, [7…14] each row's meter (0…1), [15…22] each
+//         row's colour
 // data:   per instance row, first bar, bars, colour (its role), its
 //         envelope at its first and last bar and whether it
 //         thins from below
@@ -30,7 +31,7 @@ constant float3 TIMELINE_COLOURS[11] = {
 	float3(1.000, 0.839, 0.039), // fx: yellow
 };
 constant uint TIMELINE_ROWS = 8;
-constant uint TIMELINE_METERS = 6;      // where the rows' meters start in the values
+constant uint TIMELINE_METERS = 7;      // where the rows' meters start in the values
 constant float TIMELINE_GAP = 1.0;      // points between neighbouring clips
 constant float TIMELINE_RADIUS = 3.0;   // clip corner radius in points
 constant float TIMELINE_RESTING = 0.6;  // opacity away from the playhead
@@ -58,13 +59,18 @@ static float timelinePlayhead(constant ShaderInputs &inputs) {
 	return inputs.values[0] + inputs.values[1] * inputs.age;
 }
 
+// The set bar at the strip's left edge: the playhead's window, scrolled.
+static float timelineLeft(constant ShaderInputs &inputs) {
+	return timelinePlayhead(inputs) - inputs.values[4] + inputs.values[6];
+}
+
 vertex TimelineBlock timelineBlockVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
 		constant ShaderInputs &inputs [[buffer(0)]], constant float *data [[buffer(1)]]) {
 	uint at = iid * 7;
 	float row = data[at], start = data[at + 1], length = data[at + 2];
 	float3 shape = float3(data[at + 4], data[at + 5], data[at + 6]);
 	float playhead = timelinePlayhead(inputs);
-	float rows = max(inputs.values[2], 1.0), window = inputs.values[3], left = playhead - inputs.values[4];
+	float rows = max(inputs.values[2], 1.0), window = inputs.values[3], left = timelineLeft(inputs);
 	float scale = inputs.values[5];
 	float2 size = inputs.size;
 	float lane = 1.0 / rows;
@@ -126,7 +132,9 @@ fragment float4 timeline(ShaderVertex in [[stage_in]], constant ShaderInputs &in
 	float4 colour = blocks.sample(s, in.uv, level(0.0));
 	float window = inputs.values[3], behind = inputs.values[4];
 	float barsPerPixel = window / inputs.size.x;
-	float bar = timelinePlayhead(inputs) - behind + in.uv.x * window;
+	float bar = timelineLeft(inputs) + in.uv.x * window;
+	// Where the playhead sits across the strip; scrolled, it moves off.
+	float headAt = (behind - inputs.values[6]) / window;
 	// Bar lines under the lanes, stronger on each eight-bar phrase.
 	float fromLine = abs(fract(bar + 0.5) - 0.5) / barsPerPixel;
 	float phrase = abs(fract(bar / 8.0 + 0.5) - 0.5) * 8.0 / barsPerPixel < 1.0 ? 2.0 : 1.0;
@@ -137,7 +145,7 @@ fragment float4 timeline(ShaderVertex in [[stage_in]], constant ShaderInputs &in
 	float rows = max(inputs.values[2], 1.0);
 	uint row = min(uint(in.uv.y * rows), TIMELINE_ROWS - 1);
 	float level = inputs.values[TIMELINE_METERS + row];
-	float along = (behind / window - in.uv.x) / (behind / window);
+	float along = (headAt - in.uv.x) / (behind / window);
 	float across = abs(fract(in.uv.y * rows) - 0.5);
 	if (level > 0.0 && along >= 0.0 && along <= level && across < TIMELINE_METER_HEIGHT * 0.5) {
 		float3 tint = TIMELINE_COLOURS[min(int(inputs.values[TIMELINE_METERS + TIMELINE_ROWS + row]), 10)];
@@ -145,6 +153,6 @@ fragment float4 timeline(ShaderVertex in [[stage_in]], constant ShaderInputs &in
 		colour = mix(colour, float4(mix(tint, float3(1.0), 0.35), 1.0), glow);
 	}
 	// The fixed playhead.
-	float head = saturate(1.5 * inputs.values[5] - abs(in.uv.x - behind / window) * inputs.size.x);
+	float head = saturate(1.5 * inputs.values[5] - abs(in.uv.x - headAt) * inputs.size.x);
 	return mix(colour, float4(1.0), head * 0.9);
 }

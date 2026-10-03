@@ -44,6 +44,8 @@ function Shader.install(ns, bridge, applyLayout)
 	--- @prop values table optional. Initial floats for `inputs.values`.
 	--- @prop layers number optional. Offscreen layers the draws render into, 0…4 (0).
 	--- @prop draws table optional. Mesh passes, in order (see above).
+	--- @prop onClick function optional. `onClick(view, x, y)` in the view's top-left points.
+	--- @prop onScroll function optional. `onScroll(view, dx, dy)` in points, the user's scrolling direction applied.
 	--- @platform AppKit.
 	function ns.ShaderView(props)
 		props = props or {}
@@ -61,13 +63,20 @@ function Shader.install(ns, bridge, applyLayout)
 		else
 			text = readShader(assert(props.source, "ShaderView requires source or sources"))
 		end
-		local view = bridge._shaderView(text, assert(props["function"], "ShaderView requires function"))
+		local view = bridge._shaderView(text, assert(props["function"], "ShaderView requires function"),
+			props.onClick, props.onScroll)
 		if props.values then view.values = props.values end
 		if props.layers then view.layers = props.layers end
 		if props.draws then view.draws = props.draws end
 		-- Like a gradient, a shader has no intrinsic size and fills its proposal.
 		view.fillWidth, view.fillHeight = true, true
-		return applyLayout(view, props)
+		-- The view reports its own clicks with their point; the generic
+		-- click gesture would report none.
+		local layout = {}
+		for key, value in pairs(props) do
+			if key ~= "onClick" and key ~= "onScroll" then layout[key] = value end
+		end
+		return applyLayout(view, layout)
 	end
 end
 

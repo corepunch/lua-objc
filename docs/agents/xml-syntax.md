@@ -154,7 +154,7 @@ are parsed up front, but native views are created only for visible cells.
 | `LinearGradient` | Gradient fill: semantic `colors` between two unit points, or a vertical black fade without `colors` | `colors`, `startPoint`, `endPoint`; `topAlpha`, `middleAlpha`, `middleLocation`, `bottomAlpha` |
 | `MeshGradient` | Grid of colored control points (SwiftUI `MeshGradient`) | `width`, `height`, `animated`; children are `MeshPoint` |
 | `MeshPoint` | One control point consumed by `MeshGradient` | `x`, `y` in 0…1; `red`, `green`, `blue`, `alpha` |
-| `ShaderView` | AppKit Metal fragment shader redrawn every display frame | `source` (`.metal` path) or `ShaderSource` children, `function`, plus layout attributes; assign `values` from the controller |
+| `ShaderView` | AppKit Metal fragment shader redrawn every display frame | `source` (`.metal` path) or `ShaderSource` children, `function`, `onClick` (`view, x, y` in top-left points), `onScroll` (`view, dx, dy` in points), plus layout attributes; assign `values` from the controller |
 | `ShaderSource` | One chunk of a linked `ShaderView` program | `path` (`.metal` file) or `code` (a snippet) |
 | `SearchField` | Native search field | `value`/`text`, `placeholder`, `onChange` |
 
