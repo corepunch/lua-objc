@@ -41,7 +41,7 @@ t.assertEqual(Sentinel.offer(trash .. "/Tiny.app", "com.tiny.app", Applications:
 
 -- The controller follows the saved flags.
 local posted, removed, flags, watchers, requested = {}, {}, {}, {}, 0
-local service = {
+local service = require("apps.diskmap.services.Contract").stub({
 	notificationsAvailable = function() return true end,
 	loadFlag = function(name) return flags[name] == true end,
 	saveFlag = function(name, value) flags[name] = value; return true end,
@@ -55,7 +55,7 @@ local service = {
 		return watcher
 	end,
 	readPropertyList = function() return {CFBundleIdentifier = "com.old.editor"} end,
-}
+})
 local marked, reviewed, shown = nil, 0, 0
 local notifications = Notifications.new(model, service, {
 	mark = function(items) marked = items end,
@@ -90,10 +90,10 @@ mock.showError = function() end
 local app = Controller.new(mock)
 app:createWindow()
 app:openSettings()
-t.expect(app.settings.refs.reminder ~= nil and app.settings.refs.sentinel ~= nil, "Settings offers both notifications")
-t.expect(not app.settings.history, "history starts off")
-app.settings.refs.reminder.state = 1
-app.settings:toggleNotification("reminder")
-t.expect(app.settings.history and mock.loadFlag("reminder"), "turning the reminder on turns history on")
-app.settings:close()
+t.expect(app.env.settings.refs.reminder ~= nil and app.env.settings.refs.sentinel ~= nil, "Settings offers both notifications")
+t.expect(not app.env.session.historyEnabled, "history starts off")
+app.env.settings.refs.reminder.state = 1
+app.env.settings:toggleNotification("reminder")
+t.expect(app.env.session.historyEnabled and mock.loadFlag("reminder"), "turning the reminder on turns history on")
+app.env.settings:close()
 os.exit(t.summary() and 0 or 1)

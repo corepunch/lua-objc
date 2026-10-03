@@ -1,0 +1,4 @@
+<VStack spacing="0" alignment="center">
+  <Label text="<%= total %>" size="<%= totalSize %>" minimumScaleFactor="<%= totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
+  <Label text="<%= caption %>" size="<%= captionSize %>" minimumScaleFactor="<%= captionScale %>" lines="1" color="secondary" />
+</VStack>

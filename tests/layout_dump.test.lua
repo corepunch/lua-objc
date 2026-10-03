@@ -68,4 +68,22 @@ local margin = require("ui.treemap").metrics.margin
 t.expect(cellX ~= nil and tonumber(cellX) == windowX + margin and tonumber(cellY) == windowY + margin,
 	"the first top-level treemap cell starts one margin inside the treemap's window origin")
 
+local rects = {}
+for _, isolated in ipairs({false, true}) do
+	local workspacePath = os.tmpname() .. ".xml"
+	ok = os.execute(string.format("./lua-objc --dump-layout=%q --width=1100 --height=760 "
+		.. "apps/diskmap/init.lua --showcase --page=xcode%s >/dev/null 2>&1", workspacePath, isolated and " --isolated" or ""))
+	t.expect(ok == true or ok == 0, "Xcode workspace dump exits successfully")
+	file = io.open(workspacePath, "r")
+	local workspace = file and file:read("*a") or ""
+	if file then file:close() end
+	os.remove(workspacePath)
+	t.assertEqual(workspace:find('identifier="sidebar"', 1, true) ~= nil, not isolated, "isolated workspace omits the sidebar")
+	local x, y, w, h = workspace:match('identifier="page" frame="[^"]+" window="([%d.]+) ([%d.]+) ([%d.]+) ([%d.]+)"')
+	table.insert(rects, {x = tonumber(x), y = tonumber(y), w = tonumber(w), h = tonumber(h)})
+end
+t.expect(rects[2].x == 0 and rects[2].w == 1100, "isolated content uses the full window width")
+t.expect(rects[1].y ~= nil and rects[1].y > 0 and rects[1].y == rects[2].y, "both workspace panes respect the same native toolbar safe area")
+t.assertEqual(rects[1].h, rects[2].h, "both workspace panes have the same available height")
+
 os.exit(t.summary() and 0 or 1)

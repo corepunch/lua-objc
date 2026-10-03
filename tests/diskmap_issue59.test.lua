@@ -102,8 +102,8 @@ t.assertEqual(devices[1].icon, "iphone", "device rows have an icon")
 local app = Controller.new(Mock.new())
 local window = app:createWindow()
 local deadline = os.time() + 10
-while not app.model.files and os.time() < deadline do ns.sleep(0.05) end
-t.expect(app.model.files ~= nil, "the mock scan finishes")
+while not app.env.model.files and os.time() < deadline do ns.sleep(0.05) end
+t.expect(app.env.model.files ~= nil, "the mock scan finishes")
 
 -- Large Files leads with what can be acted on.
 t.assertEqual(Files.filters[1], "Yours", "Large Files opens on the files a person can act on")
@@ -112,27 +112,27 @@ local yours, all = Files:rows("Yours"), Files:rows("All")
 t.expect(#yours > 0 and #yours < #all, "Yours is a part of All")
 for _, file in ipairs(yours) do t.expect(file.trashable, file.name .. " can be moved to the Trash") end
 app:show("files")
-t.assertEqual(app.refs.files.rowCount, #yours, "the page opens on Yours")
-t.expect(app.refs.filesNoResults.hidden and app.refs.filesEmpty.hidden, "a list with files shows no empty state")
+t.assertEqual(app.page.refs.files.rowCount, #yours, "the page opens on Yours")
+t.expect(app.page.refs.filesNoResults.hidden and app.page.refs.filesEmpty.hidden, "a list with files shows no empty state")
 app:search("files", "no such file anywhere")
-t.assertEqual(app.refs.files.rowCount, 0, "a search can match nothing")
-t.expect(not app.refs.filesNoResults.hidden, "and then says No Results")
-t.expect(app.refs.filesPanel.hidden, "instead of an empty list")
+t.assertEqual(app.page.refs.files.rowCount, 0, "a search can match nothing")
+t.expect(not app.page.refs.filesNoResults.hidden, "and then says No Results")
+t.expect(app.page.refs.filesPanel.hidden, "instead of an empty list")
 app:search("files", "")
-t.expect(app.refs.filesNoResults.hidden and not app.refs.filesPanel.hidden, "clearing the search brings the list back")
+t.expect(app.page.refs.filesNoResults.hidden and not app.page.refs.filesPanel.hidden, "clearing the search brings the list back")
 
 -- Search narrows the Map's list; the chart keeps the level.
 app:show("map")
-local everything = app.refs.mapList.rowCount
-local marks = #app:request("map"):data(app:state()).nodes
+local everything = app.page.refs.mapList.rowCount
+local marks = #app.env:page("map"):data(app:state()).nodes
 app:search("map", "developer")
-t.expect(app.refs.mapList.rowCount > 0 and app.refs.mapList.rowCount < everything, "search narrows the map's list")
-t.assertEqual(#app:request("map"):data(app:state()).nodes, marks, "the chart keeps every sector")
+t.expect(app.page.refs.mapList.rowCount > 0 and app.page.refs.mapList.rowCount < everything, "search narrows the map's list")
+t.assertEqual(#app.env:page("map"):data(app:state()).nodes, marks, "the chart keeps every sector")
 app:search("map", "no such category")
-t.expect(app.refs.mapNoResults ~= nil, "a map search without matches says No Results")
+t.expect(app.page.refs.mapNoResults ~= nil, "a map search without matches says No Results")
 app:search("map", "")
-t.assertEqual(app.refs.mapList.rowCount, everything, "clearing the search restores the list")
-t.expect(app.refs.mapSummary.text:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
+t.assertEqual(app.page.refs.mapList.rowCount, everything, "clearing the search restores the list")
+t.expect(app.page.refs.mapSummary.text:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
 
 -- The sidebar badge and the Developer page name one total.
 t.assertEqual(app:badges().developer, developerWorkflow:presentation().total, "the Developer badge is the page's total")
@@ -167,33 +167,33 @@ t.assertEqual(#Applications:rows("Unused for 6 months"), 0,
 	"the Unused filter excludes unknown usage")
 
 -- Include media libraries is remembered.
-t.assertEqual(app.model.includeMedia, false, "media libraries start excluded")
-app.settings:setMedia(true)
-t.expect(app.service.loadFlag("media"), "the choice is saved")
+t.assertEqual(app.env.model.includeMedia, false, "media libraries start excluded")
+app.env.settings:setMedia(true)
+t.expect(app.env.service.loadFlag("media"), "the choice is saved")
 local relaunched = Store.new(home)
-require("apps.diskmap.controllers.SheetController").page(require("apps.diskmap.pages.Sheets").settings, "settings", {service = app.service, model = relaunched, notifications = app.notifications})
+require("tests.diskmap_sheet").new("settings", {service = app.env.service, model = relaunched, notifications = app.env.notifications})
 t.expect(relaunched.includeMedia,
 	"and restored at the next launch")
-app.settings:setMedia(false)
+app.env.settings:setMedia(false)
 
 -- Simulators claim no totals and list no half-read rows while they load: the
 -- page is one progress state until the read ends.
 app:show("simulators")
-local simulators = app:request("simulators")
-simulators.loaded = false
+local simulators = app.env:page("simulators")
+simulators.stock.loaded = false
 app:updateRows()
-t.assertEqual(app.refs.computingStatus.text, "Reading simulator devices and runtimes…", "a loading page claims no totals")
-t.expect(app.refs.computingSpinner ~= nil and app.refs.devices == nil and app.refs.planAmount == nil, "and shows no lists or plan")
-simulators.loaded = true
+t.assertEqual(app.page.refs.computingStatus.text, "Reading simulator devices and runtimes…", "a loading page claims no totals")
+t.expect(app.page.refs.computingSpinner ~= nil and app.page.refs.devices == nil and app.page.refs.planAmount == nil, "and shows no lists or plan")
+simulators.stock.loaded = true
 app:updateRows()
-t.expect(app.refs.planAmount ~= nil and app.refs.planAmount.text ~= "", "a loaded plan has its amount")
-t.expect(not app.refs.summary.text:find(" 1 runtimes", 1, true) and not app.refs.summary.text:find(" 1 devices", 1, true), "counts are pluralized")
+t.expect(app.page.refs.planAmount ~= nil and app.page.refs.planAmount.text ~= "", "a loaded plan has its amount")
+t.expect(not app.page.refs.summary.text:find(" 1 runtimes", 1, true) and not app.page.refs.summary.text:find(" 1 devices", 1, true), "counts are pluralized")
 
 -- Overview sections with nothing to show take no place.
 app:show("overview")
 -- The synthetic disk leaves its media libraries out, so the card names them
 -- and asks for no access it does not need.
-t.expect(not app.refs.notMeasured.hidden and app.refs.unmeasured_media ~= nil, "what was not measured is named")
-t.expect(app.refs.grantAccess == nil, "no access is requested when nothing was refused")
+t.expect(not app.page.refs.notMeasured.hidden and app.page.refs.unmeasured_media ~= nil, "what was not measured is named")
+t.expect(app.page.refs.grantAccess == nil, "no access is requested when nothing was refused")
 window.size = ns.Size(950, 580); window:layout()
 os.exit(t.summary() and 0 or 1)

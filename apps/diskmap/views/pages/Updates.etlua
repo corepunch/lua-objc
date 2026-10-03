@@ -10,14 +10,13 @@
       <%- partial("../components/SectionTitle.etlua", {icon = "gearshape.arrow.triangle.2.circlepath", title = "Software Update"}) %>
       <GroupBox>
         <VStack spacing="0" alignment="leading">
-          <HStack padding="12" spacing="10" alignment="center">
-            <SystemImage name="<%= not softwareUpdate.known and "questionmark.circle" or #softwareUpdate.updates > 0 and "arrow.down.app.fill" or "checkmark.circle" %>" size="18" color="<%= not softwareUpdate.known and "secondary" or #softwareUpdate.updates > 0 and "accent" or "systemGreen" %>" width="26" />
+          <SymbolRow padding="12" spacing="10" alignment="center" name="<%= softwareUpdate.icon %>" size="18" color="<%= softwareUpdate.color %>">
             <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
               <Label id="updateTitle" text="<%= softwareUpdate.title %>" size="13" weight="semibold" maxWidth="infinity" lines="1" />
               <Label id="updateDetail" text="<%= softwareUpdate.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
             </VStack>
             <Button id="openSoftwareUpdate" title="Software Update…" action="openSoftwareUpdate" />
-          </HStack>
+          </SymbolRow>
           <% for _, stage in ipairs(stages) do %>
           <Divider />
           <%- partial("../components/InfoRow.etlua", {id = "stage_" .. stage.index, icon = stage.icon, title = stage.title, detail = stage.detail, value = stage.size}) %>
@@ -48,11 +47,10 @@
       <GroupBox>
         <VStack spacing="0" alignment="leading">
           <% for index, snapshot in ipairs(snapshots) do %>
-          <HStack paddingHorizontal="12" paddingVertical="8" spacing="10" alignment="center">
-            <SystemImage name="clock" size="15" color="secondary" width="26" />
+          <SymbolRow paddingHorizontal="12" paddingVertical="8" spacing="10" alignment="center" name="clock" size="15" color="secondary">
             <Label text="<%= snapshot.name %>" size="13" monospacedDigit="true" flexGrow="1" flexShrink="1" lines="1" />
             <Label text="<%= snapshot.id %>" size="11" design="monospaced" color="tertiary" lines="1" truncation="middle" flexShrink="1" />
-          </HStack>
+          </SymbolRow>
           <Divider />
           <% end %>
           <Label text="Snapshots keep the blocks of files you deleted since they were taken, so deleting a file may not free space at once. macOS removes them automatically when space runs low; no file scan can measure how much each one holds." size="11" color="secondary" padding="12" maxWidth="infinity" lines="0" />

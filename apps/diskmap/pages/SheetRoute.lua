@@ -25,6 +25,8 @@ function SheetRoute.extend(route)
 end
 
 function SheetRoute:open(parent)
+	if self.app.beforeSheet then self.app.beforeSheet() end
+	for _, sheet in pairs(self.app.sheets or {}) do sheet:close() end
 	self:close()
 	self.sheet = self.presenter:present(parent)
 end

@@ -1,5 +1,5 @@
-local Provider = require("apps.diskmap.services.Provider")
 local Model = require("data.model")
+local Session = require("apps.diskmap.models.Session")
 local SheetRoute = require("apps.diskmap.pages.SheetRoute")
 
 -- The settings sheet: switches over the app's persisted flags. `rescan`
@@ -20,14 +20,12 @@ local MEDIA = {
 function Settings:init()
 	local service = self.app.service
 	self.service, self.notifications = service, self.app.notifications
-	if type(Provider.offers(service, "loadFlag")) == "function" then Model.db.includeMedia = service.loadFlag("media") == true end
-	self.enabled = not service.loadSettings or service.loadSettings()
-	self.history = type(Provider.offers(service, "loadHistorySetting")) == "function" and service.loadHistorySetting() == true
+	self.preferences = Session:current()
 end
 
 function Settings:data()
 	local available = self.notifications:available()
-	self.switches = {monitor = self.enabled, media = Model.db.includeMedia == true, history = self.history,
+	self.switches = {monitor = self.preferences.monitorEnabled, media = Model.db.includeMedia == true, history = self.preferences.historyEnabled,
 		reminder = self.notifications:enabled("reminder"), sentinel = self.notifications:enabled("sentinel")}
 	return {disabled = {reminder = not available, sentinel = not available}, hidden = {notificationsUnavailable = available}}
 end
@@ -38,13 +36,13 @@ end
 
 -- Storage history is opt-in; turning it off also forgets what was recorded.
 function Settings:toggleHistory()
-	local enabled = not self.history
-	if self.service.saveHistorySetting and not self.service.saveHistorySetting(enabled) then
+	local enabled = not self.preferences.historyEnabled
+	if not self.service.saveHistorySetting(enabled) then
 		self.service.showError("Could not save Settings", "Try again.")
 		return false
 	end
-	self.history = enabled
-	if not enabled and self.service.saveHistory then self.service.saveHistory("") end
+	self.preferences.historyEnabled = enabled
+	if not enabled then self.service.saveHistory("") end
 	return true
 end
 
@@ -52,7 +50,7 @@ end
 -- too. The switch stays off when macOS refuses permission.
 function Settings:toggleNotification(name)
 	local enabled = not self.notifications:enabled(name)
-	if enabled and name == "reminder" and not self.history and not self:toggleHistory() then return self:draw() end
+	if enabled and name == "reminder" and not self.preferences.historyEnabled and not self:toggleHistory() then return self:draw() end
 	self.notifications:setEnabled(name, enabled, function(on)
 		if enabled and not on then
 			self.service.showError("Notifications are off for Diskmap", "Allow them in System Settings › Notifications › Diskmap.")
@@ -66,9 +64,9 @@ function Settings:toggleReminder() self:toggleNotification("reminder") end
 function Settings:toggleSentinel() self:toggleNotification("sentinel") end
 
 function Settings:toggle()
-	local enabled = not self.enabled
-	if self.service.saveSettings and not self.service.saveSettings(enabled) then return false end
-	self.enabled = enabled; return true
+	local enabled = not self.preferences.monitorEnabled
+	if not self.service.saveSettings(enabled) then return false end
+	self.preferences.monitorEnabled = enabled; return true
 end
 
 function Settings:toggleMonitor()
@@ -79,13 +77,13 @@ end
 -- should not have to find the switch again every time.
 function Settings:setMedia(enabled)
 	Model.db.includeMedia = enabled
-	if type(Provider.offers(self.service, "saveFlag")) == "function" then self.service.saveFlag("media", enabled) end
+	self.service.saveFlag("media", enabled)
 	self.app.rescan()
 end
 
 function Settings:toggleMedia()
 	if Model.db.includeMedia then return self:setMedia(false) end
-	local message = Provider.offers(self.service, "mock") == true and MEDIA.mock or MEDIA.system
+	local message = self.service.mock == true and MEDIA.mock or MEDIA.system
 	if self.service.confirmAction("Include media libraries", message) then self:setMedia(true) end
 end
 

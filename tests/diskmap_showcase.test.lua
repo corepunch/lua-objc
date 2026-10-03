@@ -31,29 +31,29 @@ local app = Controller.new(showcase)
 local state = app:state()
 t.assertEqual(state.volumeName, "Macintosh HD", "the page header names the showcase volume")
 t.expect(not state.status:find("Mock HDD", 1, true), "the status line has no Mock HDD marker")
-t.assertEqual(app.model.home, "/Users/appleseed", "catalog paths follow the virtual disk's home")
+t.assertEqual(app.env.model.home, "/Users/appleseed", "catalog paths follow the virtual disk's home")
 local window = app:createWindow()
 t.assertEqual(window.title, "Diskmap", "the showcase window title has no Mock HDD marker")
-app.scan:start()
-local derived = app.model.measurements["derived"]
+app.env.scan:start()
+local derived = app.env.model.measurements["derived"]
 t.expect(derived ~= nil and (derived.bytes or 0) > 0, "catalog measurements match the virtual home folder")
 
 -- `--map-style` picks the Map's initial chart.
 local Routes = require("data.routes")
 local function routePage(id, app) return Routes.page(require("apps.diskmap.routes")[id], {id = id}, app, "apps.diskmap") end
-t.assertEqual(Provider.mapStyle({[1] = "--map-style=rectangles"}), "rectangles", "the map style switch is read")
+t.assertEqual(Provider.launch({[1] = "--map-style=rectangles"}).mapStyle, "rectangles", "the map style switch is read")
 t.assertEqual(routePage("map", {mapStyle = "rectangles"}).style, "rectangles", "the map can open as rectangles")
 t.assertEqual(routePage("map", {mapStyle = "hexagons"}).style, "rings", "unknown styles fall back to rings")
 t.assertEqual(routePage("map", {}).style, "rings", "rings stay the default")
 
 -- A capture plan switches the chart at runtime, as the segmented control does.
 app:show("map")
-app:setMapStyle("rectangles")
-t.assertEqual(app:request("map").style, "rectangles", "setMapStyle switches the Map's chart")
+app:show("map", {style = "rectangles"})
+t.assertEqual(app.env:page("map").style, "rectangles", "setMapStyle switches the Map's chart")
 t.expect(app.page.refs.treemap ~= nil, "the Map page redraws as a treemap")
-app:setMapStyle("rings")
+app:show("map", {style = "rings"})
 t.expect(app.page.refs.treemap == nil and app.page.refs.sunburst ~= nil, "and back to rings")
 t.assertThrows(function() app:setMapStyle("hexagons") end, "an unknown map style is an error")
-t.assertEqual(app:request("map").style, "rings", "a rejected style leaves the chart alone")
+t.assertEqual(app.env:page("map").style, "rings", "a rejected style leaves the chart alone")
 
 os.exit(t.summary() and 0 or 1)

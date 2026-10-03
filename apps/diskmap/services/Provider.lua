@@ -6,29 +6,21 @@ local Provider = {}
 -- (an opened scan beside this Mac): every function the service calls back
 -- later, a scan's progress or a measurement's sizes, runs with that window's
 -- store bound again. Assignments reach the service itself.
-function Provider.bind(service, store)
+function Provider.bind(service, store, promptParent)
 	return setmetatable({}, {__index = function(_, key)
 		local value = service[key]
 		if type(value) ~= "function" then return value end
 		return function(...)
 			local arguments = table.pack(...)
+			if promptParent and (key == "confirmAction" or key == "confirmTrash" or key == "confirmEmptyTrash" or key == "confirmOwnerCleanup" or key == "confirmTrashPath" or key == "showError" or key == "requestDiskAccess") then
+				arguments.n = arguments.n + 1; arguments[arguments.n] = promptParent()
+			end
 			for index = 1, arguments.n do
 				if type(arguments[index]) == "function" then arguments[index] = Model.bound(store, arguments[index]) end
 			end
 			return value(table.unpack(arguments, 1, arguments.n))
 		end
 	end, __newindex = service, service = service})
-end
-
--- What the service itself offers under `name`, without asking a strict test
--- double for a feature it lacks (rawget): nil when it has none. A function
--- comes back bound like any other call of the window's service.
-function Provider.offers(service, name)
-	local meta = getmetatable(service)
-	local target = meta and meta.service or service
-	local value = rawget(target, name)
-	if type(value) == "function" and target ~= service then return service[name] end
-	return value
 end
 
 local function argumentValue(arguments, flag)
@@ -68,25 +60,23 @@ function Provider.select(arguments)
 	return require("apps.diskmap.services.System")
 end
 
--- `--page=<id>` opens a sidebar destination at launch, so screenshots and
--- walkthroughs can start on any page.
-function Provider.page(arguments)
-	return argumentValue(arguments, "--page")
-end
-
--- `--map-style=rectangles` opens the Map as a treemap.
-function Provider.mapStyle(arguments)
-	return argumentValue(arguments, "--map-style")
-end
-
--- `--folder=<path>` opens a folder or disk on the Folder Map page at launch,
--- as dropping it on the Dock icon does.
-function Provider.folder(arguments)
-	return argumentValue(arguments, "--folder")
-end
-
-function Provider.exportPath(arguments)
-	return argumentValue(arguments, "--export-mock")
+-- Process flags are consumed once. A second window supplies an empty launch
+-- table and never repeats an export or opens the process's initial folder.
+function Provider.launch(arguments, service)
+	local launch = {page = argumentValue(arguments, "--page"), folder = argumentValue(arguments, "--folder"),
+		mapStyle = argumentValue(arguments, "--map-style"), exportPath = argumentValue(arguments, "--export-mock")}
+	for _, argument in ipairs(arguments or {}) do
+		if argument == "--isolated" then launch.isolated = true end
+	end
+	local manifest = require("data.manifest").load("apps/diskmap/app.xml")
+	if launch.isolated and not launch.page then error("--isolated requires --page=<id>", 0) end
+	if launch.page and not manifest.pages[launch.page] then
+		local ids = {}
+		for _, page in ipairs(manifest.order) do table.insert(ids, page.id) end
+		error("Unknown Diskmap page: " .. launch.page .. ". Valid pages: " .. table.concat(ids, ", "), 0)
+	end
+	launch.service = service or Provider.select(arguments)
+	return launch
 end
 
 return Provider

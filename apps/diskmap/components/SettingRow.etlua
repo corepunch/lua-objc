@@ -6,6 +6,6 @@
   <% if button then %>
   <Button title="Open…" action="<%= action %>" />
   <% else %>
-  <Toggle id="<%= id %>" style="switch" label="<%= title %>" onChange="<%= action %>" />
+  <Toggle id="<%= toggleId %>" style="switch" label="<%= title %>" onChange="<%= action %>" />
   <% end %>
 </HStack>

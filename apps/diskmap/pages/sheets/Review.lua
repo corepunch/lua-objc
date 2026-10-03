@@ -1,15 +1,13 @@
-local Paths = require("apps.diskmap.helpers.Paths")
-local Provider = require("apps.diskmap.services.Provider")
 local Model = require("data.model")
 local Marks = require("apps.diskmap.models.Marks")
 local Format = require("apps.diskmap.helpers.Format")
-local OperationLog = require("apps.diskmap.helpers.OperationLog")
 local Selection = require("apps.diskmap.helpers.Selection")
 local SheetRoute = require("apps.diskmap.pages.SheetRoute")
+local Batch = require("apps.diskmap.helpers.Batch")
 local Verify = require("apps.diskmap.helpers.Verify")
 
--- The cleanup basket and its review sheet. Pages mark items through
--- `toggle`; nothing touches the disk until the sheet's Move to Trash, which
+-- Review presents the scan-owned basket; staging is flows/Basket.lua.
+-- Nothing touches the disk until the sheet's Move to Trash, which
 -- revalidates each item, moves it, logs it, and then offers to empty the
 -- Trash so the freed space can be measured rather than assumed. The sheet is
 -- drawn from `data()` (views/sheets/Review.etlua); the app hears of marks through
@@ -21,60 +19,13 @@ routes.review = Review
 
 function Review:init()
 	self.service = self.app.service
-	self.results, self.done = {}, {}
-end
-
-function Review:log(action, ok, bytes, target, detail)
-	if type(self.service.logOperation) ~= "function" then return end
-	self.service.logOperation(OperationLog.format({action = action, ok = ok, bytes = bytes, target = target, detail = detail}))
-end
-
-function Review:isMarked(path) return path ~= nil and Marks:contains(path) end
-function Review:covering(path) return Marks:covering(path) end
-function Review:summary() return Marks:summary() end
-function Review:count() return Marks:count() end
-
--- Identity and basket validation are identical for individual and bulk
--- staging. Only the caller publishes, so a bulk click refreshes UI once.
-local function add(self, item)
-	local valid, why = Paths.validate(item.path, Model.db.home)
-	if not valid then return false, why end
-	local identity = Provider.offers(self.service, "fileIdentity")
-	if type(identity) == "function" and not item.identity then item.identity = identity(item.path) end
-	local ok, reason = Marks:add(item)
-	if ok then
-		self.results[item.path] = nil
-		self.done[item.path] = nil
-	end
-	return ok, reason
-end
-
--- Marks or unmarks an item {path, name, bytes, consequence, source,
--- resourceId}. Returns marked state and a refusal message.
-function Review:toggle(item)
-	if type(item) ~= "table" or not item.path then return false, "Nothing selected." end
-	if Marks:contains(item.path) then
-		Marks:remove(item.path)
-		self.app.basketChanged()
-		return false
-	end
-	local ok, reason = add(self, item)
-	self.app.basketChanged()
-	return ok, reason
-end
-
-function Review:markAll(items)
-	local count = 0
-	for _, item in ipairs(items) do
-		if type(item) == "table" and item.path and not self:covering(item.path) and add(self, item) then count = count + 1 end
-	end
-	if count > 0 then self.app.basketChanged() end
-	return count
+	self.results, self.done = self.app.basket.results, self.app.basket.done
 end
 
 -- The sheet opens on `path`'s item, or on the first.
 function Review:open(parent, path)
-	self.done, self.status, self.movedBytes = {}, nil, nil
+	self.app.basket.done = {}
+	self.done, self.status, self.movedBytes = self.app.basket.done, nil, nil
 	self.selectedPath = path or ((Marks:all()[1] or {}).path)
 	SheetRoute.open(self, parent)
 end
@@ -120,6 +71,8 @@ function Review:remove()
 end
 
 function Review:clear()
+	self.app.basket.done = {}
+	self.done, self.selectedPath = self.app.basket.done, nil
 	Marks:clear()
 	self.app.basketChanged()
 end
@@ -138,8 +91,7 @@ function Review:trash()
 	if Marks:count() == 0 or self.busy then return false end
 	local paths = {}
 	for _, mark in ipairs(Marks:all()) do table.insert(paths, mark.path) end
-	local measure = Provider.offers(self.service, "measure")
-	if type(measure) ~= "function" then return self:moveAll(paths) end
+	local measure = self.service.measure
 	self.busy = true
 	self.status = "Measuring marked items again…"; self:draw()
 	local finished
@@ -156,8 +108,8 @@ function Review:trash()
 end
 
 function Review:probes()
-	local probes = Provider.offers(self.service, "cleanupProbes")
-	return type(probes) == "function" and probes() or {}
+	local probes = self.service.cleanupProbes
+	return probes()
 end
 
 function Review:moveAll(paths)
@@ -173,7 +125,10 @@ function Review:moveAll(paths)
 	local before = self.service.diskSpace(home)
 	local probes = self:probes()
 	local result = {moved = 0, movedBytes = 0, skipped = {}}
-	for _, path in ipairs(paths) do
+	Batch.run(paths, {
+		label = function(path) return path end, bytes = function() return 0 end,
+		validate = function(path) return Marks:find(path) ~= nil end,
+		execute = function(path, nextItem)
 		local item = Marks:find(path)
 		if item then
 			local resource = item:location()
@@ -189,7 +144,7 @@ function Review:moveAll(paths)
 				local pcallOk, moved, detail = pcall(self.service.trash, path)
 				ok, message = pcallOk and moved == true, pcallOk and detail or tostring(moved)
 			end
-			self:log("Move to Trash", ok, item.bytes, path, message)
+			if not (allowed and item.resourceId) then self.app.log("Move to Trash", ok, item.bytes, path, message) end
 			if ok then
 				result.moved, result.movedBytes = result.moved + 1, result.movedBytes + (item.bytes or 0)
 				self.done[path] = "Moved to Trash"
@@ -199,7 +154,9 @@ function Review:moveAll(paths)
 				self.results[path] = allowed and ("Failed: " .. tostring(message or "unknown error")) or "Skipped"
 			end
 		end
-	end
+			nextItem(true)
+		end,
+	}, function() end)
 	local after = self.service.diskSpace(home)
 	result.freeBefore = before and before.freeKb and before.freeKb * 1024 or nil
 	result.freeNow = after and after.freeKb and after.freeKb * 1024 or nil
@@ -217,24 +174,12 @@ end
 -- macOS observes, which can differ from the moved size (snapshots keep
 -- blocks; other apps write meanwhile).
 function Review:emptyTrash()
-	if not self.service.emptyTrash or not self.service.confirmAction("Empty Trash",
-		"Permanently removes everything in the Trash, including items you moved there before. This cannot be undone.") then return false end
-	local home = Model.db.home
-	local before = self.service.diskSpace(home)
-	local ok = self.service.emptyTrash()
-	local after = self.service.diskSpace(home)
-	local freed = before and after and (after.freeKb - before.freeKb) * 1024 or nil
-	self:log("Empty Trash", ok == true, freed and math.max(0, freed) or 0, "~/.Trash")
-	self.movedBytes = nil
-	if ok and freed and freed > 0 then
-		self.status = "Emptied the Trash. macOS now reports " .. Format.size(freed) .. " more free space."
-	elseif ok then
-		self.status = "Emptied the Trash. Free space has not changed yet; local snapshots may still hold the blocks."
-	else
-		self.status = "The Trash could not be emptied."
+	local ok, status = self:flow("EmptyTrash"):run()
+	if status then
+		if ok then self.movedBytes = nil end
+		self.status = status
+		self:draw()
 	end
-	self.app.rescan()
-	self:draw()
 	return ok
 end
 

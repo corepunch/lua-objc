@@ -50,9 +50,9 @@ local service = Mock.new()
 service.hasFullDiskAccess = function() return true end
 local app = Controller.new(service)
 app:createWindow()
-local tour = app.tour
+local tour = app.env.tour
 t.expect(tour.sheet ~= nil, "the tour opens on start")
-t.expect(app.model.scan.completedAt ~= nil, "the scan does not wait for the tour")
+t.expect(app.env.model.scan.completedAt ~= nil, "the scan does not wait for the tour")
 t.expect(tour.refs.showOnStart.state == 1, "Show this window on start is on for a new install")
 t.expect(not tour.refs.page_1.hidden and tour.refs.page_2.hidden, "page one shows first")
 t.expect(tour.refs.back.hidden and not tour.refs.skip.hidden, "no Back on the first page; Skip on every page")
@@ -73,21 +73,21 @@ tour:next()
 t.expect(tour.sheet == nil, "Start Using Diskmap closes it")
 local again = Controller.new(service)
 again:createWindow()
-t.expect(again.tour.sheet ~= nil, "it shows on the next start while the box is checked")
+t.expect(again.env.tour.sheet ~= nil, "it shows on the next start while the box is checked")
 
 -- Unchecking the box keeps it from showing on start; Skip closes it.
-again.tour.refs.showOnStart.state = 0
-again.tour:setShowOnStart(false)
-again.tour:close()
+again.env.tour.refs.showOnStart.state = 0
+again.env.tour:setShowOnStart(false)
+again.env.tour:close()
 local later = Controller.new(service)
 later:createWindow()
-t.expect(later.tour.sheet == nil, "unchecked, it does not show on start")
-t.expect(later.tour:open(later.window) and later.tour.sheet ~= nil, "Help > Diskmap Tour opens it again")
-t.assertEqual(later.tour.page, 1, "from the first page")
-t.expect(later.tour.refs.showOnStart.state == 0, "the box shows the choice")
-later.tour:setShowOnStart(true)
-later.tour:close()
-t.expect(later.tour:needed(), "checking it again brings it back on start")
+t.expect(later.env.tour.sheet == nil, "unchecked, it does not show on start")
+t.expect(later.env.tour:open(later.window) and later.env.tour.sheet ~= nil, "Help > Diskmap Tour opens it again")
+t.assertEqual(later.env.tour.page, 1, "from the first page")
+t.expect(later.env.tour.refs.showOnStart.state == 0, "the box shows the choice")
+later.env.tour:setShowOnStart(true)
+later.env.tour:close()
+t.expect(later.env.tour:needed(), "checking it again brings it back on start")
 
 -- After the access steps, the tour follows them.
 local fresh = Mock.new()
@@ -96,14 +96,14 @@ fresh.hasFullDiskAccess = function() return granted end
 fresh.openSettings = function() end
 local first = Controller.new(fresh)
 first:createWindow()
-t.expect(first.onboarding.sheet ~= nil and first.tour.sheet == nil, "access comes first")
+t.expect(first.env.onboarding.sheet ~= nil and first.env.tour.sheet == nil, "access comes first")
 granted = true
-first.onboarding:poll()
-t.expect(first.onboarding.sheet == nil and first.tour.sheet ~= nil, "then the tour")
+first.env.onboarding:poll()
+t.expect(first.env.onboarding.sheet == nil and first.env.tour.sheet ~= nil, "then the tour")
 
 -- The synthetic disk has no access probe and never tours.
 local demo = Controller.new(Mock.new())
 demo:createWindow()
-t.expect(demo.tour.sheet == nil, "no tour on the synthetic disk")
+t.expect(demo.env.tour.sheet == nil, "no tour on the synthetic disk")
 
 os.exit(t.summary() and 0 or 1)

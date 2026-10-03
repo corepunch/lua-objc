@@ -37,12 +37,12 @@ System.command = command
 local model = Store.new("/Users/test")
 local paths, ids = Scans:plan()
 local pending
-local scan = Scan.new(model, {
+local scan = Scan.new(model, require("apps.diskmap.services.Contract").stub({
 	start = function() return {} end,
 	await = function(_, done, progress) pending = {done = done, progress = progress} end,
 	cancel = function() end,
 	diskSpace = function() return {totalKb = 256e9 / 1024, freeKb = 4.5e9 / 1024} end,
-}, model.home)
+}), model.home)
 scan:start()
 local function progress(visited, seconds)
 	pending.progress({completed = 0, total = #ids, visited = visited, seconds = seconds,
@@ -62,12 +62,12 @@ local chart = require("apps.diskmap.models.Categories"):chart(scan.service.diskS
 t.assertEqual(chart.marks[1].label, "Not measured yet", "unfinished chart names the pending allocation")
 t.expect(chart.explanation:find("still arriving", 1, true), "unfinished chart explains its gray sector")
 local routes, Routes = require("apps.diskmap.routes"), require("data.routes")
-local services = {model = model, service = {}, actions = {
+local services = {model = model, service = require("apps.diskmap.services.Contract").stub({}), actions = {
 	file = function() return {} end, annotate = function(_, rows) return rows end,
 	isMarked = function() return false end, isIncluded = function() return false end,
 }}
 require("data.model").bind(model)
-t.assertEqual(Routes.page(routes.applications, {id = "applications"}, services, "apps.diskmap"):summary(), nil, "live file findings do not imply app-data breakdowns are ready")
+t.assertEqual(require("apps.diskmap.models.Inventories"):applicationsSummary(), nil, "live file findings do not imply app-data breakdowns are ready")
 local filesEntry = {id = "files", title = "Large Files", icon = "doc.fill", color = "systemTeal"}
 local files = require("data.pagecontroller").new({page = filesEntry, request = Routes.page(routes.files, filesEntry, services, "apps.diskmap"),
 	ns = ns, viewsDir = "apps/diskmap/views/", store = model})
@@ -91,10 +91,10 @@ t.expect(not model.files.measuring and not model.files.partial, "final summary c
 -- A folder and a missing timestamp are not evidence of an unused device.
 local uuid = "AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE"
 local runtime = "com.apple.CoreSimulator.SimRuntime.iOS-26-5"
-local service = {
+local service = require("apps.diskmap.services.Contract").stub({
 	children = function() return {{name = uuid, path = model.home .. "/Devices/" .. uuid, bytes = 4e9}} end,
 	readPropertyList = function() return {name = "iPhone", runtime = runtime} end,
-}
+})
 local unknown = SimulatorService.discover(service, model.home)
 local row = Simulators.rows(unknown)[1]
 t.assertEqual(row.lastUse, "Last use unknown", "no boot date does not imply never started")
@@ -127,21 +127,21 @@ simulator.refs.devices:selectRow(0)
 t.expect(not simulator.refs.erase.enabled and not simulator.refs.delete.enabled, "unverified devices cannot be erased or deleted")
 t.expect(simulator.refs.status.text:find("could not be checked", 1, true), "disabled action explains how to proceed")
 simulator:dispose()
-simulatorModel:load()
+simulatorModel:load(true)
 held.runtimes({}, nil)
 held.devices(live)
 t.assertEqual(simulator.refs, nil, "late replies cannot remount a disposed page")
-t.expect(simulatorModel.loaded and #Simulators.rows(simulatorModel.inventory) == 1, "but they still record the inventory for the next visit")
+t.expect(simulatorModel.stock.loaded and #Simulators.rows(simulatorModel.stock.inventory) == 1, "but they still record the inventory for the next visit")
 
 -- Low-space launch reaches the inventory without a ten-page modal detour.
 local mock = Mock.new()
 mock.hasFullDiskAccess = function() return true end
 local app = Controller.new(mock)
 app:createWindow()
-app.tour:close()
+app.env.tour:close()
 local disk = {totalKb = 256e9 / 1024, freeKb = 4.5e9 / 1024}
-t.expect(not app.tour:needed(disk), "low-space launch bypasses automatic tour")
-t.expect(app.tour:needed({totalKb = 256e9 / 1024, freeKb = 100e9 / 1024}), "normal-space launch preserves the tour preference")
+t.expect(not app.env.tour:needed(disk), "low-space launch bypasses automatic tour")
+t.expect(app.env.tour:needed({totalKb = 256e9 / 1024, freeKb = 100e9 / 1024}), "normal-space launch preserves the tour preference")
 app:show("cleanup")
 local page = app.page
 local data = Suggestions:presentation("")
@@ -162,7 +162,7 @@ page:update({query = "no-such-suggestion", disk = disk})
 t.assertEqual(page.request.selectedRow, nil, "filtering away a suggestion removes the stale detail")
 t.expect(page.refs.selectionDetails.hidden, "an empty selection hides the inspector, so no stale item can be opened")
 local opened
-page.request.app.showFiltered = function(id, filter) opened = {id, filter} end
+page.request.app.show = function(id, params) opened = {id, params.filter} end
 page.request.selectedRow = {id = "unused-apps", page = "applications", filter = "Unused for 6 months"}
 page.actions.openSelection()
 t.assertEqual(opened[1], "applications", "visible action navigates to the suggested page")

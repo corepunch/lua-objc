@@ -7,12 +7,7 @@
   local SELECTION = {detailMaximum = 144}
   local function list(id)
 %>
-        <List id="<%= id %>" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
-          <Column id="name" title="Worktree" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="170" />
-          <Column id="roleLabel" title="Plan" width="125" minWidth="125" />
-          <Column id="lastUse" title="Last change" width="155" minWidth="155" />
-          <Column id="size" title="On disk" width="110" minWidth="110" alignment="trailing" />
-        </List>
+        <InventoryList id="<%= id %>" onSelect="select" kind="worktrees" />
 <% end %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
@@ -47,12 +42,12 @@
 <% list("missingList") %>
       </GroupBox>
     </VStack>
-    <DisclosureGroup id="repositories" label="Repositories these worktrees come from" expanded="false" spacing="8" indicatorWidth="26" indicatorSpacing="10">
+    <Disclosure id="repositories" label="Repositories these worktrees come from" expanded="false" spacing="8">
       <Label text="The checkouts these worktrees were made from. A repository's own checkout is never offered and is not measured here." size="11" color="secondary" maxWidth="infinity" lines="0" />
       <GroupBox>
 <% list("repositoryList") %>
       </GroupBox>
-    </DisclosureGroup>
+    </Disclosure>
     <%- partial("../components/Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recent and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
     <% end %>
   </VStack>
@@ -63,9 +58,9 @@
         <VStack spacing="8" alignment="leading">
       <Label id="selectedTitle" text="<%= selection and selection.title or "" %>" help="<%= selection and selection.title or "" %>" size="13" weight="semibold" maxWidth="infinity" lines="1" truncation="middle" />
       <Label id="selectedSummary" text="<%= selection and selection.summary or "" %>" size="12" maxWidth="infinity" lines="0" />
-      <DisclosureGroup label="Path and storage details" expanded="false" indicatorWidth="26" indicatorSpacing="10">
+      <Disclosure label="Path and storage details" expanded="false">
         <Label id="selectedDetail" text="<%= selection and selection.detail or "" %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
-      </DisclosureGroup>
+      </Disclosure>
         </VStack>
       </ScrollView>
       <HStack spacing="8" alignment="center">

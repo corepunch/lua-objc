@@ -5,6 +5,7 @@ local Owners = require("apps.diskmap.services.Owners")
 local System = {}
 -- The person's home folder. Inside the App Sandbox HOME names Diskmap's
 -- container, so catalog paths and access checks would all miss.
+System.mock = false
 System.home = ns.homeDirectory() or os.getenv("HOME") or "/Users"
 function System.quote(value)
 	assert(type(value) == "string" and not value:find("\0", 1, true), "Invalid path")
@@ -40,6 +41,8 @@ local function writeJson(name, value)
 	file:write(json(value)); file:close()
 	return os.rename(path .. ".tmp", path)
 end
+function System.savedSnapshotPath() return System.supportPath("mock-hdd.bin") end
+
 function System.loadKeep() return readJson("kept.json", {}) end
 function System.saveKeep(kept) return writeJson("kept.json", kept) end
 -- Watched locations: resources by id, folders by path plus a bookmark that
@@ -128,14 +131,14 @@ function System.openOwner(owner)
 		return os.execute("/usr/bin/open -b " .. System.quote(identifier) .. " 2>/dev/null")
 	end)
 end
-function System.confirmTrash(row)
-	return ns.Alert {title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}} == 2
+function System.confirmTrash(row, parent)
+	return ns.Alert {parent = parent, title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}} == 2
 end
-function System.confirmEmptyTrash(row, size)
-	return ns.Alert {title = "Permanently empty Trash?", message = "This permanently removes " .. size .. " of files in Trash on all mounted volumes. This cannot be undone.", buttons = {"Cancel", "Empty Trash"}} == 2
+function System.confirmEmptyTrash(row, size, parent)
+	return ns.Alert {parent = parent, title = "Permanently empty Trash?", message = "This permanently removes " .. size .. " of files in Trash on all mounted volumes. This cannot be undone.", buttons = {"Cancel", "Empty Trash"}} == 2
 end
-function System.confirmOwnerCleanup(row, size)
-	return ns.Alert {title = "Clear " .. row.name .. "?", message = "Measured location: " .. row.path .. "\nMeasured allocation: " .. size .. "\n\n" .. (row.consequence or "The owning tool will clear its cache."), buttons = {"Cancel", "Clear Cache"}} == 2
+function System.confirmOwnerCleanup(row, size, parent)
+	return ns.Alert {parent = parent, title = "Clear " .. row.name .. "?", message = "Measured location: " .. row.path .. "\nMeasured allocation: " .. size .. "\n\n" .. (row.consequence or "The owning tool will clear its cache."), buttons = {"Cancel", "Clear Cache"}} == 2
 end
 function System.runOwnerCleanup(commandId, home, completion)
 	local commands = {
@@ -150,7 +153,7 @@ end
 function System.emptyTrash()
 	return os.execute("/usr/bin/osascript -e 'tell application \"Finder\" to empty trash'")
 end
-function System.showError(title, message) ns.Alert {title = title, message = message} end
+function System.showError(title, message, parent) ns.Alert {parent = parent, title = title, message = message} end
 function System.relaunch(onFailure) ns.relaunch(onFailure) end
 -- What a cleanup checks just before each move (helpers/Verify.lua).
 System.fileIdentity = ns.fileIdentity
@@ -544,8 +547,8 @@ function System.openDiskUtility()
 	os.execute("/usr/bin/open -a " .. System.quote("Disk Utility"))
 end
 function System.copy(text) ns.copyToClipboard(text) end
-function System.confirmTrashPath(title, path, message)
-	return ns.Alert {title = title, message = path .. "\n\n" .. message, buttons = {"Cancel", "Move to Trash"}} == 2
+function System.confirmTrashPath(title, path, message, parent)
+	return ns.Alert {parent = parent, title = title, message = path .. "\n\n" .. message, buttons = {"Cancel", "Move to Trash"}} == 2
 end
 local support = System.supportPath
 local function readFile(path)
@@ -584,13 +587,13 @@ function System.hasDiskAccess()
 	end
 	return diskAccess
 end
-function System.requestDiskAccess()
+function System.requestDiskAccess(parent)
 	local path = ns.pickFolder("Allow Diskmap to Measure Your Disk", {directory = "/",
 		message = "Click Allow to let Diskmap measure your startup disk. It reads only names, sizes and dates.",
 		prompt = "Allow"})
 	if not path then return false end
 	if path ~= "/" then
-		System.showError("Choose your startup disk", "Diskmap measures the whole disk, so it needs the disk itself, not " .. path .. ". Select Macintosh HD in the sidebar and click Allow.")
+		System.showError("Choose your startup disk", "Diskmap measures the whole disk, so it needs the disk itself, not " .. path .. ". Select Macintosh HD in the sidebar and click Allow.", parent)
 		return false
 	end
 	local bookmark = ns.bookmark(path)
@@ -756,7 +759,7 @@ function System.worktreeState(row, completion)
 	end)
 end
 System.decode = ns.json_parse
-function System.confirmAction(title, message)
-	return ns.Alert {title = title, message = message, buttons = {"Cancel", title}} == 2
+function System.confirmAction(title, message, parent)
+	return ns.Alert {parent = parent, title = title, message = message, buttons = {"Cancel", title}} == 2
 end
 return System

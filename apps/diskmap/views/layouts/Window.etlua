@@ -1,4 +1,12 @@
-<Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="1100" height="760" minWidth="950" minHeight="580" sidebarWidth="226" onBack="back" onForward="forward">
+<Resources>
+  <Number id="windowWidth" value="1100" />
+  <Number id="windowHeight" value="760" />
+  <Number id="windowMinWidth" value="950" />
+  <Number id="isolatedMinWidth" value="724" />
+  <Number id="windowMinHeight" value="580" />
+  <Number id="sidebarWidth" value="226" />
+</Resources>
+<Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="@windowWidth" height="@windowHeight" minWidth="<%= navigation and "@windowMinWidth" or "@isolatedMinWidth" %>" minHeight="@windowMinHeight" <% if navigation then %>sidebarWidth="@sidebarWidth"<% end %> onBack="back" onForward="forward">
   <Commands appName="Diskmap">
     <CommandGroup replacing="appSettings">
       <MenuItem title="Settings…" keyEquivalent="," action="settings" />
@@ -54,7 +62,7 @@
     <% end %>
   </Commands>
   <Toolbar>
-    <ToolbarItem id="toggleSidebar" />
+    <% if navigation then %><ToolbarItem id="toggleSidebar" /><% end %>
     <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" />
     <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" />
     <ToolbarSpacer />

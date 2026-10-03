@@ -261,7 +261,41 @@ function Mock.new(options)
 			end
 		end
 	end
+	if options.deferred then
+		service.deliveries = {}
+		for name in pairs(require("apps.diskmap.services.Contract").members) do
+			local method = service[name]
+			service[name] = function(...)
+				local arguments = table.pack(...)
+				for index = 1, arguments.n do
+					if type(arguments[index]) == "function" then
+						local callback = arguments[index]
+						arguments[index] = function(...)
+							local values = table.pack(...)
+							table.insert(service.deliveries, function() callback(table.unpack(values, 1, values.n)) end)
+						end
+					end
+				end
+				return method(table.unpack(arguments, 1, arguments.n))
+			end
+		end
+	end
 	return service
+end
+
+function Mock:step()
+	local nextDelivery = self.deliveries and table.remove(self.deliveries, 1)
+	if nextDelivery then nextDelivery(); return true end
+	return false
+end
+
+function Mock:settle()
+	local count = 0
+	while self.step() do
+		count = count + 1
+		assert(count < 10000, "Mock callbacks did not settle")
+	end
+	return count
 end
 
 function Mock:scan(paths, exclusions, options)
@@ -451,6 +485,7 @@ end
 
 function Mock:openOwner(owner)
 	ns.Alert {title = "Mock HDD", message = "Mock mode does not launch " .. tostring(owner) .. ".", buttons = {"OK"}}
+	return true
 end
 
 function Mock:reveal(path)
@@ -584,7 +619,7 @@ function Mock:readPropertyList(path)
 			return value
 		end
 	end
-	return ns.readPropertyList(absolute(path, self.home))
+	return nil
 end
 
 function Mock:exists(path)
@@ -592,9 +627,12 @@ function Mock:exists(path)
 end
 
 function Mock:measure(paths, completion)
-	local sizes = {}
-	for index, path in ipairs(paths) do sizes[index] = self.totals[absolute(path, self.home)] or 0 end
-	completion(sizes)
+	local sizes, states = {}, {}
+	for index, path in ipairs(paths) do
+		local total = self.totals[absolute(path, self.home)]
+		sizes[index], states[index] = total or 0, total and "measured" or "missing"
+	end
+	completion(sizes, states)
 end
 
 function Mock:volumeCapacity()
@@ -823,7 +861,7 @@ function Mock:command(arguments, completion)
 end
 
 function Mock:simulatorState(udid, completion)
-	local record = self:simulatorRecord(udid)
+	local record = self.simulatorRecord(udid)
 	completion(record and copy(record) or nil)
 end
 
@@ -1015,6 +1053,27 @@ end
 
 function Mock:openSettings(section)
 	ns.Alert {title = "Mock HDD", message = "Mock mode does not open System Settings" .. (section and (" (" .. section .. ")") or "") .. ".", buttons = {"OK"}}
+end
+
+-- Synthetic providers answer access explicitly and never resolve a real
+-- Application Support path. Exported snapshots have no automatic comparison.
+function Mock:simulatorDevices(completion) completion(copy(self.fixture.simulators or {devices = {}})) end
+function Mock:hasFullDiskAccess() return nil end
+function Mock:hasDiskAccess() return nil end
+function Mock:sandboxed() return false end
+function Mock:requestDiskAccess() return false end
+function Mock:savedSnapshotPath() return nil end
+function Mock:pickFile() return nil end
+function Mock:pickSaveFile() return nil end
+function Mock:relaunch() end
+function Mock:protectedLocations() return {} end
+function Mock:apfsVolumes(completion)
+	local volumes = self.fixture.volumes or {}
+	local container = volumes.apfs and volumes.apfs.Containers and volumes.apfs.Containers[1]
+	completion(container and container.Volumes or {}, container)
+end
+function Mock:exportMockSnapshot(_, completion)
+	completion({failure = "Mock disks cannot export a live filesystem snapshot."})
 end
 
 return Mock

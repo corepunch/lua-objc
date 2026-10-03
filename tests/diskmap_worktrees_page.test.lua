@@ -18,7 +18,7 @@ page, worktrees = Host.new("worktrees", {model = model, service = service,
 	rescan = function() changed = changed + 1 end, refresh = function() published = published + 1; page:update(page.state) end})
 page:mount(ns.VStack {}, {query = ""})
 local refs = page.refs
-t.expect(worktrees.loaded and not worktrees.busy, "the scan completes")
+t.expect(worktrees.stock.loaded and not worktrees.stock.busy, "the scan completes")
 local function listed()
 	local count = 0
 	for _, id in ipairs({"removeList", "reviewList", "missingList", "repositoryList"}) do count = count + refs[id].rowCount end
@@ -38,13 +38,13 @@ t.expect(order[refs.decisionHost] < order[refs.removeSection] and order[refs.rem
 	and order[refs.reviewSection] < order[refs.repositories], "decision, removable, review, then repositories")
 for _, row in ipairs(worktrees.lists.removeList) do t.assertEqual(row.roleLabel, "Ready", "a removable worktree reads Ready") end
 local byName = {}
-for _, row in ipairs(worktrees.rows) do byName[row.name] = row end
+for _, row in ipairs(worktrees.stock.rows) do byName[row.name] = row end
 t.assertEqual(byName.MockProject.state, "primary", "the primary checkout is protected")
 t.assertEqual(byName["coin-quest"].state, "candidate", "a clean, merged Claude worktree is a candidate")
 t.assertEqual(byName.navigation.state, "candidate", "a published, unmerged one is too")
 t.assertEqual(byName.MockProject.manager, nil, "the primary has no manager")
 local codexDirty, codexDetached
-for _, row in ipairs(worktrees.rows) do
+for _, row in ipairs(worktrees.stock.rows) do
 	if row.name == "3f2a/MockProject" then codexDirty = row elseif row.name == "9bd1/MockProject" then codexDetached = row end
 end
 t.assertEqual(byName["3f2a/MockProject"] ~= nil and byName["9bd1/MockProject"] ~= nil, true, "worktrees named after their repository are told apart by their own folder")
@@ -118,16 +118,16 @@ for _, argument in ipairs(removedPaths[1]) do t.expect(argument ~= "--force", "r
 t.expect(worktrees.result:find("Removed 1 worktree", 1, true) and worktrees.result:find("Skipped navigation", 1, true), "the result separates removed from skipped: " .. tostring(worktrees.result))
 t.expect(worktrees.result:find("Free space", 1, true) and worktrees.result:find("not moved to the Trash", 1, true), "the result reports measured free space and that nothing went to the Trash: " .. tostring(worktrees.result))
 t.expect(changed > 0, "the root remeasures")
-t.assertEqual(#worktrees.rows, 6, "the removed worktree is gone from the next listing")
-t.assertEqual(byName.MockProject ~= nil and worktrees.rows[1] ~= nil, true, "the rest are still listed")
+t.assertEqual(#worktrees.stock.rows, 6, "the removed worktree is gone from the next listing")
+t.assertEqual(byName.MockProject ~= nil and worktrees.stock.rows[1] ~= nil, true, "the rest are still listed")
 
 -- Prune: its own review; forgets the registration, never a checkout.
 local confirmationsBefore = #confirmations
 t.expect(page.actions.prune(), "prune runs")
 t.assertEqual(#confirmations, confirmationsBefore + 1, "prune has its own confirmation")
 t.expect(confirmations[#confirmations][2]:find("No checkout is deleted", 1, true), "which says nothing is deleted")
-t.assertEqual(#worktrees.rows, 5, "only the missing registration disappears")
-for _, row in ipairs(worktrees.rows) do t.expect(row.state ~= "missing", "no missing registration remains") end
+t.assertEqual(#worktrees.stock.rows, 5, "only the missing registration disappears")
+for _, row in ipairs(worktrees.stock.rows) do t.expect(row.state ~= "missing", "no missing registration remains") end
 t.expect(worktrees.result:find("No checkout was deleted", 1, true), "and the result says so")
 
 -- A failing removal is reported and the rest continue.
@@ -176,7 +176,7 @@ delayed.worktreeScan = function(self, roots, done, progress)
 end
 local lifecycle, lifecycleWorktrees = Host.new("worktrees", {model = Store.new(delayed.home), service = delayed})
 lifecycleWorktrees:load()
-t.expect(lifecycleWorktrees.busy and not lifecycleWorktrees.loaded, "a background load is pending before the page mounts")
+t.expect(lifecycleWorktrees.stock.busy and not lifecycleWorktrees.stock.loaded, "a background load is pending before the page mounts")
 lifecycle:mount(ns.VStack {}, {query = ""})
 t.assertEqual(#pending, 1, "mounting during a load does not start a second one")
 t.assertEqual(lifecycle.refs.computingStatus.stringValue, "Looking for Git worktrees…", "the page shows one progress state while it loads")
@@ -184,11 +184,11 @@ t.expect(lifecycle.refs.removeList == nil and lifecycle.refs.decisionAction == n
 lifecycle:dispose()
 lifecycle:mount(ns.VStack {}, {query = ""})
 pending[1]()
-t.expect(not lifecycleWorktrees.busy and lifecycleWorktrees.loaded, "the pending load finishes after navigating away and back")
+t.expect(not lifecycleWorktrees.stock.busy and lifecycleWorktrees.stock.loaded, "the pending load finishes after navigating away and back")
 t.assertEqual(lifecycle.refs.removeList.rowCount, 2, "and the mounted page shows its result")
 t.expect(lifecycle.refs.decisionAction.enabled, "with its review action ready")
 local unmounted, unmountedWorktrees = Host.new("worktrees", {model = Store.new(delayed.home), service = delayed})
 unmountedWorktrees:load(); unmounted:mount(ns.VStack {}, {query = ""}); unmounted:dispose()
 pending[#pending]()
-t.expect(unmountedWorktrees.loaded and not unmountedWorktrees.busy and require("data.model").db.worktreePlan ~= nil, "a load that finishes while the page is closed still publishes the plan")
+t.expect(unmountedWorktrees.stock.loaded and not unmountedWorktrees.stock.busy and require("data.model").db.worktreePlan ~= nil, "a load that finishes while the page is closed still publishes the plan")
 os.exit(t.summary() and 0 or 1)

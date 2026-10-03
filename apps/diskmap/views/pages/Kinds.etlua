@@ -20,16 +20,13 @@
           <% for _, kind in ipairs(kinds) do %>
           <SectorMark cornerRadius="<%= CHART.corner %>" id="<%= kind.id %>" value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
           <% end %>
-          <VStack spacing="0" alignment="center">
-            <Label id="kindsTotal" text="<%= total %>" size="<%= CHART.total %>" minimumScaleFactor="<%= CHART.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
-            <Label text="in files" size="<%= CHART.caption %>" minimumScaleFactor="<%= CHART.captionScale %>" lines="1" color="secondary" />
-          </VStack>
+          <ChartCenter id="kindsCenter" total="<%= total %>" caption="in files" totalSize="<%= CHART.total %>" captionSize="<%= CHART.caption %>" totalScale="<%= CHART.totalScale %>" captionScale="<%= CHART.captionScale %>" />
         </SectorChart>
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="8" alignment="leading">
           <Label text="<%= headline.title %>" size="13" weight="semibold" maxWidth="infinity" lines="0" />
-          <DisclosureGroup label="What this inventory includes" expanded="false" indicatorWidth="26" indicatorSpacing="10">
+          <Disclosure label="What this inventory includes" expanded="false">
             <Label text="<%= inventoryNote %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
-          </DisclosureGroup>
+          </Disclosure>
           <Button id="showHeadline" title="Show Largest Files" style="link" action="showHeadline" />
         </VStack>
       </HStack>

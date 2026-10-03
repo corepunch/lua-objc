@@ -175,7 +175,7 @@ function AppKit.Window(props)
 	local height = (has_requested_size
 			and (requested_size.height or requested_size[2]))
 		or props.height or 360
-	local has_workspace = props.sidebar ~= nil and props.content ~= nil
+	local has_workspace = props.content ~= nil and type(props.content) == "userdata"
 	local transparent_titlebar = props.transparentTitlebar
 	if transparent_titlebar == nil then
 		transparent_titlebar = has_workspace
@@ -341,6 +341,8 @@ end
 -- so controllers never manage a Scope. UIKit.presentSheet shares this
 -- signature; `parent` is the AppKit window the sheet attaches to.
 local sheetScopes = setmetatable({}, { __mode = "k" })
+local parentSheets = setmetatable({}, { __mode = "k" })
+local sheetParents = setmetatable({}, { __mode = "k" })
 local defaultFocusViews = setmetatable({}, { __mode = "k" })
 
 local function buildScoped(contentOrBuilder)
@@ -387,10 +389,18 @@ end
 function AppKit.presentSheet(contentOrBuilder, options)
 	options = options or {}
 	assert(options.parent, "presentSheet requires options.parent on AppKit")
+	assert(not parentSheets[options.parent], "presentSheet: parent already has a sheet")
 	local scope, results = buildScoped(contentOrBuilder)
 	local sheet = results[1]
+	local ok, err = pcall(function()
+		if not _G.__headless then sheet:presentSheet(options.parent) end
+	end)
+	if not ok then
+		if scope then scope:dispose() end
+		error(err, 0)
+	end
 	if scope then sheetScopes[sheet] = scope end
-	if not _G.__headless then sheet:presentSheet(options.parent) end
+	parentSheets[options.parent], sheetParents[sheet] = sheet, options.parent
 	applyDefaultFocus(sheet)
 	return table.unpack(results, 1, results.n)
 end
@@ -408,6 +418,8 @@ function AppKit.present(panel, parent, props)
 end
 
 function AppKit.dismiss(window)
+	local parent = sheetParents[window]
+	if parent then parentSheets[parent], sheetParents[window] = nil, nil end
 	window:dismiss()
 	local scope = sheetScopes[window]
 	sheetScopes[window] = nil
@@ -2571,10 +2583,11 @@ end
 --- @platform AppKit uses the AppKit implementation.
 function AppKit.Alert(props)
 	props = props or {}
+	if _G.__headless then return props.response or 1 end
 	return bridge._alert(
 		props.title or "",
 		props.message or "",
-		props.buttons or { "OK" })
+		props.buttons or { "OK" }, props.parent)
 end
 
 --- Watches files or directory trees for changes (FSEvents).

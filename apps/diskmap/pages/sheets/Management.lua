@@ -107,7 +107,7 @@ end
 
 -- The count of local snapshots joins the status line of System Data.
 function ManagementSheet:activate()
-	if self.rootId ~= "system-data" or not self.service.snapshotCount then return end
+	if self.rootId ~= "system-data" then return end
 	local sheet = self.sheet
 	self.service.snapshotCount(function(count, dates)
 		if count == nil or self.sheet ~= sheet then return end

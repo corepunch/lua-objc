@@ -43,26 +43,26 @@ local window = app:createWindow()
 for _, row in ipairs(Locations:leaves()) do
 	local destination = Locations:destination(row.id)
 	t.expect(destination ~= nil, row.id .. " has a destination")
-	if destination.page then t.expect(app.pages[destination.page] ~= nil, row.id .. " opens an existing page: " .. destination.page) end
+	if destination.page then t.expect(app.env.manifest.pages[destination.page] ~= nil, row.id .. " opens an existing page: " .. destination.page) end
 	if destination.category then t.expect(Locations:find(destination.category) ~= nil, row.id .. " opens an existing category") end
 end
 
 -- Largest Items: a row opens where its resource lives, not its whole category.
 app:show("largest")
-local rows = Locations:largest(app.scan.disk, 100, "")
+local rows = Locations:largest(app.env.scan.disk, 100, "")
 local function rowOf(id)
 	for index, row in ipairs(rows) do if row.id == id then return index - 1 end end
 end
 t.expect(rowOf("projects") ~= nil and rowOf("simulators") ~= nil, "the fixture ranks projects and simulators")
-app.refs.largest:activateRow(rowOf("projects"))
+app.page.refs.largest:activateRow(rowOf("projects"))
 t.assertEqual(app.destination, "projects", "Developer projects open the Projects page")
-t.expect(app.management.sheet == nil, "and no category sheet")
+t.expect(app.env.management.sheet == nil, "and no category sheet")
 local sizes = {}
 Model.db.projectInfo = {}
 for _, project in ipairs(Projects:groups(nil, nil, nil)) do table.insert(sizes, project.bytes) end
 for index = 2, #sizes do t.expect(sizes[index - 1] >= sizes[index], "projects are listed largest first") end
 app:show("largest")
-app.refs.largest:activateRow(rowOf("simulators"))
+app.page.refs.largest:activateRow(rowOf("simulators"))
 t.assertEqual(app.destination, "simulators", "Simulator devices open the Simulators page")
 app:show("largest")
 local leaf
@@ -71,11 +71,11 @@ for _, row in ipairs(rows) do
 	if destination.select then leaf = row; break end
 end
 t.expect(leaf ~= nil, "the fixture ranks a location that lives in a category list")
-app.refs.largest:activateRow(rowOf(leaf.id))
+app.page.refs.largest:activateRow(rowOf(leaf.id))
 local parent = Locations:find(leaf.id):parent()
-t.assertEqual(app.management.rootId, parent.id, "a location opens its own group")
-t.assertEqual(app.management.selectedId, leaf.id, "with its row selected")
-local list = app.management.refs.rows1
+t.assertEqual(app.env.management.rootId, parent.id, "a location opens its own group")
+t.assertEqual(app.env.management.selectedId, leaf.id, "with its row selected")
+local list = app.env.management.refs.rows1
 local selected = list.documentView.selectedRow
 t.expect(selected >= 0, "the list shows the selection")
 t.assertEqual(bridge._tableCell(list, 0, selected).textField.stringValue, leaf.name, "on the row that was opened")
@@ -87,7 +87,7 @@ for index = 0, list.rowCount - 1 do
 	if bytes and previous then t.expect(previous >= bytes, "the category list is sorted by size") end
 	previous = bytes or previous
 end
-app.management:close()
+app.env.management:close()
 
 -- The same route from every other place that opens a resource.
 app:open("simulators")
@@ -100,19 +100,19 @@ app.page.request:activateRow({id = "simulators"})
 t.assertEqual(app.destination, "simulators", "the Developer page uses it")
 app:show("developer")
 app.page.request:activateRow({id = "xcode-app"})
-t.expect(app.sdks.sheet ~= nil, "an Xcode installation opens the SDK sheet")
-app.sdks:close()
+t.expect(app.env.sdks.sheet ~= nil, "an Xcode installation opens the SDK sheet")
+app.env.sdks:close()
 app:show("cleanup")
 app.page.request:activateRow({id = "simulators"})
 t.assertEqual(app.destination, "simulators", "Clean Up uses it")
 app:show("cleanup")
-app.page.request:activateRow({id = "old-files", page = "files", filter = 2})
-t.expect(app.destination == "files" and app:request("files").filterIndex == 2, "a row that stands for a page opens it filtered")
+app.page.request:activateRow({id = "old-files", page = "files", filter = "Unused for a year"})
+t.expect(app.destination == "files" and app.env:page("files").filterIndex == 3, "a row that stands for a page opens it filtered")
 -- Inside a category list, a row that lives elsewhere leaves the sheet.
 app:open("developer")
-t.assertEqual(app.management.rootId, "developer", "a category opens its sheet")
-app.management:review("simulators")
-t.expect(app.management.sheet == nil and app.destination == "simulators", "its simulator row opens the Simulators page")
+t.assertEqual(app.env.management.rootId, "developer", "a category opens its sheet")
+app.env.management:review("simulators")
+t.expect(app.env.management.sheet == nil and app.destination == "simulators", "its simulator row opens the Simulators page")
 app:open("updates")
 t.assertEqual(app.destination, "updates", "an id that names no resource is a page")
 

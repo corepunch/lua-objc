@@ -198,7 +198,21 @@ static int bridge_alert(lua_State *L) {
 		lua_pop(L, 1);
 	}
 
-	NSModalResponse response = [alert runModal];
+	NSWindow *parent = lua_isnoneornil(L, 4) ? nil : check_objc(L, 4);
+	NSModalResponse response;
+	if (parent) {
+		if (![parent isKindOfClass:[NSWindow class]]) return luaL_error(L, "Alert parent must be a window");
+		while (parent.attachedSheet) parent = parent.attachedSheet;
+		__block NSModalResponse selected = NSModalResponseCancel;
+		[alert beginSheetModalForWindow:parent completionHandler:^(NSModalResponse result) {
+			selected = result;
+			[NSApp stopModal];
+		}];
+		[NSApp runModalForWindow:alert.window];
+		response = selected;
+	} else {
+		response = [alert runModal];
+	}
 	lua_pushinteger(L, (lua_Integer)(response - NSAlertFirstButtonReturn + 1));
 	return 1;
 }

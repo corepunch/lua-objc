@@ -3,159 +3,91 @@ local ns = require("AppKit")
 local App = require("App")
 local xml = require("ui.xml")
 local Workflows = require("apps.diskmap.models.Workflows")
-local History = require("apps.diskmap.helpers.History")
 local Format = require("apps.diskmap.helpers.Format")
-local Store = require("apps.diskmap.Store")
+local CollectorController = require("apps.diskmap.controllers.CollectorController")
+local Environment = require("apps.diskmap.controllers.Environment")
 local Provider = require("apps.diskmap.services.Provider")
-local ScanJob = require("apps.diskmap.services.Scan")
 local Keep = require("apps.diskmap.flows.Keep")
 local Manage = require("apps.diskmap.flows.Manage")
-local Rows = require("apps.diskmap.flows.Rows")
 local ScanProgress = require("apps.diskmap.controllers.ScanProgressController")
 local NavigationController = require("apps.diskmap.controllers.NavigationController")
-local Notifications = require("apps.diskmap.services.Notifications")
 local CommandsController = require("apps.diskmap.controllers.CommandsController")
-local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
-local WatchlistStore = require("apps.diskmap.services.WatchlistStore")
-local Manifest = require("data.manifest")
 local Model = require("data.model")
-local Routes = require("data.routes")
 local SheetController = require("apps.diskmap.controllers.SheetController")
-local Sheets = require("apps.diskmap.pages.Sheets")
 local PageController = require("data.pagecontroller")
 local Scans = require("apps.diskmap.models.Scans")
 local Categories = require("apps.diskmap.models.Categories")
 local Suggestions = require("apps.diskmap.models.Suggestions")
 local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/layouts/" .. name .. ".etlua", data or {}, ns) end
--- Services grow optional features; a provider that lacks one simply does not
--- offer it. rawget keeps strict test doubles from reporting a probe as a call.
-local function optional(service, name)
-	local fn = Provider.offers(service, name)
-	return type(fn) == "function" and fn or nil
-end
-function Controller.new(service)
-	service = service or Provider.select(App.args())
-	-- A virtual disk brings its own home folder so catalog paths match it.
-	local home = Provider.offers(service, "home") or os.getenv("HOME") or "/Users"
-	-- The store this window's models read; every page and action binds it.
-	local self = setmetatable({mock = Provider.offers(service, "mock") == true, model = Store.new(home), query = ""}, Controller)
-	-- Everything this window asks of its service calls back with its store bound.
-	service = Provider.bind(service, self.model)
-	self.service = service
-	if self.mock then
-		for _, row in ipairs(Locations:leaves()) do row.appIcon = nil end
-	end
-	local loadFolders = optional(service, "loadFolders")
-	self.model.projectRoots = loadFolders and loadFolders("projects") or {}
-	-- Scan ticks arrive many times a second, so they apply immediately: an
-	-- animated transaction would diff the layout of the whole page on each
-	-- one and fight the user's scrolling.
-	self.scan = ScanJob.new(self.model, service, home, function() self:scanChanged() end, function() self:scanFinished() end)
-	self.notifications = Notifications.new(self.model, service, {
-		mark = function(items) self.rowActions:markAll(items) end,
-		review = function() self:openReview() end,
-		show = function() if self.window then self.window:show() end end,
-	})
-	-- Every list, menu and link opens a resource through this one function.
-	local open = function(id) self:open(id) end
-	self.navigation = NavigationController.new(function(id, fromHistory) self:show(id, false, fromHistory) end)
-	self.watchlist = WatchlistStore.new(self.model, service, function() self:updateRows() end)
-	-- A live scan compares with the saved Mock HDD snapshot, the previous
-	-- state of this Mac; Mock HDD itself has nothing earlier to compare with.
-	if not self.mock then self.snapshots = self:snapshotComparison(Provider.savedSnapshotPath(), true) end
-	-- What other pages measured, for every page that states Clean Up's totals,
-	-- so they all name the same number.
-	self.cleanupSources = function() return {apps = self:request("applications"):summary()} end
-	-- Every page of app.xml is built from one context, by the controller its
-	-- manifest entry names. `pages` fills as they are built; pages look each
-	-- other up when they run, not when they are built.
-	self.pages = {}
-	local context = {
-		model = self.model, service = service, pages = self.pages,
-		open = open,
-		show = function(id, remount) self:show(id, remount) end,
-		showFiltered = function(id, filter, kind) self:showFiltered(id, filter, kind) end,
-		search = function(id, text) self:search(id, text) end,
-		rescan = function() self.scan:start() end,
+function Controller.new(service, launch)
+	launch = launch or Provider.launch(App.args(), service)
+	local self = setmetatable({launch = launch, query = "", pages = {}}, Controller)
+	local router = {
+		open = function(id, params) return self:open(id, params) end,
+		show = function(id, params) return self:show(id, params) end,
+		search = function(id, text) return self:search(id, text) end,
 		refresh = function() self:updateRows() end,
-		log = function(...) self.review:log(...) end,
-		notifications = self.notifications,
+		changed = function() self:scanChanged() end,
 		basketChanged = function() self:basketChanged() end,
-		openHistory = function() self.history:open(self.window) end,
+		openHistory = function() self.env.history:open(self.window) end,
 		openReview = function(path) self:openReview(path) end,
-		request = function(id) return self:request(id) end,
 		keep = function(id) self:keep(id) end,
-		scanning = function() return self.scan.job ~= nil end,
-		onboarded = function(granted)
-			self.fullDiskAccess = granted == true
-			self.scan:start()
-			if self.tour:needed(self.scan.disk) then self.tour:open(self.window) end
-		end,
-		cleanupSources = self.cleanupSources,
 		destination = function() return self.destination end,
-		watchlist = self.watchlist,
-		mapStyle = Provider.mapStyle(App.args()),
-		volumeName = function() return self:state().volumeName end,
 		access = function() self:grantAccess() end,
 		openChanges = function()
-			if self.snapshots and self.snapshots.result then self.changesSheet:open(self.window, self.snapshots.result) end
+			if self.env.snapshots and self.env.snapshots.result then self.env.session.changesSheet:open(self.window, self.env.snapshots.result) end
 		end,
 		shortcuts = function() return self.shortcuts or {} end,
-		command = function(name) self.commandActions[name]() end,
+		command = function(name) return self.commandActions[name]() end,
+		beforeSheet = function() if self.progress then self.progress:close() end end,
+		raise = function() if self.window then self.window:show() end end,
+		promptParent = function() return self.window end,
 		links = CommandsController.links(),
+		onboarded = function(granted)
+			self.env.session.fullDiskAccess = granted == true
+			self.env.scan:start()
+			if self.env.tour:needed(self.env.scan.disk) then self.env.tour:open(self.window) end
+		end,
 	}
-	self.context = context
-	-- The sheets of the window, each the model of its own request.
-	local function sheet(id) return SheetController.page(Sheets[id], id, context) end
-	self.settings, self.review, self.history = sheet("settings"), sheet("review"), sheet("history")
-	self.sdks, self.management, self.changesSheet = sheet("sdks"), sheet("management"), sheet("snapshotChanges")
-	self.progress = ScanProgress.new(self.scan)
-	context.review = self.review
-	-- The row menus and marks of the window itself (a drop, a notification).
-	self.rowActions = Rows({app = context})
-	-- Every page of app.xml is drawn from the page its route builds, the
-	-- first time it is asked for (`request`).
-	local manifest = Manifest.load("apps/diskmap/app.xml")
-	self.routes, self.requests = require("apps.diskmap.routes"), {}
-	for _, entry in ipairs(manifest.order) do
-		self.pages[entry.id] = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/", store = self.model,
-			request = function() return self:request(entry.id) end})
-	end
-	self.manifest = manifest
-	self.commands = CommandsController.new(self.model, service, {
+	self.env = Environment.new(service or launch.service, launch, router)
+	for _, sheet in pairs(self.env.context.sheets) do SheetController.attach(sheet, self.env.model) end
+	self.navigation = NavigationController.new(function(id, fromHistory)
+		local key = id:match("^watched:(.+)$")
+		self:show(key and "watched" or id, key and {key = key} or {}, fromHistory)
+	end)
+	self.collectorController = CollectorController.new(self.env.context)
+	self.progress = ScanProgress.new(self.env.scan)
+	self.commands = CommandsController.new(self.env.model, self.env.service, {
 		show = function(id) self:show(id) end,
 		destination = function() return self.destination end,
-		scanning = function() return self.scan.job ~= nil end,
-		refresh = function() self.scan:start() end,
-		cancel = function() self.scan:cancel() end,
+		scanning = function() return self.env.scan.job ~= nil end,
+		refresh = function() self.env.scan:start() end,
+		cancel = function() self.env.scan:cancel() end,
 		settings = function() self:openSettings() end,
 		find = function() self:focusSearch() end,
 		search = function(id, text) self:search(id, text) end,
-		emptyTrash = function() Manage({app = self.context}):manage("user-trash") end,
+		emptyTrash = function() Manage({app = self.env.context}):manage("user-trash") end,
 		navigation = self.navigation,
 		review = function() self:openReview() end,
-		history = function() self.history:open(self.window) end,
+		history = function() self.env.history:open(self.window) end,
 		openFolder = function() self:chooseFolder() end,
 		quickLook = function() self:quickLook() end,
 		canQuickLook = function() local model = self.page and self.page.request; return model ~= nil and model.canQuickLook ~= nil and model:canQuickLook() end,
 		openScan = function() self:openScan() end,
 		compareScan = function() self:compareScan() end,
 		exportScan = function() self:exportScan() end,
-		tour = function() self.tour:open(self.window) end,
+		tour = function() self.env.tour:open(self.window) end,
 	})
-	-- The menu bar enters the window here: every command and validator runs
-	-- with this window's store bound.
 	self.commandActions = self.commands:actions()
-	for name, action in pairs(self.commandActions) do self.commandActions[name] = Model.bound(self.model, action) end
+	for name, action in pairs(self.commandActions) do self.commandActions[name] = Model.bound(self.env.model, action) end
 	return self
 end
--- Shows a page filtered to `text`, as if typed into the toolbar search:
--- how Help menu search results open their topic.
+
 function Controller:search(id, text)
 	self.query = text or ""
 	if self.searchField then self.searchField.stringValue = self.query end
-	self:show(id, true)
+	self:show(id, {remount = true})
 end
 function Controller:focusSearch()
 	if self.window and self.searchField then self.window:focus(self.searchField) end
@@ -164,192 +96,101 @@ end
 -- its own, or its category's list with its row selected. An id that names
 -- no resource is a page ("updates").
 function Controller:open(id, filter)
-	local destination = Locations:destination(id) or self.pages[id] and {page = id}
+	local destination = Locations:destination(id) or self.env.manifest.pages[id] and {page = id}
 	if not destination then return end
 	if destination.page then
-		self.management:close(); self:show(destination.page)
+		self.env.management:close(); self:show(destination.page)
 	elseif destination.sheet == "sdks" then
-		self.management:close(); self.sdks:open(self.window, Locations:find(id))
+		self.env.management:close(); self.env.sdks:open(self.window, Locations:find(id))
 	else
-		self.management:open(self.window, destination.category, {filter = filter, select = destination.select})
+		self.env.management:open(self.window, destination.category, {filter = filter, select = destination.select})
 	end
 end
--- Shows a page narrowed to one of its filters, as Clean Up's pointers to
--- Large Files and Applications do.
--- `kind` narrows Large Files to one File Types kind.
-function Controller:showFiltered(id, filter, kind)
-	if id == "files" then self:request(id):focus(kind, filter)
-	elseif id == "applications" then self:request(id):focus(filter) end
-	self:show(id, true)
-end
--- The page `id` built from its route, when first asked for.
-function Controller:request(id)
-	if not self.requests[id] then
-		local entry = self.manifest.pages[id]
-		self.requests[id] = Routes.page(Routes.find(self.routes, entry), entry, self.context, "apps.diskmap")
-	end
-	return self.requests[id]
-end
--- Everything a page needs to present the current scan, in one value.
 function Controller:state()
-	return {disk = self.scan.disk, capacity = self.capacity, snapshotCount = self.snapshotCount, changes = self.snapshotChanges or self.changes,
-		fullDiskAccess = self.fullDiskAccess, diskAccess = self.diskAccess,
-		query = self.query, mock = self.mock, volumeName = self.mock and Provider.offers(self.service, "label") or "Startup Disk",
-		status = (Provider.offers(self.service, "badge") and (Provider.offers(self.service, "badge") .. " · ") or "") .. (not self.model.includeMedia and "Media libraries excluded · " or "") .. self.scan.status}
+	local state = self.env:state()
+	state.query = self.query
+	return state
 end
+
 function Controller:subtitle()
-	local text = Scans:summary(self.scan.disk, self.capacity).short or ""
-	local marked = self.review:count()
+	local text = Scans:summary(self.env.scan.disk, self.env.session.capacity).short or ""
+	local marked = self.env.basket:count()
 	if marked > 0 then text = text .. " · " .. marked .. " marked for cleanup" end
 	return text
 end
--- Sidebar sizes come from measured categories and from pages that have
--- already loaded their own inventory.
+-- Sidebar sizes come from measured categories and scan-owned inventories.
 function Controller:badges()
 	local badges = {}
-	local summary = Scans:summary(self.scan.disk, self.capacity)
+	local summary = Scans:summary(self.env.scan.disk, self.env.session.capacity)
 	if summary.available then badges.overview = summary.used end
 	-- Clean Up's badge is what it could recover, the number its page leads
 	-- with; every other badge is a total stored.
-	if self.cleanupSources and self.scan.job == nil then
-		local eligible = Suggestions:presentation("", self.cleanupSources()).eligibleBytes
+	if self.env.scan.job == nil then
+		local eligible = Suggestions:presentation("", self.env:sources()).eligibleBytes
 		if eligible > 0 then badges.cleanup = Format.size(eligible) end
 	end
 	local simulators = Categories:row("simulators")
 	if simulators and simulators.bytes and simulators.bytes > 0 and not simulators.calculating then badges.simulators = simulators.size end
 	-- A workflow's badge is its page's own total, so the sidebar and the page
 	-- header name one number.
-	local present = self:presentWorkflows()
+	local present = self.env:presentWorkflows()
 	for _, workflow in ipairs(Workflows:all()) do
 		if present[workflow.id] then badges[workflow.id] = workflow:badge() end
 	end
-	for _, id in ipairs({"xcode", "projects"}) do
-		badges[id] = self:request(id):badge()
-	end
-	local folder = self.requests.folder
+	badges.xcode = require("apps.diskmap.models.Inventories"):xcodeBadge()
+	badges.projects = require("apps.diskmap.models.Projects"):badge()
+	local folder = self.env.requests.folder
 	badges.folder = folder and folder:badge()
 	return badges
 end
 function Controller:updateRows()
+	if self.env.closed then return end
 	if self.window then self.window.subtitle = self:subtitle() end
 	-- App facts load once the scan has measured the data folders they need.
-	if self.model.files and not self.model.files.measuring then self:request("applications"):loadFacts() end
+	if self.env.model.files and not self.env.model.files.measuring then self.env.inventories:load("applications") end
 	-- A page may re-render its template, so its refs are read after updating.
-	if self.page then self.page:update(self:state()); self.refs = self.page.refs end
+	if self.page then self.page:update(self:state()) end
 	self.navigation:setBadges(self:badges())
-	self.navigation:setWatched(self.watchlist:rows())
-	self.navigation:setWorkflows(self:presentWorkflows())
-	self.management:draw()
+	self.navigation:setWatched(self.env.watchlist:rows())
+	self.navigation:setWorkflows(self.env:presentWorkflows())
+	self.env.management:draw()
 end
 -- A kind of work leads nobody who does not do it (#52): its pages appear
 -- once one of its markers exists (Xcode for Developer, Logic Pro for Music
 -- Production) or its locations measure enough to matter. Markers are checked
 -- once, and a page that appeared stays for the session: a rescan clears
 -- sizes, and the sidebar must not lose rows while it runs.
-function Controller:presentWorkflows()
-	if not self.workflowsPresent then
-		local exists = optional(self.service, "exists")
-		self.workflowsPresent = {}
-		for _, workflow in ipairs(Workflows:all()) do
-			self.workflowsPresent[workflow.id] = exists ~= nil and workflow:marked(exists) or nil
-		end
-	end
-	for _, workflow in ipairs(Workflows:all()) do
-		if not self.workflowsPresent[workflow.id] and workflow:measured() then self.workflowsPresent[workflow.id] = true end
-	end
-	return self.workflowsPresent
-end
--- A mark changes the title, the collector and the marked state shown on the
--- current page.
+
 function Controller:basketChanged()
 	if self.window then self.window.subtitle = self:subtitle() end
-	if self.collector then
-		local count = self.review:count()
-		self.collector.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.review:summary()
-		self.collector.collectorReview.enabled = count > 0
-		self.collector.collectorArea.hidden = count == 0 and not self.collectorDragging
-	end
+	self.collectorController:update()
 	if self.page and self.page.marksChanged then self.page:marksChanged() end
+	self.env.review:draw()
 end
 
--- A file drag reveals the empty staging area. Delay an exit to the next
--- run-loop turn: AppKit exits the parent before entering its child target.
-function Controller:collectorDrag(target, targeted)
-	self.dragTargets = self.dragTargets or {}
-	self.dragTargets[target] = targeted or nil
-	self.dragGeneration = (self.dragGeneration or 0) + 1
-	local generation = self.dragGeneration
-	if targeted then self:collectorDragged(generation)
-	else ns.async(function() ns.sleep(0); self:collectorDragged(generation) end) end
-end
-function Controller:collectorDragged(generation)
-	if generation ~= self.dragGeneration then return end
-	self.collectorDragging = next(self.dragTargets) ~= nil
-	if self.collector then self.collector.collectorArea.hidden = self.review:count() == 0 and not self.collectorDragging end
-end
-
--- Files dropped on the collector are marked for cleanup. A catalog location
--- keeps its cleanup rules; any other file or folder is measured first and
--- then validated like everything else in the basket.
-function Controller:dropToMark(paths)
-	local refused, pending, accepted = {}, {}, 0
-	for _, path in ipairs(paths) do
-		local resource
-		for _, row in ipairs(Locations:leaves()) do
-			if row.path == path then resource = row; break end
-		end
-		local item
-		if resource and self.rowActions:markableResource(resource) then
-			local measured = self.model.measurements[resource.id]
-			item = {path = path, name = resource.name, bytes = measured and measured.bytes, resourceId = resource.id,
-				source = "Dropped", consequence = resource.consequence}
-		else
-			item = {path = path, name = path:match("([^/]+)$") or path, source = "Dropped"}
-			table.insert(pending, item)
-		end
-		if self.review:isMarked(path) then
-			accepted = accepted + 1
-		else
-			local ok, reason = self.review:toggle(item)
-			if ok then accepted = accepted + 1 else table.insert(refused, (item.name or path) .. ": " .. tostring(reason)) end
-		end
-	end
-	if #refused > 0 then self.service.showError("Some items were not marked", table.concat(refused, "\n")) end
-	local measure = optional(self.service, "measure")
-	if #pending > 0 and measure then
-		local list = {}
-		for _, item in ipairs(pending) do table.insert(list, item.path) end
-		measure(list, function(sizes)
-			for index, item in ipairs(pending) do item.bytes = sizes[index] end
-			self:basketChanged()
-		end)
-	end
-	return accepted > 0
-end
 -- A folder or disk opened with Diskmap (dropped on the window or the Dock
 -- icon, chosen with Open Folder…, or `--folder=`) is measured and shown on
 -- the Folder Map, whatever page was showing.
 function Controller:openFolder(path)
 	if type(path) ~= "string" or path == "" then return false end
-	self:request("folder"):open(path)
-	self:show("folder")
+	self:show("folder", {path = path})
 	return true
 end
 
 function Controller:chooseFolder()
-	local pick = optional(self.service, "pickFolder")
-	local path = pick and pick("Open Folder")
+	local pick = self.env.service.pickFolder
+	local path = pick("Open Folder")
 	if path then self:openFolder(path) end
 end
 
 -- The Overview's access button: the startup disk first when the sandbox
 -- hides it (then measure again), otherwise Full Disk Access in Settings.
 function Controller:grantAccess()
-	if self.diskAccess == false then
-		if self.service.requestDiskAccess() then self.diskAccess = true; self.scan:start(); return true end
+	if self.env.session.diskAccess == false then
+		if self.env.service.requestDiskAccess() then self.env.session.diskAccess = true; self.env.scan:start(); return true end
 		return false
 	end
-	self.service.openSettings("privacy")
+	self.env.service.openSettings("privacy")
 	return true
 end
 
@@ -363,7 +204,9 @@ end
 -- A running scan shows in its progress window and nowhere else; the pages
 -- are drawn when it is over.
 function Controller:scanChanged()
-	if self.model.scan.running and self.window then
+	local sheetOpen = false
+	for _, sheet in pairs(self.env.context.sheets) do if sheet.sheet then sheetOpen = true end end
+	if self.env.model.scan.running and self.window and not sheetOpen then
 		self.progress:show(self.window)
 	else
 		self.progress:close()
@@ -372,204 +215,167 @@ function Controller:scanChanged()
 end
 -- After each measurement: refresh capacity and snapshots for hidden space,
 -- and record category totals when history is on.
-function Controller:scanFinished()
-	local access = optional(self.service, "hasFullDiskAccess")
-	-- false (known missing) differs from nil (the provider cannot tell).
-	if access then self.fullDiskAccess = access() == true else self.fullDiskAccess = nil end
-	local disk = optional(self.service, "hasDiskAccess")
-	if disk then self.diskAccess = disk() == true else self.diskAccess = nil end
-	local capacity = optional(self.service, "volumeCapacity")
-	self.capacity = capacity and capacity(self.model.home) or nil
-	local snapshots = optional(self.service, "snapshotCount")
-	if snapshots then snapshots(function(count) self.snapshotCount = count; self:updateRows() end) end
-	-- Clean Up ranks simulators by what the minimal device set would remove,
-	-- so the inventory is read whether or not the Simulators page is open.
-	if optional(self.service, "simulatorRuntimes") or optional(self.service, "simulatorDevices") then self:request("simulators"):load() end
-	if optional(self.service, "worktreeScan") then self:request("worktrees"):load() end
-	if self.settings.history then
-		local load, save = optional(self.service, "loadHistory"), optional(self.service, "saveHistory")
-		if load and save then
-			local entries = History.append(History.decode(load()), Categories:snapshot())
-			save(History.encode(entries))
-			self.changes = Categories:changes(entries, 30, 4)
-			self.notifications:historyRecorded(entries)
-		end
-	else
-		self.changes = nil
+
+
+function Controller:show(id, params, fromHistory)
+	params = params or {}
+	local remount = next(params) ~= nil
+	local key = id == "watched" and params.key
+	local entry = self.env.manifest.pages[id]
+	local page = self.pages[entry and entry.id]
+	if entry and not page then
+		page = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/", store = self.env.model,
+			request = function() return self.env:page(entry.id) end})
+		self.pages[entry.id] = page
 	end
-	if self.snapshots then self.snapshots:compare() end
-	self.watchlist:scanFinished()
-end
--- Changes since a snapshot replace history's category totals on the
--- overview: they name locations, not only categories.
-function Controller:snapshotComparison(path, cache)
-	return SnapshotComparison.new(self.model, self.service, {path = path, cache = cache,
-		changed = function(changes, failure)
-			self.snapshotChanges = changes
-			if failure then self.scan.status = "Could not compare with the snapshot: " .. failure end
-			self:updateRows()
-		end})
-end
--- Mounts a sidebar destination into the content pane. Pages own their
--- templates; the previous page is disposed before the next one mounts.
--- `remount` presents a page again after another page changed its focus;
--- `fromHistory` is set by Back and Forward, which must not record a visit.
--- Pages switch instantly, like any sidebar destination; charts appear drawn.
--- A watched location's sidebar row, "watched:<key>", opens the Watched
--- page focused on that location.
-function Controller:show(id, remount, fromHistory)
-	local key = id:match("^watched:(.+)$")
-	local page = self.pages[key and "watched" or id]
-	if not page or not self.content then return end
-	if key and not self.watchlist:find(key) then return end
+	if not page then error("Unknown Diskmap page: " .. tostring(id), 0) end
+	if not self.content then return end
+	if key and not self.env.watchlist:find(key) then return end
 	if self.destination == id and self.page and not remount then return end
+	local request = self.env:page(entry.id)
+	if request.focus and type(request.focus) == "function" then request:focus(params) end
 	if self.page then self.page:dispose() end
 	self.destination, self.page = id, page
-	self.refs = page:mount(self.content, self:state())
-	self.navigation:select(id, fromHistory)
-	self:updateRows()
-end
--- setMapStyle("rings" | "rectangles") switches the Map page's chart.
-function Controller:setMapStyle(style)
-	self:request("map"):setStyle(style)
+	page:mount(self.content, self:state())
+	self.navigation:select(key and ("watched:" .. key) or id, fromHistory)
 	self:updateRows()
 end
 
 -- Keep or stop keeping location `id`; a save that failed is said in the status.
 function Controller:keep(id)
-	local _, message = Keep({app = self.context}):toggle(id)
-	if message then self.scan.status = message end
+	local _, message = Keep({app = self.env.context}):toggle(id)
+	if message then self.env.scan.status = message end
 	self:updateRows()
 end
 -- Exported scans (#37 item 20): metadata only, the format --export-mock
 -- writes. Open shows one in its own window; Compare measures it and shows
 -- what changed since, like opt-in history without keeping history.
 function Controller:exportScan()
-	local pick = optional(self.service, "pickSaveFile")
-	local path = pick and pick("Export Scan", os.date("Diskmap %Y-%m-%d.diskmapscan"))
+	local pick = self.env.service.pickSaveFile
+	local path = pick("Export Scan", os.date("Diskmap %Y-%m-%d.diskmapscan"))
 	if not path then return end
-	self.scan.status = "Exporting a metadata-only scan…"; self:updateRows()
-	self.service.exportMockSnapshot(path, function(result)
-		self.scan.status = result.failure and result.failure ~= "" and ("Export failed: " .. result.failure)
+	self.env.scan.status = "Exporting a metadata-only scan…"; self:updateRows()
+	self.env.service.exportMockSnapshot(path, function(result)
+		self.env.scan.status = result.failure and result.failure ~= "" and ("Export failed: " .. result.failure)
 			or string.format("Exported %d file names and sizes", result.exportedFiles or 0)
 		self:updateRows()
 	end)
 end
-local function measureScan(path)
+local function readScan(path)
 	local Mock = require("apps.diskmap.services.Mock")
 	local service = Mock.new({fixturePath = path})
 	return service
 end
 function Controller:openScan()
-	local pick = optional(self.service, "pickFile")
-	local path = pick and pick("Open Scan")
+	if self.launch.isolated then
+		self.env.service.showError("Cannot open another window", "Leave isolated mode to open a scan in another window.")
+		return
+	end
+	local pick = self.env.service.pickFile
+	local path = pick("Open Scan")
 	if not path then return end
-	local ok, service = pcall(measureScan, path)
-	if not ok then self.service.showError("Could not open the scan", tostring(service)); return end
-	Controller.new(service):createWindow()
+	local ok, service = pcall(readScan, path)
+	if not ok then self.env.service.showError("Could not open the scan", tostring(service)); return end
+	Controller.new(service, {secondary = true}):createWindow()
 end
 function Controller:compareScan(path)
-	local pick = optional(self.service, "pickFile")
-	path = path or (pick and pick("Compare with Scan"))
+	local pick = self.env.service.pickFile
+	path = path or pick("Compare with Scan")
 	if not path then return end
-	self.snapshots = self:snapshotComparison(path, false)
-	self.snapshots:compare()
-	self:show("overview", true)
+	self.env.snapshots = self.env:snapshotComparison(path, false)
+	self.env.snapshots:compare()
+	self:show("overview", {remount = true})
 end
 function Controller:openSettings()
-	self.review:close()
-	self.settings:open(self.window)
+	self.env.review:close()
+	self.env.settings:open(self.window)
 end
 function Controller:openReview(path)
-	self.settings:close()
-	self.review:open(self.window, path)
+	self.env.settings:close()
+	self.env.review:open(self.window, path)
 end
 function Controller:createWindow()
-	self.scan.disk = self.service.diskSpace(self.scan.home)
-	if self.service.loadKeep then
-		for id, kept in pairs(self.service.loadKeep()) do if (Locations:find(id) or id:match("^simulator:") or id:match("^worktree:")) and kept == true then self.model.kept[id] = true end end
-	end
-	local capacity = optional(self.service, "volumeCapacity")
-	self.capacity = capacity and capacity(self.model.home) or nil
-	if self.settings.history then
-		local load = optional(self.service, "loadHistory")
-		if load then self.changes = Categories:changes(History.decode(load()), 30, 4) end
-	end
+	self.env:prepare()
 	local actions = setmetatable({
 		search = function(value) self.query = value or ""; self:updateRows() end,
 		reclaim = function() self:show("cleanup") end,
 	}, {__index = self.commandActions})
 	local data = self.commands:data()
-	data.windowTitle = Provider.offers(self.service, "badge") and ("Diskmap — " .. Provider.offers(self.service, "badge")) or "Diskmap"
+	data.windowTitle = self.env.service.badge and ("Diskmap — " .. self.env.service.badge) or "Diskmap"
 	data.subtitle = self:subtitle()
 	data.actions = actions
+	data.navigation = not self.launch.isolated
 	local cfg, windowRefs = render("Window", data)
 	self.searchField = windowRefs and windowRefs.search
 	self.shortcuts = self.commands:shortcuts(cfg.commands)
 	local content, contentRefs = render("Content", {actions = {
-		dropToMark = function(paths) return self:dropToMark(paths) end,
+		dropToMark = function(paths) return self.collectorController:dropToMark(paths) end,
 		dropToOpen = function(paths) return paths[1] ~= nil and self:openFolder(paths[1]) end,
 		review = function() self:openReview() end,
-		pageDrag = function(targeted) self:collectorDrag("page", targeted) end,
-		collectorDrag = function(targeted) self:collectorDrag("collector", targeted) end,
+		pageDrag = function(targeted) self.collectorController:drag("page", targeted) end,
+		collectorDrag = function(targeted) self.collectorController:drag("collector", targeted) end,
 	}})
-	self.navigation:setWatched(self.watchlist:rows())
-	self.navigation:setWorkflows(self:presentWorkflows())
-	cfg.content, cfg.sidebar = content, self.navigation:render()
+	self.navigation:setWatched(self.env.watchlist:rows())
+	self.navigation:setWorkflows(self.env:presentWorkflows())
+	cfg.content = content
+	if not self.launch.isolated then cfg.sidebar = self.navigation:render() end
 	self.content, self.collector = contentRefs.content, contentRefs
+	self.collectorController.refs = contentRefs
 	self:basketChanged()
 	self.window = ns.Window(cfg)
-	self:show(Provider.page(App.args()) or "overview")
+	self:show(self.launch.page or "overview")
 	-- Folders dropped on the Dock icon, including the one that launched
 	-- Diskmap, open like a folder dropped on the window.
-	local onOpen = optional(self.service, "onOpenFiles")
-	if onOpen then onOpen(function(paths)
+	local onOpen = self.env.service.onOpenFiles
+	if not self.launch.isolated and not self.launch.secondary then onOpen(function(paths)
 		if paths[1] then self:openFolder(paths[1]) end
 		if self.window then self.window:show() end
 	end) end
-	local folder = Provider.folder(App.args())
+	local folder = self.launch.folder
 	if folder then self:openFolder(folder) end
-	self.tour = SheetController.page(Sheets.tour, "tour", self.context)
-	local exportPath = Provider.exportPath(App.args())
+
+	local exportPath = self.launch.exportPath
 	if exportPath then
-		self.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
-		self.service.exportMockSnapshot(exportPath, function(result)
+		self.env.scan.status = "Creating a local metadata-only Mock HDD snapshot…"; self:updateRows()
+		self.env.service.exportMockSnapshot(exportPath, function(result)
 			if result.failure and result.failure ~= "" then
-				self.scan.status = "Mock snapshot failed: " .. result.failure
+				self.env.scan.status = "Mock snapshot failed: " .. result.failure
 			else
-				self.scan.status = string.format("Saved %d file names and allocated sizes%s",
+				self.env.scan.status = string.format("Saved %d file names and allocated sizes%s",
 					result.exportedFiles or 0, result.partial and " · partial; some locations were inaccessible" or "")
 			end
 			self:updateRows()
 		end)
+	elseif self.launch.isolated then
+		self.env.scan:start()
 	else
 		-- First launch without Full Disk Access explains it before the first
 		-- scan and starts the scan once access is granted or declined.
 		-- The welcome tour follows while the scan runs.
-		self.onboarding = SheetController.page(Sheets.onboarding, "onboarding", self.context)
-		if self.onboarding:needed() then self.onboarding:open(self.window)
+
+		if self.env.onboarding:needed() then self.env.onboarding:open(self.window)
 		else
-			self.scan:start()
-			if self.tour:needed(self.scan.disk) then self.tour:open(self.window) end
+			self.env.scan:start()
+			if self.env.tour:needed(self.env.scan.disk) then self.env.tour:open(self.window) end
 		end
 	end
 	local scope = ns.Scope.current()
-	if scope then scope:add(self.scan); scope:add({dispose = function() self:dispose() end}) end
-	self.notifications:apply()
-	self.service.monitor(function() return self.window.visible end, function()
-		if self.settings.enabled and not self.scan.job then self.scan:start() end
-	end)
+	if scope then scope:add(self.env.scan); scope:add({dispose = function() self:dispose() end}) end
+	if not self.launch.isolated and not self.launch.secondary then
+		self.env.notifications:apply()
+		self.env.service.monitor(function() return self.window.visible end, function()
+			if self.env.session.monitorEnabled and not self.env.scan.job then self.env.scan:start() end
+		end)
+	end
 	return self.window
 end
 -- The window is going: its page, sheets and running work go with it.
 function Controller:dispose()
 	if self.page then self.page:dispose() end
-	local folder = self.requests.folder
-	if folder then folder:cancel() end
-	local onOpen = optional(self.service, "onOpenFiles")
-	if onOpen then onOpen(nil) end
-	self.settings:close(); self.management:close(); self.sdks:close()
-	self.review:close(); self.history:close(); self.changesSheet:close(); self.notifications:stop()
+	self.collectorController:dispose()
+	if not self.launch.isolated and not self.launch.secondary then self.env.service.onOpenFiles(nil) end
+	self.progress:close()
+	self.env:dispose()
 end
 -- A window's code runs with the window's store bound (lua/data/model.lua),
 -- and this is where it is bound: the window is entered through a method of
@@ -578,7 +384,7 @@ end
 for name, method in pairs(Controller) do
 	if type(method) == "function" and name ~= "new" then
 		Controller[name] = function(self, ...)
-			Model.bind(self.model)
+			Model.bind(self.env.model)
 			return method(self, ...)
 		end
 	end

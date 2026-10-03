@@ -67,11 +67,11 @@ t.expect(not Simulators.command("delete", rows[1]), "running devices cannot be d
 rows[1].running = false; rows[1].id = "all"
 t.expect(not Simulators.command("delete", rows[1]), "wildcard deletion is forbidden")
 local calls, confirmed, refreshed = {}, false, 0
-local service = {command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
+local service = require("apps.diskmap.services.Contract").stub({command = function(argv, completion) table.insert(calls, {argv = argv, done = completion}) end,
 	decode = function() return data end, confirmAction = function() return confirmed end,
-	reveal = function() end, openSettings = function() end, openOwner = function() end}
+	reveal = function() end, openSettings = function() end, openOwner = function() end})
 local _, controller = Host.new("simulators", {model = model, service = service, rescan = function() refreshed = refreshed + 1 end})
-controller.inventory = data; controller.selected = Simulators.rows(data)[1]
+controller.stock.inventory = data; controller.selected = Simulators.rows(data)[1]
 t.expect(not controller:erase(), "cancel confirmation never launches a command")
 t.assertEqual(#calls, 0, "cancel has no side effects")
 confirmed = true; model.kept.simulators = true
@@ -87,14 +87,14 @@ t.expect(controller.error:find("device busy", 1, true), "command failures remain
 service.simulatorRuntimes = function(completion) table.insert(calls, {done = completion}) end
 controller:load(); local pending = calls[#calls]; pending.done({})
 -- #100: a load belongs to the inventory, not to one visit of the page.
-t.assertEqual(type(controller.runtimeList), "table", "a load that finishes after its page closed still records the inventory")
-t.expect(not controller.busy and controller.loaded, "and leaves the controller ready for the next visit")
+t.assertEqual(type(controller.stock.runtimeList), "table", "a load that finishes after its page closed still records the inventory")
+t.expect(not controller.stock.busy and controller.stock.loaded, "and leaves the controller ready for the next visit")
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
 local categoryRefreshes = 0
 local function management(open)
-	return SheetController.page(Sheets.management, "management", {model = model, service = service, scanning = function() return false end,
+	return require("tests.diskmap_sheet").new("management", {model = model, service = service, scanning = function() return false end,
 		rescan = function() categoryRefreshes = categoryRefreshes + 1 end,
 		keep = function(id) model.kept[id] = not model.kept[id] end, open = open or function() end})
 end
@@ -180,7 +180,7 @@ service.simulatorRuntimes = function(completion) completion(runtimeList) end
 local host = ns.VStack {}
 local simulatorUI, simulatorModel = Host.new("simulators", {model = model, service = service})
 simulatorUI:mount(host, {query = ""})
-simulatorModel.inventory, simulatorModel.runtimeList = data, runtimeList
+simulatorModel.stock.inventory, simulatorModel.stock.runtimeList = data, runtimeList
 simulatorUI:update({query = ""})
 t.assertEqual(simulatorUI.refs.filter.className, "NSSegmentedControl", "device filters are a segmented control")
 t.assertEqual(simulatorUI.refs.devices.rowCount, 2, "every device is listed")

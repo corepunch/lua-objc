@@ -1,4 +1,3 @@
-local Provider = require("apps.diskmap.services.Provider")
 local SheetRoute = require("apps.diskmap.pages.SheetRoute")
 local Tour = require("apps.diskmap.helpers.Tour")
 
@@ -16,20 +15,15 @@ function TourSheet:init()
 	self.service, self.page = self.app.service, 1
 end
 
-local function call(service, name, ...)
-	local fn = Provider.offers(service, name)
-	if type(fn) == "function" then return fn(...) end
-end
-
 -- On a real Mac only: the synthetic disk (no access probe) is for demos
 -- and screenshots, which a tour would cover. The flag is stored inverted
 -- so that a new install, with no flags, shows the tour.
-function TourSheet:showOnStart() return call(self.service, "loadFlag", "hideTour") ~= true end
-function TourSheet:setShowOnStart(show) call(self.service, "saveFlag", "hideTour", not show) end
+function TourSheet:showOnStart() return self.service.loadFlag("hideTour") ~= true end
+function TourSheet:setShowOnStart(show) self.service.saveFlag("hideTour", not show) end
 function TourSheet:toggleShowOnStart() self:setShowOnStart(not self:showOnStart()) end
 
 function TourSheet:needed(disk)
-	if type(Provider.offers(self.service, "hasFullDiskAccess")) ~= "function" then return false end
+	if self.service.hasFullDiskAccess() == nil then return false end
 	-- A storage alert needs a direct route to findings. The tour remains
 	-- available from Help, and the person’s show-on-start choice is preserved.
 	if disk and disk.totalKb and disk.totalKb > 0 and disk.freeKb and disk.freeKb / disk.totalKb < 0.1 then return false end

@@ -20,8 +20,8 @@ return function(capture, app)
 			capture.shot(here .. "captures/" .. page .. "-" .. appearance)
 		end
 		app:show("map")
-		app:setMapStyle("rectangles")
+		app:show("map", {style = "rectangles"})
 		capture.shot(here .. "captures/treemap-" .. appearance)
-		app:setMapStyle("rings")
+		app:show("map", {style = "rings"})
 	end
 end

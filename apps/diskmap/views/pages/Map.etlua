@@ -1,15 +1,5 @@
 <%
   local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, list = { minimum = 300, maximum = 330 }, meter = 130 }
-  -- Every ring keeps the thickness it has among three, so one ring of
-  -- files is a slim ring like the Overview donut, not a thick disc.
-  local rings = 1
-  for _, node in ipairs(nodes) do rings = math.max(rings, node.ring or 1) end
-  local hole = math.max(MAP.minimumHole, 1 - rings * MAP.ring)
-  -- Outer rings fade so the contents of a sector read as part of it, not as
-  -- separate items in the same hue.
-  local ringOpacity = { 1, 0.72, 0.5 }
-  -- Smaller items folded under a parent take its hue, faded further.
-  local otherFade = 0.55
 %>
 <% --[[ "Worth a look" sits under the list beside the rings, so the rings
   keep the pane's height, and under the rectangles when there is no list. ]]
@@ -23,7 +13,7 @@
           <HStack spacing="8" alignment="center">
             <Label text="<%= item.name %>" size="12" flexGrow="1" flexShrink="1" lines="1" />
             <Label text="<%= item.size %>" size="12" color="secondary" monospacedDigit="true" />
-            <Button id="worthMark_<%= index %>" title="<%= item.included and "Included · Review…" or item.marked and "Marked" or "Mark" %>" systemImage="<%= item.included and "folder.badge.checkmark" or item.marked and "checkmark.circle.fill" or "plus.circle" %>" style="plain" action="worth_<%= index %>" help="<%= item.included and "Included through a marked folder; review its cleanup plan" or "Mark " .. item.name .. " for cleanup" %>" disabled="<%= item.markable and "false" or "true" %>" />
+            <Button id="worthMark_<%= index %>" title="<%= item.markTitle %>" systemImage="<%= item.markIcon %>" style="plain" action="worth_<%= index %>" help="<%= item.markHelp %>" disabled="<%= item.markable and "false" or "true" %>" />
           </HStack>
           <% end %>
         </VStack>
@@ -31,21 +21,16 @@
 <% end %>
 <VStack id="page" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
   <%- partial("../components/PageHeader.etlua", {header = page, summary = subtitle, summaryId = "mapSummary"}) %>
-  <HStack id="mapBar" spacing="6" alignment="center">
+  <Breadcrumb id="mapBar">
     <% for index, step in ipairs(trail) do %>
-    <% if index > 1 then %><SystemImage name="chevron.right" size="10" color="tertiary" /><% end %>
-    <% if index < #trail then %>
-    <Button title="<%= step.name %>" style="link" size="13" action="focus_<%= index %>" help="Show <%= step.name %>" />
-    <% else %>
-    <Label id="mapFocus" text="<%= step.name %>" size="13" weight="semibold" lines="1" />
-    <% end %>
+    <Crumb name="<%= step.name %>" action="focus_<%= index %>" current="<%= index == #trail and "true" or "false" %>" />
     <% end %>
     <Spacer />
     <Picker id="mapStyle" style="segmented" value="<%= style == "rectangles" and 1 or 0 %>" onChange="pickStyle">
       <Option title="Rings" />
       <Option title="Rectangles" />
     </Picker>
-  </HStack>
+  </Breadcrumb>
   <HStack id="mapBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
     <% --[[ Rectangles already name every item, so the list serves the rings
       only. It gives way before the chart does: in the narrowest window it
@@ -80,15 +65,12 @@
       <% else %>
       <% -- Looking inside a group, or back out, turns the rings to the new level. %>
       <VStack id="mapChartHost" flexGrow="1" flexBasis="0" flexShrink="1" minHeight="<%= MAP.minChart %>" maxWidth="infinity" maxHeight="infinity" alignment="center">
-      <SectorChart id="sunburst" scalable="true" diameter="<%= MAP.chartUnits %>" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= hole %>" angularInset="<%= MAP.gap %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <StorageRings id="sunburst" diameter="<%= MAP.chartUnits %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
-        <SectorMark cornerRadius="<%= MAP.corner %>" id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" opacity="<%= (ringOpacity[node.ring] or 0.5) * (node.other and node.parent and otherFade or 1) %>" label="<%= node.label %>" />
+        <StorageSector id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" other="<%= node.other and "true" or "false" %>" label="<%= node.label %>" />
         <% end %>
-        <VStack spacing="0" alignment="center">
-          <Label text="<%= total %>" size="<%= MAP.center.total %>" minimumScaleFactor="<%= MAP.center.totalScale %>" lines="1" weight="semibold" design="rounded" monospacedDigit="true" />
-          <Label text="<%= #trail > 1 and "Click to go up" or "Measured" %>" size="<%= MAP.center.caption %>" minimumScaleFactor="<%= MAP.center.captionScale %>" lines="1" color="secondary" />
-        </VStack>
-      </SectorChart>
+        <ChartCenter total="<%= total %>" caption="<%= #trail > 1 and "Click to go up" or "Measured" %>" />
+      </StorageRings>
       </VStack>
       <% end %>
       <Label id="mapHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="0" />

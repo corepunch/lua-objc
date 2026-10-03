@@ -11,7 +11,7 @@
     <% --[[ The inventory explains the plan; it is not a second plan. It stays
       collapsed until opened, for erasing one device, the unavailable ones or
       a runtime. ]] %>
-    <DisclosureGroup id="inventory" label="All devices and runtimes" expanded="false" spacing="16" indicatorWidth="26" indicatorSpacing="10">
+    <Disclosure id="inventory" label="All devices and runtimes" expanded="false" spacing="16">
     <VStack id="devicesSection" spacing="8" alignment="leading">
       <HStack spacing="12" alignment="center">
         <%- partial("../components/SectionHeader.etlua", {title = "Devices", detail = devicesDetail, detailId = "devicesDetail"}) %>
@@ -20,12 +20,7 @@
         </Picker>
       </HStack>
       <GroupBox>
-        <List id="devices" onSelect="select" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
-          <Column id="name" title="Device" subtitleKey="runtime" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
-          <Column id="state" title="State" width="110" minWidth="90" />
-          <Column id="lastUse" title="Last used" width="150" minWidth="150" />
-          <Column id="size" title="Apps &amp; data" width="110" minWidth="100" alignment="trailing" />
-        </List>
+        <InventoryList id="devices" onSelect="select" kind="devices" />
       </GroupBox>
       <HStack spacing="8" alignment="center">
         <Button id="reveal" title="Show in Finder" action="reveal" />
@@ -39,12 +34,7 @@
     <VStack id="runtimesSection" spacing="8" alignment="leading">
       <%- partial("../components/SectionHeader.etlua", {title = "Runtimes", detail = "Each runtime is a full operating system image. Devices on a deleted runtime become unavailable.", detailId = "runtimesDetail"}) %>
       <GroupBox>
-        <List id="runtimes" onSelect="selectRuntime" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
-          <Column id="name" title="Runtime" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="180" />
-          <Column id="deviceText" title="Devices" width="110" minWidth="90" />
-          <Column id="lastUse" title="Last used" width="150" minWidth="150" />
-          <Column id="size" title="On disk" width="110" minWidth="100" alignment="trailing" />
-        </List>
+        <InventoryList id="runtimes" onSelect="selectRuntime" kind="runtimes" />
       </GroupBox>
       <HStack spacing="8" alignment="center">
         <Button id="deleteRuntime" title="Delete Runtime…" action="deleteRuntime" />
@@ -52,7 +42,7 @@
       </HStack>
       <Label id="runtimeStatus" text="<%= runtimeStatus %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
-    </DisclosureGroup>
+    </Disclosure>
     <% end %>
   </VStack>
 </ScrollView>

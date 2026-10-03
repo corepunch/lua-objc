@@ -57,14 +57,14 @@ function ListRoute:rowMenu(_, _, row)
 	if self.menu then return self:menu(row) end
 	if row.page then
 		return {{title = "Open " .. (row.pageName or "Page"), systemImage = "arrow.right.circle",
-			action = function() self.app.showFiltered(row.page, row.filter) end}}
+			action = function() self.app.show(row.page, {filter = row.filter}) end}}
 	end
 	return self.rowActions:resource(row.id)
 end
 
 function ListRoute:activateRow(row)
 	if not row then return end
-	if row.page then self.app.showFiltered(row.page, row.filter) else self.app.open(row.id) end
+	if row.page then self.app.show(row.page, {filter = row.filter}) else self.app.open(row.id) end
 end
 
 function ListRoute:open(_, _, row) self:activateRow(row) end
@@ -88,7 +88,7 @@ function ListRoute:follow(link)
 		local handlers = {review = self.app.openReview, refresh = self.app.rescan, search = self.app.search}
 		handlers[link.handler](table.unpack(link.args or {}))
 	elseif link.open then self.app.open(link.open)
-	elseif link.page then self.app.showFiltered(link.page, link.filter)
+	elseif link.page then self.app.show(link.page, {filter = link.filter})
 	elseif link.settings then self.app.service.openSettings(link.settings) end
 end
 

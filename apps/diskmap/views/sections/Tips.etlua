@@ -3,9 +3,7 @@
   <GroupBox>
     <VStack spacing="0" alignment="leading">
       <% for index, tip in ipairs(tips) do %>
-      <HStack padding="10" spacing="10" alignment="center">
-        <% --[[ Symbols differ in width; a fixed column starts every title at one edge. ]] %>
-        <SystemImage name="<%= tip.icon %>" size="18" color="accent" width="26" />
+      <SymbolRow padding="10" name="<%= tip.icon %>" size="18" color="accent">
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
           <Label text="<%= tip.title %>" size="13" maxWidth="infinity" lines="2" />
           <Label text="<%= tip.text %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
@@ -13,7 +11,7 @@
         <% if tip.actionTitle then %>
         <Button title="<%= tip.actionTitle %>" style="link" action="tip_<%= tip.id %>" />
         <% end %>
-      </HStack>
+      </SymbolRow>
       <% if index < #tips then %><Divider /><% end %>
       <% end %>
     </VStack>

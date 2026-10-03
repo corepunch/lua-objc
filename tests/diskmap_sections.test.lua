@@ -30,7 +30,8 @@ t.assertEqual(chart.legend[1].id, "applications", "largest category leads the le
 t.assertEqual(chart.legend[2].id, "developer", "next largest category follows")
 t.assertEqual(chart.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ring")
-local chartActions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
+local chartActions = {reclaim = function() end,chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
+for _, item in ipairs(chart.legend) do chartActions["category_" .. item.id] = function() end end
 local hero, heroRefs = render("Hero", {summary = Scans:summary(disk), chart = chart,
 	reclaim = Suggestions:reclaim(), volumeName = "Startup Disk", actions = chartActions,
 	hiddenSpace = Overview.hidden(disk, {important = 110e9}, 2, 3)})
@@ -38,11 +39,11 @@ t.assertEqual(chart.marks[1].id, chart.legend[1].id, "a mark carries its categor
 t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
 t.assertEqual(#heroRefs.hiddenSpace.subviews, 3, "purgeable space, snapshots and unreadable locations are listed")
 t.assertEqual(heroRefs.heroCard.className, "NSBox", "the hero uses the native rounded group")
-t.assertEqual(heroRefs.usedTotal.text, "100.0 GB", "the chart hole shows used capacity")
+t.assertEqual(heroRefs.chartCenter.subviews[1].text, "100.0 GB", "the chart hole shows used capacity")
 t.expect(heroRefs.cleanUp.bezelColor ~= nil, "the cleanup call to action is the prominent button")
 hero.size = ns.Size(760, 320); hero:layout(760)
 -- The total fits the chart's hole once laid out.
-t.expect(heroRefs.usedTotal.font.pointSize >= heroRefs.freeSpace.font.pointSize, "capacity stays readable beneath the cleanup action")
+t.expect(heroRefs.chartCenter.subviews[1].font.pointSize >= heroRefs.freeSpace.font.pointSize, "capacity stays readable beneath the cleanup action")
 local buttons = {}
 local function collect(view)
 	if view.className == "NSButton" and not view.bordered then table.insert(buttons, view) end
@@ -72,7 +73,7 @@ t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains 
 t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
 t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
 local _, refs = render("Overview", {status = "Measured", measured = true, coverage = "", largestHidden = false, accessTitle = "Scan access…", accessHidden = false,
-	unmeasured = {items = {}}, hero = {summary = Scans:summary(disk), chart = chart, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
+	unmeasured = {items = {}}, hero = {summary = Scans:summary(disk), chart = {marks = chart.marks, legend = {}, explanation = "Measured"}, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
 	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")

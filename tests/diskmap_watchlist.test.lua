@@ -98,20 +98,20 @@ local function perform(items, title)
 	end
 	return false
 end
-t.expect(perform(app.rowActions:resource("xcode"), "Watch"), "a category's menu offers Watch")
+t.expect(perform(app.env.rowActions:resource("xcode"), "Watch"), "a category's menu offers Watch")
 t.assertEqual(sidebar.rowCount, plainRows + 2, "the Watched section and its row lead the sidebar")
 t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Watched", "the section is a native group header")
 t.assertEqual(bridge._tableCell(sidebar, 0, 1).textField.stringValue, "Xcode", "the watched category is listed by name")
 t.expect(bridge._tableCell(sidebar, 0, 1).badgeField.stringValue:find("B$") ~= nil, "its badge is its measured size")
 t.assertEqual(app.destination, "overview", "watching does not navigate away")
 t.assertEqual(sidebar.documentView.selectedRow, app.navigation:index("overview"), "the selection follows the overview down")
-local menu = app.rowActions:resource("xcode")
+local menu = app.env.rowActions:resource("xcode")
 t.assertEqual(menu[#menu].title, "Stop Watching", "a watched resource offers Stop Watching after Keep")
 t.assertEqual(#service.watchlist, 1, "the watch is saved at once")
 t.expect(service.watchlist[1].bytes ~= nil, "the saved entry carries its size")
 
 sidebar:selectRow(1)
-t.assertEqual(app.destination, "watched:resource:xcode", "the sidebar row opens the watched page")
+t.assertEqual(app.navigation.current, "watched:resource:xcode", "the sidebar row opens the watched page")
 local refs = app.page.refs
 t.expect(refs.watchedSummary.text:find("Measured for the first time", 1, true) ~= nil, "a new watch has nothing to compare with yet")
 t.expect(refs.contents.rowCount >= 2, "a watched category lists its locations")
@@ -119,15 +119,15 @@ t.expect(refs.openCategory ~= nil and refs.unwatch ~= nil, "the page opens the c
 
 -- A plain folder: measured on demand, one level down.
 local home = service.home
-t.expect(perform(app.rowActions:folder({path = home .. "/Library/Developer", name = "Developer"}), "Watch"), "a folder's menu offers Watch")
-t.expect(not perform(app.rowActions:folder({path = home .. "/notes.txt", name = "notes.txt", directory = false}), "Watch"), "files are not watched")
-app:show("watched:folder:" .. home .. "/Library/Developer")
+t.expect(perform(app.env.rowActions:folder({path = home .. "/Library/Developer", name = "Developer"}), "Watch"), "a folder's menu offers Watch")
+t.expect(not perform(app.env.rowActions:folder({path = home .. "/notes.txt", name = "notes.txt", directory = false}), "Watch"), "files are not watched")
+app:show("watched", {key = "folder:" .. home .. "/Library/Developer"})
 refs = app.page.refs
 t.expect(refs.contents.rowCount >= 1, "a watched folder lists its immediate children")
 t.expect(refs.contentsDetail.text:find("at the top level", 1, true) ~= nil, "the contents are summarized once measured")
 t.expect(refs.reveal ~= nil and refs.openCategory == nil, "a folder offers Finder but no category")
 t.assertEqual(sidebar.documentView.selectedRow, 2, "the folder's sidebar row is selected")
-local folderMenu = app:request("watched"):menu({path = home .. "/Library/Developer/Xcode", name = "Xcode", directory = true})
+local folderMenu = app.env:page("watched"):menu({path = home .. "/Library/Developer/Xcode", name = "Xcode", directory = true})
 t.expect(perform(folderMenu, "Watch"), "a subfolder can be watched from the contents list")
 t.assertEqual(#service.watchlist, 3, "three locations are saved")
 
@@ -136,17 +136,17 @@ service.watchlist[2].bytes = service.watchlist[2].bytes - 3e9
 service.watchlist[2].measuredAt = day
 local second = Controller.new(service)
 second:createWindow()
-second.watchlist:scanFinished()
+second.env.watchlist:scanFinished()
 local changed
-for _, row in ipairs(second.watchlist:rows()) do if row.kind == "folder" and row.name == "Developer" then changed = row end end
+for _, row in ipairs(second.env.watchlist:rows()) do if row.kind == "folder" and row.name == "Developer" then changed = row end end
 t.expect(changed and changed.changeText:find("more since Sep 20", 1, true) ~= nil, "growth since the previous session is reported")
 t.assertEqual(second.navigation.refs.sidebar.rowCount, plainRows + 4, "all three watches return on the next launch")
 
 -- Stop Watching from the page returns to the overview.
-second:show("watched:resource:xcode")
+second:show("watched", {key = "resource:xcode"})
 second.page.actions.unwatch()
 t.assertEqual(second.destination, "overview", "stopping a watch leaves its page")
 t.assertEqual(#service.watchlist, 2, "the removal is saved")
-second:show("watched:resource:xcode")
+second:show("watched", {key = "resource:xcode"})
 t.assertEqual(second.destination, "overview", "an unwatched location cannot be opened")
 t.assertEqual(#errors, 0, "no errors were shown")

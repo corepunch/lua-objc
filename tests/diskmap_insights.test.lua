@@ -56,8 +56,8 @@ t.assertEqual(Format.count(12), "12", "short counts are unchanged")
 
 -- A full mock launch fills every summary.
 local app = Controller.new(Mock.new())
-app.scan:start()
-local model = app.model
+app.env.scan:start()
+local model = app.env.model
 t.expect(model.files ~= nil and #model.files.large > 0, "a finished scan keeps the large-file ranking")
 t.expect(model.breakdowns["app-containers"] ~= nil, "a finished scan keeps per-location breakdowns")
 
@@ -109,7 +109,7 @@ t.assertEqual(Format.ago(45), "1 month ago", "use a month ago reads in months")
 
 -- Applications, their data and leftovers.
 local info
-app.service.applicationInfo({"/Applications/Mock Video Studio.app", "/Applications/Mock Notes.app", home .. "/Applications/Mock Game.app"}, function(value) info = value end)
+app.env.service.applicationInfo({"/Applications/Mock Video Studio.app", "/Applications/Mock Notes.app", home .. "/Applications/Mock Game.app"}, function(value) info = value end)
 Model.db.applicationInfo = info
 local apps = Applications:rows("All")
 local byName = {}
@@ -124,7 +124,7 @@ t.assertEqual(#unused, 1, "the unused filter lists only unused apps")
 Model.db.installedBundleIds = nil
 t.assertEqual(Applications:leftovers(), nil, "without installed identifiers nothing is called a leftover")
 local installed
-app.service.installedBundleIds(function(ids) installed = ids end)
+app.env.service.installedBundleIds(function(ids) installed = ids end)
 Model.db.installedBundleIds = installed
 local leftovers = Applications:leftovers()
 local leftoverNames = {}
@@ -144,7 +144,7 @@ t.assertEqual(parsed["/C.app"], 1767243600, "time zone offsets are applied")
 
 -- Disks & Volumes.
 local volumes
-app.service.volumes(function(value) volumes = value end)
+app.env.service.volumes(function(value) volumes = value end)
 local health = Volumes.health(volumes.info)
 local facts = {}
 for _, fact in ipairs(health) do facts[fact.id] = fact end
@@ -160,7 +160,7 @@ t.assertEqual(used + apfs.free, apfs.capacity, "mock volumes and free space part
 t.assertEqual(#Volumes.external(volumes.external), 1, "other mounted disks are listed")
 
 -- Clean Up uses every knowledge entry.
-local cleanup = Suggestions:presentation(nil, {apps = app:request("applications"):summary()})
+local cleanup = Suggestions:presentation(nil, {apps = require("apps.diskmap.models.Inventories"):applicationsSummary()})
 t.expect(#cleanup.rebuildable > 0 and #cleanup.decisions > 0, "clean up separates rebuildable data from decisions")
 local rebuildable = {}
 for _, row in ipairs(cleanup.rebuildable) do rebuildable[row.id] = true end
@@ -177,25 +177,25 @@ local titles = function(items)
 	for _, item in ipairs(items) do if item.title then result[item.title] = item end end
 	return result
 end
-local derivedMenu = titles(app.rowActions:resource("derived"))
+local derivedMenu = titles(app.env.rowActions:resource("derived"))
 t.expect(derivedMenu["Review Move to Trash…"] and derivedMenu["Show in Finder"] and derivedMenu.Keep and derivedMenu["Copy Path"], "resource menus offer review, Finder, Keep and Copy")
 local dmg
 for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
-local fileMenu = app.rowActions:file(dmg)
+local fileMenu = app.env.rowActions:file(dmg)
 t.assertEqual(fileMenu[1].title, "Move to Trash…", "own documents can be moved to the Trash from their menu")
 local backup
 for _, row in ipairs(Files:rows("All")) do if row.name == "Manifest.db" then backup = row end end
-local backupMenu = app.rowActions:file(backup)
+local backupMenu = app.env.rowActions:file(backup)
 t.expect(backupMenu[1].disabled and backupMenu[1].title:find("belong to apps", 1, true), "a refused trash explains itself in the menu")
 
 -- Trashing a file from its menu moves it and remeasures.
-local originalConfirm = app.service.confirmTrashPath
-app.service.confirmTrashPath = function() return true end
+local originalConfirm = app.env.service.confirmTrashPath
+app.env.service.confirmTrashPath = function() return true end
 local before = model.measurements.downloads.bytes
-app.rowActions:trashFile(dmg)
+app.env.rowActions:trashFile(dmg)
 t.expect(model.measurements.downloads.bytes < before, "moving a file to the Trash remeasures its location")
 t.expect(model.measurements["user-trash"].bytes and model.measurements["user-trash"].bytes >= dmg.bytes, "the moved file is counted in the Trash")
-app.service.confirmTrashPath = originalConfirm
+app.env.service.confirmTrashPath = originalConfirm
 
 -- Pages mount and fill their lists headlessly.
 local window = app:createWindow()
@@ -204,21 +204,21 @@ for _, id in ipairs({"files", "kinds", "cleanup", "applications", "disks", "deve
 	t.assertEqual(app.destination, id, "the " .. id .. " page mounts")
 end
 app:show("files")
-t.expect(app.refs.files.rowCount > 0, "Large Files lists files")
+t.expect(app.page.refs.files.rowCount > 0, "Large Files lists files")
 app:show("kinds")
-t.expect(app.refs.kinds.rowCount > 0 and app.refs.extensions.rowCount > 0, "File Types lists kinds and extensions")
-t.expect(app.refs.kindsChart.subviews[1].className == "LuaArcView", "the File Types chart is flat context")
-app:request("kinds"):showFiles("installers")
+t.expect(app.page.refs.kinds.rowCount > 0 and app.page.refs.extensions.rowCount > 0, "File Types lists kinds and extensions")
+t.expect(app.page.refs.kindsChart.subviews[1].className == "LuaArcView", "the File Types chart is flat context")
+app.env:page("kinds"):showFiles("installers")
 t.assertEqual(app.destination, "files", "opening a kind shows Large Files")
-t.expect(not app.refs.clearKind.hidden, "a narrowed list offers to show every kind")
-for index = 1, app.refs.files.rowCount do
-	t.assertEqual(bridge._tableCell(app.refs.files, 3, index - 1).textField.stringValue ~= nil, true, "file rows render")
+t.expect(not app.page.refs.clearKind.hidden, "a narrowed list offers to show every kind")
+for index = 1, app.page.refs.files.rowCount do
+	t.assertEqual(bridge._tableCell(app.page.refs.files, 3, index - 1).textField.stringValue ~= nil, true, "file rows render")
 end
 app:show("applications")
-t.expect(app.refs.apps.rowCount >= 3 and app.refs.leftovers.rowCount >= 2, "Applications lists apps and leftovers")
+t.expect(app.page.refs.apps.rowCount >= 3 and app.page.refs.leftovers.rowCount >= 2, "Applications lists apps and leftovers")
 app:show("disks")
-t.assertEqual(app.refs.volumes.rowCount, 6, "Disks lists the startup container's volumes")
+t.assertEqual(app.page.refs.volumes.rowCount, 6, "Disks lists the startup container's volumes")
 window.size = ns.Size(950, 580); window:layout()
-t.expect(app.refs.page.frame.size.width <= 950, "pages fit the minimum window")
+t.expect(app.page.refs.page.frame.size.width <= 950, "pages fit the minimum window")
 window:close()
 os.exit(t.summary() and 0 or 1)

@@ -1,4 +1,3 @@
-local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local FolderTree = require("apps.diskmap.helpers.FolderTree")
@@ -22,14 +21,15 @@ local STYLES = {"rings", "rectangles"}
 -- Pointing, row menus and drags only read; a move redraws through `changed`.
 Folder.queries = {chartHover = true, selectRow = true, rowMenu = true, dragPath = true}
 
+function Folder:focus(params)
+	if params.path then self:open(params.path, params.focus)
+	elseif params.focus then self:setFocus(params.focus) end
+	if params.style then self.style = params.style end
+end
+
 function Folder:init()
 	self.service, self.rowActions = self.app.service, self:flow("Rows")
 	self.style, self.coloring, self.generation = STYLES[1], FolderTree.colorings[1].id, 0
-end
-
-local function call(service, name, ...)
-	local fn = Provider.offers(service, name)
-	if type(fn) == "function" then return fn(...) end
 end
 
 -- The name a folder is shown by: its own, or the startup disk's for "/".
@@ -39,7 +39,7 @@ function Folder:displayName(path)
 end
 
 function Folder:cancel()
-	if self.job then call(self.service, "cancelFolderScan", self.job) end
+	if self.job then self.service.cancelFolderScan(self.job) end
 	self.job, self.loading = nil, nil
 end
 
@@ -52,10 +52,10 @@ function Folder:open(path, focus)
 	self:cancel()
 	self.generation = self.generation + 1
 	local generation = self.generation
-	self.path, self.tree, self.focus, self.failure, self.stats = path, nil, path, nil, nil
+	self.path, self.tree, self.focusPath, self.failure, self.stats = path, nil, path, nil, nil
 	self.loading = {path = path, items = 0}
 	self.app.refresh()
-	local job = call(self.service, "scanFolder", path, FolderTree.scanOptions, function(folder, failure, stats)
+	local job = self.service.scanFolder(path, FolderTree.scanOptions, function(folder, failure, stats)
 		if generation ~= self.generation then return end
 		self.job, self.loading = nil, nil
 		if folder and not folder.directory and folder.children == nil then
@@ -71,7 +71,7 @@ function Folder:open(path, focus)
 			local selected = self.selectPath and self.tree:find(self.selectPath)
 			if selected then self.selected = selected.path end
 			local kept = focus and self.tree:find(focus)
-			self.focus = kept and kept.directory and focus or selected and selected.parent and selected.parent.path or path
+			self.focusPath = kept and kept.directory and focus or selected and selected.parent and selected.parent.path or path
 			self.selectPath = nil
 		end
 		self.app.refresh()
@@ -88,7 +88,7 @@ function Folder:progress(generation, items)
 end
 
 function Folder:rescan()
-	if self.path then self:open(self.path, self.focus) end
+	if self.path then self:open(self.path, self.focusPath) end
 end
 
 function Folder:stop()
@@ -115,21 +115,21 @@ function Folder:setFocus(path)
 		self:cancel()
 		local generation = self.generation
 		self.loading = {path = path, items = 0, deeper = true}
-		local job = call(self.service, "scanFolder", path, FolderTree.scanOptions, function(folder, failure)
+		local job = self.service.scanFolder(path, FolderTree.scanOptions, function(folder, failure)
 			if generation ~= self.generation then return end
 			self.job, self.loading = nil, nil
-			if folder and self.tree:graft(path, folder) then self.focus = path
+			if folder and self.tree:graft(path, folder) then self.focusPath = path
 			elseif failure then self.service.showError("Could not measure " .. node.name, failure) end
 			self.app.refresh()
 		end, function(items) self:progress(generation, items) end)
 		if generation == self.generation and self.loading then self.job = job end
 		return
 	end
-	self.focus = path
+	self.focusPath = path
 end
 
 function Folder:up()
-	local node = self.tree and self.tree:find(self.focus)
+	local node = self.tree and self.tree:find(self.focusPath)
 	if node and node.parent then self:setFocus(node.parent.path) end
 end
 
@@ -192,7 +192,7 @@ function Folder:pickColoring(index)
 end
 
 function Folder:openFolder()
-	local path = call(self.service, "pickFolder", "Open Folder")
+	local path = self.service.pickFolder("Open Folder")
 	if path then self:open(path) end
 end
 
@@ -200,7 +200,7 @@ end
 -- arrow keys step through.
 function Folder:siblings()
 	local paths = {}
-	local node = self.tree and self.tree:find(self.focus)
+	local node = self.tree and self.tree:find(self.focusPath)
 	for _, child in ipairs(node and node.children or {}) do table.insert(paths, child.path) end
 	return paths
 end
@@ -221,7 +221,7 @@ function Folder:changed(path)
 	if not self.tree then return end
 	self.tree:remove(path)
 	if self.selected == path then self.selected = nil end
-	if not self.tree:find(self.focus) then self.focus = self.path end
+	if not self.tree:find(self.focusPath) then self.focusPath = self.path end
 end
 
 -- The name the catalog gives a folder, such as Xcode's DerivedData, so a
@@ -240,7 +240,7 @@ end
 -- volume, snapshots, purgeable files and folders macOS protects.
 function Folder:unreadableBytes()
 	if not self.tree or not (self.path == "/" or self.path:match("^/Volumes/[^/]+$")) then return nil end
-	local capacity = call(self.service, "volumeCapacity", self.path)
+	local capacity = self.service.volumeCapacity(self.path)
 	if not capacity or not capacity.total or not capacity.available then return nil end
 	local used = capacity.total - capacity.available
 	local unreadable = used - self.tree.root.bytes
@@ -274,11 +274,11 @@ function Folder:data()
 	self.trail, self.rowsByPath = data.trail, {}
 	if phase ~= "loaded" then return data end
 	local now = os.time()
-	local nodes, total = self.tree:nodes(self.focus, self.coloring, now)
+	local nodes, total = self.tree:nodes(self.focusPath, self.coloring, now)
 	data.nodes, data.total = nodes, Format.size(total)
-	data.rows = self.tree:rows(self.focus, self.coloring, now, function(path) return self:catalogName(path) end)
-	data.trail = self.tree:trail(self.focus)
-	data.legend = self.tree:legend(self.focus, self.coloring, now)
+	data.rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:catalogName(path) end)
+	data.trail = self.tree:trail(self.focusPath)
+	data.legend = self.tree:legend(self.focusPath, self.coloring, now)
 	data.lists = self.style ~= "rectangles" and {folderList = data.rows} or nil
 	self.trail = data.trail
 	for _, row in ipairs(data.rows) do self.rowsByPath[row.id] = row end

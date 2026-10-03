@@ -1,6 +1,5 @@
 local Locations = require("apps.diskmap.models.Locations")
 local Categories = require("apps.diskmap.models.Categories")
-local Provider = require("apps.diskmap.services.Provider")
 local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
@@ -36,7 +35,6 @@ do
 	-- Measures one external disk's top level: another disk's scope, beside the
 	-- startup disk Diskmap otherwise describes.
 	local function analyze(page, volume)
-		if not Provider.offers(service(page), "analyzeFolder") then return end
 		local analyzed = {name = volume.name, path = volume.path, loading = true}
 		page.analyzed = analyzed
 		service(page).analyzeFolder(volume.path, function(entries, failure)
@@ -52,8 +50,7 @@ do
 		if row.action == "emptyTrash" then
 			table.insert(items, {title = "Empty Trash…", systemImage = "trash", action = function()
 				local service = service(page)
-				if not service.confirmAction("Empty Trash", "Permanently removes everything in the Trash, on every disk. This cannot be undone.") then return end
-				service.emptyTrash()
+				page:flow("EmptyTrash"):run()
 				if page.analyzed then analyze(page, page.analyzed) end
 			end})
 		elseif row.action == "spotlight" then
@@ -80,17 +77,17 @@ do
 			end,
 			analyze = function(page, _, _, row) if row then analyze(page, row) end end,
 			contentsMenu = contentsMenu, load = function(page)
-			local volumes = Provider.offers(service(page), "volumes")
+			local volumes = service(page).volumes
 			page.generation = (page.generation or 0) + 1
 			local generation = page.generation
-			if volumes then volumes(function(read)
+			volumes(function(read)
 				if generation ~= page.generation then return end
 				page.volumes = read
 				page.app.refresh()
-			end) end
+			end)
 		end, unload = function(page) page.generation = page.generation + 1; page.volumes = nil end,
 		present = function(page)
-			if not page.volumes and Provider.offers(service(page), "volumes") then return {computing = "Reading disk information…"} end
+			if not page.volumes then return {computing = "Reading disk information…"} end
 			local volumes = page.volumes or {}
 			local info = volumes.info or {}
 			local tiles = {}
@@ -139,25 +136,17 @@ function UpdatesPage:activate()
 	local service = self.service
 	self.generation = self.generation + 1
 	local generation = self.generation
-	self.plist = service.softwareUpdateStatus and service.softwareUpdateStatus() or nil
-	if type(service.findInstallers) == "function" then
-		service.findInstallers(Model.db.home, function(files)
-			if generation ~= self.generation then return end
-			self.installerFiles = files or {}
-			self.app.refresh()
-		end)
-	else
-		self.installerFiles = {}
-	end
-	if service.snapshotCount then
-		service.snapshotCount(function(_, dates)
-			if generation ~= self.generation then return end
-			self.snapshotDates = dates or false
-			self.app.refresh()
-		end)
-	else
-		self.snapshotDates = false
-	end
+	self.plist = service.softwareUpdateStatus()
+	service.findInstallers(Model.db.home, function(files)
+		if generation ~= self.generation then return end
+		self.installerFiles = files or {}
+		self.app.refresh()
+	end)
+	service.snapshotCount(function(_, dates)
+		if generation ~= self.generation then return end
+		self.snapshotDates = dates or false
+		self.app.refresh()
+	end)
 	self.app.refresh()
 end
 
@@ -170,7 +159,7 @@ end
 
 -- The space an update needs comes from Clean Up, with the amount it estimates.
 function UpdatesPage:decision(data)
-	local cleanup = Suggestions:presentation("", self.app.cleanupSources and self.app.cleanupSources() or {})
+	local cleanup = Suggestions:presentation("", self.app.cleanupSources())
 	local waiting = data.softwareUpdate.known and #data.softwareUpdate.updates > 0
 	return {id = "decision", icon = "sparkles", color = "systemIndigo",
 		title = waiting and ("Make room for " .. data.softwareUpdate.updates[1].name .. " in Clean Up") or "Free space for the next update in Clean Up",
@@ -182,7 +171,7 @@ end
 function UpdatesPage:data()
 	-- The installers and snapshots are asked for each visit; the page is drawn when both answer.
 	if self.installerFiles == nil or self.snapshotDates == nil then return {computing = "Looking for installers and local snapshots…"} end
-	local disk = self.service.diskSpace and self.service.diskSpace(Model.db.home)
+	local disk = self.service.diskSpace(Model.db.home)
 	local data = Updates.presentation(self.plist, self.snapshotDates, self.installerFiles, disk and disk.freeKb and disk.freeKb * 1024 or nil,
 		{measured = Categories.measured, installers = Locations:installers()})
 	data.decision = self:decision(data)

@@ -58,16 +58,18 @@ routes.filesystem = {view = "pages/Filesystem"}
 local filesystem = routes.filesystem
 
 function filesystem:waiting()
-	return not (Model.db.folderSizes or Model.db.scan.running) and self.app.service.measure ~= nil
+	return not (Model.db.folderSizes or Model.db.scan.running)
 end
 
 function filesystem:rendered()
 	local storage, service = Model.db, self.app.service
-	if self.measuring or not self:waiting() then return end
+	if self.measuring == storage.scan or not self:waiting() then return end
 	local paths = Filesystem.pending(Categories:facts())
-	self.measuring = true
+	local generation = storage.scan
+	self.measuring = generation
 	service.measure(paths, function(sizes, states)
-		self.measuring = false
+		if self.app.closed or storage.scan ~= generation or self.measuring ~= generation then return end
+		self.measuring = nil
 		local found = {}
 		for index, path in ipairs(paths) do
 			found[path] = {bytes = sizes[index] or 0, state = states and states[index] or "measured"}

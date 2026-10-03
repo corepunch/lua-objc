@@ -88,7 +88,7 @@ for _, item in ipairs(out.decisions) do t.expect(item.id ~= "unused-apps", "no i
 local Mock = require("apps.diskmap.services.Mock")
 local AppController = require("apps.diskmap.Controller")
 local app = AppController.new(Mock.new())
-app.scan:start()
+app.env.scan:start()
 local all, removable = 0, 0
 for _, row in ipairs(Files:rows("All")) do
 	if row.kindId == "installers" or row.kindId == "archives" then all = all + 1 end
@@ -159,10 +159,10 @@ end
 t.expect(Scope.pages.files:find("Largest Locations", 1, true) and Scope.pages.kinds:find("over 50 MB", 1, true), "overlaps between pages are named")
 local scopeApp = AppController.new(Mock.new())
 scopeApp:createWindow()
-scopeApp.scan:start()
+scopeApp.env.scan:start()
 for _, id in ipairs({"largest", "cleanup", "files", "kinds"}) do
 	scopeApp:show(id)
-	t.expect(scopeApp.refs.scopeNote and scopeApp.refs.scopeNote.text:find("Coverage:", 1, true), id .. " shows its scope note beside its totals")
+	t.expect(scopeApp.page.refs.scopeNote and scopeApp.page.refs.scopeNote.text:find("Coverage:", 1, true), id .. " shows its scope note beside its totals")
 end
 
 -- Every sidebar destination has an audited conclusion and next step, or a stated reason for none.
@@ -196,7 +196,7 @@ t.assertEqual(Outcome.freeText(10e9, 12.1e9), "Free space 10.0 GB → 12.1 GB (+
 t.expect(Outcome.freeText(10e9, 10e9, true):find("after a short delay", 1, true), "no change right after a removal explains the delay")
 t.assertEqual(Outcome.freeText(nil, 1), "Free space could not be measured.", "an unmeasured figure says so")
 t.assertEqual(Outcome.free({diskSpace = function() return {freeKb = 1000} end}, "/"), 1000 * 1024, "free space is read from the service")
-t.assertEqual(Outcome.free({}, "/"), nil, "a service that cannot say gives nil")
+t.assertEqual(Outcome.free(require("apps.diskmap.services.Contract").stub(), "/"), nil, "a service that cannot say gives nil")
 
 -- One batch flow: refresh, validate, execute; skips and failures never stop the rest.
 local Batch = require("apps.diskmap.helpers.Batch")

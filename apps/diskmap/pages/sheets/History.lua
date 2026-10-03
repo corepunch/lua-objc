@@ -10,7 +10,7 @@ routes.history = History
 
 function History:data()
 	local service = self.app.service
-	local rows = OperationLog.rows(type(service.operationLog) == "function" and service.operationLog() or {})
+	local rows = OperationLog.rows(service.operationLog())
 	return {lists = {entries = rows}, texts = {detail = #rows == 0 and "Diskmap has not changed anything on this Mac yet."
 		or (#rows .. (#rows == 1 and " action" or " actions") .. " · also written to ~/Library/Logs/Diskmap/operations.log")}}
 end

@@ -26,10 +26,15 @@ routes.map = map
 local STYLES = {"rings", "rectangles"}
 local DEFAULT_HOVER = "Hover over the map for details; click a group to look inside."
 
+function map:focus(params)
+	if params.focus ~= nil then self:setFocus(params.focus) end
+	if params.style then self:setStyle(params.style) end
+end
+
 function map:init()
 	local style = self.app.mapStyle
 	if style ~= "rectangles" then style = "rings" end
-	self.rowActions, self.focus, self.style = self:flow("Rows"), "", style
+	self.rowActions, self.focusId, self.style = self:flow("Rows"), "", style
 end
 
 -- Pointing, row menus and drags only read; looking inside draws again.
@@ -43,11 +48,11 @@ end
 -- The view animates the change of focus: the rings move to the new level.
 function map:setFocus(id)
 	if id ~= "" and not isGroup(Model.db, id) then return end
-	self.focus = id or ""
+	self.focusId = id or ""
 end
 
 function map:up()
-	local resource = self.focus ~= "" and Locations:find(self.focus)
+	local resource = self.focusId ~= "" and Locations:find(self.focusId)
 	local parent = resource and resource:parent()
 	self:setFocus(parent and parent.id or "")
 end
@@ -107,7 +112,7 @@ end
 function map:toggleWorth(item)
 	if item.included then self.app.openReview(item.enclosingPath); return end
 	local resource = Locations:find(item.id)
-	self.app.review:toggle({path = item.path, name = item.name, bytes = item.bytes, resourceId = item.id,
+	self.app.basket:toggle({path = item.path, name = item.name, bytes = item.bytes, resourceId = item.id,
 		source = "Map", consequence = resource and resource.consequence})
 end
 
@@ -117,12 +122,12 @@ function map:data(state)
 	-- it is drawn again when the scan finishes.
 	local scanning = storage.scan.running == true
 	local nodes, total = {}, 0
-	if not scanning then nodes, total = Categories:mapNodes(self.focus) end
-	local trail = Categories:path(self.focus)
+	if not scanning then nodes, total = Categories:mapNodes(self.focusId) end
+	local trail = Categories:path(self.focusId)
 	local query = state.query or ""
 	-- Search narrows the list beside the chart, as on every other page; the
 	-- chart keeps the whole level so its proportions stay true.
-	local rows = scanning and {} or Categories:rows(self.focus ~= "" and self.focus or nil, query)
+	local rows = scanning and {} or Categories:rows(self.focusId ~= "" and self.focusId or nil, query)
 	table.sort(rows, function(a, b) return (a.bytes or -1) > (b.bytes or -1) end)
 	local largest = rows[1] and rows[1].bytes or 0
 	for _, row in ipairs(rows) do
@@ -130,13 +135,16 @@ function map:data(state)
 		row.relative = row.bytes and largest > 0 and row.bytes / largest or nil
 		row.shareText = row.bytes and total > 0 and string.format("%d%%", math.floor(row.bytes * 100 / total + 0.5)) or ""
 	end
-	local worth = scanning and {} or Categories:worthALook(self.focus, 3)
+	local worth = scanning and {} or Categories:worthALook(self.focusId, 3)
 	for _, item in ipairs(worth) do
 		item.markable = self.rowActions:markableResource(Locations:find(item.id))
 		item.marked = self.rowActions:isMarked(item.path)
 		local parent, exact = self.rowActions:covering(item.path)
 		item.included = parent ~= nil and not exact
 		item.enclosingPath = item.included and parent.path or nil
+		item.markTitle = item.included and "Included · Review…" or item.marked and "Marked" or "Mark"
+		item.markIcon = item.included and "folder.badge.checkmark" or item.marked and "checkmark.circle.fill" or "plus.circle"
+		item.markHelp = item.included and "Included through a marked folder; review its cleanup plan" or "Mark " .. item.name .. " for cleanup"
 	end
 	self.trail, self.worth, self.rows, self.total = trail, worth, rows, total
 	-- The breadcrumb and "worth a look" buttons are named by position
@@ -146,7 +154,7 @@ function map:data(state)
 	for index, item in ipairs(worth) do handlers["worth_" .. index] = function() self:toggleWorth(item) end end
 	self.hover = #nodes == 0 and "" or DEFAULT_HOVER
 	if not Selection.index(rows, self.selectedId) then self.selectedId = nil end
-	local focusRow = self.focus ~= "" and Categories:row(self.focus) or nil
+	local focusRow = self.focusId ~= "" and Categories:row(self.focusId) or nil
 	-- The Overview counts what the disk reports as used; the Map counts
 	-- what Diskmap measured. Saying both keeps the two pages reconcilable.
 	local disk = state.disk
@@ -156,7 +164,7 @@ function map:data(state)
 		-- Rectangles have no list beside them.
 		lists = self.style ~= "rectangles" and {mapList = rows} or nil,
 		subtitle = (focusRow and (focusRow.name .. " · ") or "") .. Format.size(total) .. " measured"
-			.. (self.focus == "" and (used and used >= total and (" of " .. Format.size(used) .. " used · shares are of what was measured")
+			.. (self.focusId == "" and (used and used >= total and (" of " .. Format.size(used) .. " used · shares are of what was measured")
 				or " across every category") or ""),
 		accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas",
 		handlers = handlers}
@@ -205,9 +213,9 @@ kinds.queries = {selectKind = true, chartHover = true, kindMenu = true, openKind
 	cleanup = true, refresh = true, clearSearch = true}
 
 -- Large Files, narrowed to one kind.
-function kinds:showFiles(kind) self.app.showFiltered("files", Files.filters:index("All"), kind) end
-function kinds:showInstallers() self.app.showFiltered("files", Files.filters:index("Installers & archives")) end
-function kinds:showOld() self.app.showFiltered("files", Files.filters:index("Unused for a year")) end
+function kinds:showFiles(kind) self.app.show("files", {filter = "All", kind = kind}) end
+function kinds:showInstallers() self.app.show("files", {filter = "Installers & archives"}) end
+function kinds:showOld() self.app.show("files", {filter = "Unused for a year"}) end
 function kinds:cleanup() self.app.show("cleanup") end
 function kinds:refresh() self.app.rescan() end
 function kinds:clearSearch() self.app.search("kinds", "") end
@@ -242,48 +250,6 @@ function kinds:chartHover(id)
 	Selection.show(refs.kinds, self.kinds, id or self.selectedId)
 	self.pointing = false
 	if not id and refs.kindsChart then Sectors.highlight(refs.kindsChart, self.selectedId) end
-end
-
--- The leading decision: the files of yours this page can point at, never a
--- kind's whole inventory. Disk images share an extension with system and
--- app images, so only the user-owned subset is offered.
-function kinds:decision(kinds)
-	local data = {id = "decision", icon = "opticaldiscdrive.fill", color = "systemTeal"}
-	if #kinds == 0 then
-		local state, reason = Files:state()
-		data.amount, data.amountCaption = "—", "not measured"
-		if state == "empty" then
-			data.title, data.detail, data.amountCaption = "No files found in the measured locations", "Clean Up can still guide you through rebuildable data and owner-managed storage.", "scan finished"
-			data.actionTitle, data.action = "Open Clean Up", "cleanup"
-		else
-			data.title, data.detail = "File type results unavailable", reason or "No extension totals were recorded. Refresh the scan to try again."
-			data.actionTitle, data.action = "Refresh Scan", "refresh"
-		end
-		return data
-	end
-	local installers = Files:rows("Installers & archives")
-	local removable = 0
-	for _, row in ipairs(installers) do removable = removable + row.bytes end
-	local files = Files:summary()
-	if removable > 0 then
-		data.title = "Review " .. (#installers == 1 and "1 installer or archive" or (#installers .. " installers and archives")) .. " in your folders"
-		data.detail = "Check that you have installed or extracted them before moving them to the Trash."
-		data.amount, data.amountCaption = Format.size(removable), "could recover"
-		data.actionTitle, data.action = "Show Installers", "showInstallers"
-	elseif files and files.reviewableOld > 0 then
-		data.icon, data.color = "clock.fill", "systemOrange"
-		data.title = "Review " .. Format.plural(files.reviewableOld, "file") .. " of yours unused for a year"
-		data.detail = "No installer or archive in your folders is large enough to list. These files were not opened or changed in a year; they may be your only copy."
-		data.amount, data.amountCaption = Format.size(files.reviewableOldBytes), "to review"
-		data.actionTitle, data.action = "Show Unused Files", "showOld"
-	else
-		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
-		data.title = "No large file of yours to review"
-		data.detail = "No user-owned file over " .. Format.size(Scans.fileSummary.minimumFileBytes) .. " was ranked. Clean Up lists other places their owners can clear."
-		data.amount, data.amountCaption = Format.size(0), "could recover"
-		data.actionTitle, data.action = "Open Clean Up", "cleanup"
-	end
-	return data
 end
 
 -- The kinds and extensions the search leaves.
@@ -336,7 +302,7 @@ function kinds:data(state)
 	if headline and headline.removableBytes then
 		inventoryNote = headline.size .. " total stored; " .. Format.size(headline.removableBytes) .. " in your own folders. The rest belongs to apps or the system."
 	end
-	local decision = self:decision(kinds)
+	local decision = Files:kindsDecision(kinds)
 	local summary = Format.size(all) .. " in files across " .. #kinds .. " kinds"
 	if #kinds == 0 then
 		if fileState == "empty" then summary = "Scan complete · No files found"

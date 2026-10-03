@@ -18,16 +18,16 @@ for _, id in ipairs({"map", "applications", "overview", "xcode", "overview"}) do
 app:show("map")
 local rings = app.page.refs.sunburst
 app.page.actions.chartSelect("developer", 1)
-t.assertEqual(app:request("map").focus, "developer", "clicking a group still focuses it")
+t.assertEqual(app.env:page("map").focusId, "developer", "clicking a group still focuses it")
 t.expect(app.page.refs.sunburst == rings, "drilling keeps the chart view")
 app.page.actions.up()
 t.expect(app.page.refs.sunburst == rings, "and so does going back out")
 
-app.scan:notify()
+app.env.scan:notify()
 t.expect(app.page ~= nil, "a scan update applies at once")
 
 -- Pointing at a resource selects; it does not change level.
 app.page.actions.chartHover("developer")
-t.assertEqual(app:request("map").selectedId, "developer", "map hover and the list share one token")
-t.assertEqual(app:request("map").focus, "", "hovering does not look inside a group")
+t.assertEqual(app.env:page("map").selectedId, "developer", "map hover and the list share one token")
+t.assertEqual(app.env:page("map").focusId, "", "hovering does not look inside a group")
 os.exit(t.summary() and 0 or 1)

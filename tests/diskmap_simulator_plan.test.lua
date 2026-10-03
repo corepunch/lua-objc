@@ -190,7 +190,7 @@ local fixture = {
 }
 local deletions, confirmations, saved = {}, {}, nil
 local failOn
-local service = {
+local service = require("apps.diskmap.services.Contract").stub({
 	home = "/Users/test",
 	children = function()
 		local list = {}
@@ -222,7 +222,7 @@ local service = {
 	reveal = function() end,
 	openOwner = function() end,
 	measure = function(paths, done) local sizes = {} for i in ipairs(paths) do sizes[i] = 0 end done(sizes) end,
-}
+})
 local changed = 0
 local storage = Store.new("/Users/test")
 local page, model = Host.new("simulators", {model = storage, service = service, rescan = function() changed = changed + 1 end})

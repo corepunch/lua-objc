@@ -1,5 +1,4 @@
 local Model = require("data.model")
-local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
 local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
@@ -17,7 +16,7 @@ local FOOTNOTE = {icon = "eye", text = "Diskmap stores each watched location's s
 
 local function service(page) return page.app.service end
 
-local function key(page) return page.app.destination():match("^watched:(.+)$") end
+local function key(page) return page.key end
 
 local function watched(page)
 	for _, row in ipairs(page.app.watchlist:rows()) do
@@ -45,8 +44,7 @@ local function analyze(page)
 	if not row or row.missing or not row.path or group(page, row) then return end
 	local breakdown = row.resourceId and Model.db.breakdowns[row.resourceId]
 	if breakdown then page.analyzed = {key = row.key, entries = breakdown}; return end
-	local measure = Provider.offers(service(page), "analyzeFolder")
-	if not measure then return end
+	local measure = service(page).analyzeFolder
 	local analyzed = {key = row.key, loading = true}
 	page.analyzed = analyzed
 	measure(row.path, function(entries, failure)
@@ -77,7 +75,7 @@ local function menu(page, item)
 	return page.rowActions:folder(item)
 end
 
-routes.watched = ListRoute.extend({layout = function(_, presented) return presented.shape end,
+routes.watched = ListRoute.extend({focus = function(page, params) page.key = params.key end, layout = function(_, presented) return presented.shape end,
 		queries = {showInFinder = true, openCategory = true}, menu = menu,
 			showInFinder = function(page) service(page).reveal(watched(page).path) end,
 			openCategory = function(page) page.app.open(category(page, watched(page)).id) end,

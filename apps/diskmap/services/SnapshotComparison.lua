@@ -1,5 +1,4 @@
 local Model = require("data.model")
-local Provider = require("apps.diskmap.services.Provider")
 local Locations = require("apps.diskmap.models.Locations")
 local ns = require("AppKit")
 local Store = require("apps.diskmap.Store")
@@ -72,14 +71,15 @@ end
 -- The cached baseline, when it belongs to the snapshot on disk.
 function Comparison:cached(createdAt)
 	if not self.cache then return nil end
-	local load = Provider.offers(self.service, "loadSnapshotSummary")
-	local baseline = load and Snapshot.decode(load())
+	local load = self.service.loadSnapshotSummary
+	local baseline = Snapshot.decode(load())
 	return baseline and baseline.createdAt == createdAt and baseline or nil
 end
 
 -- Measures the snapshot when needed, then reports the changes since it.
 -- A missing or unreadable snapshot reports nothing.
 function Comparison:compare()
+	if self.closed then return end
 	local createdAt = Comparison.created(self.path)
 	if not createdAt then self.baseline = nil; self.result = nil; return end
 	local baseline = self.baseline and self.baseline.createdAt == createdAt and self.baseline or self:cached(createdAt)
@@ -92,14 +92,17 @@ function Comparison:compare()
 	self.measuring = true
 	self.async(function()
 		local ok, totals, created = pcall(self.measure, self.path, self.model, self.yield)
+		if self.closed then return end
 		self.measuring = false
 		if not ok then self.result = nil; self.changed(nil, tostring(totals)); return end
 		self.baseline = {createdAt = created or createdAt, totals = totals}
-		local save = Provider.offers(self.service, "saveSnapshotSummary")
-		if self.cache and save then save(Snapshot.encode(self.baseline)) end
+		local save = self.service.saveSnapshotSummary
+		if self.cache then save(Snapshot.encode(self.baseline)) end
 		self:report()
 	end)
 end
+
+function Comparison:dispose() self.closed = true end
 
 function Comparison:report()
 	self.result = Locations:changesSince(self.baseline)

@@ -9,7 +9,7 @@ local model = Store.new("/Users/test")
 local row = Locations:find("derived")
 model.measurements.derived = {bytes = 2e9, status = "complete"}
 t.expect(row:validateTrash(), "complete positive trash resource validates")
-local ok, err = Manage({app = {service = {trash = function() error("must not run") end}}}):moveToTrash("unknown")
+local ok, err = Manage({app = {service = require("apps.diskmap.services.Contract").stub({trash = function() error("must not run") end})}}):moveToTrash("unknown")
 t.assertEqual(ok, false, "unknown resource cannot mutate")
 t.assertEqual(err.code, "unknown_resource", "unknown resource has a stable code")
 
@@ -36,26 +36,26 @@ t.assertEqual(groupValid, false, "groups cannot be moved to Trash")
 t.assertEqual(groupErr.code, "not_leaf", "group validation is named")
 
 local calls = 0
-local service = {trash = function(path) calls = calls + 1; t.assertEqual(path, savedPath, "mutation uses the current canonical path"); return true end}
+local service = require("apps.diskmap.services.Contract").stub({trash = function(path) calls = calls + 1; t.assertEqual(path, savedPath, "mutation uses the current canonical path"); return true end})
 local moved, moveError = Manage({app = {service = service}}):moveToTrash("derived")
 t.assertEqual(moved, true, "valid model mutation reaches the service")
 t.assertEqual(moveError, nil, "valid mutation has no error")
 t.assertEqual(calls, 1, "valid mutation runs exactly once")
 model.measurements.derived = {bytes = 2e9, status = "complete"}
-local failedMove, failedError = Manage({app = {service = {trash = function() return false, "symbolic link" end}}}):moveToTrash("derived")
+local failedMove, failedError = Manage({app = {service = require("apps.diskmap.services.Contract").stub({trash = function() return false, "symbolic link" end})}}):moveToTrash("derived")
 t.assertEqual(failedMove, false, "service rejection is not reported as success")
 t.assertEqual(failedError.code, "trash_service", "service failure is named")
 t.assertEqual(model.measurements.derived.bytes, 2e9, "service failure preserves measurement state")
 
 local refreshes, controllerCalls, errors = 0, 0, 0
-local controller = Manage({app = {service = {
+local controller = Manage({app = {service = require("apps.diskmap.services.Contract").stub({
 	confirmTrash = function()
 		model.kept.xcode = true
 		return true
 	end,
 	trash = function() controllerCalls = controllerCalls + 1; return true end,
 	showError = function() errors = errors + 1 end,
-}, rescan = function() refreshes = refreshes + 1 end}})
+}), rescan = function() refreshes = refreshes + 1 end}})
 model.kept.xcode = nil; t.expect(not controller:manage("derived"), "changed Keep after confirmation blocks IO")
 t.assertEqual(controllerCalls, 0, "stale confirmation never reaches IO")
 t.assertEqual(errors, 1, "stale mutation reports a structured service error")

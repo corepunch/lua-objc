@@ -11,7 +11,7 @@ local ScanProgress = require("apps.diskmap.controllers.ScanProgressController")
 local model = Store.new("/Users/test")
 model.measurements = {a = {bytes = 256}, b = {bytes = 256}}
 local cancelled = 0
-local scan = Scan.new(model, {cancel = function() end}, "/Users/test", function() cancelled = cancelled + 1 end)
+local scan = Scan.new(model, require("apps.diskmap.services.Contract").stub({cancel = function() end}), "/Users/test", function() cancelled = cancelled + 1 end)
 scan.disk, scan.status = {totalKb = 1, freeKb = 0}, "Measuring all storage categories…"
 
 t.assertEqual(scan:fraction(), 0.5, "the fraction is bytes measured over bytes used")

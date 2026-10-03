@@ -9,7 +9,7 @@ local Mock = require("apps.diskmap.services.Mock")
 local app = Controller.new(Mock.new())
 app.content = ns.VStack {}
 app:show("overview")
-local page, list = app.refs.page, app.refs.results
+local page, list = app.page.refs.page, app.page.refs.results
 t.assertEqual(list.documentView.gridStyleMask, 2, "categories use native horizontal separators without vertical grid lines")
 for _, size in ipairs({{700, 720}, {540, 400}, {1000, 900}}) do
 	app.content.frameSize = ns.Size(size[1], size[2])

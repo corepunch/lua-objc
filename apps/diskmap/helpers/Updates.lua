@@ -30,7 +30,7 @@ end
 -- It is what macOS last found, not a live check, so the page says when that was.
 function Updates.softwareUpdate(plist)
 	if type(plist) ~= "table" then
-		return {known = false, updates = {}, title = "Software Update status unavailable",
+		return {known = false, updates = {}, icon = "questionmark.circle", color = "secondary", title = "Software Update status unavailable",
 			detail = "Open Software Update to check for updates."}
 	end
 	local updates = {}
@@ -44,6 +44,7 @@ function Updates.softwareUpdate(plist)
 	end
 	local checked = Updates.formatDate(plist.LastSuccessfulDate)
 	local result = {known = true, updates = updates, checked = checked,
+		icon = #updates > 0 and "arrow.down.app.fill" or "checkmark.circle", color = #updates > 0 and "accent" or "systemGreen",
 		automaticDownload = plist.AutomaticDownload == true or plist.AutomaticDownload == 1}
 	if #updates == 0 then
 		result.title = "No updates waiting"

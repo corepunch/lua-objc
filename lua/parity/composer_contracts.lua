@@ -9,7 +9,7 @@ function M.run(ns)
 		gameTitle = "Zork I", roomTitle = "West of House",
 		progress = "Score 0 · 0 moves", tint = "#4338CA", ink = "#4338CA|#A5B4FC",
 		speechAvailable = true,
-		actions = { disappear = function() end, readingSettings = function() end },
+		actions = { disappear = function() end, readingSettings = function() end, look = function() end, inventory = function() end, close = function() end, inputChanged = function() end, inputCommand = function() end, inputFocused = function() end, submit = function() end, dictate = function() end },
 	}, ns)
 	-- Session.etlua is a <Page>; measure its content view.
 	local root = refs.session

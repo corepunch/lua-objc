@@ -86,11 +86,11 @@
       <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= empty.description %>" />
       <% end %>
       <% if section.collapsed then %>
-      <DisclosureGroup id="<%= section.id %>_disclosure" label="<%= section.collapsed %>" expanded="false" spacing="8" indicatorWidth="26" indicatorSpacing="10">
+      <Disclosure id="<%= section.id %>_disclosure" label="<%= section.collapsed %>" expanded="false" spacing="8">
         <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>>
           <%- partial("../components/ResourceList.etlua", section.list) %>
         </GroupBox>
-      </DisclosureGroup>
+      </Disclosure>
       <% else %>
       <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>>
         <%- partial("../components/ResourceList.etlua", section.list) %>
