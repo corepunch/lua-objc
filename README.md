@@ -523,8 +523,9 @@ condition lives in Xcode Cloud (App Store Connect), not in the repository.
 
 ### GitHub releases of Diskmap and Drum & Bass
 
-Both apps ship as notarized DMGs on the repository's releases page. Each is
-built from its Xcode project (`apps/diskmap/Diskmap.xcodeproj`,
+The apps in [`scripts/release/apps`](scripts/release/apps) are released
+together, at one version, as notarized DMGs on one GitHub release `v1.2.3`.
+Each is built from its Xcode project (`apps/diskmap/Diskmap.xcodeproj`,
 `apps/dnb/DrumAndBass.xcodeproj`) by
 [`scripts/release/release.sh`](scripts/release/release.sh), and both
 projects run the shared launcher `scripts/launcher/launcher.c`, which starts
@@ -533,18 +534,20 @@ the Lua entry point the app's `Info.plist` names as `LuaObjCEntry`.
 On a Mac whose Xcode is signed in to the team, release from the working tree:
 
 ```sh
-make release TAG=dnb/1.0.0   # sign, notarize, staple: build/release/dnb/DrumAndBass-1.0.0.dmg
-make publish TAG=dnb/1.0.0   # create the dnb/1.0.0 release and attach the DMG
+make release VERSION=1.0.0   # sign, notarize, staple each: build/release/<app>/<Product>-1.0.0.dmg
+make publish VERSION=1.0.0   # create the release v1.0.0 with every DMG
 ```
 
 Xcode signs with its cloud-managed Developer ID certificate and notarizes
 through the account, so no key or password is needed. That certificate's
-key stays with Apple and cannot be exported, so a tag pushed to GitHub only
-checks the build ([`.github/workflows/release.yml`](.github/workflows/release.yml))
-unless the repository holds an exportable Developer ID certificate and an
-App Store Connect API key as secrets (listed in the workflow); then the
-runner signs, notarizes and publishes on its own. `make release ...
-UNSIGNED=1` builds an ad hoc DMG for the Mac that built it.
+key stays with Apple and cannot be exported, so a tag `v1.0.0` pushed to
+GitHub only checks the build
+([`.github/workflows/release.yml`](.github/workflows/release.yml)) unless the
+repository holds an exportable Developer ID certificate and an App Store
+Connect API key as secrets (listed in the workflow); then the runner signs,
+notarizes and publishes on its own. `make release VERSION=1.0.0 UNSIGNED=1`
+builds ad hoc DMGs for the Mac that built them. Diskmap's App Store builds
+stay in Xcode Cloud, started by `diskmap/` tags.
 
 ### Adventure Arena tour screenshots
 
