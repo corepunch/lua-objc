@@ -197,20 +197,17 @@ t.assertThrows(function() Regions.todo(shot, { 1, 2 }) end, "rows that do not ma
 -- ── Coin Quest, replayed by the game's own model ────────────────────────
 
 local CoinQuest = require("CoinQuest")
-local script, at = {}, 1.25
-for _, direction in ipairs({ "up", "left", "left", "left", "left", "left", "down", "down" }) do
-	table.insert(script, { at, direction }); at = at + 0.21
-end
-local quest = CoinQuest.new({ level = 2, script = script, duration = 4 })
-local again = CoinQuest.new({ level = 2, script = script, duration = 4 })
+local script = { { 1.25, "left", 0.42 }, { 1.25, "up", 0.42 }, { 1.8, "up", 0.42 }, { 1.8, "left", 0.12 } }
+local quest = CoinQuest.new({ level = 1, script = script, duration = 4 })
+local again = CoinQuest.new({ level = 1, script = script, duration = 4 })
 local coins = {}
 for _, event in ipairs(quest.events) do if event.name == "coin" then table.insert(coins, event) end end
-t.expect(#coins == 2 and not quest.hurt, "the scripted run takes two coins past the saws unhurt")
+t.expect(#coins == 2 and not quest.hurt, "the scripted run takes two coins across the meadow unhurt")
 t.expect(near(coins[1].time, again.events[1].time, 0), "the replay is deterministic")
 local p = quest:player(1.0)
-t.expect(p[1] == 5 and p[3] == 3, "the player waits on the start cell before the first press")
-local hopping = quest:player(1.33)
-t.expect(hopping[2] > 0 and hopping[3] < 3 and hopping[3] > 2, "a hop is interpolated between cells, lifted on its arc")
+t.expect(near(p[1], 1.9, 1e-6) and near(p[3], 5.6, 1e-6), "the player waits on the start before the first press")
+local running = quest:player(1.5)
+t.expect(running[1] < 1.9 and running[3] < 5.6, "a held direction runs the hero, up and left from the camera")
 local function pose(id, time)
 	for _, entry in ipairs(quest:poses(time)) do if entry.id == id then return entry end end
 end
@@ -219,8 +216,8 @@ t.expect(pose(coins[1].id, coins[1].time + 0.15).scale > 1, "a taken coin pops a
 t.expect(pose(coins[1].id, coins[1].time + 0.5).hidden, "and is gone")
 t.expect(pose("flag", 1).hidden, "the flag waits hidden until the last coin")
 local view = quest:view()
-t.expect(view.flag ~= nil and #view.coins == 8 and view.level == "sawmill", "the stage template gets the level as it starts")
-t.assertThrows(function() CoinQuest.new({ level = 1, script = { { 0, "sideways" } }, duration = 0.1 }) end,
+t.expect(view.flag ~= nil and #view.coins == 15 and view.level == "meadow", "the stage template gets the level as it starts")
+t.assertThrows(function() CoinQuest.new({ level = 1, script = { { 0, "sideways", 1 } }, duration = 0.1 }) end,
 	"an unknown direction is an error")
 
 os.exit(t.summary() and 0 or 1)

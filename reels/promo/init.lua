@@ -120,14 +120,10 @@ local function load(template)
 	}
 	data.environment = Stage.environment(Reel.native(), Reel.Pen)
 	data.C = C
-	-- The Sawmill, played by a scripted pad: up, five hops left along the
-	-- open row to a coin, then down two to the next, saws running.
-	local script, at = {}, 1.25
-	for _, direction in ipairs({ "up", "left", "left", "left", "left", "left", "down", "down", "right", "right" }) do
-		table.insert(script, { at, direction })
-		at = at + 0.21
-	end
-	data.quest = CoinQuest.new({ level = 2, script = script, duration = C.SHOT.hero - C.QUEST.start + 0.5 })
+	-- Green Meadow, played by a scripted pad: up and left across the hub's
+	-- mounds to a coin, then on up to the next.
+	local script = { { 1.25, "left", 0.42 }, { 1.25, "up", 0.42 }, { 1.8, "up", 0.42 }, { 1.8, "left", 0.12 } }
+	data.quest = CoinQuest.new({ level = 1, script = script, duration = C.SHOT.hero - C.QUEST.start + 0.5 })
 	data.questStates = function(t)
 		local states = data.quest:poses(t - C.QUEST.start)
 		table.insert(states, C.questCamera(t))
