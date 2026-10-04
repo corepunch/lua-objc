@@ -195,8 +195,8 @@ folder and other users' homes, the iCloud Drive and cloud storage roots, Photos,
 Music and TV libraries, and anything in Keychains, Preferences, Mail, Messages,
 Accounts, Cookies or `~/.ssh`. Paths are compared without regard to case and
 through the root's links (`/tmp` is `/private/tmp`), and symlinks are never
-followed. Sizes are measured again before
-the move, and each item is checked just before it moves: one whose app is
+followed. Nothing is measured again: each item leaves the model with the
+size it was marked with, and each item is checked just before it moves: one whose app is
 running (Xcode for DerivedData, a browser for its cache, the parent app of a
 helper), whose project file has gone, that was replaced since it was marked
 (its inode changed), whose app is installed again (a leftover) or that lies in

@@ -83,29 +83,17 @@ function Review:history()
 	self.app.openHistory()
 end
 
--- Moves every marked item to the Trash. Sizes are measured again first,
--- because a mark can be hours old, and each item is checked again just
--- before it moves (helpers/Verify.lua): an item whose app is running, whose
--- proof is gone or that was replaced is skipped with its reason. Results
--- are reported per item and summarised; nothing is rolled back or retried.
+-- Moves every marked item to the Trash. Nothing is measured again: an
+-- item leaves the model with the size it was marked with. Each item is
+-- checked again just before it moves (helpers/Verify.lua): an item whose app
+-- is running, whose proof is gone or that was replaced is skipped with its
+-- reason. Results are reported per item and summarised; nothing is rolled
+-- back or retried.
 function Review:trash()
 	if Marks:count() == 0 or self.busy then return false end
 	local paths = {}
 	for _, mark in ipairs(Marks:all()) do table.insert(paths, mark.path) end
-	local measure = self.service.measure
-	self.busy = true
-	self.status = "Measuring marked items again…"; self:draw()
-	local finished
-	measure(paths, function(sizes)
-		self.busy = false
-		for index, path in ipairs(paths) do
-			local item = Marks:find(path)
-			if item and sizes and sizes[index] and sizes[index] > 0 then item.bytes = sizes[index] end
-		end
-		self.status = nil
-		finished = self:moveAll(paths)
-	end)
-	return finished ~= false
+	return self:moveAll(paths)
 end
 
 function Review:probes()

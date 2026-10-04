@@ -156,7 +156,11 @@ total = app.env.basket:count()
 app:openReview()
 t.assertEqual(app.env.review.refs.items.rowCount, total, "the review lists every marked item")
 local before = service.diskSpace().freeKb
+local measure, measured = service.measure, 0
+service.measure = function(...) measured = measured + 1; return measure(...) end
 t.expect(app.env.review:trash(), "marked items move to the Trash after confirmation")
+service.measure = measure
+t.assertEqual(measured, 0, "moving marked items measures nothing again; they leave with their marked sizes")
 t.assertEqual(app.env.basket:count(), 0, "moved items leave the basket")
 t.assertEqual(service.diskSpace().freeKb, before, "moving to Trash frees nothing yet")
 t.expect(not app.env.review.refs.emptyTrash.hidden, "emptying the Trash is offered next")
