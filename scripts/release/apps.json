@@ -1,0 +1,34 @@
+[
+  {
+    "app": "diskmap",
+    "product": "Diskmap",
+    "platform": "macos",
+    "channels": ["github", "appStore"],
+    "plist": "apps/diskmap/Info.plist",
+    "assets": "apps/diskmap/Assets.xcassets",
+    "plugins": ["StorageScan"],
+    "entitlements": "apps/diskmap/AppStore.entitlements",
+    "profileSecret": "DISKMAP_APPSTORE_PROFILE",
+    "appStoreIdVariable": "DISKMAP_APPSTORE_ID"
+  },
+  {
+    "app": "dnb",
+    "product": "DrumAndBass",
+    "platform": "macos",
+    "channels": ["github"],
+    "plist": "apps/dnb/Info.plist",
+    "plugins": ["AudioStream"]
+  },
+  {
+    "app": "adventure-arena",
+    "product": "AdventureArena",
+    "platform": "ios",
+    "channels": ["github", "appStore"],
+    "identifier": "org.luaobjc.adventure-arena",
+    "displayName": "Adventure Arena",
+    "assets": "ios/AdventureArena/Assets.xcassets",
+    "profileSecret": "ADVENTURE_ARENA_APPSTORE_PROFILE",
+    "appStoreIdVariable": "ADVENTURE_ARENA_APPSTORE_ID",
+    "submodules": ["apps/adventure-arena/zilscript", "vendor/libgit2"]
+  }
+]

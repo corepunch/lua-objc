@@ -1,5 +1,0 @@
-# The apps a release ships, one per line: folder under apps/, then the
-# product its Xcode project builds (apps/<folder>/<Product>.xcodeproj).
-# A tag v1.2.3 releases every one of them at 1.2.3.
-diskmap Diskmap
-dnb DrumAndBass

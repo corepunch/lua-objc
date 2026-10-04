@@ -477,77 +477,102 @@ Deploy an app from `apps/<name>/` to an iPhone with
 `make iphone-deploy APP=adventure-arena`. It uses the same build, signing, and
 install flow and automatically selects the only available physical iPhone.
 
-### Adventure Arena TestFlight releases
+### Releases: GitHub and App Store Connect
 
-The checked-in [Xcode project](ios/AdventureArena/AdventureArena.xcodeproj/project.pbxproj)
-builds the same native UIKit host and bundles `apps/adventure-arena/`, its
-`zilscript` submodule, and the Lua framework. It targets iPhone, uses bundle ID
-`org.luaobjc.adventure-arena` on team `BM2R8F5YHC`, and has a shared archive
-scheme. Edit the checked-in project directly; Xcode Cloud discovers it from the
-repository.
+[Release apps](.github/workflows/release.yml) builds a tag `v1.2.3` with
+Makefiles and the Apple command-line toolchain. It does not invoke
+`xcodebuild`, read `.xcodeproj` files, or depend on Xcode Cloud.
+The existing Xcode projects are optional development tools. Their Cloud
+workflows can be disabled in App Store Connect after the first successful
+Actions upload; this repository change does not disable those remote workflows.
 
-To verify an unsigned device archive locally:
+Each project declares its platform and channels in
+[`scripts/release/apps.json`](scripts/release/apps.json):
+
+| App | Platform | GitHub release | App Store Connect |
+|---|---|---|---|
+| Diskmap | macOS, arm64 | Notarized DMG and Store PKG | Signed PKG |
+| Drum & Bass | macOS, arm64 | Notarized DMG | Not configured |
+| Adventure Arena | iPhone and iPad, arm64 | Signed IPA | Same IPA |
+
+An `ios` entry builds one universal app with `UIDeviceFamily=[1,2]`.
+An `iphone` entry sets `[1]`; an `ipad` entry sets `[2]`.
+These never build a macOS app. macOS entries never build the UIKit host.
+Add another app by adding a manifest record with its product, platform
+(`macos`, `ios`, `iphone`, or `ipad`), channels and signing/resource settings.
+A Store app also needs an existing App Store Connect record, an explicit
+App Store distribution profile and an exportable distribution private key.
+Drum & Bass can add the `appStore` channel when its Store record, icon,
+sandbox entitlements and profile are ready.
+
+The runner selects a stable Xcode 26.5+ installation for `clang`, SDKs,
+`actool`, `codesign`, `productbuild`, `notarytool` and `altool`.
+macOS releases embed vendored Lua in AppKit.dylib, with no Homebrew runtime
+dependency. Both delivery channels use copies of the same compiled app:
+Developer ID signing and notarization for a DMG; distribution signing with
+an embedded provisioning profile for Store PKG/IPA. Development, ad hoc,
+enterprise, expired and mismatched Store profiles are rejected.
+The generated bundle gets version `1.2.3` and build number
+`<Actions run number>.<attempt>`; source plists stay unchanged.
+Debug symbols are retained as Actions artifacts.
+
+Configure repository **Actions secrets** (binary files are base64 encoded):
+
+| Secret | Purpose |
+|---|---|
+| `MACOS_CERTIFICATE_P12` | Developer ID Application certificate **and private key**, `.p12`, for DMGs |
+| `MACOS_CERTIFICATE_PASSWORD` | Its export password (omit for an empty password) |
+| `NOTARY_KEY_P8` | App Store Connect team API key `.p8`, for notarization |
+| `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | That key's ID and issuer UUID |
+| `APPSTORE_CERTIFICATE_P12` | Apple Distribution certificate(s) and private key(s), `.p12`, matching both Store profiles |
+| `APPSTORE_CERTIFICATE_PASSWORD` | Its export password (omit for an empty password) |
+| `APPSTORE_INSTALLER_P12` | 3rd Party Mac Developer Installer certificate and private key, `.p12`, for Store PKGs |
+| `APPSTORE_INSTALLER_PASSWORD` | Its export password (omit for an empty password) |
+| `APPSTORE_KEY_P8` | App Store Connect team API key `.p8`, authorized to upload builds |
+| `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID` | That key's ID and issuer UUID |
+| `DISKMAP_APPSTORE_PROFILE` | Diskmap macOS App Store provisioning profile |
+| `ADVENTURE_ARENA_APPSTORE_PROFILE` | Adventure Arena iOS App Store provisioning profile |
+
+The notary and upload key may be the same team API key with suitable access;
+set both secret groups explicitly. A Developer ID certificate cannot sign
+an App Store app. GitHub secret values cannot be read back; only their names
+can be inspected. No `.p12`, `.p8` or private key goes into a release artifact.
+
+Configure **Actions variables**, containing each app's numeric Apple ID
+from App Store Connect → App Information:
+`DISKMAP_APPSTORE_ID` and `ADVENTURE_ARENA_APPSTORE_ID`.
+The manifest's `appStoreIdVariable` selects the appropriate variable.
+
+Push a `v1.2.3` tag after committing the release sources and submodule
+revisions. Actions builds each declared platform, attaches signed packages
+to the GitHub release and validates/uploads the Store packages. Missing
+credentials fail with their names; a release never silently omits a Store
+upload. For a credential-free check, dispatch **Release apps** with an
+existing tag and `buildOnly=true`; it retains builds only in Actions.
+
+Local commands use the same pipeline:
 
 ```sh
-xcodebuild -project ios/AdventureArena/AdventureArena.xcodeproj \
-  -scheme AdventureArena -configuration Release \
-  -destination 'generic/platform=iOS' \
-  -derivedDataPath /tmp/adventure-arena-derived \
-  -archivePath /tmp/AdventureArena.xcarchive \
-  CODE_SIGNING_ALLOWED=NO archive
-python3 -m unittest discover -s scripts/ipad -p 'test_*.py'
+make release-build APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1
+make release APP=diskmap VERSION=1.2.3 BUILD_NUMBER=123.1 UNSIGNED=1
+# Installed Developer ID identity and NOTARY_KEY/NOTARY_KEY_ID/NOTARY_ISSUER_ID:
+make release APP=diskmap VERSION=1.2.3 BUILD_NUMBER=123.1
+# Also installed Apple Distribution and Mac Installer identities:
+make release APP=diskmap VERSION=1.2.3 BUILD_NUMBER=123.1 STORE=1 PROFILE=/path/to/diskmap.provisionprofile
+make release APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1 STORE=1 PROFILE=/path/to/arena.mobileprovision
+# APPSTORE_KEY is a .p8 path; APPSTORE_KEY_ID, APPSTORE_ISSUER_ID and APPSTORE_APP_ID are required:
+make appstore-upload APP=adventure-arena VERSION=1.2.3
+make publish VERSION=1.2.3
 ```
 
-The App Store Connect record is **Elsewhere: Text Adventures**. Its external
-TestFlight group is **Public Beta**, with an open invitation link at
-https://testflight.apple.com/join/dvkhrmXh. Apple requires an internal group
-before creating an external group, but testers can join Public Beta through
-the link without being added to the App Store Connect team.
+Upload acceptance is followed by Apple's processing. Uploading does not
+submit an App Review request or enroll external testers automatically.
+Adventure Arena's Store record is **Elsewhere: Text Adventures**; its
+**Public Beta** invitation remains https://testflight.apple.com/join/dvkhrmXh.
+External testing still requires the applicable Beta App Review.
 
-The **Adventure Arena Release** Xcode Cloud workflow connects the GitHub
-repository to the checked-in `AdventureArena` scheme. Tags beginning with
-`release/` trigger an iOS archive prepared for **App Store Connect** and a
-**TestFlight External Testing** post-action targeting Public Beta. The first
-external build must pass Apple's Beta App Review before the public link can
-install it. The `ci_pre_xcodebuild.sh` script reads tags in the form
-`release/1.2.3` and sets the app version to `1.2.3`; Xcode Cloud assigns
-increasing build numbers. Push the tag only after the release commit and
-submodules are available from the connected repository.
-
-### Diskmap releases
-
-The Diskmap Xcode Cloud workflow builds only for tags beginning with
-`diskmap/`, not for branch pushes. `apps/diskmap/ci_scripts/ci_pre_xcodebuild.sh`
-reads a tag like `diskmap/1.2.3` and sets the app version to `1.2.3`. The start
-condition lives in Xcode Cloud (App Store Connect), not in the repository.
-
-### GitHub releases of Diskmap and Drum & Bass
-
-The apps in [`scripts/release/apps`](scripts/release/apps) are released
-together, at one version, as notarized DMGs on one GitHub release `v1.2.3`.
-Each is built from its Xcode project (`apps/diskmap/Diskmap.xcodeproj`,
-`apps/dnb/DrumAndBass.xcodeproj`) by
-[`scripts/release/release.sh`](scripts/release/release.sh), and both
-projects run the shared launcher `scripts/launcher/launcher.c`, which starts
-the Lua entry point the app's `Info.plist` names as `LuaObjCEntry`.
-
-On a Mac whose Xcode is signed in to the team, release from the working tree:
-
-```sh
-make release VERSION=1.0.0   # sign, notarize, staple each: build/release/<app>/<Product>-1.0.0.dmg
-make publish VERSION=1.0.0   # create the release v1.0.0 with every DMG
-```
-
-Xcode signs with its cloud-managed Developer ID certificate and notarizes
-through the account, so no key or password is needed. That certificate's
-key stays with Apple and cannot be exported, so a tag `v1.0.0` pushed to
-GitHub only checks the build
-([`.github/workflows/release.yml`](.github/workflows/release.yml)) unless the
-repository holds an exportable Developer ID certificate and an App Store
-Connect API key as secrets (listed in the workflow); then the runner signs,
-notarizes and publishes on its own. `make release VERSION=1.0.0 UNSIGNED=1`
-builds ad hoc DMGs for the Mac that built them. Diskmap's App Store builds
-stay in Xcode Cloud, started by `diskmap/` tags.
+Apple documents [command-line build uploads](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
+and [Mac Store package signing](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
 
 ### Adventure Arena tour screenshots
 

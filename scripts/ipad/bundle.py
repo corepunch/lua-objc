@@ -6,13 +6,16 @@ import plistlib
 import shutil
 
 
-def copy_tree(source, workspace, lua_only=False):
+def copy_tree(source, workspace, lua_only=False, runtime_only=False):
     source = Path(source)
     for path in source.rglob('*'):
         relative = path.relative_to(source)
-        if not path.is_file() or any(part.startswith('.') for part in relative.parts):
+        if not path.is_file() or any(part.startswith('.') or part in ('Build', '__pycache__', 'ci_scripts', 'store-assets')
+                                   or part.endswith(('.xcodeproj', '.xcworkspace', '.xcassets')) for part in relative.parts):
             continue
         if lua_only and path.suffix not in ('.lua', '.etlua'):
+            continue
+        if runtime_only and path.suffix in ('.md', '.plist', '.entitlements', '.sh', '.py', '.c', '.m', '.h'):
             continue
         target = workspace / path
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -41,7 +44,7 @@ def main():
     parser.add_argument('--app', required=True)
     parser.add_argument('--entry', required=True)
     parser.add_argument('--display-name', required=True)
-    parser.add_argument('--device-family', type=int, choices=(1, 2), required=True)
+    parser.add_argument('--device-family', choices=('1', '2', '1,2'), required=True)
     parser.add_argument('--file-sharing', action='store_true')
     parser.add_argument('--overlay', action='append', default=[],
                         help='copy this folder\'s files into the workspace at their paths relative to it')
@@ -57,8 +60,12 @@ def main():
     info.update(CFBundleDisplayName=args.display_name, CFBundleName=args.display_name,
                 CFBundleExecutable='LuaStudio', CFBundleIdentifier=args.identifier,
                 CFBundleSupportedPlatforms=['iPhoneOS' if args.sdk == 'iphoneos' else 'iPhoneSimulator'],
-                UIDeviceFamily=[args.device_family], MinimumOSVersion=args.minimum,
+                UIDeviceFamily=[int(family) for family in args.device_family.split(',')], MinimumOSVersion=args.minimum,
                 LRTLocalEntry=args.entry)
+    if 2 in info['UIDeviceFamily']:
+        info['UISupportedInterfaceOrientations~ipad'] = [
+            'UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown',
+            'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight']
     if args.file_sharing:
         info.update(UIFileSharingEnabled=True, LSSupportsOpeningDocumentsInPlace=True)
     else:
@@ -70,7 +77,7 @@ def main():
     if workspace.exists():
         shutil.rmtree(workspace)
     copy_tree('lua', workspace, lua_only=True)
-    copy_tree(args.app, workspace)
+    copy_tree(args.app, workspace, runtime_only=True)
     if args.app == 'apps/studio':
         copy_tree('demo/playground', workspace)
     for overlay in args.overlay:
