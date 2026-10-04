@@ -1,4 +1,4 @@
-<!-- 8–10.3 s: the raised sunburst sinks away, the page turns into a treemap whose
+<!-- 10.5–13 s: the raised sunburst sinks away, the page turns into a treemap whose
     groups pop in one per 16th, then the window leaves for the next scene. -->
 <%
 -- Top-level groups pop one per 16th; slivers too thin to read ride along
@@ -7,13 +7,13 @@ local groups = {}
 for _, cell in ipairs(captures:get("treemap-dark"):cells("treemap", 0)) do
 	if cell.w < 20 and #groups > 0 then table.insert(groups[#groups], cell) else table.insert(groups, { cell }) end
 end
-local tile = [[<Piece rect="#treemap/%s" motion="pop(8.75, {response = 1 / 2.3, damping = 0.5, turn = 0.25, sound = %s})" />]]
+local tile = [[<Piece rect="#treemap/%s" motion="pop(11.25, {response = 1 / 2.3, damping = 0.5, turn = 0.25, sound = %s})" />]]
 %>
-<Scene from="7.98" to="10.3">
-  <Group x="960" y="612" scale="0.78" motion="punch(8), leave{at = 9.95, duration = 0.3, x = -2300}">
-    <Window capture="map-dark" radius="24" shadow="1" to="8.62" />
-    <Window capture="treemap-dark" radius="24" shadow="1" motion="fadeIn(8.5, 0.12)">
-      <Fill rect="#treemap" color="sample(600, 610)" outset="1" />
+<Scene from="10.48" to="13.05">
+  <Group x="960" y="612" scale="0.78" motion="punch(10.5), leave{at = 12.7, duration = 0.3, x = -2300}">
+    <Window capture="map-dark" radius="24" shadow="1" to="11.12" />
+    <Window capture="treemap-dark" radius="24" shadow="1" motion="fadeIn(11, 0.12)">
+      <Fill rect="#treemap" color="sample(238, 400)" outset="1" />
       <Group stagger="0.125">
         <% for _, cells in ipairs(groups) do %>
         <Group>
@@ -21,13 +21,13 @@ local tile = [[<Piece rect="#treemap/%s" motion="pop(8.75, {response = 1 / 2.3, 
         </Group>
         <% end %>
       </Group>
-      <Sweep at="9.2" duration="0.55" />
+      <Sweep at="11.7" duration="0.55" />
     </Window>
     <Frame capture="map-dark">
-      <Piece rect="#sunburst" outset="12" key="700, 300" motion="leave{at = 8.45, duration = 0.33, y = 90, scale = 0.1, fade = true}" />
+      <Piece rect="#sunburst" outset="12" key="620, 200" motion="leave{at = 10.95, duration = 0.33, y = 90, scale = 0.1, fade = true}" />
     </Frame>
   </Group>
-  <Text style="head" text="Rings or rectangles." x="960" y="176" at="8.12" exit="9.72" />
-  <Text style="sub" text="Click any group to look inside." x="960" y="236" at="8.32" stagger="0.035" exit="9.68" />
-  <Cue sound="whoosh" at="9.9" until="10.25" />
+  <Text style="head" text="Rings or rectangles." x="960" y="176" at="10.62" exit="12.45" />
+  <Text style="sub" text="Click any group to look inside." x="960" y="236" at="10.76" stagger="0.035" exit="12.5" />
+  <Cue sound="whoosh" at="12.65" until="13" />
 </Scene>

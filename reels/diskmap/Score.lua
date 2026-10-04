@@ -1,6 +1,6 @@
--- The Diskmap score at 120 BPM: B minor build → drop on D at 4 s →
--- breakdown at 20 s → final lift at 24 s → D major landing on the logo at
--- 26 s. Picture-synced sounds (pops, slams, whooshes, the counter run, the
+-- The Diskmap score at 120 BPM: B minor build → drop on D at 6 s →
+-- breakdown at 24 s → final lift at 28 s → D major landing on the logo at
+-- 30 s. Picture-synced sounds (pops, slams, whooshes, the counter run, the
 -- logo bell) come from the reel's own events; the groove is musical data.
 local Audio = require("reel.audio")
 local I = require("reel.instruments")
@@ -15,23 +15,24 @@ local G = { root = 43, pad = { 55, 59, 62, 66, 71 } }
 local D = { root = 38, pad = { 57, 62, 64, 66, 69 } }
 local A = { root = 45, pad = { 57, 61, 64, 69, 71 } }
 local EM = { root = 40, pad = { 55, 59, 62, 64, 67 } }
-local BARS = { BM, G, D, A, BM, G, D, A, BM, G, EM, A, BM, D, D }
+local BARS = { BM, G, A, D, A, BM, G, D, A, BM, G, A, EM, A, BM, D, D }
 
 local function chord(t)
 	return BARS[math.min(#BARS, math.max(1, math.floor(t / BAR) + 1))]
 end
 
-local function section(t)
-	if t < 4 then return "intro" end
-	if t < 20 then return "drop" end
-	if t < 24 then return "break" end
-	if t < 26 then return "lift" end
-	return "end"
-end
-
 -- Score.render(reel, music) -> left, right. `music` = {kicks, crashes,
--- risers, rolls, booms, drop, finish}.
+-- risers, rolls, booms, drop, breakdown, lift, logo, finish}, in seconds.
 function Score.render(reel, music, duration, sampleRate)
+	local function section(t)
+		if t < music.drop then return "intro" end
+		if t < music.breakdown then return "drop" end
+		if t < music.lift then return "break" end
+		if t < music.logo then return "lift" end
+		return "end"
+	end
+	-- The bars with a groove: from the drop to the logo.
+	local firstBar, lastBar = music.drop // BAR + 1, music.logo // BAR
 	local m = Audio.new(duration, sampleRate)
 	local events = { pop = {}, slam = {}, whoosh = {}, counter = {}, logo = {} }
 	for _, e in ipairs(reel.events) do
@@ -45,7 +46,7 @@ function Score.render(reel, music, duration, sampleRate)
 		I.pad(m, t0, BAR, c.pad, {
 			last = b >= #BARS - 1,
 			level = function(t) return padLevel[section(t)] end,
-			bright = function(t) return section(t) == "intro" and 0.35 + 0.5 * t / 4 or 1 end,
+			bright = function(t) return section(t) == "intro" and 0.35 + 0.5 * t / music.drop or 1 end,
 		})
 	end
 
@@ -59,9 +60,9 @@ function Score.render(reel, music, duration, sampleRate)
 		local c = chord(t)
 		local note = c.pad[pattern[step % #pattern + 1] % #c.pad + 1] + 12
 		local accent = step % 4 == 0 and 1.0 or (step % 2 == 0 and 0.8 or 0.62)
-		local level = sec == "intro" and 0.05 + 0.03 * t / 4 or (base[sec] or 0.05)
+		local level = sec == "intro" and 0.05 + 0.03 * t / music.drop or (base[sec] or 0.05)
 		I.pluck(m, t, hz(note), {
-			level = level * accent, bright = sec == "intro" and 0.2 + 0.8 * t / 4 or 1,
+			level = level * accent, bright = sec == "intro" and 0.2 + 0.8 * t / music.drop or 1,
 			pan = step % 2 == 0 and 0.32 or 0.68, send = 0.5,
 		})
 		step = step + 1
@@ -69,7 +70,7 @@ function Score.render(reel, music, duration, sampleRate)
 	end
 
 	-- Bass: pumping 8ths in the drops, long notes in the breakdown.
-	for b = 3, 13 do
+	for b = firstBar, lastBar do
 		local c, t0 = BARS[b], (b - 1) * BAR
 		if section(t0) == "break" then
 			for half = 0, 1 do I.bassSustain(m, t0 + half * BAR / 2, hz(c.root), BAR / 2) end
@@ -83,7 +84,7 @@ function Score.render(reel, music, duration, sampleRate)
 	-- Drums. Noise voices run in a fixed order so the mix is repeatable.
 	for _, k in ipairs(music.kicks) do I.kick(m, k) end
 	local claps = {}
-	for b = 3, 13 do
+	for b = firstBar, lastBar do
 		if section((b - 1) * BAR) ~= "break" then
 			table.insert(claps, (b - 1) * BAR + 0.5)
 			table.insert(claps, (b - 1) * BAR + 1.5)
@@ -91,7 +92,7 @@ function Score.render(reel, music, duration, sampleRate)
 	end
 	for _, t in ipairs(music.claps) do table.insert(claps, t) end
 	for _, c in ipairs(claps) do I.clap(m, c) end
-	for b = 3, 13 do
+	for b = firstBar, lastBar do
 		if section((b - 1) * BAR) ~= "break" then
 			for s = 0, 15 do
 				local open = s % 4 == 2

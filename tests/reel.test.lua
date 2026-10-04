@@ -452,14 +452,15 @@ t.expect(counterLit > 20, "a counter draws its reading and unit")
 write(dir .. "/rows-dark.layout.xml", [[<Layout scale="2">
   <View class="LuaScrollView" identifier="list" window="0 0 20 10">
     <View class="NSTableView" window="0 0 20 10">
+      <View class="LuaTableRowView" window="0 5 20 5" />
       <View class="NSTableRowView" window="0 0 20 5" />
-      <View class="NSTableRowView" window="0 5 20 5" />
     </View>
   </View>
 </Layout>]])
 page:snapshot():write(dir .. "/rows-dark.png")
 local rows = captures:get("rows-dark")
-t.assertEqual(#rows:rows("list"), 2, "table rows belong to the nearest identified view")
+t.assertEqual(#rows:rows("list"), 2, "table rows, and rows of an NSTableRowView subclass, belong to the nearest identified view")
+t.assertEqual(rows:row("list", 1).y, 0, "rows are in display order, not the table's reuse order")
 local rx, ry, rw, rh = rows:rect("#list/row/2")
 t.expect(rx == 0 and ry == 5 and rw == 20 and rh == 5, "rect(#view/row/N) reads the Nth row")
 t.assertEqual(rows:row("list", 2).y, 5, "row(view, n) reads the Nth row")

@@ -1,18 +1,19 @@
-<!-- 0–4 s: the question. Four words slam in on the beat, squash away, and
-     "Full of what?" shrinks into the logo ring, which blows out on the drop. -->
-<Scene to="4.25">
-  <Group to="2.7" x="960 + shakeX(t, {0.5, 1, 1.5, 2}, 10)" y="540 + shakeY(t, {0.5, 1, 1.5, 2}, 10)" anchor="960, 540"
-         scale="mix(1, 1.07, progress(t, 0.5, 2.5))" sx="1 + inQuart(progress(t, 2.42, 2.62)) * 0.3" sy="1 - inQuart(progress(t, 2.42, 2.62))">
+<!-- 0–6 s: the question. Four words slam in on the beat and hold, squash
+     away, and "Full of what?" holds, then shrinks into the logo ring,
+     which blows out on the drop. -->
+<Scene to="6.25">
+  <Group to="3.75" x="960 + shakeX(t, {0.5, 1, 1.5, 2}, 10)" y="540 + shakeY(t, {0.5, 1, 1.5, 2}, 10)" anchor="960, 540"
+         scale="mix(1, 1.07, progress(t, 0.5, 3.55))" sx="1 + inQuart(progress(t, 3.55, 3.75)) * 0.3" sy="1 - inQuart(progress(t, 3.55, 3.75))">
     <Slam style="huge" text="Your disk is full." x="960" y="592" at="0.5, 1, 1.5, 2" />
   </Group>
-  <Let name="blow" value="outExpo(progress(t, 4, 4.22))" />
+  <Let name="blow" value="outExpo(progress(t, 6, 6.22))" />
   <Group x="960" y="540" anchor="960, 540" alpha="1 - blow"
-         scale="mix(1, 0.4, inOutCubic(progress(t, 3.05, 3.65))) * (1 + blow * 2.2)">
-    <Text style="hugeBrand" text="Full of what?" x="960" y="592" at="2.48" stagger="0.06" />
+         scale="mix(1, 0.4, inOutCubic(progress(t, 5.25, 5.8))) * (1 + blow * 2.2)">
+    <Text style="hugeBrand" text="Full of what?" x="960" y="592" at="3.6" stagger="0.06" />
   </Group>
-  <Cue sound="slam" at="2.5" />
-  <Let name="wave" value="outExpo(progress(t, 4, 4.45))" />
+  <Cue sound="slam" at="3.62" />
+  <Let name="wave" value="outExpo(progress(t, 6, 6.45))" />
   <Ring segments="logo" x="960" y="538" radius="262 + wave * 700" width="34 * (1 - wave)"
-        sweep="outQuart(progress(t, 3, 3.85))" turn="-0.35 * (1 - outQuint(progress(t, 3, 3.9)))"
-        alpha="progress(t, 2.95, 3.05) * (1 - wave)" />
+        sweep="outQuart(progress(t, 5.1, 5.9))" turn="-0.35 * (1 - outQuint(progress(t, 5.1, 5.95)))"
+        alpha="progress(t, 5.05, 5.15) * (1 - wave)" />
 </Scene>

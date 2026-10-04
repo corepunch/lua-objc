@@ -37,7 +37,7 @@ must render any instant exactly and repeatably.
 | Synth voices: pad, pluck, bass, drums, risers, whooshes, pops, bells | `reel/instruments.lua` |
 | Tests | `tests/reel.test.lua`, `tests/reel_scene.test.lua` |
 
-`reels/diskmap/` is the reference 2-D reel: a 30 s, 1080p piece in 11
+`reels/diskmap/` is the reference 2-D reel: a 34 s, 1080p piece in 9
 scene templates, one bespoke shot and a score. `reels/promo/` is the
 reference SceneKit reel: one camera through a world of devices whose
 screens show real app captures, an app's own game template rendered in
@@ -120,8 +120,8 @@ use `step()` or `&gt;` for comparisons.
 | `Ring radius width sweep turn segments track` | A segmented donut drawn on from 12 o'clock. |
 | `Burst at colors count speed seed` | Particles thrown from its position. |
 | `Sweep at duration` | A glint across the parent's bounds. |
-| `Text style text align at stagger exit` | Words rising from behind their baseline mask. |
-| `Slam style text at="t1, t2…" styleN` | Words landing from large, each on its own hit. |
+| `Text style text align at stagger exit` | Words rising from behind their baseline mask. `Text.landing(at, words, stagger)` is when the last word has settled; hold a line a second past it. |
+| `Slam style text at="t1, t2…" styleN` | Words landing from large, each on its own hit; `Slam.landing(lastHit)` is when they have settled. |
 | `Counter value format final unit style unitStyle` | Digits ticking in fixed slots with a still unit. |
 | `Backdrop color`, `Glow color radius colors locations`, `Vignette inner outer` | The stage. |
 | `Palette name colors`, `Style name size weight color gradient tracking kern digits design` | Definitions for type. |
@@ -249,7 +249,7 @@ musical data, then `mix:master{kicks, gain}` returns two sample arrays for
 content at backing scale, and `<name>.layout.xml`, its layout dump. The
 layout's `scale` maps points to pixels; each view's `window` rectangle is
 `"x y width height"` in top-left window points; treemap cells are listed and
-table rows belong to their nearest identified view. Pieces are cut by
+table rows belong to their nearest identified view, in display order. Pieces are cut by
 identifier and survive layout changes after a fresh capture. Captures are
 generated, so reels keep them out of git.
 

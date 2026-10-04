@@ -1,15 +1,15 @@
-<!-- 26–30 s: the logo. The ring draws on under a soft glow and a shock
+<!-- 30–34 s: the logo. The ring draws on under a soft glow and a shock
      wave, then the name and the line rise. -->
-<Scene from="26">
-  <Cue sound="logo" at="26" />
-  <Rect width="1920" height="1080" color="#000000" alpha="1 - progress(t, 26, 26.8) * 0.3" />
-  <Let name="endGlow" value="0.35 * clamp01((t - 26.1) / 0.8)" />
+<Scene from="30">
+  <Cue sound="logo" at="30" />
+  <Rect width="1920" height="1080" color="#000000" alpha="1 - progress(t, 30, 30.8) * 0.3" />
+  <Let name="endGlow" value="0.35 * clamp01((t - 30.1) / 0.8)" />
   <Glow x="960" y="400" radius="420" locations="0, 0.5, 1"
         colors="{rgb(0x7B4DFF, endGlow), rgb(0x2F6BFF, endGlow * 0.4), rgb(0, 0)}" />
-  <Let name="shock" value="outExpo(progress(t, 26, 26.6))" />
+  <Let name="shock" value="outExpo(progress(t, 30, 30.6))" />
   <Circle x="960" y="400" radius="74 + shock * 900" stroke="3" color="rgb(0xFFFFFF, 0.5 * (1 - shock))" />
-  <Ring segments="logo" x="960" y="400" radius="74" width="26" sweep="outQuart(progress(t, 26, 27.3))"
-        turn="-0.35 * (1 - outQuint(progress(t, 26, 27.6)))" alpha="progress(t, 25.95, 26.1)" />
-  <Text style="logo" text="Diskmap" x="960" y="640" at="26.35" />
-  <Text style="tagline" text="Know exactly what’s on your Mac." x="960" y="716" at="26.85" stagger="0.05" />
+  <Ring segments="logo" x="960" y="400" radius="74" width="26" sweep="outQuart(progress(t, 30, 31.3))"
+        turn="-0.35 * (1 - outQuint(progress(t, 30, 31.6)))" alpha="progress(t, 29.95, 30.1)" />
+  <Text style="logo" text="Diskmap" x="960" y="640" at="30.35" />
+  <Text style="tagline" text="Know exactly what’s on your Mac." x="960" y="716" at="30.85" stagger="0.05" />
 </Scene>
