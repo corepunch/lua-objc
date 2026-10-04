@@ -1,0 +1,3 @@
+<!-- A heart gives back a life. -->
+<Node id="<%= heart.id %>" model="<%= assets %>heart.obj" position="<%= heart.x %> <%= heart.y + 0.15 %> <%= heart.z %>"
+      scale="1.3" spin="110" bob="0.1" transition="pop" />

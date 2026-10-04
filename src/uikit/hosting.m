@@ -6,6 +6,9 @@ __attribute__((weak)) UIWindow *LRTApplicationWindow(void) {
 
 @interface LuaHostingController : UIViewController
 @property (nonatomic, strong) UIView *luaRoot;
+/* `landscape` or `portrait` from the window's `orientation`; nil allows
+ * every orientation the app's Info.plist does. */
+@property (nonatomic, copy) NSString *orientation;
 @property (nonatomic, strong) LuaReg *disappearCallback;
 @property (nonatomic) BOOL keyboardWasVisible;
 @property (nonatomic) CGFloat keyboardRootHeight;
@@ -15,6 +18,12 @@ static void uikit_scroll_mark_keyboard(UIView *view);
 static void uikit_reload_keyboard_toolbar(UIViewController *controller);
 
 @implementation LuaHostingController
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+	if ([self.orientation isEqualToString:@"landscape"]) return UIInterfaceOrientationMaskLandscape;
+	if ([self.orientation isEqualToString:@"portrait"]) return UIInterfaceOrientationMaskPortrait;
+	return [super supportedInterfaceOrientations];
+}
+
 - (BOOL)ignoresTopSafeArea {
 	NSString *safeArea = self.luaRoot.ignoresSafeArea;
 	return [safeArea isEqualToString:@"top"]
@@ -213,13 +222,24 @@ static int bridge_hosting_controller(lua_State *L) {
 static int bridge_install_scene(lua_State *L) {
 	UIViewController *root = check_view_controller(L, 1);
 	const char *title = luaL_optstring(L, 2, "");
+	const char *orientation = luaL_optstring(L, 3, NULL);
 	UIWindow *window = LRTApplicationWindow();
 	if (!window) {
 		return luaL_error(L, "UIKit.Window requires an attached UIWindowScene");
 	}
+	if ([root isKindOfClass:LuaHostingController.class]) {
+		((LuaHostingController *)root).orientation = orientation ? @(orientation) : nil;
+	}
 	window.rootViewController = root;
 	window.accessibilityLabel = @(title);
 	[window makeKeyAndVisible];
+	/* A locked orientation turns the screen now, not at the next rotation. */
+	if (orientation) {
+		[root setNeedsUpdateOfSupportedInterfaceOrientations];
+		UIInterfaceOrientationMask mask = root.supportedInterfaceOrientations;
+		[window.windowScene requestGeometryUpdateWithPreferences:
+			[[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask] errorHandler:nil];
+	}
 	push_objc(L, window, "uiwindow");
 	return 1;
 }

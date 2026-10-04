@@ -1,3 +1,3 @@
-<!-- The gate key, the gold coin stood on end and a little larger. -->
-<Node id="<%= id %>" model="<%= assets %>coin-gold.obj" position="<%= x %> 0.45 <%= z %>"
-      rotation="90 0 0" scale="1.35" spin="80" bob="0.12" transition="pop" />
+<!-- The gate key. -->
+<Node id="<%= key.id %>" model="<%= assets %>key.obj" position="<%= key.x %> <%= key.y + 0.3 %> <%= key.z %>"
+      scale="1.8" spin="90" bob="0.12" transition="pop" />

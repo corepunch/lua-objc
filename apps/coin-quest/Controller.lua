@@ -46,7 +46,7 @@ function Controller:createWindow()
 	})
 	self.hud = HudController.new(refs.hud, ns, {touch = ns.platform == "UIKit"})
 	self:render()
-	self.stage:pose(self.model:poses())
+	self.stage:pose(self.model:poses(), self.model:camera())
 	return self.window
 end
 
@@ -58,18 +58,18 @@ function Controller:render()
 end
 
 function Controller:tick(dt)
+	self.input:gamepad(self.stage:gamepad())
+	-- Once the level ends, a jump continues, like Return.
+	if self.model.state ~= "playing" and self.input:takeJump() then self:advance() end
 	self.model:step(math.min(dt, LOOP.maxFrame), self.input)
-	-- A run ends with the level, so the next tap continues instead of stopping.
-	if self.model.state ~= "playing" then self.input:stop() end
 	self:render()
-	self.stage:pose(self.model:poses())
+	self.stage:pose(self.model:poses(), self.model:camera())
 end
 
--- A tap stops a running player; with nothing to stop it continues, like
--- Return, so a finished level or game needs no keyboard.
+-- A tap jumps; after a level or game it continues, like Return, so a
+-- touch screen needs no keyboard.
 function Controller:tap()
-	if self.input:stop() then return end
-	if self.model.state ~= "playing" then self:advance() end
+	if self.model.state ~= "playing" then self:advance() else self.input:jump() end
 end
 
 function Controller:advance()

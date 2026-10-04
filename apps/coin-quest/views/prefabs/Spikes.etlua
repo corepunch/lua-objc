@@ -1,2 +1,2 @@
 <!-- A spike trap. The world raises and sinks it; the pose moves it. -->
-<Node id="<%= id %>" model="<%= assets %>trap-spikes.obj" position="<%= x %> 0 <%= z %>" scale="1.3" />
+<Node id="<%= spike.id %>" model="<%= assets %>trap-spikes.obj" position="<%= spike.x %> <%= spike.y %> <%= spike.z %>" scale="1.3" />

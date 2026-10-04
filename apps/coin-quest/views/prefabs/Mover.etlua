@@ -1,0 +1,5 @@
+<!-- A ferry or lift. The pose moves it; its top is the node's origin, and
+    the hero rides the pose. -->
+<Node id="<%= mover.id %>" position="<%= mover.x %> <%= mover.y %> <%= mover.z %>">
+	<Node model="<%= assets %>block-moving-large.obj" position="0 -0.5 0" scale="1.6 1 1.6" />
+</Node>

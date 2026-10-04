@@ -1,0 +1,8 @@
+<!-- A checkpoint sign. Once touched, a star turns over it: this is where the
+    hero comes back after a hit. -->
+<Node id="<%= checkpoint.id %>" position="<%= checkpoint.x %> <%= checkpoint.y %> <%= checkpoint.z %>">
+	<Node model="<%= assets %>sign.obj" scale="1.3" />
+	<% if checkpoint.active then -%>
+	<Node id="<%= checkpoint.id %>-star" model="<%= assets %>star.obj" position="0 1.05 0" scale="1.2" spin="120" bob="0.08" transition="pop" />
+	<% end -%>
+</Node>

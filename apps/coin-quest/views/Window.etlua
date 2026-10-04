@@ -1,4 +1,4 @@
-<Window title="Coin Quest" width="1100" height="760" minWidth="720" minHeight="520">
+<Window title="Coin Quest" width="1100" height="660" minWidth="720" minHeight="420" orientation="landscape">
 	<Toolbar>
 		<ToolbarItem id="restartItem" label="Restart" icon="arrow.counterclockwise" tooltip="Start again from the first level" action="restart" />
 	</Toolbar>

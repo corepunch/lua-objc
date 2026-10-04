@@ -355,6 +355,7 @@ static void bridge_set_optional_callback(
 /* Imported here, after the AppKit fragments: SceneKit declares `target`
  * properties that would make their `target` messages ambiguous. */
 #import <SceneKit/SceneKit.h>
+#import <GameController/GameController.h>
 #include "shared/scene_models.m"
 #include "shared/scene_view.m"
 #include "appkit/reorder_container.m"

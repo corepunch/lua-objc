@@ -9,8 +9,8 @@ HudController.__index = HudController
 
 -- How to play, for the controls the device has.
 local HINTS = {
-	keys = "Arrows or WASD hop · A gap leaps itself · Mushroom pads launch you · Coins, then the flag",
-	touch = "Swipe to run · Gaps leap themselves · Tap to stop · Coins, then the flag",
+	keys = "Arrows or WASD run · Space jumps · Q and E turn the camera · Every coin, then the flag",
+	touch = "Stick runs · A jumps · X and Y turn the camera · Every coin, then the flag",
 }
 
 -- `options.touch` shows the touch controls' hint instead of the keys'.
@@ -30,6 +30,7 @@ function HudController.viewData(status, hint)
 		level = status.level,
 		stage = status.stage,
 		coins = string.format("%d / %d", status.coins, status.totalCoins),
+		stars = (status.totalStars or 0) > 0 and string.format("%d / %d", status.levelStars, status.totalStars) or nil,
 		score = tostring(status.score),
 		hearts = hearts,
 		lives = string.format("%d of %d lives", status.lives, status.maxLives),

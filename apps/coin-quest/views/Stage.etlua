@@ -1,36 +1,55 @@
 <!-- The 3-D stage. Camera and lights stay across levels; everything a level
     owns hangs from one node named after it, so loading another level
-    replaces the whole subtree. Each entity kind is a prefab partial. -->
-<SceneView id="scene" background="#a9dcf5" onKey="key" onFrame="frame" onSwipe="swipe" onTap="tap">
+    replaces the whole subtree. Each entity kind is a prefab partial. The
+    poses move the camera after the hero. -->
+<SceneView id="scene" background="<%= sky %>" onKey="key" onFrame="frame" onSwipe="swipe" onTap="tap" virtualGamepad="true">
 	<Camera id="camera" position="<%= camera.position %>" lookAt="<%= camera.lookAt %>" fieldOfView="<%= camera.fieldOfView %>" fieldOfViewAxis="<%= camera.fieldOfViewAxis %>" />
 	<Light id="sun" type="directional" rotation="-58 38 0" intensity="1150" castsShadow="true" />
 	<Light id="skylight" type="ambient" intensity="480" color="#d6ecff" />
-	<Node id="sea" geometry="floor" color="#4fa3d1" position="0 -1.35 0" castsShadow="false" />
+	<Node id="sea" geometry="floor" color="<%= sea %>" position="0 <%= seaLevel %> 0" castsShadow="false" />
 	<Node id="level-<%= level %>">
-		<% for _, tile in ipairs(tiles) do -%>
-		<%- partial("prefabs/Tile.etlua", {x = tile.x, z = tile.z, assets = assets}) %>
+		<% for _, block in ipairs(blocks) do -%>
+		<Node model="<%= assets .. block.model %>" position="<%= block.x %> <%= block.y %> <%= block.z %>" rotation="0 <%= block.yaw %> 0" scale="1 <%= block.stretch %> 1" />
 		<% end -%>
-		<% for _, item in ipairs(scenery) do -%>
-		<%- partial("prefabs/Scenery.etlua", {kind = item.kind, x = item.x, z = item.z, assets = assets}) %>
+		<% for _, prop in ipairs(props) do -%>
+		<Node model="<%= assets .. prop.model %>" position="<%= prop.x %> <%= prop.y %> <%= prop.z %>" rotation="0 <%= prop.yaw %> 0" scale="<%= prop.scale %>" />
+		<% end -%>
+		<% for _, spring in ipairs(springs) do -%>
+		<%- partial("prefabs/Spring.etlua", {spring = spring, assets = assets}) %>
+		<% end -%>
+		<% for _, gate in ipairs(gates) do -%>
+		<%- partial("prefabs/Gate.etlua", {gate = gate, assets = assets}) %>
+		<% end -%>
+		<% for _, mover in ipairs(movers) do -%>
+		<%- partial("prefabs/Mover.etlua", {mover = mover, assets = assets}) %>
+		<% end -%>
+		<% for _, plank in ipairs(planks) do -%>
+		<%- partial("prefabs/Plank.etlua", {plank = plank, assets = assets}) %>
 		<% end -%>
 		<% for _, coin in ipairs(coins) do -%>
-		<%- partial("prefabs/Coin.etlua", {id = coin.id, x = coin.x, z = coin.z, y = coin.aerial and 0.7 or 0.15, assets = assets}) %>
+		<%- partial("prefabs/Coin.etlua", {coin = coin, assets = assets}) %>
+		<% end -%>
+		<% for _, star in ipairs(stars) do -%>
+		<%- partial("prefabs/Star.etlua", {star = star, assets = assets}) %>
+		<% end -%>
+		<% for _, heart in ipairs(hearts) do -%>
+		<%- partial("prefabs/Heart.etlua", {heart = heart, assets = assets}) %>
 		<% end -%>
 		<% for _, key in ipairs(keys) do -%>
-		<%- partial("prefabs/Key.etlua", {id = key.id, x = key.x, z = key.z, assets = assets}) %>
+		<%- partial("prefabs/Key.etlua", {key = key, assets = assets}) %>
+		<% end -%>
+		<% for _, checkpoint in ipairs(checkpoints) do -%>
+		<%- partial("prefabs/Checkpoint.etlua", {checkpoint = checkpoint, assets = assets}) %>
 		<% end -%>
 		<% for _, spike in ipairs(spikes) do -%>
-		<%- partial("prefabs/Spikes.etlua", {id = spike.id, x = spike.x, z = spike.z, assets = assets}) %>
+		<%- partial("prefabs/Spikes.etlua", {spike = spike, assets = assets}) %>
 		<% end -%>
 		<% for _, saw in ipairs(saws) do -%>
-		<%- partial("prefabs/Saw.etlua", {id = saw.id, x = saw.x, z = saw.z, axis = saw.axis, assets = assets}) %>
-		<% end -%>
-		<% for _, ferry in ipairs(platforms) do -%>
-		<%- partial("prefabs/Platform.etlua", {id = ferry.id, x = ferry.x, z = ferry.z, assets = assets}) %>
+		<%- partial("prefabs/Saw.etlua", {saw = saw, assets = assets}) %>
 		<% end -%>
 		<% if flag then -%>
-		<%- partial("prefabs/Flag.etlua", {x = flag.x, z = flag.z, assets = assets}) %>
+		<%- partial("prefabs/Flag.etlua", {flag = flag, assets = assets}) %>
 		<% end -%>
-		<%- partial("prefabs/Player.etlua", {x = start.x, z = start.z, assets = assets}) %>
+		<%- partial("prefabs/Player.etlua", {start = start, assets = assets}) %>
 	</Node>
 </SceneView>

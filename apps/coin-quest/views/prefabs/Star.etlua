@@ -1,0 +1,3 @@
+<!-- A bonus star, three to a level, hidden where the way is hardest. -->
+<Node id="<%= star.id %>" model="<%= assets %>star.obj" position="<%= star.x %> <%= star.y + 0.15 %> <%= star.z %>"
+      scale="1.6" spin="120" bob="0.12" transition="pop" />

@@ -1,5 +1,5 @@
-<!-- A saw blade standing on its edge, turned to run along its axis. The
+<!-- A saw blade standing on its edge, turned to run along its path. The
     blade spins about its own axle; the world slides the whole node. -->
-<Node id="<%= id %>" position="<%= x %> 0 <%= z %>" rotation="0 <%= axis == "z" and 90 or 0 %> 0">
+<Node id="<%= saw.id %>" position="<%= saw.x %> <%= saw.y %> <%= saw.z %>" rotation="0 <%= math.abs(saw.x2 - saw.fromX) >= math.abs(saw.z2 - saw.fromZ) and 0 or 90 %> 0">
 	<Node model="<%= assets %>saw.obj" position="0 0.42 0" spin="0 0 -540" />
 </Node>

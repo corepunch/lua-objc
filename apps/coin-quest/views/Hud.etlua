@@ -15,6 +15,12 @@
 					<SystemImage name="circle.circle.fill" size="18" color="systemYellow" label="Coins" />
 					<Label id="coins" lines="1" text="<%= coins %>" size="17" weight="bold" monospacedDigit="true" />
 				</HStack>
+				<% if stars then -%>
+				<HStack spacing="6" alignment="center">
+					<SystemImage name="star.fill" size="18" color="systemOrange" label="Stars" />
+					<Label id="stars" lines="1" text="<%= stars %>" size="17" weight="bold" monospacedDigit="true" />
+				</HStack>
+				<% end -%>
 				<HStack spacing="3" alignment="center" accessibilityLabel="<%= lives %>">
 					<% for _, heart in ipairs(hearts) do -%>
 					<SystemImage name="<%= heart.filled and "heart.fill" or "heart" %>" size="17" color="<%= heart.filled and "systemRed" or "tertiaryLabel" %>" />

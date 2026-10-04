@@ -29,7 +29,14 @@
  * sent as soon as a drag passes kSceneSwipeDistance, and `onTap(view)` for
  * a press released without travelling. One drag is one swipe or one tap,
  * never both. The view is shared by AppKit and UIKit: only the events and
- * colours differ. */
+ * colours differ.
+ *
+ * A game controller reaches Lua as `gamepad`, read each frame: the stick
+ * and the four face buttons of whichever controller is connected. On a
+ * touch screen, `virtualGamepad` puts Apple's on-screen controller
+ * (GCVirtualController: a thumbstick on the left, A, B, X and Y on the
+ * right) over the view while it is in a window; it reads through `gamepad`
+ * like a real one. */
 
 #if TARGET_OS_IPHONE
 typedef UIColor SceneColor;
@@ -74,7 +81,12 @@ static SceneColor *scene_color(NSString *name) {
 @property(nonatomic, strong) CADisplayLink *frameLink;
 @property(nonatomic) CFTimeInterval lastFrame;
 @property(nonatomic, strong) NSMutableSet<NSString *> *heldKeys;
+@property(nonatomic) BOOL virtualGamepad;
+#if TARGET_OS_IPHONE
+@property(nonatomic, strong) GCVirtualController *virtualController;
+#endif
 - (void)setNodeStates:(NSArray *)states;
+- (NSDictionary *)gamepad;
 @end
 
 static CGFloat scene_number(NSDictionary *spec, NSString *key, CGFloat fallback) {
@@ -89,6 +101,13 @@ static BOOL scene_bool(NSDictionary *spec, NSString *key, BOOL fallback) {
 	if ([value isKindOfClass:NSNumber.class]) return [value boolValue];
 	if ([value isKindOfClass:NSString.class]) return [value isEqualToString:@"true"] || [value isEqualToString:@"1"];
 	return fallback;
+}
+
+/* Points the node's front (-z) at a point, upright. Plain `lookAt:` keeps
+ * the node's current up vector, so a node turned before would keep a roll;
+ * a camera that follows must stay level. */
+static void scene_look(SCNNode *node, SCNVector3 target) {
+	[node lookAt:target up:SCNVector3Make(0, 1, 0) localFront:SCNVector3Make(0, 0, -1)];
 }
 
 /* "x y z" (or a single number for all three) into a vector. */
@@ -315,7 +334,7 @@ static float scene_ease_out_back(float t) {
 		}
 	}
 	if (spec[@"lookAt"] && (CHANGED(@"lookAt") || CHANGED(@"position"))) {
-		[node lookAt:scene_vector(spec, @"lookAt", SCNVector3Make(0, 0, 0))];
+		scene_look(node, scene_vector(spec, @"lookAt", SCNVector3Make(0, 0, 0)));
 	}
 #undef CHANGED
 	return error;
@@ -389,7 +408,7 @@ static float scene_ease_out_back(float t) {
 }
 
 /* Poses from game state: `{id, x, y, z, yaw, pitch, roll, scale, scaleX,
- * scaleY, scaleZ, opacity, hidden}`, angles in degrees. Missing fields keep their current value; an
+ * scaleY, scaleZ, opacity, hidden, lookX, lookY, lookZ}`, angles in degrees. Missing fields keep their current value; an
  * unknown id is ignored, so state can describe entities the template has
  * already removed. */
 - (void)setNodeStates:(NSArray *)states {
@@ -423,6 +442,12 @@ static float scene_ease_out_back(float t) {
 		}
 		if (state[@"opacity"]) node.opacity = scene_number(state, @"opacity", 1);
 		if (state[@"hidden"]) node.hidden = scene_bool(state, @"hidden", NO);
+		/* `lookX/Y/Z` aims the node at a point, upright, as `lookAt` does
+		 * in a template: a following camera turns every frame. */
+		if (state[@"lookX"] || state[@"lookY"] || state[@"lookZ"]) {
+			scene_look(node, SCNVector3Make(scene_number(state, @"lookX", 0), scene_number(state, @"lookY", 0),
+				scene_number(state, @"lookZ", 0)));
+		}
 	}
 	[SCNTransaction commit];
 }
@@ -446,6 +471,7 @@ static float scene_ease_out_back(float t) {
 - (void)attachWindow {
 	[self.frameLink invalidate];
 	self.frameLink = nil;
+	[self attachVirtualGamepad];
 	if (!self.window) return;
 	if (self.frameReg) {
 		self.lastFrame = 0;
@@ -463,6 +489,44 @@ static float scene_ease_out_back(float t) {
 		[self.window makeFirstResponder:self];
 	}
 #endif
+}
+
+#pragma mark Game controllers
+
+- (void)setVirtualGamepad:(BOOL)virtualGamepad {
+	_virtualGamepad = virtualGamepad;
+	[self attachVirtualGamepad];
+}
+
+/* The on-screen controller shows while the view is in a window and goes
+ * with it. The Mac has no on-screen controller; real ones still read. */
+- (void)attachVirtualGamepad {
+#if TARGET_OS_IPHONE
+	BOOL wanted = self.virtualGamepad && self.window != nil;
+	if (wanted && !self.virtualController) {
+		GCVirtualControllerConfiguration *configuration = [GCVirtualControllerConfiguration new];
+		configuration.elements = [NSSet setWithArray:@[GCInputLeftThumbstick, GCInputButtonA, GCInputButtonB,
+			GCInputButtonX, GCInputButtonY]];
+		self.virtualController = [GCVirtualController virtualControllerWithConfiguration:configuration];
+		[self.virtualController connectWithReplyHandler:nil];
+	} else if (!wanted && self.virtualController) {
+		[self.virtualController disconnect];
+		self.virtualController = nil;
+	}
+#endif
+}
+
+/* The connected controller's stick (`stickX`, `stickY`, y up, the d-pad
+ * when the stick rests) and face buttons (`a`, `b`, `x`, `y`), or nil when
+ * none is connected. */
+- (NSDictionary *)gamepad {
+	GCController *controller = GCController.current ?: GCController.controllers.firstObject;
+	GCExtendedGamepad *pad = controller.extendedGamepad;
+	if (!pad) return nil;
+	float x = pad.leftThumbstick.xAxis.value, y = pad.leftThumbstick.yAxis.value;
+	if (x == 0 && y == 0) x = pad.dpad.xAxis.value, y = pad.dpad.yAxis.value;
+	return @{@"stickX": @(x), @"stickY": @(y), @"a": @(pad.buttonA.isPressed), @"b": @(pad.buttonB.isPressed),
+		@"x": @(pad.buttonX.isPressed), @"y": @(pad.buttonY.isPressed)};
 }
 
 - (void)sendFrame:(CFTimeInterval)dt {
@@ -766,6 +830,7 @@ static int bridge_scene_nodes(lua_State *L) {
 		lua_pushnumber(L, node.scale.x); lua_setfield(L, -2, "scale");
 			lua_pushnumber(L, node.scale.y); lua_setfield(L, -2, "scaleY");
 			lua_pushnumber(L, node.eulerAngles.x * 180.0 / M_PI); lua_setfield(L, -2, "pitch");
+			lua_pushnumber(L, node.eulerAngles.z * 180.0 / M_PI); lua_setfield(L, -2, "roll");
 		lua_pushnumber(L, node.opacity); lua_setfield(L, -2, "opacity");
 		lua_pushboolean(L, node.hidden); lua_setfield(L, -2, "hidden");
 		lua_pushinteger(L, (lua_Integer)entry.content.childNodes.count + (entry.content.geometry ? 1 : 0));

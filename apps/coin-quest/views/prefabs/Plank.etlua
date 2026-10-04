@@ -1,0 +1,5 @@
+<!-- A wooden plank over the water. The pose drops it once stood on and
+    brings it back later. -->
+<Node id="<%= plank.id %>" position="<%= plank.x %> <%= plank.y %> <%= plank.z %>">
+	<Node model="<%= assets %>platform.obj" position="0 -0.2 0" scale="1.4 1 1.4" />
+</Node>

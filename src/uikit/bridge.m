@@ -3,6 +3,7 @@
 #import <Security/Security.h>
 #import <QuartzCore/QuartzCore.h>
 #import <SceneKit/SceneKit.h>
+#import <GameController/GameController.h>
 #import <CoreText/CoreText.h>
 
 #include <lua.h>

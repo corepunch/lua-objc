@@ -1,28 +1,36 @@
--- A saw touching the player, or raised spikes under a standing player, hurt
--- it once; the player then recovers for a moment before anything can hurt
--- it again. Hopping over spikes is safe: only a standing player is hit.
+-- A saw touching the hero, raised spikes under a hero standing on them, or
+-- the water hurt; after a hit the hero recovers for a moment before a saw or
+-- spikes can hurt them again. Hopping over spikes is safe: only a standing
+-- hero is hit. The water always counts: the session sends the hero back.
 local Hazards = {}
 
 function Hazards.update(world, dt)
-	local player, rules = world.player, world.rules
-	if (player.recovering or 0) > 0 then
-		player.recovering = math.max(0, player.recovering - dt)
+	local p, rules = world.player, world.rules
+	if p.y < rules.water then
+		world:emit("hurt", p)
 		return
 	end
-	local x, _, z = world:playerPosition()
+	if (p.recovering or 0) > 0 then
+		p.recovering = math.max(0, p.recovering - dt)
+		return
+	end
 	local hit = false
 	for _, saw in ipairs(world.saws) do
-		if (saw.x - x) ^ 2 + (saw.z - z) ^ 2 < rules.hitRadius ^ 2 then hit = true end
+		if (saw.x - p.x) ^ 2 + (saw.z - p.z) ^ 2 < rules.sawRadius ^ 2 and p.y < saw.y + 0.8 and p.y + rules.height > saw.y then
+			hit = true
+		end
 	end
-	if not player.hop then
+	if p.grounded then
 		for _, spike in ipairs(world.spikes) do
-			if spike.raised and spike.x == player.x and spike.z == player.z then hit = true end
+			if spike.raised and math.abs(spike.x - p.x) < rules.spikeSize and math.abs(spike.z - p.z) < rules.spikeSize
+				and math.abs(spike.y - p.y) < 0.2 then
+				hit = true
+			end
 		end
 	end
 	if hit then
-		player.recovering = rules.recovery
-		player.hurtAt = world.time
-		world:emit("hurt", player)
+		p.recovering, p.hurtAt = rules.recovery, world.time
+		world:emit("hurt", p)
 	end
 end
 
