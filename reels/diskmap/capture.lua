@@ -9,8 +9,7 @@
 -- which is generated, not committed. "treemap" is the Map page drawn as
 -- rectangles.
 local here = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
-local PAGES = { "overview", "map", "largest", "files", "kinds", "cleanup", "developer", "xcode",
-	"simulators", "updates", "guide" }
+local PAGES = { "overview", "map", "largest", "files", "kinds", "cleanup", "updates", "guide" }
 
 return function(capture, app)
 	for _, appearance in ipairs({ "light", "dark" }) do

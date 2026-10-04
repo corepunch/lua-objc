@@ -78,8 +78,9 @@ local function readLayout(path)
 					local id = attrs.identifier
 					if id and not layout.views[id] then layout.views[id] = frame end
 					-- Table rows belong to the nearest identified view (the
-					-- scroll view of a <List>), in display order.
-					if attrs.class == "NSTableRowView" and owner then
+					-- scroll view of a <List>), sorted into display order below. The bridge's
+					-- tables use their own NSTableRowView subclass.
+					if attrs.class and attrs.class:match("TableRowView$") and owner then
 						layout.rows[owner] = layout.rows[owner] or {}
 						table.insert(layout.rows[owner], frame)
 					end
@@ -96,6 +97,8 @@ local function readLayout(path)
 		end
 	end
 	walk(xml.parse(source), nil)
+	-- A table keeps its row views in reuse order, not display order.
+	for _, rows in pairs(layout.rows) do table.sort(rows, function(a, b) return a.y < b.y end) end
 	if not layout.scale or not layout.root then
 		error("reel: " .. path .. " is not a lua-objc --capture layout (no scale or root view)", 0)
 	end

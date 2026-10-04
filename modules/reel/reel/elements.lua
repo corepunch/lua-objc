@@ -398,6 +398,16 @@ Elements.Vignette = {
 
 -- ── Type ─────────────────────────────────────────────────────────────────
 
+-- settle(response, damping) -> seconds until a spring stays within 1% of
+-- its target: when a word has finished arriving and can be read.
+local function settle(response, damping)
+	local last = 0
+	for ms = 1, 4000 do
+		if math.abs(1 - spring(ms / 1000, response, damping)) > 0.01 then last = ms / 1000 end
+	end
+	return last
+end
+
 local function layoutWords(node, context)
 	local st = node.style
 	local pen = Pen.new(nil, context.native, context)
@@ -443,6 +453,12 @@ Elements.Text = {
 	end,
 }
 
+-- Text.landing(at, words, stagger) -> when the last word has settled; a
+-- reel holds a line at least a second past it so it can be read.
+function Elements.Text.landing(at, words, stagger)
+	return at + (words - 1) * (stagger or 0.07) + settle(RISE.response, RISE.damping)
+end
+
 -- <Slam text style x y at="0.5, 1, 1.5" gradient="word|line"/>: each word
 -- lands from large on its own hit (a slam sound each). A gradient style
 -- spans each word by default.
@@ -480,6 +496,11 @@ Elements.Slam = {
 		end
 	end,
 }
+
+-- Slam.landing(lastHit) -> when the last slammed word has settled.
+function Elements.Slam.landing(lastHit)
+	return lastHit + settle(SLAM.response, SLAM.damping)
+end
 
 -- <Counter value="19.8 * outQuart(…)" format="%.1f" final="19.8" unit=" GB"
 -- style/>: digits tick in fixed slots right-aligned to the final value's

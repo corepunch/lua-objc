@@ -1,16 +1,19 @@
 # Diskmap showreel
 
-A 30-second, 1080p motion piece built from real Diskmap captures, rendered
+A 34-second, 1080p motion piece built from real Diskmap captures, rendered
 with the Reel module ([modules/reel](../../modules/reel/README.md)). Pages
-are cut into components by view identifier (the sunburst, list rows, stat
-cards, treemap cells, the File Types donut) and animated with springs,
+are cut into components by view identifier (the sunburst, built ring by
+ring, list rows, treemap cells, the File Types donut) and animated with springs,
 masked reveals, motion blur and kinetic type. The score is synthesised from
 the same timeline, so every pop, slam and whoosh lands on the 120 BPM grid.
+Every line of type holds at least a second after its last word lands
+(`tests/diskmap_reel.test.lua`), and the story is told for anyone with a
+full Mac, not only developers.
 
 ```sh
 make diskmap-reel            # → build/Diskmap-Showreel.mov (about 3 minutes)
 make diskmap-reel-captures   # recapture after a UI change (opens Diskmap, about a minute)
-./lua-objc reels/diskmap/init.lua stills /tmp 4.6,8.3,10.5,13.2,20.8
+./lua-objc reels/diskmap/init.lua stills /tmp 6.6,9.2,11.9,14.6,20.4
 ```
 
 | File | Contents |

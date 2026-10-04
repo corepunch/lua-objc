@@ -8,12 +8,12 @@ local inOutExpo, inOutCubic = Curves.easing.inOutExpo, Curves.easing.inOutCubic
 
 local shots = {}
 
--- 24–26 s: twelve pages spring onto a wall that pans, then the camera dives
+-- 28–30 s: twelve pages spring onto a wall that pans, then the camera dives
 -- into the Map page's sunburst. The dive keeps the sunburst's centre fixed
 -- on screen while zooming 16×, swapping in the full-resolution page once it
 -- is large.
 local WALL = { columns = 4, rows = 3, cellWidth = 600, cellHeight = 390, scale = 0.37, target = 6,
-	start = 23.95, ripple = 0.35, rippleDistance = 1500, zoom = 16, tilt = -0.16, swapZoom = 2.2 }
+	start = 27.95, ripple = 0.35, rippleDistance = 1500, zoom = 16, tilt = -0.16, swapZoom = 2.2 }
 
 local function cellCenter(i)
 	local index = i - 1
@@ -38,8 +38,8 @@ end
 function shots.wall.draw(pen, t, node)
 	local data = node.context.data
 	local ww, wh, sunX, sunY = node.pageWidth, node.pageHeight, node.sunX, node.sunY
-	local dive = inOutExpo(progress(t, 25.3, 26.0))
-	local pan = mix(420, -380, inOutCubic(progress(t, 23.9, 25.5)))
+	local dive = inOutExpo(progress(t, 29.3, 30.0))
+	local pan = mix(420, -380, inOutCubic(progress(t, 27.9, 29.5)))
 	local fx, fy = mix(pan, sunX, dive), mix(0, sunY, dive)
 	local zoom = math.exp(mix(0, math.log(WALL.zoom), dive)) * (1 + 0.02 * pulse(t, data.kicks, 0.14))
 	local rotation = mix(WALL.tilt, 0, dive)
@@ -60,7 +60,7 @@ function shots.wall.draw(pen, t, node)
 			end)
 		end
 	end
-	local flash = progress(t, 25.82, 26.0)
+	local flash = progress(t, 29.82, 30.0)
 	if flash > 0 then pen:rect(0, 0, 1920, 1080, { 0, 0, 0, flash }) end
 end
 

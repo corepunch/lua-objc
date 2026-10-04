@@ -1,38 +1,41 @@
-<!-- 10–12 s: the largest items slide in with their size bars filling; the
-     rest leave while Xcode DerivedData lifts and lands in Clean Up. -->
+<!-- 13–16 s: the largest items slide in with their size bars filling and
+     hold; the rest leave while iPhone software updates lifts and lands in
+     Clean Up. -->
 <%
 local largest = captures:get("largest-dark")
+local rows = { 2, 3, 4, 6, 8, 10 } -- backups, games, downloads, music, video, updates
+local carry = #rows                -- iPhone software updates: rebuildable
 local width = largest:row("largest", 1).w
-local bar = { x = 923, y = 15, w = 60, h = 16 } -- the size bar inside a row
+local bar = { x = 744, y = 27, w = 186, h = 13 } -- the size bar inside a row
+local status = 709                                -- the centre of the status icon in a row
 %>
-<Scene from="9.95" to="12.4">
-  <Text style="head" text="Find what’s big." x="960" y="176" at="10.1" exit="11.2" />
-  <Text style="sub" text="The largest items on your disk, ranked." x="960" y="236" at="10.28" stagger="0.035" exit="11.16" />
-  <Cue sound="whoosh" at="11.25" until="11.6" />
-  <Let name="lift" value="inOutCubic(progress(t, 11.3, 11.75))" />
-  <Let name="land" value="inOutCubic(progress(t, 11.8, 12.25))" />
-  <Let name="carryY" value="mix(mix(610, 540, lift), 492, land)" />
+<Scene from="12.95" to="16.2">
+  <Text style="head" text="Find what’s big." x="960" y="176" at="13.1" exit="15" />
+  <Text style="sub" text="The largest items on your disk, ranked." x="960" y="236" at="13.24" stagger="0.035" exit="15" />
+  <Cue sound="whoosh" at="15.05" until="15.4" />
+  <Let name="lift" value="inOutCubic(progress(t, 15.1, 15.55))" />
+  <Let name="land" value="inOutCubic(progress(t, 15.6, 16.05))" />
+  <Let name="carryY" value="mix(mix(<%= 330 + 70 * (carry - 1) %>, 540, lift), 492, land)" />
   <Let name="carryS" value="mix(mix(1.22, 1.42, lift), 1.18, land)" />
-  <% for i = 1, 6 do
-       local pop = 10 + (i - 1) * 0.125
+  <% for i, row in ipairs(rows) do
+       local pop = 13 + (i - 1) * 0.125
        local fill = string.format("outQuart(progress(t, %g, %g))", pop + 0.15, pop + 0.6)
        local enter = string.format("enter{at = %g, x = 1700, response = 1 / 1.7, damping = 0.68, sound = 'pop'}", pop)
-       local carried = i == 5
-       local j = i < 5 and i - 1 or i - 2 %>
+       local carried = i == carry %>
   <Group x="960" y="<%= carried and 'carryY' or 330 + 70 * (i - 1) %>" scale="<%= carried and 'carryS' or 1.22 %>"
-         <% if carried then %>alpha="1 - progress(t, 12.1, 12.25)" motion="<%= enter %>"
-         <% else %>motion="<%= enter %>, leave{at = <%= 11.25 + j * 0.03 %>, duration = 0.3, x = -2600}"<% end %>>
-    <Piece capture="largest-dark" rect="#largest/row/<%= i %>" x="0" y="0" radius="9" shadow="0.6"
+         <% if carried then %>alpha="1 - progress(t, 15.9, 16.05)" motion="<%= enter %>"
+         <% else %>motion="<%= enter %>, leave{at = <%= 15.05 + (i - 1) * 0.03 %>, duration = 0.3, x = -2600}"<% end %>>
+    <Piece capture="largest-dark" rect="#largest/row/<%= row %>" x="0" y="0" radius="9" shadow="0.6"
            clip="without(rect(<%= bar.x %>, <%= bar.y %>, <%= bar.w %>, <%= bar.h %>))" />
-    <Piece capture="largest-dark" rect="#largest/row/<%= i %>" x="0" y="0" radius="9"
+    <Piece capture="largest-dark" rect="#largest/row/<%= row %>" x="0" y="0" radius="9"
            clip="rect(<%= bar.x %>, <%= bar.y %>, <%= bar.w %> * <%= fill %>, <%= bar.h %>)" />
     <% if carried then %>
     <!-- A rebuildable badge pulse on the status icon. -->
-    <Circle from="11.55" to="12" x="<%= 851 - width / 2 %>" y="0" color="rgb(0x34C759, 1 - progress(t, 11.55, 12))"
-            radius="(12 + progress(t, 11.55, 12) * 70) / carryS" stroke="(4 * (1 - progress(t, 11.55, 12)) + 1) / carryS" />
+    <Circle from="15.35" to="15.8" x="<%= status - width / 2 %>" y="0" color="rgb(0x34C759, 1 - progress(t, 15.35, 15.8))"
+            radius="(12 + progress(t, 15.35, 15.8) * 70) / carryS" stroke="(4 * (1 - progress(t, 15.35, 15.8)) + 1) / carryS" />
     <% end %>
   </Group>
   <% end %>
-  <Piece capture="cleanup-dark" rect="#list_rebuildable/row/1" from="12.1" x="960" y="carryY" scale="carryS"
-         alpha="progress(t, 12.1, 12.25)" radius="9" shadow="0.6" />
+  <Piece capture="cleanup-dark" rect="#list_rebuildable/row/2" from="15.9" x="960" y="carryY" scale="carryS"
+         alpha="progress(t, 15.9, 16.05)" radius="9" shadow="0.6" />
 </Scene>

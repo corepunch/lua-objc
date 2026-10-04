@@ -13,7 +13,7 @@ local shots = require("shots")
 
 local here = "reels/diskmap/"
 local every = Reel.curves.every
-local DURATION, SAMPLE_RATE = 30, 48000
+local DURATION, SAMPLE_RATE = 34, 48000
 
 local function join(...)
 	local list = {}
@@ -23,32 +23,28 @@ end
 
 -- The kick drum: four on the floor through the drops, a broken pattern in
 -- the breakdown. The stage lights, the wall and the score read the same list.
-local kicks = join(every(0.5, 4, 20), { 20, 20.75, 21.5, 22, 22.75, 23.5 }, every(0.5, 24, 26))
+local kicks = join(every(0.5, 6, 24), { 24, 24.75, 25.5, 26, 26.75, 27.5 }, every(0.5, 28, 30))
 
 local data = {
 	kicks = kicks,
 	-- Diskmap's categories as the logo ring: share of the circle, colour.
 	logo = { { 41, 0xB23FD9 }, { 20, 0x3B82F6 }, { 13, 0x34C759 }, { 8, 0xFF453A }, { 8, 0x0A84FF }, { 6, 0x5E5CE6 }, { 4, 0x8E8E93 } },
-	-- Where each callout leaves the sunburst, in points from its centre.
-	callouts = { { 92, 30 }, { -96, -6 }, { -46, 100 }, { -22, -104 } },
-	orbit = { { "hammer.fill", "#1C7CF4" }, { "iphone", "#007AFF" }, { "shippingbox.fill", "#FF9500" },
-		{ "cube.fill", "#32ADE6" }, { "terminal.fill", "#5E5CE6" }, { "sparkles", "#AF52DE" } },
 	-- The light/dark divider hops on the beat: {from, to, x}.
-	dividerKeys = { { 20.0, 20.42, 960 }, { 21.0, 21.3, 1360 }, { 21.5, 21.8, 580 }, { 22.25, 22.55, 960 }, { 23.5, 23.85, 1990 } },
-	dividerMoves = { 20.0, 21.0, 21.5, 22.25 },
-	flips = { 22.0, 23.0 },
-	wallPages = { "overview-light", "cleanup-dark", "largest-light", "kinds-dark", "developer-light", "map-dark",
-		"treemap-light", "simulators-dark", "files-dark", "xcode-light", "updates-dark", "guide-light" },
+	dividerKeys = { { 24.0, 24.42, 960 }, { 25.0, 25.3, 1360 }, { 25.5, 25.8, 580 }, { 26.25, 26.55, 960 }, { 27.5, 27.85, 1990 } },
+	dividerMoves = { 24.0, 25.0, 25.5, 26.25 },
+	flips = { 26.0, 27.0 },
+	wallPages = { "overview-light", "cleanup-dark", "largest-light", "kinds-dark", "files-light", "map-dark",
+		"treemap-light", "guide-dark", "files-dark", "overview-dark", "updates-light", "largest-dark" },
 	shots = shots,
 }
 
 local music = {
-	kicks = kicks, drop = 4, logo = 26, finish = 26,
-	claps = { 21.0, 23.0 },
-	crashes = { 4.0, 8.0, 12.0, 16.0, 20.0, 24.0, 26.0 },
-	risers = { { 2.6, 3.95 }, { 24.6, 25.95 } },
-	rolls = { { 3.0, 3.93 }, { 25.0, 25.93 } },
-	booms = { { 4, 0.9 }, { 26, 0.9 }, { 24, 0.4 } },
+	kicks = kicks, drop = 6, breakdown = 24, lift = 28, logo = 30, finish = 30,
+	claps = { 25.0, 27.0 },
+	crashes = { 6.0, 10.0, 14.0, 18.0, 22.0, 24.0, 28.0, 30.0 },
+	risers = { { 4.6, 5.95 }, { 28.6, 29.95 } },
+	rolls = { { 5.0, 5.93 }, { 29.0, 29.93 } },
+	booms = { { 6, 0.9 }, { 30, 0.9 }, { 28, 0.4 } },
 }
 
 local function load()

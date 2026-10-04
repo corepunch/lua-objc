@@ -1,33 +1,35 @@
-<!-- 19–20 s: the raised File Types donut tilts up and sweeps on; its top kinds slide in as
-     cards with their share bars filling. -->
+<!-- 21–24 s: the File Types donut lifts up from edge-on and sweeps on; its
+     kinds slide in as cards with their share bars filling, and hold. -->
 <%
-local name = { x = -3, w = 330 }    -- the kind column of a row
-local value = { x = 853, w = 305 }  -- the share and size columns
-local bar = { x = 70, y = 14, w = 60, h = 18 } -- the share bar in `value`
+local rows = { 1, 2, 4, 6 }              -- other files, databases, music, videos
+local name = { x = 0, w = 380 }          -- the kind column of a row
+local value = { x = 730, w = 210 }       -- the share column
+local bar = { x = 14, y = 27, w = 186, h = 13 } -- the share bar in `value`
+local donut = { x = 109.6, y = 66.4, radius = 72 } -- in piece points (10pt outset)
 local scale, gap = 1.2, 12
 %>
-<Scene from="18.98" to="20.05">
-  <Let name="kindOut" value="inQuart(progress(t, 19.85, 20))" />
-  <Text style="head" text="Every file type." x="960" y="170" at="19.05" exit="19.8" />
-  <Group x="560" y="610" scale="2.25 * (1 - kindOut)">
-    <Group sy="mix(0.12, 1, spring(t - 19, 1 / 1.3, 0.58))">
-      <Piece capture="kinds-dark" rect="#kindsChart" outset="10" key="600, 330" x="0" y="0"
-             clip="sector(100, 100, 0, 160, -0.25 * pi, outQuart(progress(t, 19, 19.42)) * 2 * pi)" />
+<Scene from="20.98" to="24.05">
+  <Let name="kindOut" value="inQuart(progress(t, 23.85, 24))" />
+  <Text style="head" text="Every file type." x="960" y="170" at="21.05" exit="23.6" />
+  <Group x="520" y="600" scale="2.6 * (1 - kindOut)">
+    <Group sy="mix(0.12, 1, spring(t - 21, 1 / 1.3, 0.58))">
+      <Piece capture="kinds-dark" rect="#kindsChart" outset="10" key="275, 300" x="0" y="0"
+             clip="sector(<%= donut.x %>, <%= donut.y %>, 0, <%= donut.radius %>, -0.5 * pi, outQuart(progress(t, 21, 21.6)) * 2 * pi)" />
     </Group>
   </Group>
-  <% for i = 1, 4 do
-       local pop = 19.25 + (i - 1) * 0.125
+  <% for i, row in ipairs(rows) do
+       local pop = 21.25 + (i - 1) * 0.125
        local fill = string.format("outQuart(progress(t, %g, %g))", pop + 0.12, pop + 0.5) %>
-  <Group x="930 + kindOut * 1400" y="<%= 500 + 76 * (i - 1) %>" alpha="1 - kindOut"
+  <Group x="840 + kindOut * 1400" y="<%= 480 + 82 * (i - 1) %>" alpha="1 - kindOut"
          motion="enter{at = <%= pop %>, x = 1090, response = 1 / 1.9, damping = 0.62, fade = 0.08, sound = 'pop'}">
     <Rect capture="kinds-dark" y="<%= -46 * scale / 2 %>" width="<%= (name.w + value.w) * scale + gap %>" height="<%= 46 * scale %>"
-          radius="11" color="sample(700, 467)" shadowBlur="36" shadowY="14" shadowColor="#00000080" />
-    <Piece capture="kinds-dark" rect="#kinds/row/<%= i %>" part="<%= name.x %>, 0, <%= name.w %>, 46" x="0" y="0" anchor="0, 23" scale="<%= scale %>" />
-    <Piece capture="kinds-dark" rect="#kinds/row/<%= i %>" part="<%= value.x %>, 0, <%= value.w %>, 46" x="<%= name.w * scale + gap %>" y="0" anchor="0, 23" scale="<%= scale %>"
+          radius="11" color="sample(700, 520)" shadowBlur="36" shadowY="14" shadowColor="#00000080" />
+    <Piece capture="kinds-dark" rect="#kinds/row/<%= row %>" part="<%= name.x %>, 0, <%= name.w %>, 46" x="0" y="0" anchor="0, 23" scale="<%= scale %>" />
+    <Piece capture="kinds-dark" rect="#kinds/row/<%= row %>" part="<%= value.x %>, 0, <%= value.w %>, 46" x="<%= name.w * scale + gap %>" y="0" anchor="0, 23" scale="<%= scale %>"
            clip="without(rect(<%= bar.x %>, <%= bar.y %>, <%= bar.w %>, <%= bar.h %>))" />
-    <Piece capture="kinds-dark" rect="#kinds/row/<%= i %>" part="<%= value.x %>, 0, <%= value.w %>, 46" x="<%= name.w * scale + gap %>" y="0" anchor="0, 23" scale="<%= scale %>"
+    <Piece capture="kinds-dark" rect="#kinds/row/<%= row %>" part="<%= value.x %>, 0, <%= value.w %>, 46" x="<%= name.w * scale + gap %>" y="0" anchor="0, 23" scale="<%= scale %>"
            clip="rect(<%= bar.x %>, <%= bar.y %>, <%= bar.w %> * <%= fill %>, <%= bar.h %>)" />
   </Group>
   <% end %>
-  <Cue sound="whoosh" at="19.8" until="20" />
+  <Cue sound="whoosh" at="23.8" until="24" />
 </Scene>
