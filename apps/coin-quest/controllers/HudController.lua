@@ -9,8 +9,8 @@ HudController.__index = HudController
 
 -- How to play, for the controls the device has.
 local HINTS = {
-	keys = "Arrow keys or WASD to hop · Take every coin, then reach the flag",
-	touch = "Swipe to run · Tap to stop · Take every coin",
+	keys = "Arrows or WASD hop · A gap leaps itself · Mushroom pads launch you · Coins, then the flag",
+	touch = "Swipe to run · Gaps leap themselves · Tap to stop · Coins, then the flag",
 }
 
 -- `options.touch` shows the touch controls' hint instead of the keys'.
