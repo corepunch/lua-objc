@@ -1,7 +1,7 @@
 <!-- 21–24 s: the File Types donut lifts up from edge-on and sweeps on; its
      kinds slide in as cards with their share bars filling, and hold. -->
 <%
-local rows = { 1, 2, 4, 6 }              -- other files, databases, music, videos
+local rows = { 1, 2, 4, 6 }              -- other files, videos, photos, music
 local name = { x = 0, w = 380 }          -- the kind column of a row
 local value = { x = 730, w = 210 }       -- the share column
 local bar = { x = 14, y = 27, w = 186, h = 13 } -- the share bar in `value`

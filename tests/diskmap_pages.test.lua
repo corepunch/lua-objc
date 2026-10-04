@@ -232,8 +232,8 @@ t.expect(hero.refs.chartDetail.text ~= "", "a focused sector names itself under 
 t.expect(hero.refs.usedTotal.text ~= usedTotal, "and in the hole")
 bridge._pointerSend(heroPointer, "key", "delete")
 t.assertEqual(app.destination, "overview", "delete stays on the overview")
--- Tab starts at the largest sector, space no category accounts for.
-t.expect(hero.refs.chartDetail.text:find("Not attributed · ", 1, true) == 1, "tab focuses the largest sector")
+-- Tab starts at the largest sector: on the synthetic disk, free space.
+t.expect(hero.refs.chartDetail.text:find("Free · ", 1, true) == 1, "tab focuses the largest sector")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "overview", "which has nothing inside to open")
 for _ = 1, 8 do

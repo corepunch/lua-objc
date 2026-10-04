@@ -38,6 +38,21 @@ app.env.scan:start()
 local derived = app.env.model.measurements["derived"]
 t.expect(derived ~= nil and (derived.bytes or 0) > 0, "catalog measurements match the virtual home folder")
 
+-- The showcase is anyone's Mac: its media libraries are measured, everyday
+-- files outweigh the developer's tools, and the tools are still there.
+t.expect(app.env.model.includeMedia, "the showcase measures the Photos, Music and TV libraries")
+t.expect(not mock.loadFlag("media"), "--mock keeps media libraries excluded until Settings includes them")
+local bytes, largest = {}, nil
+for _, row in ipairs(require("apps.diskmap.models.Categories"):rows()) do
+	bytes[row.id] = row.bytes or 0
+	if not largest or bytes[row.id] > bytes[largest] then largest = row.id end
+end
+t.assertEqual(largest, "photos", "photos are the largest category on the showcase disk")
+t.expect(bytes.developer > 10e9, "the developer's tools are still a large category")
+for _, id in ipairs({"documents", "games", "ios-files", "messages-library", "mail-library", "icloud-drive", "podcasts", "tv"}) do
+	t.expect(bytes[id] > 1e9, "the showcase has everyday " .. id)
+end
+
 -- `--map-style` picks the Map's initial chart.
 local Routes = require("data.routes")
 local function routePage(id, app) return Routes.page(require("apps.diskmap.routes")[id], {id = id}, app, "apps.diskmap") end

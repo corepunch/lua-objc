@@ -20,9 +20,9 @@ local build = 6
 local lx, ly, lw, lh = map:rect("#mapCenterDetail")
 local _, ty, _, th = map:rect("#mapCenterTitle")
 -- Where each callout leaves the chart: the middle of the inner
--- segment. Rows 2–5 of the list: iOS Files, Music Creation, Documents, Games.
-local callouts = { { row = 2, from = { -35, 115 } }, { row = 3, from = { -108, 53 } },
-	{ row = 4, from = { 45, 111 } }, { row = 5, from = { -107, -54 } } }
+-- segment. Photos, Developer, Games and Documents: rows 1, 2, 3 and 5.
+local callouts = { { row = 1, from = { -120, -10 } }, { row = 2, from = { 89, -80 } },
+	{ row = 3, from = { -83, 86 } }, { row = 5, from = { 120, 8 } } }
 %>
 <Scene from="5.98" to="10.7">
   <Let name="sunS" value="<%= chart.scale %> * (1 + 0.014 * pulse(t, kicks, 0.14))" />
@@ -54,8 +54,8 @@ local callouts = { { row = 2, from = { -35, 115 } }, { row = 3, from = { -108, 5
     <% end %>
     <!-- The total counts up in the hole while the rings build. -->
     <Group from="6.3" scale="mix(0.4, 1, spring(t - 6.3, 1 / 2, 0.5))" alpha="clamp01((t - 6.3) / 0.1)">
-      <Counter y="<%= ty + th * 0.72 - sunY %>" style="ringValue" format="%.1f" final="166.0" unit=" GB"
-               value="floor(166 * outQuart(progress(t, 6.3, 7.4)) * 10 + 0.5) / 10" />
+      <Counter y="<%= ty + th * 0.72 - sunY %>" style="ringValue" format="%.1f" final="355.8" unit=" GB"
+               value="floor(355.8 * outQuart(progress(t, 6.3, 7.4)) * 10 + 0.5) / 10" />
       <Piece capture="map-dark" rect="#mapCenterDetail" key="620, 200" x="<%= lx + lw / 2 - sunX %>" y="<%= ly + lh / 2 - sunY %>" />
     </Group>
   </Group>

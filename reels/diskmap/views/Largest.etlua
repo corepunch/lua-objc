@@ -1,10 +1,10 @@
 <!-- 13–16 s: the largest items slide in with their size bars filling and
-     hold; the rest leave while iPhone software updates lifts and lands in
+     hold; the rest leave while Xcode DerivedData lifts and lands in
      Clean Up. -->
 <%
 local largest = captures:get("largest-dark")
-local rows = { 2, 3, 4, 6, 8, 10 } -- backups, games, downloads, music, video, updates
-local carry = #rows                -- iPhone software updates: rebuildable
+local rows = { 1, 2, 3, 4, 5, 11 } -- pictures, games, backups, downloads, simulators, DerivedData
+local carry = #rows                -- Xcode DerivedData: rebuildable
 local width = largest:row("largest", 1).w
 local bar = { x = 744, y = 27, w = 186, h = 13 } -- the size bar inside a row
 local status = 709                                -- the centre of the status icon in a row
@@ -36,6 +36,6 @@ local status = 709                                -- the centre of the status ic
     <% end %>
   </Group>
   <% end %>
-  <Piece capture="cleanup-dark" rect="#list_rebuildable/row/2" from="15.9" x="960" y="carryY" scale="carryS"
+  <Piece capture="cleanup-dark" rect="#list_rebuildable/row/1" from="15.9" x="960" y="carryY" scale="carryS"
          alpha="progress(t, 15.9, 16.05)" radius="9" shadow="0.6" />
 </Scene>

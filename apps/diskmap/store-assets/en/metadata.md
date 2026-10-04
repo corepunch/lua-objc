@@ -29,7 +29,7 @@ disk,storage,space,cleanup,large files,drive analyzer,folder map,xcode,cache,dup
 ## App preview and screenshots
 
 - **Preview uploaded to App Store Connect:** `/Users/igor/Desktop/Diskmap-Showreel.mp4` (30 seconds, 1920 × 1080, H.264, about 67 MB; Mac landscape preview).
-- **Screenshots:** `screenshots/01-overview.png` through `screenshots/05-xcode.png` (2560 × 1600 PNG).
+- **Screenshots:** `screenshots/01-overview.jpg` through `screenshots/06-developer.jpg` (2560 × 1600 JPEG, no transparency), made by `make diskmap-store-screenshots` from the showcase disk.
 - Screenshots use the Diskmap showcase profile and synthetic example content.
 - **App icon:** `../../Assets.xcassets/AppIcon.appiconset/` (1024 × 1024 source plus macOS sizes).
 
