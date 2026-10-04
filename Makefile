@@ -383,16 +383,20 @@ diskmap-tour-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 		apps/diskmap/init.lua --showcase
 
 # Diskmap's Mac App Store screenshots (apps/diskmap/store-assets/en/screenshots,
-# committed JPEGs): full dark windows from the showcase disk at 2560 × 1600,
-# flattened to JPEG because App Store Connect refuses transparency.
+# committed JPEGs): five promotional artboards with real showcase windows,
+# exported at 2880 × 1800 without transparency. PYTHON must provide Pillow/NumPy.
+DISKMAP_STORE_PYTHON ?= python3
 .PHONY: diskmap-store-screenshots
 diskmap-store-screenshots: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	rm -f apps/diskmap/store-assets/en/screenshots/*.png apps/diskmap/store-assets/en/screenshots/*.jpg
-	./$(LUA_OBJC_BIN) --capture-plan=apps/diskmap/store-assets/capture.lua --width=1280 --height=800 \
+	mkdir -p build/diskmap-store
+	./$(LUA_OBJC_BIN) --capture-plan=apps/diskmap/store-assets/capture.lua --width=1280 --height=640 \
 		apps/diskmap/init.lua --showcase
-	for png in apps/diskmap/store-assets/en/screenshots/*.png; do \
-		sips -s format jpeg -s formatOptions 92 "$$png" --out "$${png%.png}.jpg" >/dev/null && rm "$$png"; \
-	done
+	$(DISKMAP_STORE_PYTHON) scripts/diskmap-store-promos.py
+
+.PHONY: diskmap-store-preview
+diskmap-store-preview:
+	@test -f build/Diskmap-Showreel.mov || (echo "Run make diskmap-reel first" >&2; exit 1)
+	swift -module-cache-path build/diskmap-store/swift-cache scripts/diskmap-store-preview.swift
 
 .PHONY: diskmap-reel diskmap-reel-captures
 diskmap-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)

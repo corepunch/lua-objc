@@ -28,10 +28,18 @@ disk,storage,space,cleanup,large files,drive analyzer,folder map,xcode,cache,dup
 
 ## App preview and screenshots
 
-- **Preview uploaded to App Store Connect:** `/Users/igor/Desktop/Diskmap-Showreel.mp4` (30 seconds, 1920 × 1080, H.264, about 67 MB; Mac landscape preview).
-- **Screenshots:** `screenshots/01-overview.jpg` through `screenshots/06-developer.jpg` (2560 × 1600 JPEG, no transparency), made by `make diskmap-store-screenshots` from the showcase disk.
+- **Reproduction and design rationale:** [Promotional materials guide](../README.md).
+- **App preview:** `apps/diskmap/store-assets/en/previews/Diskmap-AppStore-Preview.mov` (29.97 seconds, 1920 × 1080, 30 fps, H.264 High Level 4.0, stereo AAC; Mac landscape preview). `make diskmap-store-preview` exports the complete 34-second `build/Diskmap-Showreel.mov` at a slightly faster pace, preserving audio pitch, to meet Apple's 30-second limit.
+- **Screenshots:** `screenshots/01-map.jpg`, `02-cleanup.jpg`, `03-files.jpg`, `04-kinds.jpg`, and `05-developer.jpg` (2880 × 1800 JPEG, no transparency). Each artboard pairs benefit copy with a complete native window captured from the showcase disk. They cover storage visualization, guided cleanup, large files and last use, file types, and developer storage.
+- **Regenerate:** `make diskmap-store-screenshots DISKMAP_STORE_PYTHON=/path/to/python3` with Pillow and NumPy installed. Raw captures, native layout dumps, contact sheet, and upload verification reports live in `build/diskmap-store/`.
 - Screenshots use the Diskmap showcase profile and synthetic example content.
 - **App icon:** `../../Assets.xcassets/AppIcon.appiconset/` (1024 × 1024 source plus macOS sizes).
+
+### Media uploaded October 4, 2026
+
+Uploaded through `asc --profile corepunch` to app `6816896153`, macOS version `1.0`, English (`en-US`) localization `2935b7eb-1995-4d58-9574-5757a471087b`. The five new screenshots replace the previous six plain window captures. The compliant preview replaces the failed 34-second upload. A subsequent read verified every asset's filename, checksum and `COMPLETE` delivery status, plus screenshot order and dimensions.
+
+Screenshot set: `5ddf5bd4-617d-476c-8761-277837eaa209`. Preview set: `5c50d28a-7321-41ef-9ef8-14665535a7fb`; preview asset: `36400019-6519-8499-8131-66771b800c8a`, with storage-map poster timecode `00:00:08:09`. Verification reports are in `build/diskmap-store/screenshots-verified.json` and `preview-verified.json`. Version 1.0 remains `PREPARE_FOR_SUBMISSION`.
 
 ## Current App Store Connect state
 

@@ -27,11 +27,17 @@ end
 
 local shots = {}
 for name in io.popen('ls "' .. DIR .. '"'):lines() do table.insert(shots, name) end
-t.expect(#shots >= 1 and #shots <= 10, "the listing has between one and ten screenshots")
+local EXPECTED = { "01-map.jpg", "02-cleanup.jpg", "03-files.jpg", "04-kinds.jpg", "05-developer.jpg" }
+t.assertEqual(#shots, #EXPECTED, "the listing has exactly five promotional screenshots")
+for i, name in ipairs(EXPECTED) do
+	t.assertEqual(shots[i], name, "the gallery presents the feature story in order")
+end
 for _, name in ipairs(shots) do
 	t.expect(name:match("^%d%d%-[%w-]+%.jpg$") ~= nil, name .. " is a numbered JPEG (no transparency)")
 	local w, h = jpegSize(DIR .. name)
 	t.expect(w and SIZES[w .. "x" .. h], string.format("%s is an accepted Mac size (%sx%s)", name, tostring(w), tostring(h)))
+	t.assertEqual(w, 2880, "promotional artboards have full-resolution width")
+	t.assertEqual(h, 1800, "promotional artboards have full-resolution height")
 end
 
 os.exit(t.summary() and 0 or 1)

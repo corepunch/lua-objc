@@ -16,9 +16,24 @@ The app bundle is `build/xcode-derived/Products/Release/Diskmap.app`. Open `apps
 
 ## App Store Connect materials
 
-Listing copy is in `store-assets/en/metadata.md`. Six 2560 × 1600 showcase screenshots are in `store-assets/en/screenshots/`; `make diskmap-store-screenshots` recaptures them. The preview video `/Users/igor/Desktop/Diskmap-Showreel.mp4` is 1920 × 1080 H.264, 30 seconds, and below Apple's 500 MB limit.
+See [the promotional materials guide](store-assets/README.md) for the gallery's design rationale, requirements, capture and video recipes, quality checks, and asc upload workflow.
 
-The App Store icon comes from `Assets.xcassets/AppIcon.appiconset/`. The App Store Connect preview is `/Users/igor/Desktop/Diskmap-Showreel.mp4` (30 seconds, 1920 × 1080, H.264). The privacy policy is published at https://github.com/corepunch/lua-objc/blob/main/apps/diskmap/PRIVACY.md and that URL is entered in App Store Connect.
+Listing copy is in `store-assets/en/metadata.md`. Five 2880 × 1800 promotional screenshots are in `store-assets/en/screenshots/`, combining benefit headlines with complete native showcase windows. Regenerate them with `make diskmap-store-screenshots DISKMAP_STORE_PYTHON=/path/to/python3`, using a Python runtime with Pillow and NumPy. Captures, layout dumps and the contact sheet are in `build/diskmap-store/`.
+
+The App Store icon comes from `Assets.xcassets/AppIcon.appiconset/`. `make diskmap-store-preview` converts the existing `build/Diskmap-Showreel.mov` into `apps/diskmap/store-assets/en/previews/Diskmap-AppStore-Preview.mov` (29.97 seconds, 1920 × 1080, 30 fps, H.264 High Level 4.0 and stereo AAC). The complete story is retained at a slightly faster pace, with audio pitch preserved. The privacy policy is published at https://github.com/corepunch/lua-objc/blob/main/apps/diskmap/PRIVACY.md and that URL is entered in App Store Connect.
+
+The media were uploaded October 4, 2026 through the `corepunch` asc profile to English version 1.0. All six assets returned `COMPLETE`; subsequent reads verified their checksums, screenshot order and dimensions. Upload again with:
+
+```sh
+asc --profile corepunch screenshots upload \
+  --version-localization 2935b7eb-1995-4d58-9574-5757a471087b \
+  --path apps/diskmap/store-assets/en/screenshots --device-type DESKTOP \
+  --replace --confirm --output json
+asc --profile corepunch video-previews upload \
+  --version-localization 2935b7eb-1995-4d58-9574-5757a471087b \
+  --path apps/diskmap/store-assets/en/previews/Diskmap-AppStore-Preview.mov --device-type DESKTOP \
+  --replace --confirm --output json
+```
 
 The App Privacy declaration is published as **Data Not Collected**. Diskmap keeps scan results, preferences, history, and its operations log on the Mac. Its duplicate finder uses Apple's CommonCrypto SHA-256 implementation locally and the app has no network collection path. `Info.plist` sets `ITSAppUsesNonExemptEncryption` to false because the app relies only on Apple-provided encryption APIs.
 
