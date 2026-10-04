@@ -3,9 +3,9 @@
 <%
 local MODELS = {
 	tree = "tree.obj", pine = "tree-pine.obj", rocks = "rocks.obj", crate = "crate.obj",
-	flowers = "flowers.obj", grass = "grass.obj", mushrooms = "mushrooms.obj",
+	flowers = "flowers.obj", grass = "grass.obj", mushrooms = "mushrooms.obj", mega = "mushrooms.obj",
 }
-local SCALES = {crate = 1.5, rocks = 1.4}
+local SCALES = {crate = 1.5, rocks = 1.4, mega = 1.55}
 local turn = (x * 73 + z * 151) % 4 * 90 + (x + z) % 3 * 12
 -%>
 <Node model="<%= assets .. MODELS[kind] %>" position="<%= x %> 0 <%= z %>" rotation="0 <%= turn %> 0" scale="<%= SCALES[kind] or 1 %>" />

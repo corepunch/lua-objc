@@ -1,0 +1,2 @@
+<!-- A crate ferry. Poses move it along its track; the hero rides the pose. -->
+<Node id="<%= id %>" model="<%= assets %>crate.obj" position="<%= x %> 0 <%= z %>" scale="1.2" />
