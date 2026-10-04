@@ -38,6 +38,31 @@ rg -n 'function_name|LuaClassName' src lua tests
 rg -n '^### `Widget|WidgetName' docs/PROJECT_REFERENCE.md
 ```
 
+## App Store Connect and Apple Developer tasks
+
+Use [App Store Connect CLI (`asc`)](https://github.com/rorkai/App-Store-Connect-CLI)
+for every task its commands support. This includes app/version management,
+metadata and localizations, screenshots and previews, build uploads and
+processing, TestFlight and testers, submission readiness, review and releases,
+certificates and provisioning profiles, bundle IDs and capabilities, pricing
+and availability, in-app purchases and subscriptions, analytics and reports,
+notarization, and Xcode Cloud management.
+
+Discover the current command with `asc search "<task>" --output json` and
+`asc <command> --help`; use `asc capabilities --output json` to check coverage.
+Prefer `asc` over browser/computer-use interactions and custom API scripts
+for supported operations. Use `asc api` for supported API requests without a
+dedicated command; use another tool when `asc` cannot perform the operation.
+Use JSON output for scripts and verify the result of remote changes.
+
+On this Mac, use the existing `corepunch` authentication profile stored in
+macOS Keychain. Check it with `asc --profile corepunch auth status --validate`.
+CI credentials belong in GitHub Actions secrets. Never commit or log private
+keys, credential values, or authentication tokens.
+
+Build artifacts with the repository's Makefiles and each app's declared
+platform. Use `asc`'s management and distribution commands for those artifacts.
+
 ## Non-negotiable project rules
 
 - **No backwards compatibility, ever.** When the right design is found, move
