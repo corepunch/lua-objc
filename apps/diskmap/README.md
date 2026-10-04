@@ -320,7 +320,11 @@ one-time export exists, and otherwise the bundled synthetic `mock-hdd.bin`.
 `--showcase` is the bundled synthetic disk with presentable names, for
 screenshots and promotional captures: the volume is “Macintosh HD”, the home
 folder is `/Users/appleseed`, demo apps and projects have ordinary names, and
-the window title carries no Mock HDD marker. It never reads a personal export.
+the window title carries no Mock HDD marker. The disk is a family's Mac with a
+developer in it: photos, documents, games, device backups, mail and messages
+outweigh the Xcode data, simulators and package caches, and the Photos, Music
+and TV libraries are measured as if Settings included them. It never reads a
+personal export.
 `--map-style=rectangles` opens the Map as a treemap. The showreel in
 [reels/diskmap](../../reels/diskmap/README.md) is captured this way.
 

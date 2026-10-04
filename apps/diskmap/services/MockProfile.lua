@@ -40,6 +40,33 @@ return {
 		{path = "~/Movies/Final Cut Backups/Launch Film/Launch Film 2026-09-01.fcpbundle", bytes = 640000000, usedDaysAgo = 29},
 		{path = "~/Library/Application Support/Adobe/Common/Media Cache Files/clip-0001.pek", bytes = 3100000000, usedDaysAgo = 120},
 		{path = "~/Library/Application Support/Steam/steamapps/common/Stardew Valley/data.pak", bytes = 12500000000, usedDaysAgo = 70},
+		-- A family's everyday files beside the developer's tools: work and
+		-- school documents, downloads, iCloud Drive, a second device backup,
+		-- conversations, podcasts, a home movie, games and everyday apps.
+		{path = "~/Pictures/Photos Library.photoslibrary/originals/videos/IMG_4410.MOV", bytes = 28000000000, usedDaysAgo = 3},
+		{path = "~/Documents/Work/Quarterly Review.key", bytes = 2400000000, usedDaysAgo = 20},
+		{path = "~/Documents/Work/Budget 2026.xlsx", bytes = 180000000, usedDaysAgo = 6},
+		{path = "~/Documents/School/Thesis Final.pages", bytes = 900000000, usedDaysAgo = 150},
+		{path = "~/Documents/Family/Recipes.pages", bytes = 350000000, usedDaysAgo = 60},
+		{path = "~/Documents/Scans/Receipts 2025.pdf", bytes = 420000000, usedDaysAgo = 90},
+		{path = "~/Downloads/Family Trip Photos.zip", bytes = 6800000000, usedDaysAgo = 320},
+		{path = "~/Downloads/Lecture Recordings/Week 01.mp4", bytes = 3200000000, usedDaysAgo = 240},
+		{path = "~/Downloads/Microsoft Office Installer.pkg", bytes = 2100000000, usedDaysAgo = 400},
+		{path = "~/Desktop/Screen Recording 2026-08-14.mov", bytes = 2600000000, usedDaysAgo = 50},
+		{path = "~/Library/Mobile Documents/com~apple~CloudDocs/Family/Kids Drawings.zip", bytes = 3400000000, usedDaysAgo = 120},
+		{path = "~/Library/Mobile Documents/com~apple~CloudDocs/Taxes/2025 Return.pdf", bytes = 50000000, usedDaysAgo = 200},
+		{path = "~/Library/Application Support/MobileSync/Backup/ipad/Manifest.db", bytes = 11800000000, usedDaysAgo = 45},
+		{path = "~/Library/Messages/Attachments/a1/02/Birthday Party.MOV", bytes = 4200000000, usedDaysAgo = 120},
+		{path = "~/Library/Messages/Attachments/b7/3c/Beach Day.MOV", bytes = 1900000000, usedDaysAgo = 30},
+		{path = "~/Library/Mail/V10/Inbox.mbox/Attachments/Contract Scans.pdf", bytes = 2200000000, usedDaysAgo = 30},
+		{path = "~/Library/Group Containers/243LU875E5.groups.com.apple.podcasts/Library/Cache/episodes.mp3", bytes = 3600000000, usedDaysAgo = 40},
+		{path = "~/Movies/iMovie Library.imovielibrary/Summer Vacation/Original Media/clip-001.mov", bytes = 14000000000, usedDaysAgo = 90},
+		{path = "~/Library/Application Support/Steam/steamapps/common/Baldurs Gate 3/Data/Gustav.pak", bytes = 24000000000, usedDaysAgo = 10},
+		{path = "~/Library/Application Support/minecraft/saves/Family World/region/r.0.0.mca", bytes = 3400000000, usedDaysAgo = 12},
+		{path = "/Applications/Microsoft Word.app/Contents/MacOS/Microsoft Word", bytes = 2300000000, usedDaysAgo = 3},
+		{path = "/Applications/Microsoft Excel.app/Contents/MacOS/Microsoft Excel", bytes = 2100000000, usedDaysAgo = 6},
+		{path = "/Applications/Adobe Photoshop 2026/Adobe Photoshop 2026.app/Contents/MacOS/Adobe Photoshop 2026", bytes = 4800000000, usedDaysAgo = 14},
+		{path = "~/Library/Caches/com.spotify.client/Data/cache", bytes = 3100000000, usedDaysAgo = 1},
 		-- Xcode device support and archives, a DerivedData folder whose project
 		-- is gone, a project file, and data left by uninstalled apps.
 		{path = "~/Library/Developer/Xcode/iOS DeviceSupport/iPhone17,1 26.0 (23A341)/Symbols", bytes = 3800000000, usedDaysAgo = 60},
@@ -69,6 +96,9 @@ return {
 		["/Applications/Mock Video Studio.app"] = {bundleId = "com.mock.VideoStudio", version = "4.2", lastUsedDaysAgo = 30},
 		["/Applications/Mock Notes.app"] = {bundleId = "com.mock.Notes", version = "1.8", lastUsedDaysAgo = 2},
 		["~/Applications/Mock Game.app"] = {bundleId = "com.mock.Game", version = "2.0", lastUsedDaysAgo = 410},
+		["/Applications/Microsoft Word.app"] = {bundleId = "com.microsoft.Word", version = "16.101", lastUsedDaysAgo = 3},
+		["/Applications/Microsoft Excel.app"] = {bundleId = "com.microsoft.Excel", version = "16.101", lastUsedDaysAgo = 6},
+		["/Applications/Adobe Photoshop 2026/Adobe Photoshop 2026.app"] = {bundleId = "com.adobe.Photoshop", version = "27.0", lastUsedDaysAgo = 14},
 	},
 	-- `diskutil info -plist /` and `diskutil apfs list -plist`, abridged.
 	["volumes"] = {

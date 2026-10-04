@@ -16,7 +16,7 @@ The app bundle is `build/xcode-derived/Products/Release/Diskmap.app`. Open `apps
 
 ## App Store Connect materials
 
-Listing copy is in `store-assets/en/metadata.md`. Five 2560 × 1600 showcase screenshots are in `store-assets/en/screenshots/`. The preview video `/Users/igor/Desktop/Diskmap-Showreel.mp4` is 1920 × 1080 H.264, 30 seconds, and below Apple's 500 MB limit.
+Listing copy is in `store-assets/en/metadata.md`. Six 2560 × 1600 showcase screenshots are in `store-assets/en/screenshots/`; `make diskmap-store-screenshots` recaptures them. The preview video `/Users/igor/Desktop/Diskmap-Showreel.mp4` is 1920 × 1080 H.264, 30 seconds, and below Apple's 500 MB limit.
 
 The App Store icon comes from `Assets.xcassets/AppIcon.appiconset/`. The App Store Connect preview is `/Users/igor/Desktop/Diskmap-Showreel.mp4` (30 seconds, 1920 × 1080, H.264). The privacy policy is published at https://github.com/corepunch/lua-objc/blob/main/apps/diskmap/PRIVACY.md and that URL is entered in App Store Connect.
 

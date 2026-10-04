@@ -382,6 +382,18 @@ diskmap-tour-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(LUA_OBJC_BIN) --capture-plan=apps/diskmap/tour/capture.lua --width=1100 --height=688 \
 		apps/diskmap/init.lua --showcase
 
+# Diskmap's Mac App Store screenshots (apps/diskmap/store-assets/en/screenshots,
+# committed JPEGs): full dark windows from the showcase disk at 2560 × 1600,
+# flattened to JPEG because App Store Connect refuses transparency.
+.PHONY: diskmap-store-screenshots
+diskmap-store-screenshots: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	rm -f apps/diskmap/store-assets/en/screenshots/*.png apps/diskmap/store-assets/en/screenshots/*.jpg
+	./$(LUA_OBJC_BIN) --capture-plan=apps/diskmap/store-assets/capture.lua --width=1280 --height=800 \
+		apps/diskmap/init.lua --showcase
+	for png in apps/diskmap/store-assets/en/screenshots/*.png; do \
+		sips -s format jpeg -s formatOptions 92 "$$png" --out "$${png%.png}.jpg" >/dev/null && rm "$$png"; \
+	done
+
 .PHONY: diskmap-reel diskmap-reel-captures
 diskmap-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	@ls reels/diskmap/captures/*.png >/dev/null 2>&1 || $(DISKMAP_CAPTURE)

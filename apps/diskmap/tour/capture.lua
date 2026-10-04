@@ -33,10 +33,10 @@ local SHOTS = {
 	{name = "largest", ids = {"pageHeader", "largest"}, maxHeight = 330, show = page("largest")},
 	{name = "files", ids = {"stats", "filesPanel"}, maxHeight = 400, show = page("files")},
 	{name = "kinds", ids = {"kindsCard", "kinds"}, maxHeight = 400, show = page("kinds")},
-	{name = "applications", ids = {"stats", "apps"}, maxHeight = 330, show = page("applications")},
-	{name = "cleanup", ids = {"stats", "section_rebuildable"}, maxHeight = 421, show = page("cleanup")},
+	{name = "applications", ids = {"lead", "leftoversSection"}, maxHeight = 330, show = page("applications")},
+	{name = "cleanup", ids = {"lead", "section_rebuildable"}, maxHeight = 421, show = page("cleanup")},
 	{name = "developer", ids = {"section_xcode"}, show = page("developer")},
-	{name = "disks", ids = {"health", "volumesSection"}, maxHeight = 380, show = page("disks")},
+	{name = "disks", ids = {"stats", "volumesSection"}, maxHeight = 380, show = page("disks")},
 	{name = "guide", ids = {"topic_assets"}, show = function(app) app:search("guide", "Siri") end},
 }
 

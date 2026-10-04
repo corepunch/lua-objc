@@ -251,6 +251,9 @@ function Mock.new(options)
 		kept = {},
 		watchlist = {},
 		monitoring = false,
+		-- A showcase disk shows the whole Mac, its Photos, Music and TV
+		-- libraries included.
+		flags = options.showcase and {media = true} or nil,
 	}, Mock)
 	for name, method in pairs(Mock) do
 		if name ~= "new" and type(method) == "function" then
