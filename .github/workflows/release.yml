@@ -1,21 +1,7 @@
 name: Release apps
 
-# A tag like v1.2.3 releases every app in scripts/release/apps at that
-# version: scripts/release/release.sh builds each, signed with Developer ID,
-# notarized and stapled, in a DMG, and scripts/release/publish.sh attaches
-# them all to the GitHub release v1.2.3. Diskmap's App Store build runs
-# separately in Xcode Cloud, from diskmap/ tags.
-#
-# Secrets (Settings → Secrets and variables → Actions):
-#   MACOS_CERTIFICATE_P12       base64 of a Developer ID Application .p12
-#   MACOS_CERTIFICATE_PASSWORD  the .p12's export password
-#   NOTARY_KEY_P8               base64 of an App Store Connect API key (.p8)
-#   NOTARY_KEY_ID, NOTARY_ISSUER_ID  that key's ID and its issuer
-# Without them the run only checks that the app builds, and keeps an ad hoc
-# DMG as a workflow artifact: a release signed on a Mac with `make release`
-# and `make publish` (Xcode's cloud-managed certificate, which cannot be
-# exported) is never overwritten.
-
+# Platforms and channels live in scripts/release/apps.json. Required secrets
+# are documented in README.md. This workflow never uses Xcode's build system.
 on:
   push:
     tags:
@@ -25,77 +11,206 @@ on:
       tag:
         description: "Release tag, e.g. v1.0.0 (must exist)"
         required: true
+      buildOnly:
+        description: "Check builds without signing, publishing or uploading"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 concurrency:
   group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 jobs:
-  release:
-    runs-on: macos-26
-    env:
-      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.apps.outputs.matrix }}
+      storeMatrix: ${{ steps.apps.outputs.storeMatrix }}
+      version: ${{ steps.apps.outputs.version }}
+      buildNumber: ${{ steps.apps.outputs.buildNumber }}
     steps:
-      - name: Checkout
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - id: apps
+        name: Read app platforms
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          python3 - <<'PY'
+          import os, sys, json
+          sys.path.insert(0, 'scripts/release')
+          from release import apps, build_number, release_version
+          tag = os.environ['TAG']
+          if not tag.startswith('v'):
+              sys.exit('Expected a tag like v1.2.3')
+          version = release_version(tag[1:])
+          number = build_number(os.environ['RUN_NUMBER'] + '.' + os.environ['RUN_ATTEMPT'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('matrix=' + json.dumps({'include': apps()}, separators=(',', ':')), file=output)
+              print('storeMatrix=' + json.dumps({'include': [app for app in apps() if 'appStore' in app['channels']]}, separators=(',', ':')), file=output)
+              print('version=' + version, file=output)
+              print('buildNumber=' + number, file=output)
+          PY
+
+  build:
+    needs: plan
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      APP: ${{ matrix.app }}
+      PLATFORM: ${{ matrix.platform }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      BUILD_NUMBER: ${{ needs.plan.outputs.buildNumber }}
+      BUILD_ONLY: ${{ inputs.buildOnly && '1' || '0' }}
+      STORE: ${{ contains(matrix.channels, 'appStore') && '1' || '0' }}
+    steps:
+      - name: Checkout release revision
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
           submodules: false
 
-      - name: Fetch the template engine
-        run: git submodule update --init --depth 1 lua/vendor/etlua
-
-      - name: Import the signing certificate
-        id: signing
+      - name: Fetch app dependencies
         env:
-          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          SUBMODULES: ${{ join(matrix.submodules, ' ') }}
+        run: git submodule update --init --depth 1 lua/vendor/etlua $SUBMODULES
+
+      - name: Select a stable Apple toolchain
+        run: python3 scripts/release/toolchain.py
+
+      - name: Check packaging and signing regressions
+        run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
+
+      - name: Import release credentials
+        if: env.BUILD_ONLY != '1'
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
-        run: |
-          if [ -z "$CERTIFICATE" ] || [ -z "$NOTARY_KEY_P8" ]; then
-            echo "No signing secrets: checking the build only."
-            echo "unsigned=1" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          keychain="$RUNNER_TEMP/release.keychain-db"
-          password=$(openssl rand -base64 24)
-          security create-keychain -p "$password" "$keychain"
-          security set-keychain-settings -lut 3600 "$keychain"
-          security unlock-keychain -p "$password" "$keychain"
-          echo "$CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
-          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" -P "$CERTIFICATE_PASSWORD" \
-            -T /usr/bin/codesign -T /usr/bin/security
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain"
-          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
-          rm "$RUNNER_TEMP/certificate.p12"
-          echo "$NOTARY_KEY_P8" | base64 --decode > "$RUNNER_TEMP/notary.p8"
-          echo "unsigned=0" >> "$GITHUB_OUTPUT"
-
-      - name: Build, sign and notarize
-        env:
-          UNSIGNED: ${{ steps.signing.outputs.unsigned }}
-          NOTARY_KEY: ${{ runner.temp }}/notary.p8
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
-        run: make release VERSION="${TAG#v}"
+          APPSTORE_CERTIFICATE_P12: ${{ secrets.APPSTORE_CERTIFICATE_P12 }}
+          APPSTORE_CERTIFICATE_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
+          APPSTORE_INSTALLER_P12: ${{ secrets.APPSTORE_INSTALLER_P12 }}
+          APPSTORE_INSTALLER_PASSWORD: ${{ secrets.APPSTORE_INSTALLER_PASSWORD }}
+          APPSTORE_PROFILE: ${{ secrets[matrix.profileSecret] }}
+          PROFILE_SECRET: ${{ matrix.profileSecret }}
+        run: python3 scripts/release/credentials.py
 
-      - name: Publish the release
-        if: steps.signing.outputs.unsigned == '0'
+      - name: Build and package the declared platform
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: scripts/release/publish.sh "${TAG#v}"
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          if [ "$BUILD_ONLY" = 1 ]; then
+            make release APP="$APP" VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" UNSIGNED=1
+          else
+            make release APP="$APP" VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" \
+              STORE="$STORE" PROFILE="$RUNNER_TEMP/appstore.mobileprovision"
+          fi
 
-      - name: Keep the unsigned build
-        if: steps.signing.outputs.unsigned == '1'
+      - name: Keep release packages and debug symbols
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-dmgs
-          path: build/release/*/*.dmg
+          name: release-${{ matrix.app }}
+          if-no-files-found: error
+          path: |
+            build/release/${{ matrix.app }}/*.dmg
+            build/release/${{ matrix.app }}/*.ipa
+            build/release/${{ matrix.app }}/*.pkg
+            build/release/${{ matrix.app }}/*.signed
+            build/release/${{ matrix.app }}/upload-info.plist
+            build/release/${{ matrix.app }}/symbols/
+            build/release/${{ matrix.app }}/unsigned/
 
-      - name: Remove the signing keychain
+      - name: Remove credentials
         if: always()
         run: |
           security delete-keychain "$RUNNER_TEMP/release.keychain-db" 2>/dev/null || true
-          rm -f "$RUNNER_TEMP/notary.p8"
+          rm -f "$RUNNER_TEMP/notary.p8" "$RUNNER_TEMP/appstore.p8" \
+            "$RUNNER_TEMP/appstore.mobileprovision" "$RUNNER_TEMP/"*.p12
+
+  appstore:
+    needs: [plan, build]
+    if: ${{ !inputs.buildOnly }}
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.storeMatrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ matrix.app }}
+          path: build/release/${{ matrix.app }}
+      - name: Select a stable Apple toolchain
+        run: python3 scripts/release/toolchain.py
+      - name: Validate and upload the same package attached to the release
+        env:
+          APP: ${{ matrix.app }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          APPSTORE_KEY_P8: ${{ secrets.APPSTORE_KEY_P8 }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_APP_ID: ${{ vars[matrix.appStoreIdVariable] }}
+          APP_ID_VARIABLE: ${{ matrix.appStoreIdVariable }}
+        run: |
+          python3 - <<'PY'
+          import base64, os, pathlib, sys
+          sys.path.insert(0, 'scripts/release')
+          from release import main
+          required = ['APPSTORE_KEY_P8', 'APPSTORE_KEY_ID', 'APPSTORE_ISSUER_ID', 'APPSTORE_APP_ID']
+          missing = [name if name != 'APPSTORE_APP_ID' else os.environ['APP_ID_VARIABLE']
+                     for name in required if not os.environ.get(name)]
+          if missing:
+              sys.exit('Missing Actions secrets/variables: ' + ', '.join(missing))
+          key = pathlib.Path(os.environ['RUNNER_TEMP']) / 'appstore.p8'
+          try:
+              key.write_bytes(base64.b64decode(''.join(os.environ['APPSTORE_KEY_P8'].split()), validate=True))
+              key.chmod(0o600)
+              os.environ['APPSTORE_KEY'] = str(key)
+              sys.argv = ['release.py', 'upload', '--app', os.environ['APP'], '--version', os.environ['VERSION']]
+              main()
+          finally:
+              key.unlink(missing_ok=True)
+          PY
+
+  publish:
+    needs: [plan, build]
+    if: ${{ !inputs.buildOnly }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: build/packages
+      - name: Attach signed packages to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import pathlib, shutil, sys
+          sys.path.insert(0, 'scripts/release')
+          from release import apps
+          for app in apps():
+              source = pathlib.Path('build/packages/release-' + app['app'])
+              target = pathlib.Path('build/release') / app['app']
+              shutil.copytree(source, target)
+          PY
+          python3 scripts/release/release.py publish --version "$VERSION"

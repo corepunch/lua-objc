@@ -1,88 +1,29 @@
 _G.__headless = true
-
--- The apps released as bundles (scripts/release/release.sh): each Xcode
--- project runs the shared launcher, its Info.plist names a Lua entry point
--- that exists, and its Copy Lua phase takes every kind of file the app reads
--- at run time. Diskmap's bundle once left out app.xml, and the app could not
--- start from its own Resources.
 local t = require("TestKit")
 
+-- Offline signing and packaging contracts run through make test as well as CI.
+local result, reason, code = os.execute("python3 -m unittest discover -s scripts/release -p 'test_*.py'")
+t.expect(result == true and code == 0, "platform builds, Store signing, packaging and upload contracts: " .. tostring(reason))
+
 local function read(path)
-	local file = assert(io.open(path, "r"), "cannot read " .. path)
+	local file = assert(io.open(path, "r"))
 	local text = file:read("a")
 	file:close()
 	return text
 end
-
-local function exists(path)
-	local file = io.open(path, "r")
+local records = require("AppKit").json_parse(read("scripts/release/apps.json"))
+for _, app in ipairs(records) do
+	local entry = "apps/" .. app.app .. "/init.lua"
+	local file = io.open(entry)
+	t.expect(file ~= nil, app.app .. ": entry point exists")
 	if file then file:close() end
-	return file ~= nil
-end
-
--- A plist string value by key.
-local function plistString(text, key)
-	return text:match("<key>" .. key .. "</key>%s*<string>(.-)</string>")
-end
-
--- Files under an app that are not read at run time: docs, the project and
--- its Xcode data, signing, App Store and website material, sources of
--- generated images, and build output.
-local NOT_RUNTIME = {md = true, plist = true, pbxproj = true, xcscheme = true, entitlements = true, sh = true,
-	svg = true, json = true, png = true}
-local SKIP_DIRS = {"%.xcodeproj/", "%.xcassets/", "/Build/", "/ci_scripts/", "/store%-assets/"}
-
-local function runtimeExtensions(dir)
-	local found = {}
-	local list = assert(io.popen("find " .. dir .. " -type f"))
-	for path in list:lines() do
-		local skipped = false
-		for _, pattern in ipairs(SKIP_DIRS) do
-			if path:find(pattern) then skipped = true end
-		end
-		local ext = path:match("%.([%w]+)$")
-		if not skipped and ext and not NOT_RUNTIME[ext] then found[ext] = path end
-	end
-	list:close()
-	return found
-end
-
--- The apps a release ships (scripts/release/apps): folder -> product.
-local RELEASES, count = {}, 0
-for line in read("scripts/release/apps"):gmatch("[^\n]+") do
-	local app, product = line:match("^(%w+)%s+(%w+)$")
-	if app then RELEASES[app], count = product, count + 1 end
-end
-t.assertEqual(count, 2, "a release ships Diskmap and Drum & Bass")
-t.assertEqual(RELEASES.diskmap .. " " .. RELEASES.dnb, "Diskmap DrumAndBass", "by their products")
-
-local workflow = read(".github/workflows/release.yml")
-t.expect(workflow:find('"v*.*.*"', 1, true) ~= nil, "one tag, v1.2.3, releases every app at one version")
-t.expect(workflow:find('make release VERSION="${TAG#v}"', 1, true) ~= nil, "the workflow builds them all")
-for app, product in pairs(RELEASES) do
-	local dir = "apps/" .. app
-	local plist = read(dir .. "/Info.plist")
-	t.assertEqual(plistString(plist, "CFBundleExecutable"), product, app .. ": the executable is the product")
-	local entry = plistString(plist, "LuaObjCEntry")
-	t.assertEqual(entry, dir .. "/init.lua", app .. ": Info.plist names its entry point for the launcher")
-	t.expect(exists(entry), app .. ": the entry point exists")
-
-	local project = read(dir .. "/" .. product .. ".xcodeproj/project.pbxproj")
-	t.expect(project:find("path = ../../scripts/launcher;", 1, true) ~= nil, app .. ": runs the shared launcher")
-	t.expect(exists(dir .. "/" .. product .. ".xcodeproj/xcshareddata/xcschemes/" .. product .. ".xcscheme"),
-		app .. ": has a shared scheme to archive")
-	t.expect(project:find("copy apps/" .. app .. " apps/" .. app, 1, true) ~= nil, app .. ": copies its own tree")
-	t.expect(project:find("ENABLE_HARDENED_RUNTIME = YES;", 1, true) ~= nil, app .. ": hardened runtime, for notarizing")
-	local copied = {}
-	for ext in project:gmatch("%-%-include='%*%.(%w+)'") do copied[ext] = true end
-	for ext, example in pairs(runtimeExtensions(dir)) do
-		t.expect(copied[ext], app .. ": the bundle copies ." .. ext .. " files such as " .. example)
+	if app.platform == "macos" then
+		local plist = read(app.plist)
+		t.assertEqual(plist:match("<key>LuaObjCEntry</key>%s*<string>(.-)</string>"), entry,
+			app.app .. ": launcher uses the app entry point")
 	end
 end
-t.expect(not exists("scripts/diskmap/launcher.c"), "one launcher, shared by every bundled app")
--- A run without signing secrets never publishes, so it cannot replace a DMG
--- signed and notarized on a Mac.
-t.expect(workflow:find("if: steps.signing.outputs.unsigned == '0'\n        env:\n          GH_TOKEN", 1, true) ~= nil,
-	"the workflow publishes only signed builds")
-
+for _, path in ipairs({"scripts/release/release.py", "scripts/release/macos.mk"}) do
+	t.expect(not read(path):find("xcodebuild", 1, true), path .. ": no Xcode build dependency")
+end
 t.summary()

@@ -338,18 +338,23 @@ diskmap-xcode-build:
 		OBJROOT="$(DISKMAP_XCODE_ROOT)/Intermediates" \
 		build
 
-# A GitHub release of every app in scripts/release/apps, all at one
-# version: `make release VERSION=1.2.3` builds, signs and notarizes each DMG
-# (scripts/release/release.sh; UNSIGNED=1 for ad hoc builds), `make publish
-# VERSION=1.2.3` attaches them to the release v1.2.3.
+# Each app's platform and release channels live in scripts/release/apps.json.
+# Releases use the Apple toolchain directly, without Xcode projects.
 VERSION ?=
-RELEASE_APPS = $(shell awk '!/^\#/ && NF { print $$1 }' scripts/release/apps)
-.PHONY: release publish
+BUILD_NUMBER ?= 1
+.PHONY: release release-build publish appstore-upload
+RELEASE_FLAGS = --version "$(VERSION)" --build-number "$(BUILD_NUMBER)" $(if $(APP),--app "$(APP)")
+release-build:
+	python3 scripts/release/release.py build $(RELEASE_FLAGS)
 release:
-	@for app in $(RELEASE_APPS); do scripts/release/release.sh $$app $(VERSION) || exit 1; done
+	python3 scripts/release/release.py release $(RELEASE_FLAGS) $(if $(filter 1,$(UNSIGNED)),--unsigned) \
+		$(if $(filter 1,$(STORE)),--store --profile "$(PROFILE)")
 
 publish:
-	scripts/release/publish.sh $(VERSION)
+	python3 scripts/release/release.py publish $(RELEASE_FLAGS)
+
+appstore-upload:
+	python3 scripts/release/release.py upload $(RELEASE_FLAGS)
 
 APP ?=
 TARGET ?=
