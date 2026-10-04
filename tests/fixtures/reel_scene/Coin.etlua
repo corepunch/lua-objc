@@ -3,6 +3,6 @@
   <SceneView>
     <Camera position="0 0.4 2" lookAt="0 0.4 0" fieldOfView="40" />
     <Light type="ambient" intensity="1200" />
-    <%- partial(root .. "apps/coin-quest/views/prefabs/Coin.etlua", {id = "coin", x = 0, z = 0, assets = root .. "apps/coin-quest/assets/models/"}) %>
+    <%- partial(root .. "apps/coin-quest/views/prefabs/Coin.etlua", {coin = {id = "coin", x = 0, y = 0, z = 0}, assets = root .. "apps/coin-quest/assets/models/"}) %>
   </SceneView>
 </Reel>

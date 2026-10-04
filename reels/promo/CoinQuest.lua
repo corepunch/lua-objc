@@ -5,7 +5,7 @@
 -- The stage is the game's own Stage.etlua, fed by the game's own
 -- StageController.viewData; the reel only adds the camera.
 --
---   local quest = CoinQuest.new({level = 2, script = {{0.3, "left"}, …}, duration = 5})
+--   local quest = CoinQuest.new({level = 1, script = {{1.25, "left", 0.4}, {1.8, "jump"}, …}, duration = 5})
 --   quest:view()        -- data for apps/coin-quest/views/Stage.etlua
 --   quest:poses(t)      -- `states` for the reel's <SceneView>
 --   quest.events        -- {time, name} for the score: coins, the flag
@@ -17,37 +17,54 @@ local CoinQuest = {}
 CoinQuest.__index = CoinQuest
 
 -- Steps per second of simulated time; the game itself runs at the display
--- rate, a hop lasts 0.16 s, so this resolves every hop smoothly.
+-- rate, so this resolves every jump smoothly.
 local RATE = 240
 -- The live SceneView's pop and rise transitions (kSceneTransition*).
 local TRANSITION = { duration = 0.3, popScale = 1.6, rise = 1.0 }
 
 local DIRECTIONS = { left = { x = -1, z = 0 }, right = { x = 1, z = 0 }, up = { x = 0, z = -1 }, down = { x = 0, z = 1 } }
 
--- options: level (index), script ({time, direction} presses in order),
+-- options: level (index), script (presses: `{time, direction, seconds}`
+-- holds a direction as seen from the camera, `{time, "jump"}` jumps),
 -- duration (seconds simulated).
 function CoinQuest.new(options)
 	local self = setmetatable({ frames = {}, events = {}, taken = {}, duration = options.duration }, CoinQuest)
 	local model = Model.new(Levels)
 	model:load(options.level or 1)
 	self.initial = model:scene()
+	-- The camera moves as the game plays; the template wants where it began.
+	local camera, focus = model.world.camera, model.world.focus
+	self.initial.view = { position = { x = camera.x, y = camera.y, z = camera.z }, focus = { x = focus.x, y = focus.y, z = focus.z } }
 	self.level = model:level()
-	local presses, next = options.script or {}, 1
+	local presses, jumped = options.script or {}, {}
+	for _, press in ipairs(presses) do
+		if press[2] ~= "jump" and not DIRECTIONS[press[2]] then error("coin quest: unknown direction " .. tostring(press[2])) end
+	end
 	local clock = 0
 	local pad = {
-		nextDirection = function()
-			local press = presses[next]
-			if press and clock >= press[1] then
-				next = next + 1
-				return DIRECTIONS[press[2]] or error("coin quest: unknown direction " .. tostring(press[2]))
+		axis = function()
+			local x, z = 0, 0
+			for _, press in ipairs(presses) do
+				local d = DIRECTIONS[press[2]]
+				if d and clock >= press[1] and clock < press[1] + press[3] then x, z = x + d.x, z + d.z end
 			end
+			return x, z
+		end,
+		takeJump = function()
+			for index, press in ipairs(presses) do
+				if press[2] == "jump" and not jumped[index] and clock >= press[1] then
+					jumped[index] = true
+					return true
+				end
+			end
+			return false
 		end,
 	}
 	local dt = 1 / RATE
 	for step = 0, math.ceil(options.duration * RATE) do
 		clock = step * dt
-		local events = model.world:step(dt, pad)
-		for _, event in ipairs(events) do
+		model:step(dt, pad)
+		for _, event in ipairs(model.world.events) do
 			table.insert(self.events, { time = clock, name = event.name, id = event.entity and event.entity.id })
 			if event.name == "coin" then self.taken[event.entity.id] = clock end
 			if event.name == "flagRaised" then self.flagRaised = clock end
@@ -63,7 +80,7 @@ end
 function CoinQuest:view()
 	local scene = {}
 	for key, value in pairs(self.initial) do scene[key] = value end
-	scene.flag = { x = self.initial.flag.x, z = self.initial.flag.z, raised = true }
+	scene.flag = { x = self.initial.flag.x, y = self.initial.flag.y, z = self.initial.flag.z, raised = true }
 	return StageController.viewData(scene)
 end
 
