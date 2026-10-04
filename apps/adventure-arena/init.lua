@@ -1,1 +1,1 @@
-return require("apps.adventure-arena.Controller")
+return require("data.app").launcher("apps/adventure-arena/app.xml")

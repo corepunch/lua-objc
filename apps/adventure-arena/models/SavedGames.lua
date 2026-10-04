@@ -1,4 +1,5 @@
 local Model = require("data.model")
+local Session = require("apps.adventure-arena.models.Session")
 
 -- Autosaves, one per adventure: the command history and random seed that
 -- replay the story, plus what the library shows about it (room and score)
@@ -6,7 +7,7 @@ local Model = require("data.model")
 -- every change is written at once through the store's `documents.saves`
 -- (a JSON document in the app's folder), so the model never touches files.
 -- `save:adventure()` is the adventure it belongs to (models/Adventures.lua).
-local SavedGames = Model:extend("saves", {primaryKey = "gameId", relations = {
+local SavedGames, SavedGame = Model:extend("saves", {primaryKey = "gameId", relations = {
 	{"adventure", belongsTo = "adventures", key = "gameId"},
 }})
 
@@ -71,6 +72,31 @@ end
 
 function SavedGames:latest()
 	return self:list()[1]
+end
+
+-- Where a saved story stands, in the words a reader uses: the room, then
+-- the status line and how far the score has come. Nil when its adventure
+-- has left the catalog.
+function SavedGame:progress()
+	local game = self:adventure()
+	if not game then return nil end
+	local score, maxScore = tonumber(self.score) or 0, tonumber(self.maxScore) or 0
+	return {
+		game = game,
+		place = self.room or game.title,
+		status = Session.statusLine(game, score, maxScore, tonumber(self.moves) or 0),
+		progress = maxScore > 0 and math.max(0, math.min(1, score / maxScore)) or 0,
+	}
+end
+
+-- Every story in progress, newest first.
+function SavedGames:inProgress()
+	local entries = {}
+	for _, record in ipairs(self:list()) do
+		local entry = record:progress()
+		if entry then table.insert(entries, entry) end
+	end
+	return entries
 end
 
 return SavedGames

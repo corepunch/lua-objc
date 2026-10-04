@@ -192,15 +192,15 @@ controller.sessionModel.engineFactory = function()
 		return { resume = function(_, command) return 'Response <&> "' .. command .. '"' end }, "Opening <&>"
 	end }
 end
-controller.library:showGame(game.id)
+controller.pages:page("discover"):flow("Opening"):game(game.id, "library")
 t.assertEqual(rendered.refs.title.text, game.title, "detail round-trips special characters")
 t.assertEqual(rendered.refs.description.text, game.description, "detail preserves long text")
 controller.navigation:pop()
 t.assertEqual(controller.navigation.depth, 1, "detail back restores catalog")
-t.expect(not controller.library:showGame("missing"), "missing detail record is rejected")
+t.expect(not controller.pages:page("discover"):flow("Opening"):game("missing", "library"), "missing detail record is rejected")
 t.expect(not controller.sessionController:show("missing"), "missing session record is rejected")
 t.assertEqual(controller.navigation.depth, 1, "missing records do not disturb navigation")
-local data = controller.library:presentation()
+local data = controller.pages:data("discover")
 t.assertEqual(#data.games, 1, "controller queries its injected model catalog")
 t.assertEqual(data.featured[1].id, game.id, "controller uses the injected featured query")
 t.assertEqual(game.stars, nil, "presentation does not decorate domain records with symbols")

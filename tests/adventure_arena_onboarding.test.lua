@@ -341,7 +341,7 @@ local function nativeButton(view)
 		if button then return button end
 	end
 end
-local howToPlay = app.settings.refs.howToPlay and nativeButton(app.settings.refs.howToPlay)
+local howToPlay = app.pages:refs("settings").howToPlay and nativeButton(app.pages:refs("settings").howToPlay)
 t.expect(howToPlay ~= nil, "Settings offers How to Play")
 t.assertEqual(howToPlay.title, "How to Play", "by name")
 bridge._invokeAction(howToPlay)

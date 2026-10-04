@@ -57,10 +57,10 @@ t.assertEqual(windowed.selectedTab, 2, "Write an Adventure selects the Create ta
 t.assertEqual(windowed.navigation, windowed.navigations.create, "Create owns navigation after the empty-catalog CTA")
 
 windowed:selectTab("bookshelf")
-t.expect(rendered.refs.emptyBookshelf ~= nil or windowed.bookshelf ~= nil,
+t.expect(rendered.refs.emptyBookshelf ~= nil or windowed.pages:refs("bookshelf") ~= nil,
 	"the Library tab mounts even when nothing is saved")
-if windowed.bookshelf then
-	local _, shelfRefs = windowed.bookshelf:update(windowed.library:bookshelf())
+if windowed.pages:refs("bookshelf") then
+	local shelfRefs = windowed.pages:refs("bookshelf")
 	rendered.refs = shelfRefs
 	t.expect(shelfRefs.emptyBookshelf ~= nil, "an empty library names its empty state")
 	t.expect(shelfRefs.browseDiscover ~= nil, "an empty library names Browse Discover")

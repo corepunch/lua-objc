@@ -3,7 +3,7 @@ local Session = require("apps.adventure-arena.models.Session")
 local JsonDocument = require("apps.adventure-arena.services.JsonDocument")
 local Store = require("apps.adventure-arena.Store")
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
-local LibraryController = require("apps.adventure-arena.controllers.LibraryController")
+local PageHost = require("apps.adventure-arena.controllers.PageHost")
 local OnboardingController = require("apps.adventure-arena.controllers.OnboardingController")
 local ReadingSettingsController = require("apps.adventure-arena.controllers.ReadingSettingsController")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
@@ -56,15 +56,24 @@ function Controller.new(options)
 	local function push(template, data)
 		return self:push(template, data)
 	end
-	local function back() return self:back() end
-	self.library = LibraryController.new {
-		push = push,
-		back = back,
+	-- What only the window can do for a page (pages/*.lua reads these as
+	-- `self.app`).
+	self.pages = PageHost.new(ns, {
+		push = function(id, state) return self:pushPage(id, state) end,
+		back = function() return self:back() end,
 		focus = function(origin) self:focus(origin) end,
 		selectTab = function(name) return self:selectTab(name) end,
+		tabChanged = function(index)
+			self.selectedTab = index
+			self:focus(TABS[index + 1])
+		end,
 		openSession = function(id, fresh) return self.sessionController:show(id, fresh) end,
-		onSavesChanged = function() self:refreshProgress() end,
-	}
+		resume = function() return self:resumeLatest() end,
+		showAccessory = function(resumable) self:showAccessory(resumable) end,
+		openGuide = function() self.onboarding:openGuide(self.window) end,
+		mountReadingOptions = function(host) self:mountReadingOptions(host) end,
+	})
+	local function back() return self:back() end
 	self.sessionController = SessionController.new {
 		model = sessionModel,
 		push = push,
@@ -120,6 +129,13 @@ function Controller:push(template, data)
 	return page, refs
 end
 
+-- A page of a route pushed on the navigation stack that is showing.
+function Controller:pushPage(id, state)
+	local page, refs = self.pages:render(id, state)
+	self.navigation:push(page)
+	return page, refs
+end
+
 function Controller:back()
 	self.sessionController:cancelDictation()
 	self.navigation:pop()
@@ -151,51 +167,44 @@ function Controller:resumeLatest()
 	return self.sessionController:show(latest.gameId)
 end
 
+-- Discover's data and the actions of every page the window layout names:
+-- Discover's own, and the search field's.
 function Controller:libraryData()
-	local library = self.library:presentation()
-	local actions = library.actions
-	actions.tabChanged = function(_, index)
-		self.selectedTab = tonumber(index) or 0
-		self:focus(TABS[self.selectedTab + 1])
-	end
+	local library = self.pages:data("discover")
+	local actions = {}
+	for name, action in pairs(library.actions) do actions[name] = action end
+	actions.search = self.pages:data("search").actions.search
 	return { library = library, actions = actions }
 end
 
 -- Everything that shows reading progress: the Discover shelf, the Library
--- tab and the tab bar accessory.
+-- tab and the tab bar accessory, each asked again.
 function Controller:refreshProgress()
-	if self.continueShelf and not self.continueShelf:isDisposed() then
-		self.continueShelf:update(self.library:continueShelf())
-	end
-	if self.bookshelf and not self.bookshelf:isDisposed() then
-		self.bookshelf:update(self.library:bookshelf())
-	end
-	if self.nowReading and not self.nowReading:isDisposed() then
-		local latest = SavedGames:latest()
-		local entry = latest and self.library:progressEntry(latest)
-		self.nowReading:update({
-			game = entry and entry.game, place = entry and entry.place or "",
-			actions = { resume = function() self:resumeLatest() end },
-		})
-		-- The accessory belongs to the tab bar: an open book hides both.
-		if self.tabs then self.tabs.accessoryHidden = entry == nil or self.sessionController:isOpen() end
-	end
+	self.pages:refresh()
+end
+
+-- An open book hides the accessory with the tab bar, as does having
+-- nothing to resume.
+function Controller:showAccessory(resumable)
+	if self.tabs then self.tabs.accessoryHidden = not resumable or self.sessionController:isOpen() end
+end
+
+-- The reading options are shared with the in-book sheet: mounted once per
+-- host the Settings page draws.
+function Controller:mountReadingOptions(host)
+	if not host or self.readingHost == host then return end
+	self.readingHost = host
+	self.readingOptions:mount(host, true)
 end
 
 function Controller:attach(refs)
+	local pages = self.pages
 	-- An empty catalog shows its empty state and has no shelf to fill.
-	if refs.continueShelf then self.continueShelf = self.mountTemplate(refs.continueShelf, "sections/ContinueShelf") end
-	if refs.bookshelf then self.bookshelf = self.mountTemplate(refs.bookshelf, "pages/Bookshelf") end
-	if refs.nowReading then self.nowReading = self.mountTemplate(refs.nowReading, "sections/NowReading") end
-	if refs.settings then
-		local settings = self.mountTemplate(refs.settings, "pages/Settings")
-		local _, settingsRefs = settings:update({ actions = {
-			howToPlay = function() self.onboarding:openGuide(self.window) end,
-		} })
-		self.settings = settings
-		self.readingOptions:mount(settingsRefs.readingOptions, true)
-	end
-	self:refreshProgress()
+	if refs.continueShelf then pages:mount("continueShelf", refs.continueShelf) end
+	if refs.bookshelf then pages:mount("bookshelf", refs.bookshelf) end
+	if refs.nowReading then pages:mount("nowReading", refs.nowReading) end
+	if refs.searchResults then pages:mount("search", refs.searchResults) end
+	if refs.settings then pages:mount("settings", refs.settings) end
 end
 
 function Controller:home()
@@ -215,7 +224,6 @@ function Controller:createWindow()
 	}
 	self.tabs = refs.tabs
 	self.window = self.ns.Window(config)
-	self.library:attachSearch(Template.new(refs.searchResults, VIEWS .. "sections/SearchResults.etlua", self.ns))
 	self:attach(refs)
 	-- Headless runs drive the tour themselves; a live launch shows it once.
 	if not rawget(_G, "__headless") and self.onboarding:needed() then
