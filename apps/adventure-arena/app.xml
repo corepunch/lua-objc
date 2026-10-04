@@ -1,0 +1,13 @@
+<App name="Adventure Arena" startup="discover" controller="Controller">
+	<!-- A phone app has no sidebar: the tabs and navigation stacks are
+	     layouts/Tabs.etlua, and every page is unlisted. `origin` names the
+	     navigation stack a page opens its stories in. -->
+	<Page id="discover" title="Discover" origin="library" listed="false" />
+	<Page id="continueShelf" title="Continue Reading" origin="library" listed="false" />
+	<Page id="bookshelf" title="Library" origin="bookshelf" listed="false" />
+	<Page id="nowReading" title="Now Reading" listed="false" />
+	<Page id="search" title="Search" origin="search" listed="false" />
+	<Page id="settings" title="Settings" listed="false" />
+	<Page id="detail" title="Adventure" listed="false" />
+	<Page id="collection" title="Collection" listed="false" />
+</App>
