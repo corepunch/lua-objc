@@ -4,7 +4,10 @@
 --
 --   playing ──cleared──▶ cleared ──advance──▶ playing (next level)
 --      │                    └ last level ────▶ won ──advance──▶ playing (level 1)
---      └──out of lives───▶ over ─────advance──▶ playing (level 1)
+--      └──out of lives───▶ over ─────advance──▶ playing (the same level, afresh)
+--
+-- A lost game costs the level, not the whole run: the level starts again
+-- with full lives and the score it began with.
 --
 -- `revision` counts changes the player can see beyond poses (a coin taken,
 -- the flag raised, a life lost, a new state), so the controller renders the
@@ -30,13 +33,14 @@ function Model:changed() self.revision = self.revision + 1 end
 
 function Model:load(index)
 	self.levelIndex = index
+	self.levelScore, self.levelStars = self.score, self.stars
 	self.world = World.new(self.levels[index])
 	self.state = "playing"
 	self:changed()
 end
 
 function Model:restart()
-	self.lives, self.score = self.rules.lives, 0
+	self.lives, self.score, self.stars = self.rules.lives, 0, 0
 	self:load(1)
 end
 
@@ -44,17 +48,24 @@ end
 function Model:advance()
 	if self.state == "cleared" then
 		self:load(self.levelIndex + 1)
-	elseif self.state == "over" or self.state == "won" then
+	elseif self.state == "over" then
+		self.lives, self.score, self.stars = self.rules.lives, self.levelScore, self.levelStars
+		self:load(self.levelIndex)
+	elseif self.state == "won" then
 		self:restart()
 	end
 end
 
 local REACTIONS = {
 	coin = function(self) self.score = self.score + 1 end,
+	star = function(self) self.stars = self.stars + 1 end,
 	flagRaised = function() end,
 	key = function() end,
 	unlocked = function() end,
 	crumbled = function() end,
+	sprung = function() end,
+	checkpoint = function() end,
+	heart = function(self) self.lives = math.min(self.rules.lives, self.lives + 1) end,
 	hurt = function(self)
 		self.lives = self.lives - 1
 		if self.lives <= 0 then self.state = "over" else self.world:respawn() end
@@ -64,8 +75,11 @@ local REACTIONS = {
 	end,
 }
 
--- Advances the running level by `dt` seconds. `input` answers
--- `nextDirection()` with `{x, z}` or nil. Nothing moves once the level ends.
+-- Events that only move things the poses already show: no template render.
+local QUIET = {sprung = true, crumbled = true}
+
+-- Advances the running level by `dt` seconds. `input` answers `axis()` with
+-- the direction to run and `takeJump()`. Nothing moves once the level ends.
 function Model:step(dt, input)
 	if self.state ~= "playing" then
 		self.world:idle(dt)
@@ -73,7 +87,7 @@ function Model:step(dt, input)
 	end
 	for _, event in ipairs(self.world:step(dt, input)) do
 		REACTIONS[event.name](self, event.entity)
-		self:changed()
+		if not QUIET[event.name] then self:changed() end
 		if self.state ~= "playing" then return end
 	end
 end
@@ -83,7 +97,7 @@ function Model:level() return self.levels[self.levelIndex] end
 -- What the HUD shows.
 local MESSAGES = {
 	cleared = {title = "Level Complete", detail = "Press Return or tap for the next level"},
-	over = {title = "Game Over", detail = "Press Return or tap to play again"},
+	over = {title = "Out of Lives", detail = "Press Return or tap to try this level again"},
 	won = {title = "You Win!", detail = "Every coin collected. Press Return or tap to play again"},
 }
 
@@ -94,6 +108,8 @@ function Model:status()
 		stage = string.format("Level %d of %d", self.levelIndex, #self.levels),
 		coins = #world.coins - world:coinsLeft(),
 		totalCoins = #world.coins,
+		levelStars = #world.stars - #self:leftOf(world.stars),
+		totalStars = #world.stars,
 		score = self.score,
 		lives = self.lives,
 		maxLives = self.rules.lives,
@@ -102,45 +118,46 @@ function Model:status()
 	}
 end
 
--- The entities the stage draws: the level's ground and scenery, and the
--- entities still in play. Taken coins are gone, so their nodes leave.
--- Fallen bridges and opened gates leave the same way.
+-- The items of a list not yet taken.
+function Model:leftOf(list)
+	local out = {}
+	for _, item in ipairs(list) do if not item.taken then table.insert(out, item) end end
+	return out
+end
+
+-- The entities the stage draws: the level's blocks and props, and the
+-- entities still in play. Taken coins are gone, so their nodes leave;
+-- opened gates leave the same way.
 function Model:scene()
 	local world, level = self.world, self:level()
-	local function kept(list)
-		local out = {}
-		for _, item in ipairs(list) do
-			if not world.gone[item.x .. ":" .. item.z] then table.insert(out, item) end
-		end
-		return out
-	end
-	local coins, keys = {}, {}
-	for _, coin in ipairs(world.coins) do if not coin.taken then table.insert(coins, coin) end end
-	for _, key in ipairs(world.keys) do if not key.taken then table.insert(keys, key) end end
-	local scenery = {}
-	for _, item in ipairs(level.scenery) do
-		local gate = false
-		for _, g in ipairs(world.gates) do
-			if g.open and g.x == item.x and g.z == item.z and item.kind == "crate" then gate = true end
-		end
-		if not gate and not world.gone[item.x .. ":" .. item.z] then table.insert(scenery, item) end
-	end
+	local function left(list) return self:leftOf(list) end
+	local gates = {}
+	for _, gate in ipairs(world.gates) do if not gate.open then table.insert(gates, gate) end end
 	return {
 		id = level.id,
-		width = level.width,
-		depth = level.depth,
-		tiles = kept(level.tiles),
-		scenery = scenery,
+		biome = level.biome,
+		blocks = level.blocks,
+		props = level.props,
 		start = level.spawns.player,
-		coins = coins,
-		keys = keys,
+		view = {position = world.camera, focus = world.focus},
+		coins = left(world.coins),
+		stars = left(world.stars),
+		hearts = left(world.hearts),
+		keys = left(world.keys),
+		checkpoints = world.checkpoints,
+		springs = world.springs,
+		gates = gates,
+		movers = world.movers,
+		planks = world.planks,
 		saws = world.saws,
 		spikes = world.spikes,
-		platforms = world.platforms,
-		flag = world.flag.raised and {x = world.flag.x, z = world.flag.z} or nil,
+		flag = world.flag,
 	}
 end
 
 function Model:poses() return self.world:poses() end
+
+-- The camera: where it stands and the point it looks at.
+function Model:camera() return {position = self.world.camera, focus = self.world.focus} end
 
 return Model

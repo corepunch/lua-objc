@@ -793,7 +793,7 @@ local TAG_SCHEMA = {
     SceneView = {
         constructor = "SceneView",
         children = "array",
-        props = { background = "str", showsStatistics = "bool" },
+        props = { background = "str", showsStatistics = "bool", virtualGamepad = "bool" },
         updateRecords = function(view, records) return require("AppKit").sceneGraph(view, records) end,
         transform = function(props, attrs)
             bindActions(props, attrs, { "onKey", "onFrame", "onSwipe", "onTap" })
@@ -1599,6 +1599,7 @@ local TAG_SCHEMA = {
             maxWidth                   = "num",
             maxHeight                  = "num",
             appearance                 = "str",
+            orientation                = "str",
             tabbingMode                = "str",
             tabbingIdentifier          = "str",
             toolbarLabels              = "bool",

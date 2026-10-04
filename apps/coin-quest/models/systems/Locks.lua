@@ -5,10 +5,7 @@ local Locks = {}
 function Locks.update(world)
 	if world.unlocked or not world.hasKey then return end
 	world.unlocked = true
-	for _, gate in ipairs(world.gates) do
-		gate.open = true
-		world.level.solid[gate.x .. ":" .. gate.z] = nil
-	end
+	for _, gate in ipairs(world.gates) do gate.open = true end
 	world:emit("unlocked")
 end
 

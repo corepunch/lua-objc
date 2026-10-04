@@ -1,0 +1,7 @@
+<!-- A locked gate: two strong crates, higher than a jump, with the lock the
+    key opens. It pops away when the key is taken. -->
+<Node id="<%= gate.id %>" position="<%= gate.x %> <%= gate.y %> <%= gate.z %>" transition="pop">
+	<Node model="<%= assets %>crate-strong.obj" scale="1.4" />
+	<Node model="<%= assets %>crate-strong.obj" position="0 0.84 0" scale="1.4" />
+	<Node model="<%= assets %>lock.obj" position="0 0.6 0.43" scale="1.4" />
+</Node>

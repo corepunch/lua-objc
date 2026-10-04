@@ -1,111 +1,134 @@
--- A level parsed from its authored map (catalog/Levels.lua).
+-- A level built from its authored description (catalog/levels/*.lua): the
+-- blocks, the props on them, and where everything starts.
 --
--- Each map character is one ground cell; x grows along a row and z down the
--- rows, one scene unit per cell. The map is the only place a level's layout
--- lives: the world spawns entities from `spawns`, the stage template draws
--- `tiles` and `scenery`, and movement asks `walkable`.
+-- Blocks are placed in the order written: `{kind, x, z}` centred on x, z,
+-- with optional `yaw` (degrees, any angle), `h` (stretched to that height) and
+-- `y`. `facing` turns where the camera starts, in degrees round the hero
+-- (0 looks from +z). A block without `y` sits on whatever is already under its centre, or
+-- on the sea floor, so a level is built the way the kit's sample scene is:
+-- a tall block, a ledge beside it, a low step in front. Items and props sit on the ground under them,
+-- raised by `lift`; ferries, planks and anything over water give their
+-- heights.
+local Blocks = require("apps.coin-quest.catalog.Blocks")
+local Props = require("apps.coin-quest.catalog.Props")
+local Terrain = require("apps.coin-quest.models.Terrain")
+
 local Level = {}
 Level.__index = Level
 
--- What each map character puts in its cell: a singular spawn (player,
--- flag) or one more entry in a spawn list. Scenery blocks movement unless
--- it is ground cover; every character except a space, a ferry track or a
--- coin over water is standing ground.
-local LEGEND = {
-	["."] = {},
-	["@"] = {spawn = "player"},
-	["$"] = {spawn = "coins"},
-	["o"] = {spawn = "aerial", ground = false},
-	["F"] = {spawn = "flag"},
-	["^"] = {spawn = "spikes"},
-	["H"] = {spawn = "saws", axis = "x"},
-	["V"] = {spawn = "saws", axis = "z"},
-	["T"] = {scenery = "tree", solid = true},
-	["P"] = {scenery = "pine", solid = true},
-	["R"] = {scenery = "rocks", solid = true},
-	["C"] = {scenery = "crate", solid = true},
-	["L"] = {scenery = "crate", solid = true, spawn = "gates"},
-	["*"] = {scenery = "flowers"},
-	[","] = {scenery = "grass"},
-	["m"] = {scenery = "mushrooms", spawn = "springs", span = 3},
-	["M"] = {scenery = "mega", spawn = "springs", span = 4},
-	["~"] = {scenery = "grass", spawn = "crumbles"},
-	["K"] = {spawn = "keys"},
-	["="] = {spawn = "platforms", axis = "x", track = true, ground = false},
-	["-"] = {track = "x", ground = false},
-	["|"] = {spawn = "platforms", axis = "z", track = true, ground = false},
-	[":"] = {track = "z", ground = false},
+-- Item sizes the world collides with, in scene units.
+Level.SIZES = {
+	spring = {w = 0.76, d = 0.76, h = 0.28}, -- low enough to run onto
+	mover = {w = 1.6, d = 1.6, h = 0.5},
+	plank = {w = 1.4, d = 1.4, h = 0.2},
+	gate = {w = 0.84, d = 0.84, h = 1.68}, -- two crates: higher than a jump
 }
 
-local function key(x, z) return x .. ":" .. z end
+-- How far a block whose top overlaps an earlier one at the same height is
+-- raised, so the two never flicker through each other.
+Level.LIFT = 0.004
 
--- The ferry's run: every track cell sharing its row or column, contiguous.
-local function trackRun(track, origin, axis)
-	local function has(x, z) return track[key(x, z)] == true end
-	local cross = axis == "x" and "z" or "x"
-	local fixed = origin[cross]
-	local function cell(along) return axis == "x" and {x = along, z = fixed} or {x = fixed, z = along} end
-	local along = origin[axis]
-	local min, max = along, along
-	while has(cell(min - 1).x, cell(min - 1).z) do min = min - 1 end
-	while has(cell(max + 1).x, cell(max + 1).z) do max = max + 1 end
-	return min, max
-end
+local ITEMS = {"coins", "stars", "hearts", "keys", "checkpoints", "spikes", "springs"}
 
--- Parses `def = {id, title, map = {rows}}`; raises a message naming the
--- level for a malformed map, so a typo in the catalog fails its test.
+-- Parses a level description; raises a message naming the level for a
+-- malformed one, so a typo in the catalog fails its test.
 function Level.parse(def)
-	local self = setmetatable({id = def.id, title = def.title, about = def.about, width = 0, depth = #def.map,
-		tiles = {}, scenery = {}, spawns = {coins = {}, aerial = {}, saws = {}, spikes = {}, springs = {},
-			crumbles = {}, keys = {}, gates = {}, platforms = {}}, ground = {}, solid = {}, spring = {}, track = {}}, Level)
+	local self = setmetatable({id = def.id, title = def.title, about = def.about, biome = def.biome or "grass",
+		facing = def.facing or 0,
+		blocks = {}, props = {}, solids = {}, spawns = {}}, Level)
+	-- What items sit on: blocks and perches, never the top of a tree.
+	local perches = {}
 	local function fail(message) error("level " .. tostring(def.id) .. ": " .. message, 0) end
-	if self.depth == 0 then fail("map is empty") end
-	for z, row in ipairs(def.map) do
-		z = z - 1
-		self.width = math.max(self.width, #row)
-		for x = 0, #row - 1 do
-			local char = row:sub(x + 1, x + 1)
-			if char ~= " " then
-				local cell = LEGEND[char] or fail(string.format("unknown map character %q at %d,%d", char, x, z))
-				if cell.ground ~= false then
-					self.ground[key(x, z)] = true
-					table.insert(self.tiles, {x = x, z = z})
-				end
-				if cell.track then self.track[key(x, z)] = true end
-				if cell.scenery then
-					table.insert(self.scenery, {kind = cell.scenery, x = x, z = z})
-					if cell.solid then self.solid[key(x, z)] = true end
-				end
-				if cell.span then self.spring[key(x, z)] = cell.span end
-				if cell.spawn == "player" or cell.spawn == "flag" then
-					if self.spawns[cell.spawn] then fail("more than one " .. cell.spawn) end
-					self.spawns[cell.spawn] = {x = x, z = z}
-				elseif cell.spawn then
-					table.insert(self.spawns[cell.spawn], {x = x, z = z, axis = cell.axis, span = cell.span})
-				end
+	-- The ground under (x, z) among the blocks and perches placed so far.
+	local function groundAt(x, z)
+		return Terrain.ground(perches, x, z, math.huge, 0) or 0
+	end
+	for index, block in ipairs(def.blocks or {}) do
+		local size = Blocks[block[1]] or fail(string.format("block %d: unknown kind %q", index, tostring(block[1])))
+		local x, z = block[2] or fail("block " .. index .. " has no position"), block[3]
+		local y = block.y or groundAt(x, z)
+		-- `h` stretches the piece to another height, so a column is one
+		-- piece with one grass top rather than a stack of them.
+		local height = block.h or size.h
+		local shaped = setmetatable({h = height, low = size.low and size.low * height / size.h}, {__index = size})
+		local solid = Terrain.solid(x, y, z, shaped, block.yaw)
+		table.insert(self.solids, solid)
+		table.insert(perches, solid)
+		table.insert(self.blocks, {kind = block[1], x = x, y = y, z = z, yaw = block.yaw or 0,
+			stretch = height / size.h, solid = solid})
+	end
+	if #self.blocks == 0 then fail("no blocks") end
+	-- A block with another standing on its top is buried: it shows the
+	-- plain model, the top block the one with the overhang. Blocks are
+	-- turned freely and may overlap, as in the kit's own scenes; where two
+	-- tops at one height overlap, the later is lifted a hair so the two
+	-- never flicker through each other.
+	for index, block in ipairs(self.blocks) do
+		local s = block.solid
+		block.lift = 0
+		for other, o in ipairs(self.blocks) do
+			o = o.solid
+			if o ~= s and math.abs(o.y0 - s.y1) < 1e-6 and Terrain.contains(o, block.x, block.z) then block.buried = true end
+			if other < index and math.abs(o.y1 - s.y1) < 1e-6 and o.x0 < s.x1 and s.x0 < o.x1 and o.z0 < s.z1 and s.z0 < o.z1 then
+				block.lift = block.lift + Level.LIFT
 			end
 		end
 	end
-	for _, platform in ipairs(self.spawns.platforms) do
-		platform.min, platform.max = trackRun(self.track, platform, platform.axis)
+	-- Props: `{kind, x, z}` with optional `yaw`, `scale` and `y`; without `y`
+	-- a prop stands on what is under it.
+	for index, prop in ipairs(def.props or {}) do
+		local kind = Props[prop[1]] or fail(string.format("prop %d: unknown kind %q", index, tostring(prop[1])))
+		local x, z = prop[2], prop[3]
+		local scale = prop.scale or kind.scale or 1
+		local item = {kind = prop[1], x = x, y = prop.y or groundAt(x, z), z = z, yaw = prop.yaw, scale = scale}
+		table.insert(self.props, item)
+		if kind.solid then
+			local f, size = scale / (kind.scale or 1), kind.solid
+			local solid = Terrain.solid(x, item.y, z, {w = size.w * f, d = size.d * f, h = size.h * f,
+				low = size.low and size.low * f, shape = size.shape, ox = (size.ox or 0) * f, oz = (size.oz or 0) * f},
+				prop.yaw or 0)
+			solid.trunk = not kind.perch
+			table.insert(self.solids, solid)
+			if kind.perch then table.insert(perches, solid) end
+		end
 	end
-	if not self.spawns.player then fail("no player start (@)") end
-	if not self.spawns.flag then fail("no flag (F)") end
-	if #self.spawns.coins + #self.spawns.aerial == 0 then fail("no coins ($)") end
+	local function place(entry)
+		local x, z = entry[1], entry[2]
+		return {x = x, z = z, y = entry.y or (groundAt(x, z) + (entry.lift or 0))}
+	end
+	for _, name in ipairs(ITEMS) do
+		self.spawns[name] = {}
+		for _, entry in ipairs(def[name] or {}) do table.insert(self.spawns[name], place(entry)) end
+	end
+	for _, spring in ipairs(self.spawns.springs) do
+		spring.solid = Terrain.solid(spring.x, spring.y, spring.z, Level.SIZES.spring)
+		table.insert(self.solids, spring.solid)
+	end
+	-- A saw runs between two points on one ledge.
+	self.spawns.saws = {}
+	for _, saw in ipairs(def.saws or {}) do
+		local from = place(saw)
+		table.insert(self.spawns.saws, {x = from.x, y = from.y, z = from.z, x2 = saw[3] or from.x, z2 = saw[4] or from.z})
+	end
+	-- Ferries and lifts: block-moving pieces between two points, `y` their
+	-- top. Planks float over the water at `y` and fall once stood on.
+	self.spawns.movers = {}
+	for _, mover in ipairs(def.movers or {}) do
+		local from, to = mover.from, mover.to
+		table.insert(self.spawns.movers, {x = from[1], y = from[2], z = from[3], x2 = to[1], y2 = to[2], z2 = to[3]})
+	end
+	self.spawns.planks = {}
+	for _, plank in ipairs(def.planks or {}) do
+		table.insert(self.spawns.planks, {x = plank[1], y = plank.y or fail("a plank needs its height"), z = plank[2]})
+	end
+	self.spawns.gates = {}
+	for _, gate in ipairs(def.gates or {}) do table.insert(self.spawns.gates, place(gate)) end
+	if not def.start then fail("no start") end
+	if not def.flag then fail("no flag") end
+	if #self.spawns.coins == 0 then fail("no coins") end
+	self.spawns.player = place(def.start)
+	self.spawns.flag = place(def.flag)
 	return self
-end
-
--- Whether something standing on the ground can enter the cell. A gone
--- crumbling bridge is water. Ferries are not ground; the world asks
--- `standable` for those.
-function Level:walkable(x, z)
-	local id = key(x, z)
-	return self.ground[id] == true and not self.solid[id] and not (self.gone and self.gone[id])
-end
-
--- Launch distance of a pad on this cell, or nil.
-function Level:springAt(x, z)
-	return self.spring[key(x, z)]
 end
 
 return Level

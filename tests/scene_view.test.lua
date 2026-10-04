@@ -141,4 +141,23 @@ t.expect(not ok and tostring(err):find("duplicate", 1, true), "duplicate ids are
 ok = pcall(xml.render, '<SceneView><Label text="no" /></SceneView>', {})
 t.expect(not ok, "SceneView accepts only scene records")
 
+-- A pose can aim a node at a point, upright: a following camera does this
+-- every frame, from wherever it was turned before.
+local aimed, aimRefs = xml.render([[
+<SceneView id="aim" virtualGamepad="true">
+	<Camera id="eye" position="0 4 6" rotation="0 0 25" />
+</SceneView>]], {})
+local aim = aimRefs.aim
+aim.nodeStates = {{id = "eye", x = 6, y = 4, z = 0, lookX = 0, lookY = 0, lookZ = 0}}
+nodes = bridge._sceneNodes(aim)
+t.expect(near(nodes.eye.roll, 0), "an aimed node stands upright, whatever its roll was")
+-- SceneKit reports the turn in its own Euler signs; the sizes are the turn.
+t.expect(near(math.abs(nodes.eye.yaw), 90), "and faces the point")
+t.expect(near(math.abs(nodes.eye.pitch), math.deg(math.atan(4, 6))), "tilted down to it from above")
+local _, lookRefs = xml.render([[
+<SceneView id="look"><Camera id="eye" position="6 4 0" rotation="0 0 25" lookAt="0 0 0" /></SceneView>]], {})
+t.expect(near(bridge._sceneNodes(lookRefs.look).eye.roll, 0), "lookAt in a template keeps the node upright too")
+t.expect(aimed ~= nil and aim.virtualGamepad == true, "virtualGamepad is accepted; the Mac has no on-screen controller")
+t.expect(aim.gamepad == nil, "with no controller connected, gamepad is nil")
+
 os.exit(t.summary() and 0 or 1)

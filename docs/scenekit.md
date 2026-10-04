@@ -42,7 +42,7 @@ proposal. It takes the keyboard when it appears.
 
 | Tag | Attributes |
 |---|---|
-| `SceneView` | `background` (semantic name or `#rrggbb`), `onKey`, `onFrame`, `showsStatistics`, plus layout attributes |
+| `SceneView` | `background` (semantic name or `#rrggbb`), `onKey`, `onFrame`, `onSwipe`, `onTap`, `virtualGamepad`, `showsStatistics`, plus layout attributes |
 | `Node` | `id`, `model` or `geometry`, `width`, `height`, `length`, `radius`, `chamfer`, `color`, `position`, `rotation`, `scale`, `hidden`, `opacity`, `castsShadow`, `spin`, `bob`, `bobPeriod`, `transition`, `lookAt` |
 | `Camera` | `id`, `position`, `rotation`, `lookAt`, `fieldOfView`, `fieldOfViewAxis`, `zNear`, `zFar`, `orthographicScale` |
 | `Light` | `id`, `type`, `position`, `rotation`, `lookAt`, `intensity`, `color`, `castsShadow`, `shadowRadius`, `shadowOpacity` |
@@ -69,6 +69,8 @@ proposal. It takes the keyboard when it appears.
   width framed however the view is shaped.
 - **Lights.** `type` is `directional` (default), `ambient`, `omni` or
   `spot`. Only lights with `castsShadow="true"` cast shadows.
+- **Aiming.** `lookAt` turns a node (a camera, usually) to face a point and
+  keeps it upright, whatever it was turned to before.
 
 ## Reconciliation
 
@@ -105,7 +107,9 @@ refs.scene.nodeStates = {
 }
 ```
 
-A pose takes `x`, `y`, `z`, `yaw`, `pitch`, `roll` (degrees), a uniform
+A pose takes `x`, `y`, `z`, `yaw`, `pitch`, `roll` (degrees), `lookX`,
+`lookY`, `lookZ` (a point to face, upright, as `lookAt` does: a camera
+that follows the player aims at it every frame), a uniform
 `scale` (or `scaleX`, `scaleY`, `scaleZ` for one axis, which squash and
 stretch a node), `opacity` and `hidden`. Omitted fields keep their value, and an
 unknown id is ignored, so poses can describe entities the template has
@@ -130,6 +134,21 @@ overwrite each other.
   along the axis it moved most; `onTap(view)` reports a press released
   without travelling. One drag is one swipe or one tap, never both, so a
   game can use a swipe to steer and a tap to stop or continue.
+
+### Game controllers
+
+`view.gamepad` reads the connected game controller each frame:
+`{stickX, stickY, a, b, x, y}`, the left stick's tilt (y up; the d-pad
+when the stick rests) and which face buttons are down, or nil when none is
+connected. It is the GameController framework's `GCController.current`, so
+a real controller works on the Mac, iPhone and iPad alike.
+
+`virtualGamepad="true"` puts Apple's on-screen controller
+(`GCVirtualController`) over the view on a touch screen while the view is
+in a window: a thumbstick on the left and A, B, X and Y on the right. It
+reads through `gamepad` like a real one. The Mac has no on-screen
+controller. A game played with it should lock its window to landscape
+(`<Window orientation="landscape">`).
 
 SceneView is one native class for AppKit and UIKit
 (`src/shared/scene_view.m`): templates, poses and hooks are identical, and

@@ -484,6 +484,7 @@ Creates an `NSWindow`. Table keys:
 | `contentWidth` | number | none | Width of the content column when the detail pane is flexible (SwiftUI `navigationSplitViewColumnWidth`) |
 | `contentAccessory` | view | none | macOS 26 top accessory spanning only the content split |
 | `sidebarWidth` | number | `240` | Preferred native sidebar width |
+| `orientation` | `"landscape"` `"portrait"` | every orientation the app allows | UIKit: locks the screen to it (`supportedInterfaceOrientations`); AppKit ignores it |
 | `tabbingMode` | `"automatic"` `"preferred"` `"disallowed"` | AppKit default | Native `NSWindow` tab behavior |
 | `tabbingIdentifier` | string | AppKit default | Groups compatible native window tabs |
 | `toolbar` | `{{id, label, icon?, tooltip?, action?}}` | none | Native NSToolbar items; `id = "toggleSidebar"` uses AppKit's standard sidebar command |
@@ -1979,7 +1980,7 @@ returns `(config, refs)` instead of `(view, refs)`:
 ```
 
 **Window attributes:** `title`, `width`, `height`, `minWidth`, `minHeight`,
-`maxWidth`, `maxHeight`, `appearance`, `tabbingMode`, `tabbingIdentifier`,
+`maxWidth`, `maxHeight`, `appearance`, `orientation`, `tabbingMode`, `tabbingIdentifier`,
 `toolbarLabels`, `visible`, `sidebarWidth`, `toolbarContentDividerAfter`.
 
 **ToolbarItem attributes:** `id`, `label`, `icon`, `tooltip`, `action`,

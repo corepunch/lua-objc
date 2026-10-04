@@ -1,37 +1,51 @@
--- Landing on a coin takes it; a leap also takes coins it passed, including
--- coins hung over water. Taking the last coin raises the flag, and landing
--- on the raised flag clears the level. The key is a coin that opens gates.
+-- Touching a coin takes it; taking the last coin raises the flag, and
+-- touching the raised flag clears the level. Stars are a bonus the flag
+-- does not wait for. A key opens the gates, a heart gives back a life, and a
+-- checkpoint becomes where the hero comes back after a hit.
 local Pickups = {}
 
-local function take(world, coin)
-	if coin.taken then return end
-	coin.taken = true
-	world:emit("coin", coin)
-	if world:coinsLeft() == 0 then
-		world.flag.raised = true
-		world:emit("flagRaised", world.flag)
+-- How far above its base an item's middle is, and how far the hero's is.
+local CENTRE = {item = 0.3, hero = 0.4, height = 0.8}
+
+local function touching(world, item)
+	local p, rules = world.player, world.rules
+	return (item.x - p.x) ^ 2 + (item.z - p.z) ^ 2 < rules.reach ^ 2
+		and math.abs(item.y + CENTRE.item - (p.y + CENTRE.hero)) < CENTRE.height
+end
+
+local function take(world, list, event)
+	for _, item in ipairs(list) do
+		if not item.taken and touching(world, item) then
+			item.taken = true
+			world:emit(event, item)
+		end
 	end
 end
 
 function Pickups.update(world)
-	local player = world.player
-	if not player.landed then return end
-	local function visit(x, z)
-		local coin = world:coinAt(x, z)
-		if coin then take(world, coin) end
-		local key = world:keyAt(x, z)
-		if key and not key.taken then
-			key.taken = true
-			world.hasKey = true
+	local before = world:coinsLeft()
+	take(world, world.coins, "coin")
+	if before > 0 and world:coinsLeft() == 0 then
+		world.flag.raised = true
+		world:emit("flagRaised", world.flag)
+	end
+	take(world, world.stars, "star")
+	take(world, world.hearts, "heart")
+	for _, key in ipairs(world.keys) do
+		if not key.taken and touching(world, key) then
+			key.taken, world.hasKey = true, true
 			world:emit("key", key)
 		end
 	end
-	local span = math.max(math.abs(player.x - player.fromX), math.abs(player.z - player.fromZ))
-	local dx = span == 0 and 0 or (player.x - player.fromX) / span
-	local dz = span == 0 and 0 or (player.z - player.fromZ) / span
-	for step = 0, span do visit(player.fromX + dx * step, player.fromZ + dz * step) end
-	if world.flag.raised and player.x == world.flag.x and player.z == world.flag.z then
-		player.clearedAt = world.time
+	for _, checkpoint in ipairs(world.checkpoints) do
+		if not checkpoint.active and touching(world, checkpoint) then
+			for _, other in ipairs(world.checkpoints) do other.active = false end
+			checkpoint.active, world.checkpoint = true, checkpoint
+			world:emit("checkpoint", checkpoint)
+		end
+	end
+	if world.flag.raised and not world.player.clearedAt and touching(world, world.flag) then
+		world.player.clearedAt = world.time
 		world:emit("cleared", world.flag)
 	end
 end

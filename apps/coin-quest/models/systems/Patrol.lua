@@ -1,19 +1,19 @@
--- Saws run back and forth along their row or column at a steady speed and
--- turn around where the ground ends or something solid stands.
+-- Saws run back and forth between the two ends of their run at a steady
+-- speed.
 local Patrol = {}
 
 function Patrol.update(world, dt)
 	local rules = world.rules
 	for _, saw in ipairs(world.saws) do
-		local axis = saw.axis
-		local next = saw[axis] + saw.direction * rules.sawSpeed * dt
-		local ahead = math.floor(next + saw.direction * rules.sawReach + 0.5)
-		local x, z = saw.x, saw.z
-		if axis == "x" then x = ahead else z = ahead end
-		if world.level:walkable(x, z) then
-			saw[axis] = next
-		else
-			saw.direction = -saw.direction
+		local length = math.sqrt((saw.x2 - saw.fromX) ^ 2 + (saw.z2 - saw.fromZ) ^ 2)
+		if length > 0 then
+			saw.t = saw.t + saw.direction * rules.sawSpeed * dt / length
+			if saw.t > 1 or saw.t < 0 then
+				saw.direction = -saw.direction
+				saw.t = math.max(0, math.min(1, saw.t))
+			end
+			saw.x = saw.fromX + (saw.x2 - saw.fromX) * saw.t
+			saw.z = saw.fromZ + (saw.z2 - saw.fromZ) * saw.t
 		end
 	end
 end

@@ -1,7 +1,7 @@
 CC = clang
 CFLAGS = -fobjc-arc -Wall -O2 $(shell pkg-config --cflags lua 2>/dev/null || echo "-I/opt/homebrew/include/lua")
 HOST_CFLAGS = -Wall -O2
-LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework Metal -framework MetalKit -framework SceneKit -framework Symbols -framework UserNotifications -framework QuickLookUI
+LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework Metal -framework MetalKit -framework SceneKit -framework GameController -framework Symbols -framework UserNotifications -framework QuickLookUI
 MODULE_LDFLAGS = -dynamiclib -undefined dynamic_lookup
 IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 # UIKit.dylib gets Lua API definitions from its host; keep only those imports
@@ -65,7 +65,7 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 		{ echo "UIKit.dylib requires the iPhone Simulator SDK from Xcode"; exit 1; }
 	mkdir -p build
 	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) -dynamiclib $(IOS_LUA_LOOKUP_FLAGS) \
-		-Ibuild -framework UIKit -framework CoreGraphics -framework CoreText -framework WebKit -framework SceneKit \
+		-Ibuild -framework UIKit -framework CoreGraphics -framework CoreText -framework WebKit -framework SceneKit -framework GameController \
 		-framework Foundation -framework QuartzCore -framework Symbols -framework UserNotifications \
 		-framework Security -framework AVFAudio -framework AVFoundation \
 		-o $@ $(UIKIT_RUNTIME_SRC)
@@ -86,7 +86,7 @@ build/ReelNative.dylib: modules/reel/native/ReelNative.m modules/reel/native/sce
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework AppKit -framework AVFoundation \
 		-framework CoreMedia -framework CoreVideo -framework CoreText -framework ImageIO \
-		-framework SceneKit -framework Metal \
+		-framework SceneKit -framework GameController -framework Metal \
 		-framework UniformTypeIdentifiers -o $@ $<
 
 # libgit2 (vendor/libgit2) as a static library per SDK and architecture.
@@ -213,7 +213,7 @@ $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKI
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
-		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework SceneKit -framework AVFoundation -framework Speech \
+		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework SceneKit -framework GameController -framework AVFoundation -framework Speech \
 		-o $(HOST_BUNDLE)/LuaRuntime \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) src/plugins/git/Git.c src/plugins/speech/Speech.m $(IOS_LUA_A) \
 		$(IOS_LIBGIT2_A) $(LIBGIT2_LIBS)

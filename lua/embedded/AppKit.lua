@@ -2161,12 +2161,14 @@ function AppKit.SceneView(props)
 	local view = bridge._sceneView(props.onKey, props.onFrame, props.onSwipe, props.onTap)
 	if props.background then bridge._sceneBackground(view, props.background) end
 	if props.showsStatistics then view.showsStatistics = true end
+	if props.virtualGamepad then view.virtualGamepad = true end
 	AppKit.sceneGraph(view, records)
 	-- A 3-D viewport has no intrinsic size and fills its proposal.
 	view.fillWidth, view.fillHeight = true, true
 	local layout = {}
 	for key, value in pairs(props) do
-		if type(key) ~= "number" and key ~= "onKey" and key ~= "onFrame" and key ~= "onSwipe" and key ~= "onTap" and key ~= "background" then layout[key] = value end
+		if type(key) ~= "number" and key ~= "onKey" and key ~= "onFrame" and key ~= "onSwipe" and key ~= "onTap" and key ~= "background"
+			and key ~= "virtualGamepad" then layout[key] = value end
 	end
 	return applyLayout(view, layout)
 end

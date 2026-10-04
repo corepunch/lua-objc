@@ -1,15 +1,15 @@
--- Turns key presses and touch gestures into game intent. Arrow keys and WASD
--- are directions; Return/Space continue after a level ends and R restarts.
+-- Turns keys, touch gestures and game controllers into game intent: which
+-- way to run and when to jump. The world asks `axis()` and `takeJump()`
+-- every frame and cannot tell which of them is playing.
 --
--- On a touch screen a swipe sets a heading and the player keeps running
--- that way, hop after hop, until a tap stops it or the way is blocked (a
--- swipe the other way turns it round). Keys and swipes feed the same
--- `nextDirection`, so the world cannot tell which one is playing.
+-- Directions are as seen from the camera: up runs away from it.
 --
--- The world reads one direction whenever the player is ready to hop
--- (`nextDirection`). A tap shorter than a frame still counts: a press is
--- remembered until it is read. Holding keeps hopping, and the most
--- recently pressed of several held directions wins, like a game pad.
+-- Keys: arrows or WASD run while held, several at once run diagonally;
+-- Space jumps; Q and E turn the camera; Return continues after a level ends
+-- and R restarts. Touch: a swipe runs that way until a swipe the other way
+-- stops the hero; a tap jumps. A game controller (a real one, or the
+-- on-screen one on a touch screen) runs with its stick or d-pad, jumps with
+-- A or B and turns the camera with X and Y; after a level A or B continues.
 local InputController = {}
 InputController.__index = InputController
 
@@ -19,27 +19,31 @@ local DIRECTIONS = {
 	up = {x = 0, z = -1}, w = {x = 0, z = -1},
 	down = {x = 0, z = 1}, s = {x = 0, z = 1},
 }
-local COMMANDS = {["return"] = "advance", space = "advance", r = "restart"}
+local COMMANDS = {["return"] = "advance", r = "restart"}
+local TURNS = {q = -1, e = 1}
+
+-- A stick tilted less than this is at rest.
+local STICK = {deadZone = 0.15}
 
 -- `commands` maps command names (advance, restart) to functions.
 function InputController.new(commands)
-	return setmetatable({commands = commands or {}, held = {}, pending = nil, heading = nil}, InputController)
-end
-
-local function release(held, key)
-	for index = #held, 1, -1 do
-		if held[index] == key then table.remove(held, index) end
-	end
+	return setmetatable({commands = commands or {}, held = {}, heading = nil, jumpQueued = false,
+		stickX = 0, stickZ = 0, pad = {}, turning = {}}, InputController)
 end
 
 -- The SceneView's `onKey`: returns whether the key is one the game uses.
 function InputController:key(key, pressed)
 	if DIRECTIONS[key] then
-		release(self.held, key)
-		if pressed then
-			table.insert(self.held, key)
-			self.pending = DIRECTIONS[key]
-		end
+		self.held[key] = pressed or nil
+		if pressed then self.heading = nil end
+		return true
+	end
+	if TURNS[key] then
+		self.turning[key] = pressed or nil
+		return true
+	end
+	if key == "space" then
+		if pressed then self.jumpQueued = true end
 		return true
 	end
 	local command = COMMANDS[key]
@@ -48,38 +52,71 @@ function InputController:key(key, pressed)
 	return true
 end
 
--- The SceneView's `onSwipe`: run that way until stopped.
+-- The SceneView's `onSwipe`: run that way, or stop if it is the way back.
 function InputController:swipe(name)
 	local direction = DIRECTIONS[name]
 	if not direction then return end
-	self.heading, self.pending = direction, direction
+	local heading = self.heading
+	if heading and heading.x == -direction.x and heading.z == -direction.z then
+		self.heading = nil
+	else
+		self.heading = direction
+	end
 end
 
--- Stops a running player. Reports whether there was a run to stop, so the
--- controller can use the same tap to continue after a level ends.
-function InputController:stop()
-	local running = self.heading ~= nil
-	self.heading, self.pending = nil, nil
-	return running
+-- A tap, or anything else that jumps.
+function InputController:jump()
+	self.jumpQueued = true
 end
 
--- The world reports a blocked way (an island's edge, a crate): the run ends
--- there instead of pushing on the spot forever.
-function InputController:blocked(direction)
-	if self.heading == direction then self.heading = nil end
+-- A game controller's state this frame (the SceneView's `gamepad`):
+-- `{stickX, stickY, a, b, x, y}` with the stick's tilt (y up) and which face
+-- buttons are down. A press of A or B jumps.
+function InputController:gamepad(state)
+	if not state then
+		self.stickX, self.stickZ, self.pad = 0, 0, {}
+		return
+	end
+	local x, y = state.stickX or 0, state.stickY or 0
+	if x * x + y * y < STICK.deadZone * STICK.deadZone then x, y = 0, 0 end
+	self.stickX, self.stickZ = x, -y
+	if (state.a and not self.pad.a) or (state.b and not self.pad.b) then self.jumpQueued = true end
+	self.pad = {a = state.a, b = state.b, x = state.x, y = state.y}
 end
 
-function InputController:nextDirection()
-	local direction = self.pending
-	self.pending = nil
-	return direction or DIRECTIONS[self.held[#self.held]] or self.heading
+-- Which way to turn the camera round the hero: -1, 0 or 1.
+function InputController:turn()
+	local turn = 0
+	for key in pairs(self.turning) do turn = turn + TURNS[key] end
+	if self.pad.x then turn = turn - 1 end
+	if self.pad.y then turn = turn + 1 end
+	return math.max(-1, math.min(1, turn))
 end
 
--- Forgets taps not yet read and any run, so a key pressed on the "Level
--- Complete" screen does not move the player on the next level. Held keys
--- stay held.
+-- Which way to run: held keys, else the stick, else a swiped heading.
+function InputController:axis()
+	local x, z = 0, 0
+	for key in pairs(self.held) do
+		x, z = x + DIRECTIONS[key].x, z + DIRECTIONS[key].z
+	end
+	x, z = math.max(-1, math.min(1, x)), math.max(-1, math.min(1, z))
+	if x ~= 0 or z ~= 0 then return x, z end
+	if self.stickX ~= 0 or self.stickZ ~= 0 then return self.stickX, self.stickZ end
+	if self.heading then return self.heading.x, self.heading.z end
+	return 0, 0
+end
+
+-- Whether a jump was asked for since the last call.
+function InputController:takeJump()
+	local queued = self.jumpQueued
+	self.jumpQueued = false
+	return queued
+end
+
+-- Forgets a queued jump and any run, so a press on the "Level Complete"
+-- screen does not carry into the next level. Held keys stay held.
 function InputController:reset()
-	self.pending, self.heading = nil, nil
+	self.jumpQueued, self.heading = false, nil
 end
 
 return InputController

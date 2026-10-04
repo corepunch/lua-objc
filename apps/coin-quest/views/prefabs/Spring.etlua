@@ -1,0 +1,2 @@
+<!-- A spring pad. The pose squashes it as it throws. -->
+<Node id="<%= spring.id %>" model="<%= assets %>spring.obj" position="<%= spring.x %> <%= spring.y %> <%= spring.z %>" scale="1 0.85 1" />

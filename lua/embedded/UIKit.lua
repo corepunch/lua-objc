@@ -109,6 +109,8 @@ end
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop appearance string optional. Window appearance: `system`, `light`, or `dark`.
+--- @prop orientation string optional. `landscape` or `portrait` locks the screen to it; a game played with
+--- on-screen controls is landscape. Every orientation the app allows by default.
 --- @prop content value optional. Rendered child content or the control’s text value.
 --- @prop title value optional. Component-specific setting passed to the native control.
 --- @example <Window title="Example" />
@@ -123,7 +125,7 @@ function UIKit.Window(props)
 		vc.overrideUserInterfaceStyle = userInterfaceStyles[props.appearance]
 	end
 	-- If scene installation fails, do not leak the pushed scope.
-	local ok, win = pcall(bridge._installScene, vc, props.title or "")
+	local ok, win = pcall(bridge._installScene, vc, props.title or "", props.orientation)
 	if not ok then
 		scope:close()
 		error(win, 2)
@@ -850,12 +852,14 @@ function UIKit.SceneView(props)
 	local view = bridge._sceneView(props.onKey, props.onFrame, props.onSwipe, props.onTap)
 	if props.background then bridge._sceneBackground(view, props.background) end
 	if props.showsStatistics then view.showsStatistics = true end
+	if props.virtualGamepad then view.virtualGamepad = true end
 	UIKit.sceneGraph(view, records)
 	-- A 3-D viewport has no intrinsic size and fills its proposal.
 	view.fillWidth, view.fillHeight = true, true
 	local layout = {}
 	for key, value in pairs(props) do
-		if type(key) ~= "number" and key ~= "onKey" and key ~= "onFrame" and key ~= "onSwipe" and key ~= "onTap" and key ~= "background" then layout[key] = value end
+		if type(key) ~= "number" and key ~= "onKey" and key ~= "onFrame" and key ~= "onSwipe" and key ~= "onTap" and key ~= "background"
+			and key ~= "virtualGamepad" then layout[key] = value end
 	end
 	return applyLayout(view, layout)
 end
