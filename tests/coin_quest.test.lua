@@ -64,24 +64,12 @@ for _, bad in ipairs({
 	t.expect(not ok and tostring(err):find(bad.message, 1, true), "a malformed map fails: " .. bad.message)
 end
 
--- Every authored level parses, and every coin and the flag can be reached.
+-- Every authored level parses, and every coin and the flag can be reached
+-- with the platformer verbs (leap, pad, ferry, key), not only by walking.
+local Reach = require("apps.coin-quest.models.Reach")
 for _, def in ipairs(Levels) do
 	local parsed = Level.parse(def)
-	local seen, queue = {[parsed.spawns.player.x .. ":" .. parsed.spawns.player.z] = true}, {parsed.spawns.player}
-	while #queue > 0 do
-		local cell = table.remove(queue)
-		for _, d in ipairs({LEFT, RIGHT, UP, DOWN}) do
-			local x, z = cell.x + d.x, cell.z + d.z
-			if parsed:walkable(x, z) and not seen[x .. ":" .. z] then
-				seen[x .. ":" .. z] = true
-				table.insert(queue, {x = x, z = z})
-			end
-		end
-	end
-	local reachable = true
-	for _, coin in ipairs(parsed.spawns.coins) do reachable = reachable and seen[coin.x .. ":" .. coin.z] end
-	reachable = reachable and seen[parsed.spawns.flag.x .. ":" .. parsed.spawns.flag.z]
-	t.expect(reachable, def.id .. ": every coin and the flag are reachable")
+	t.expect(Reach.clearable(parsed), def.id .. ": every coin and the flag are reachable")
 end
 
 -- ── Movement ───────────────────────────────────────────────────────────
@@ -100,6 +88,12 @@ t.expect(near(x, 1) and near(y, 0), "a hop lands on its cell")
 world:step(1 / 60, script(UP))
 t.expect(world.player.hop == nil and world.player.z == 0, "the edge of the map blocks a hop")
 t.expect(near(world.player.yaw, 180), "a blocked hop still turns the player")
+local canal = Level.parse({id = "canal", map = {"@. .$F"}})
+world = World.new(canal)
+settle(world, script(RIGHT))
+settle(world, script(RIGHT))
+t.assertEqual(world.player.x, 3, "a one-cell gap is a leap onto the far ground")
+t.expect(world.player.span == 2, "a leap spans two cells")
 world:step(1 / 60, script(DOWN))
 local ignored = script(RIGHT)
 world:step(1 / 60, ignored)
