@@ -28,7 +28,10 @@ end
 -- the inverse square root, so the hero keeps its volume.
 function Animation.height(world)
 	local player, rules = world.player, Animation.RULES
-	if player.hop then return 1 + rules.stretch * math.sin(math.pi * player.hop) end
+	if player.hop then
+		local leap = (player.span or 1) > 1 and 1.45 or 1
+		return 1 + rules.stretch * leap * math.sin(math.pi * player.hop)
+	end
 	local since = age(world.time, player.landedAt)
 	if since < rules.squashTime then return 1 - rules.squash * (1 - since / rules.squashTime) end
 	return 1 + rules.breath * math.sin(world.time * rules.breathRate)

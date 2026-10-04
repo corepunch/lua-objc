@@ -52,6 +52,9 @@ end
 local REACTIONS = {
 	coin = function(self) self.score = self.score + 1 end,
 	flagRaised = function() end,
+	key = function() end,
+	unlocked = function() end,
+	crumbled = function() end,
 	hurt = function(self)
 		self.lives = self.lives - 1
 		if self.lives <= 0 then self.state = "over" else self.world:respawn() end
@@ -101,21 +104,40 @@ end
 
 -- The entities the stage draws: the level's ground and scenery, and the
 -- entities still in play. Taken coins are gone, so their nodes leave.
+-- Fallen bridges and opened gates leave the same way.
 function Model:scene()
 	local world, level = self.world, self:level()
-	local coins = {}
+	local function kept(list)
+		local out = {}
+		for _, item in ipairs(list) do
+			if not world.gone[item.x .. ":" .. item.z] then table.insert(out, item) end
+		end
+		return out
+	end
+	local coins, keys = {}, {}
 	for _, coin in ipairs(world.coins) do if not coin.taken then table.insert(coins, coin) end end
+	for _, key in ipairs(world.keys) do if not key.taken then table.insert(keys, key) end end
+	local scenery = {}
+	for _, item in ipairs(level.scenery) do
+		local gate = false
+		for _, g in ipairs(world.gates) do
+			if g.open and g.x == item.x and g.z == item.z and item.kind == "crate" then gate = true end
+		end
+		if not gate and not world.gone[item.x .. ":" .. item.z] then table.insert(scenery, item) end
+	end
 	return {
 		id = level.id,
 		width = level.width,
 		depth = level.depth,
-		tiles = level.tiles,
-		scenery = level.scenery,
+		tiles = kept(level.tiles),
+		scenery = scenery,
 		start = level.spawns.player,
 		coins = coins,
+		keys = keys,
 		saws = world.saws,
 		spikes = world.spikes,
-		flag = world.flag,
+		platforms = world.platforms,
+		flag = world.flag.raised and {x = world.flag.x, z = world.flag.z} or nil,
 	}
 end
 

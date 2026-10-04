@@ -8,8 +8,19 @@ spike traps, then reach the flag that rises once the last coin is gone.
 make run ARGS="apps/coin-quest"
 ```
 
-Arrow keys or WASD hop one cell. Return or Space continue after a level
-ends, R (or the toolbar button) restarts.
+Arrow keys or WASD hop one cell.
+
+Hopping onto a neighbour is a step. If the neighbour is water and the cell
+beyond is ground, the hop becomes a leap: a higher arc that collects any
+coin hung over the gap. Mushroom pads (`m`, and the bigger `M`) launch the
+hero onward the way they arrived, the jump pads from Kenney's own
+[3D platformer starter kit](https://github.com/KenneyNL/Starter-Kit-3D-Platformer).
+Grass bridges (`~`) fall after you leave them. Crate ferries (`=` on a `-`
+track) carry you across a canal wider than a leap. A key (`K`) opens the
+locked crate (`L`). Saws and spikes are unchanged: spikes only bite a hero
+who is standing, so a leap over them is safe.
+
+Return or Space continue after a level ends, R (or the toolbar button) restarts.
 
 On a touch screen, **swipe** to run: the hero keeps hopping that way until
 you tap to stop it, swipe another way to turn it, or it reaches an island's
@@ -36,7 +47,7 @@ real SceneView.
 catalog/Levels.lua          authored level maps: data, nothing else
 models/Level.lua            parses a map: tiles, scenery, spawns, walkable()
 models/World.lua            one running level: entities, clock, events, poses()
-models/systems/*.lua        one rule each: Movement, Patrol, Traps, Pickups, Hazards
+models/systems/*.lua        one rule each: Springs, Movement, Platforms, Patrol, Traps, Crumble, Locks, Pickups, Hazards
 models/Animation.lua        the hero's squash, stretch, shake and spin; the flag's sway
 Model.lua                   the session: levels, lives, score, state machine
 controllers/InputController keys and swipes -> directions and commands
@@ -65,7 +76,11 @@ module with a single `update(world, dt, input)` holding one rule:
 
 | System | Rule |
 |---|---|
-| `Movement` | the player hops cell to cell onto walkable ground |
+| `Springs` | a pad launches the hero the way they arrived |
+| `Movement` | a step onto a neighbour, or a leap over one cell of water |
+| `Platforms` | crate ferries carry a standing hero |
+| `Crumble` | grass bridges fall after you leave them |
+| `Locks` | a key opens the crate gate |
 | `Patrol` | saws run along their row or column and turn at edges |
 | `Traps` | spikes rise and sink on a staggered cycle |
 | `Pickups` | landing takes coins; the last coin raises the flag; the flag clears the level |
