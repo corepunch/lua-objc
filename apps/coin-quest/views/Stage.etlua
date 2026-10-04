@@ -14,13 +14,19 @@
 		<%- partial("prefabs/Scenery.etlua", {kind = item.kind, x = item.x, z = item.z, assets = assets}) %>
 		<% end -%>
 		<% for _, coin in ipairs(coins) do -%>
-		<%- partial("prefabs/Coin.etlua", {id = coin.id, x = coin.x, z = coin.z, assets = assets}) %>
+		<%- partial("prefabs/Coin.etlua", {id = coin.id, x = coin.x, z = coin.z, y = coin.aerial and 0.7 or 0.15, assets = assets}) %>
+		<% end -%>
+		<% for _, key in ipairs(keys) do -%>
+		<%- partial("prefabs/Key.etlua", {id = key.id, x = key.x, z = key.z, assets = assets}) %>
 		<% end -%>
 		<% for _, spike in ipairs(spikes) do -%>
 		<%- partial("prefabs/Spikes.etlua", {id = spike.id, x = spike.x, z = spike.z, assets = assets}) %>
 		<% end -%>
 		<% for _, saw in ipairs(saws) do -%>
 		<%- partial("prefabs/Saw.etlua", {id = saw.id, x = saw.x, z = saw.z, axis = saw.axis, assets = assets}) %>
+		<% end -%>
+		<% for _, ferry in ipairs(platforms) do -%>
+		<%- partial("prefabs/Platform.etlua", {id = ferry.id, x = ferry.x, z = ferry.z, assets = assets}) %>
 		<% end -%>
 		<% if flag then -%>
 		<%- partial("prefabs/Flag.etlua", {x = flag.x, z = flag.z, assets = assets}) %>

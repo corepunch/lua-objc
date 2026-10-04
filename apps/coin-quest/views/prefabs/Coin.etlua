@@ -1,2 +1,4 @@
-<!-- A coin spins and floats where it lies, and pops when it is taken. -->
-<Node id="<%= id %>" model="<%= assets %>coin-gold.obj" position="<%= x %> 0.15 <%= z %>" spin="150" bob="0.08" transition="pop" />
+<!-- A coin. Spin and bob are native SceneKit actions; leaving the template
+    plays the node's pop. Coins over water hang higher. -->
+<Node id="<%= id %>" model="<%= assets %>coin-gold.obj" position="<%= x %> <%= y or 0.15 %> <%= z %>"
+      spin="150" bob="0.08" transition="pop" />
