@@ -57,9 +57,11 @@ function StageController.viewData(scene)
 		tiles = cells(scene.tiles, {"x", "z"}),
 		scenery = cells(scene.scenery, {"kind", "x", "z"}),
 		start = {x = scene.start.x, z = scene.start.z},
-		coins = cells(scene.coins, {"id", "x", "z"}),
+		coins = cells(scene.coins, {"id", "x", "z", "aerial"}),
+		keys = cells(scene.keys or {}, {"id", "x", "z"}),
 		saws = cells(scene.saws, {"id", "x", "z", "axis"}),
 		spikes = cells(scene.spikes, {"id", "x", "z"}),
+		platforms = cells(scene.platforms or {}, {"id", "x", "z"}),
 		flag = scene.flag.raised and {x = scene.flag.x, z = scene.flag.z} or nil,
 	}
 end
