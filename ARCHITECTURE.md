@@ -404,23 +404,16 @@ instantiates the class returned by `init.lua` by calling `new()` with no argumen
 (or the root `App` lifecycle) creates the window. `init.lua` itself stays thin
 and does not self-start. Reusable view components do not create windows.
 
-**MVC example layout.** Every standalone example lives under
-`apps/<appname>/`, `demo/<name>/`, or `test/<name>/` with this layout:
-
-```text
-init.lua        ← requires and returns Controller class (framework instantiates)
-Model.lua       ← data, queries, mutations (no ns.* calls)
-Controller.lua  ← defines Controller class; wires model → views, owns actions
-views/          ← etlua templates and reusable partials only
-```
-
-Larger apps sort `views/` the way a web frontend does: `layouts/` (app
-shell), `pages/` (one template per screen), `sections/` (large blocks a page
-composes), `components/` (small reusable partials), `sheets/` (modal dialogs),
-plus a folder per other kind. A view name is
-a path under `views/` (`view="pages/Overview"` in `app.xml`). Partials
-resolve relative to the including template, so a page includes
-`partial("../components/Footnote.etlua")`. Diskmap is the reference layout.
+**App layout.** Every standalone example lives under `apps/<appname>/`,
+`demo/<name>/`, or `test/<name>/`. A page is a request: `app.xml` names the
+pages, `routes.lua` gathers `pages/*.lua` (a view, `data(state)`, a method per
+action), `models/` are Lapis models over the store `Store.lua` seeds, `flows/`
+share action code, `helpers/` compute purely, `services/` do IO,
+`controllers/` only coordinate, and `views/` (etlua only) is sorted into
+`layouts/`, `pages/`, `sections/`, `components/` and `sheets/`. The full folder
+structure, what goes where and an example of each piece are in the
+[application architecture guide](docs/agents/application-architecture.md).
+A small app is `init.lua`, `Model.lua`, `Controller.lua` and `views/`.
 
 `tests/app_architecture.test.lua` enforces this contract for every folder
 under `apps/`, `demo/` and `test/`: a one-line `init.lua`, a `Controller.lua`,
@@ -470,21 +463,8 @@ model. Only what must move while work is in progress (a chart while a scan count
 updated in place, by code written for that case; lists, bars and numbers appear once
 computed.
 
-The IDE example is organized as:
-
-```text
-demo/ide/
-├── init.lua          # entry point
-├── Model.lua         # file access and language detection
-├── Controller.lua    # folder sidebar, editor, file watching, and saving
-└── views/            # window configuration templates
-```
-
-That structure keeps app boot, scene selection, and UI composition separate
-without introducing a second runtime or any non-Lua app scaffolding.
-
-For the app structure used by Adventure Arena, Diskmap, and Studio—including
-feature-oriented MVC with controller composition—see the
+For the app structure used by Adventure Arena and Diskmap, including the two
+shapes (sidebar and tab-bar), see the
 [application architecture guide](docs/agents/application-architecture.md).
 
 ---

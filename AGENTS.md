@@ -12,6 +12,9 @@ Read only the material needed for the current task:
 - [README.md](README.md) — commands and task-to-file map
 - [ARCHITECTURE.md](ARCHITECTURE.md) — runtime layers, state lifetime, layout,
   plugins, and previews
+- [docs/agents/application-architecture.md](docs/agents/application-architecture.md) — how an app is
+  built: what goes where, with examples; folder structure; sidebar and
+  tab-bar shapes
 - [src/README.md](src/README.md) — native bridge subsystem and symbol map
 - [docs/PROJECT_REFERENCE.md](docs/PROJECT_REFERENCE.md) — detailed API and
   implementation reference; consult the relevant heading, not the whole file

@@ -29,13 +29,17 @@ controller, hit run, and the native window updates instantly. The same code
 renders NSTextField on macOS and UILabel on iOS without platform conditionals.
 
 **Agents need testable architecture, not screenshots.** Apps built with
-lua-objc follow a strict separation:
+lua-objc follow Laravel's shape: a page is a request. Models query a plain-Lua
+store, a route turns them into data, an etlua view draws it, and an action is a
+method of the route followed by the same request again:
 
 ```
-Model.lua         — pure data, queries, mutations  (headless-testable)
-Controller.lua    — wires model → views, owns actions
-views/*.etlua     — declarative XML templates
+models/*.lua      — Lapis-style models over the store  (headless-testable)
+pages/*.lua       — routes: data(state) and one method per action
+views/**/*.etlua  — declarative XML templates, sorted like a web frontend
 ```
+
+See the [application architecture guide](docs/agents/application-architecture.md).
 
 Every layer is testable in under a second — no windows, no pauses.
 Controllers are instantiated, models are queried, views are rendered and
@@ -139,7 +143,7 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 | Add an IDE editor surface | `demo/ide/` |
 | Write or modify XML view templates | `lua/ui/xml.lua`, `apps/<app>/views/` |
 | Use template inheritance or partials | `views/AppWindow.etlua`, `views/partials/` |
-| Add a new product app | `apps/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
+| Add a new product app | [`docs/agents/application-architecture.md`](docs/agents/application-architecture.md), `apps/diskmap`, `AGENTS.md` |
 | Add a framework test app | `test/<app>/init.lua`, `AGENTS.md` (MVC layout rules) |
 | Change app startup or recents | `lua/App.lua`, `demo/ide/` |
 | Add UIKit coverage | `src/uikit/`, `src/uikit_module.m`, `lua/embedded/UIKit.lua` |
@@ -270,23 +274,25 @@ These are remaining implementation work, not guarantees of the current
 runtime. The [architecture guide](ARCHITECTURE.md) records the evidence,
 lifetime contracts, and verification requirements.
 
-### App structure (MVC)
+### App structure
 
-Every app follows the MVC folder layout:
+An app is a folder with a one-line `init.lua`, an `app.xml` manifest, a
+`Store.lua` seed, and then `models/` (data), `pages/` (routes), `flows/`
+(shared action code), `helpers/` (pure computation), `services/` (IO),
+`controllers/` (coordination only), `components/` (new XML tags) and `views/`
+(etlua only: `layouts/ pages/ sections/ components/ sheets/`):
 
 ```
 apps/<app>/
-  init.lua        — entry point, requires and returns Controller class
-  Model.lua       — pure data: queries, formatting, sample data
-  Controller.lua  — renders views, wires Model → views, owns actions
-  views/          — etlua templates only, including reusable partials
+  init.lua  app.xml  resources.xml  Store.lua  routes.lua  Controller.lua
+  models/ pages/ flows/ helpers/ services/ controllers/ components/ views/
 ```
 
-`init.lua` never self-starts. It returns the class; the framework calls
-`class.new():createWindow()`.
-
-For the full app structure—including focused feature controllers, models, and
-services—see the [application architecture guide](docs/agents/application-architecture.md).
+A small app is just `init.lua`, `Model.lua`, `Controller.lua` and `views/`.
+`init.lua` never self-starts; the framework calls `class.new():createWindow()`.
+The [application architecture guide](docs/agents/application-architecture.md)
+says exactly what goes where, with examples for each piece, and describes the
+two shapes (sidebar apps like Diskmap, tab-bar apps like Adventure Arena).
 
 ### A PHP reference point: Laravel with Blade
 
@@ -298,8 +304,9 @@ interface.
 
 | Laravel concept | lua-objc equivalent |
 |---|---|
-| Controller prepares data and renders a view | `Controller.lua` calls `xml.renderFile(...)` |
-| Models and application services | `Model.lua` provides queries, mutations, and fetching |
+| Route and controller action | `pages/*.lua`: `data(state)` and a method per action |
+| Eloquent models | `models/*.lua`, Lapis-style tables over the store |
+| Service classes | `services/`, injected |
 | Blade templates | `views/*.etlua` |
 | Includes, layouts, and sections | `partial()`, `extends()`, `block()`, `yield()` |
 | Reusable view components | etlua partials emitting native view trees |
@@ -314,8 +321,8 @@ a message marks it read and updates the detail pane in the existing window.
 returns a response. A lua-objc controller and its native widgets stay alive
 across selection, typing, asynchronous results, and navigation. The controller
 coordinates persistent views while models own domain state and etlua templates
-own presentation. Model changes currently require explicit
-view updates; template rendering does not provide automatic reconciliation.
+own presentation. Nothing observes a model: a page is asked for its data again
+after an action, and the retained template reconciles only what changed.
 
 Use Laravel's [views](https://laravel.com/docs/12.x/views) and
 [Blade](https://laravel.com/docs/12.x/blade) as guides for application
@@ -326,7 +333,7 @@ parity: `Model.lua` is ordinary Lua domain code, not an Eloquent-style ORM.
 
 The practical guide for apps is:
 
-- Controllers coordinate actions, call models, and supply view data.
+- Routes supply each page's data and own its actions; controllers only coordinate (sheets, navigation, commands).
 - Models own queries, fetching, validation, and mutations.
 - Views own presentation through etlua templates and reusable partials.
 - The framework owns shared rendering, action binding, and lifecycle
