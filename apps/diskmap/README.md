@@ -234,7 +234,7 @@ through the same destination, retaining leaf selection in category sheets.
 Selected-item buttons name the destination without requiring a double-click.
 Inspect Folder Contents opens a location's exact path in Folder Map; Review
 Build Data opens Projects. Their amounts distinguish measured folder contents
-from generated build data. Overview exposes both discovery entry points.
+from generated build data. Exploration destinations live in the sidebar.
 `--page=<id>` (for example `--page=files`) opens a destination at launch for
 screenshots and walkthroughs. The window subtitle shows free and available space (available includes
 purgeable storage) and how many items are marked. Sidebar rows show sizes as

@@ -1,12 +1,5 @@
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
   <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
-    <VStack spacing="8" alignment="leading">
-      <HStack spacing="12" alignment="center">
-        <Button id="findLargest" title="Find Largest Locations" systemImage="list.number" action="showLargest" />
-        <Button id="inspectFolder" title="Inspect a Folder" systemImage="folder" action="inspectFolder" />
-      </HStack>
-      <Label text="Storage Map groups known locations by category. Folder Map measures the contents of any folder." size="12" color="secondary" maxWidth="infinity" lines="0" />
-    </VStack>
     <VStack id="hero" spacing="0">
       <%- partial("../sections/Hero.etlua", hero) %>
     </VStack>
