@@ -116,3 +116,19 @@ regression files passed; the expanded alignment test has 538 assertions.
 Eight native screenshots and layout dumps at 950 × 580 and 1400 × 900 cover
 Mark and Marked in light and dark under `/tmp/diskmap-mark-align/`. The action
 label and adjacent labels have identical native text rectangles and baselines.
+
+## Storage Map pane widths
+
+Removed the list's 330-point maximum width. Both ring-mode panes now share
+the available width with equal flex weights and a zero basis, keeping their
+300-point minimums. Rectangles still use the full row. At 1400 × 900 the
+list/chart widths change from 330/780 to 555/555 points: the ring no longer
+sits in a much wider pane, and long location names use the reclaimed space.
+The native layout calculates this split on resize without app callbacks.
+
+The new 30-assertion map-split test covers narrow, large and wide/short sizes,
+resize round trips, chart diameter, the native list's width and switching
+between rings and rectangles while keeping exploration focus. All four
+selected split/page/alignment/navigation test files pass. Twelve native
+screenshots and layout dumps cover 950 × 580, 1400 × 900 and 1600 × 650,
+including light/dark and Mark/Marked states, under `/tmp/diskmap-split/`.
