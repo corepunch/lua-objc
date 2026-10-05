@@ -617,6 +617,14 @@ ns.VStack {
 }
 ```
 
+A two-child `HStack` can set `trailingMaxWidthFraction` (0–1). When the
+trailing child's natural native width exceeds that fraction of the available
+inner width, both children are laid out vertically. The decision is shared by
+measurement and placement and recalculated on resize; hidden children are
+excluded. Zero disables the rule. Give the trailing group `fillWidth = true`
+for full-width placement below, and use `FlowStack` when its controls should
+wrap. Available on AppKit and UIKit, including XML and retained updates.
+
 ### `FlowStack{...}`
 
 Packs native child views into horizontal rows and wraps when the next child

@@ -342,6 +342,26 @@ static void apply_scroll_container_widths(NSView *document, CGFloat viewportWidt
 
 static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint);
 
+/* A two-part header reserves its leading space before allowing trailing
+ * controls inline. Measure the same native views for every proposal; resizing
+ * changes placement without rebuilding controls or retaining an old axis. */
+static LayoutAxis proposed_stack_axis(NSView *view, CGFloat innerWidth) {
+	LayoutAxis axis = layout_axis(view);
+	CGFloat fraction = [objc_getAssociatedObject(view, &kKeys[kTrailingMaxWidthFractionKey]) doubleValue];
+	if (axis != LayoutAxisHStack || fraction <= 0 || !isfinite(innerWidth) || innerWidth >= CGFLOAT_MAX / 2) return axis;
+	NSView *trailing = nil;
+	NSUInteger count = 0;
+	for (NSView *child in view.subviews) {
+		if (is_hidden(child)) continue;
+		trailing = child;
+		count++;
+	}
+	if (count != 2) return axis;
+	NSSize size = measure_view(trailing, (LuaLayoutConstraint){
+		.widthMode = LuaMeasureUndefined, .heightMode = LuaMeasureUndefined});
+	return size.width > MAX(0, innerWidth) * fraction ? LayoutAxisVStack : axis;
+}
+
 static CGFloat constrained_result(CGFloat natural, CGFloat proposal,
 								  LuaMeasureMode mode) {
 	if (mode == LuaMeasureExactly) return MAX(0, proposal);
@@ -511,7 +531,7 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 		? 0 : MAX(0, constraint.height - padY);
 	NSSize natural = NSZeroSize;
 
-	switch (layout_axis(view)) {
+	switch (proposed_stack_axis(view, constraint.widthMode == LuaMeasureUndefined ? CGFLOAT_MAX : innerWidth)) {
 	case LayoutAxisVStack: {
 		NSInteger visibleCount = 0;
 		for (NSView *child in view.subviews) {
@@ -979,6 +999,7 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 		CGFloat contentH = availableHeight - padTop - padBottom;
 		NSString *alignment = view_alignment(view);
 
+		axis = proposed_stack_axis(view, MAX(0, contentW));
 		switch (axis) {
 		case LayoutAxisFlow:
 			layout_flow_children(view, MAX(0, contentW), YES);

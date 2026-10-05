@@ -103,3 +103,23 @@ the sidebar without those duplicate controls. All four affected test files
 passed (680 assertions). Native Overview screenshots were inspected at
 950 × 580 and 1400 × 900 in light and dark under
 `/tmp/diskmap-overview-clean/`; the unsigned bundle rebuilt successfully.
+
+
+Adaptive header correction: more than two visible buttons always follow the
+heading on a separate row. One or two move below when their combined native
+width exceeds 30% of the available header width; action groups wrap further
+with FlowStack. The shared AppKit/UIKit HStack rule measures and lays out the
+same native children on every resize. Removed the dedicated FavoriteActions
+partial and use the shared page header for size changes. Stacked headings
+keep their intrinsic height, fixing the initial oversized first row.
+
+Nine focused test files passed across the layout and final targeted runs
+(551 assertions). The adaptive header test has 33 assertions covering the exact
+threshold, narrow/wide/zero-width round trips, hidden/disabled buttons, changed
+titles, wrapping, intrinsic heading height and retained property changes.
+Native screenshots and layout dumps at 950 × 580 and 1400 × 900 in light and
+dark were inspected under `/tmp/diskmap-adaptive/final-min/` and
+`/tmp/diskmap-adaptive/final-large/`. All 40 captured page headers have no
+clipped text or children outside their bounds. The rebuilt temporary synthetic
+app also showed the corrected compact SDK favorite header before and while
+opening its SDK sheet. Both bridges and the unsigned Diskmap bundle build.

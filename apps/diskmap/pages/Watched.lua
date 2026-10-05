@@ -75,7 +75,6 @@ local function menu(page, item)
 end
 
 routes.watched = ListRoute.extend({focus = function(page, params) page.key = params.key end, layout = function(_, presented) return presented.shape end,
-		children = {favoriteActions = "sections/FavoriteActions"},
 		queries = {showInFinder = true, openCategory = true}, menu = menu,
 			showInFinder = function(page) service(page).reveal(watched(page).path) end,
 			openCategory = function(page) page.app.open(category(page, watched(page)).id) end,
@@ -101,8 +100,8 @@ routes.watched = ListRoute.extend({focus = function(page, params) page.key = par
 			table.insert(buttons, {id = "unwatch", title = "Remove from Favorites", systemImage = "star.slash", action = "unwatch"})
 			-- A category's locations differ by policy; a folder's children are
 			-- already labeled Folder or File under their names.
-			local shape = {summary = table.concat(summary, " · "), summaryId = "watchedSummary", leads = {"favoriteActions"}, footnote = FOOTNOTE}
-			local presented = {shape = shape, children = {favoriteActions = {buttons = buttons}}}
+			local shape = {summary = table.concat(summary, " · "), summaryId = "watchedSummary", buttons = buttons, footnote = FOOTNOTE}
+			local presented = {shape = shape}
 			if row.missing or not (group(page, row) or row.path) then return presented end
 			local rows, detail, loading = contents(page, row)
 			shape.sections = {{id = "contentsSection", title = "Contents", detail = detail, detailId = "contentsDetail",
