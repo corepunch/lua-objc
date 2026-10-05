@@ -13,7 +13,9 @@
           <HStack spacing="8" alignment="center">
             <Label text="<%= item.name %>" size="12" flexGrow="1" flexShrink="1" lines="1" />
             <Label text="<%= item.size %>" size="12" color="secondary" monospacedDigit="true" />
-            <Button id="worthMark_<%= index %>" title="<%= item.markTitle %>" systemImage="<%= item.markIcon %>" style="plain" action="worth_<%= index %>" help="<%= item.markHelp %>" disabled="<%= item.markable and "false" or "true" %>" />
+            <Button id="worthMark_<%= index %>" style="plain" action="worth_<%= index %>" accessibilityLabel="<%= item.markTitle %>" help="<%= item.markHelp %>" disabled="<%= item.markable and "false" or "true" %>">
+              <Label text="<%= item.markTitle %>" systemImage="<%= item.markIcon %>" size="12" color="secondary" />
+            </Button>
           </HStack>
           <% end %>
         </VStack>
@@ -65,7 +67,7 @@
         <% end %>
       </Treemap>
       <% else %>
-      <% -- Looking inside a group, or back out, turns the rings to the new level. %>
+      <% -- Each level renders a fresh chart in its final shape. %>
       <VStack id="mapChartHost" flexGrow="1" flexBasis="0" flexShrink="1" minHeight="<%= MAP.minChart %>" maxWidth="infinity" maxHeight="infinity" alignment="center">
       <StorageRings id="sunburst" diameter="<%= MAP.chartUnits %>" onSelect="chartSelect" onHover="chartHover" onCenter="up" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>

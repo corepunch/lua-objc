@@ -125,6 +125,52 @@ local plain = xml.render('<DisclosureGroup label="Details"><Label text="Body" />
 t.assertEqual(plain.subviews[1].subviews[1].frame.origin.x, 0, "without indicatorWidth the triangle stays at the leading edge")
 t.assertEqual(plain.subviews[2].subviews[1].frame.origin.x, 0, "and its content is not indented")
 
+-- A native button's cell title has different vertical metrics from a Label.
+-- Declarative button content gives the suggestion action the same native
+-- text metrics as its name and size, including after its title changes.
+local function rowBaseline(view, row)
+	local y = view.lastBaselineOffsetFromBottom
+	while view ~= row do
+		y = y + view.frame.origin.y
+		view = view.superview
+	end
+	return y
+end
+
+app:show("map")
+local function assertMarks(width, height, marked)
+	local page = app.page.refs.page
+	page.size = ns.Size(width, height)
+	page:layout(width)
+	local count = 0
+	for id, button in pairs(app.page.refs) do
+		if id:find("^worthMark_") then
+			count = count + 1
+			t.assertEqual(button.className, "LuaContentButton", id .. " remains a native button with declarative content")
+			local row = button.superview
+			local label = button.subviews[1].subviews[2]
+			local expected = id == "worthMark_1" and marked and "Marked" or "Mark"
+			t.assertEqual(label.text, expected, id .. " renders its current action title")
+			t.assertEqual(button.accessibilityLabel, expected, id .. " names the native action for accessibility")
+			for index = 1, 2 do
+				local text = row.subviews[index]
+				t.assertEqual(label.font.pointSize, text.font.pointSize, id .. " shares the row font")
+				t.assertEqual(label.frame.size.height, text.frame.size.height, id .. " shares the row text height")
+				t.expect(math.abs(rowBaseline(label, row) - rowBaseline(text, row)) < 0.01,
+					id .. " shares the row baseline at width " .. width)
+			end
+		end
+	end
+	t.expect(count > 0, "the map has suggestion actions to check")
+end
+for _, size in ipairs({{width = 950, height = 580}, {width = 1400, height = 900}}) do
+	assertMarks(size.width, size.height, false)
+	ns._invokeAction(app.page.refs.worthMark_1)
+	assertMarks(size.width, size.height, true)
+	ns._invokeAction(app.page.refs.worthMark_1)
+	assertMarks(size.width, size.height, false)
+end
+
 window:close()
 
 os.exit(t.summary() and 0 or 1)

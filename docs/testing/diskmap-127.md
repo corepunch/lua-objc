@@ -102,3 +102,17 @@ built successfully. Twenty native captures at 950 × 580 and 1400 × 900 cover
 Overview, selected Storage Map, selected Largest Locations, Folder Map and the
 SDK sheet in light and dark under `/tmp/diskmap-clean/`. The sidebar begins with
 Overview and no pin controls or location-tracking pages remain.
+
+## Suggestion action typography
+
+The Worth a look actions use declarative native button labels with the same
+12-point font as the adjacent name and size. The original native button cell
+placed its title below the row's label baseline; matching the font alone did
+not correct it. No pixel offsets or shared layout changes were added.
+The alignment test checks matching font, text height, baseline and accessibility
+title at both window widths, including Mark → Marked → Mark round trips.
+All eight selected alignment, page, environment, navigation, template and button
+regression files passed; the expanded alignment test has 538 assertions.
+Eight native screenshots and layout dumps at 950 × 580 and 1400 × 900 cover
+Mark and Marked in light and dark under `/tmp/diskmap-mark-align/`. The action
+label and adjacent labels have identical native text rectangles and baselines.
