@@ -37,6 +37,15 @@ ns._invokeAction(sdks.refs.favorite)
 t.assertEqual(sdks.refs.favorite.title, "Remove from Favorites", "the button updates after saving")
 t.expect(app.env.watchlist:find("resource:xcode-app") ~= nil, "the installation's exact id is saved")
 sdks:close()
+
+-- The bundled mock has no Xcode installation: size changes must say missing,
+-- rather than treating a nonexistent bundle as an empty measured folder.
+app:show("watched", {key = "resource:xcode-app"})
+t.expect(app.page.refs.watchedSummary.text:find("Missing", 1, true) ~= nil, "a missing installation is explained")
+t.expect(app.page.refs.watchedSummary.text:find("Measured for the first time", 1, true) == nil, "missing is not a completed measurement")
+t.expect(app.page.refs.contents == nil, "a missing installation has no misleading empty contents table")
+t.expect(app.page.refs.reveal == nil and app.page.refs.openCategory == nil, "missing locations offer no unavailable destination actions")
+t.expect(app.page.refs.unwatch ~= nil, "a missing installation can still be removed")
 app:show("overview")
 visit("resource:xcode-app")
 t.expect(sdks.sheet ~= nil, "one favorite click opens the SDK sheet")

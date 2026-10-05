@@ -5,6 +5,7 @@ local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local Store = require("apps.diskmap.Store")
 local Watchlist = require("apps.diskmap.models.Watchlist")
+local Scans = require("apps.diskmap.models.Scans")
 local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 
@@ -80,6 +81,29 @@ t.expect(select(2, list:toggle({kind = "resource", id = "developer"})) == false,
 t.expect(not list:has("resource:developer") and list:change("resource:developer") == nil, "removal forgets the session measurement too")
 t.expect(select(2, list:toggle({kind = "resource", id = "developer"})) == true, "toggling again adds it back")
 t.assertEqual(list:count(), 2, "the list holds each entry once")
+
+-- Missing scan roots cost no disk space, but are not empty measurements.
+list:toggle({kind = "resource", id = "xcode-app", bytes = 12e9, measuredAt = day})
+Scans:apply({"xcode-app"}, {rootStates = {"missing"}, breakdowns = {{}}})
+t.expect(model.measurements["xcode-app"].missing, "the scan retains the missing-root distinction")
+t.assertEqual(model.measurements["xcode-app"].bytes, 0, "a missing installation contributes zero disk usage")
+list:sync(day + 86400)
+local absent
+for _, row in ipairs(list:rows()) do if row.resourceId == "xcode-app" then absent = row end end
+t.expect(absent.missing and absent.size == "Missing", "a missing resource has an honest favorite badge")
+t.expect(absent.changeText:find("not found", 1, true) ~= nil, "missing explains the saved path was not found")
+t.assertEqual(list:change("resource:xcode-app"), nil, "missing is not reported as a measurement of shrinkage")
+local baseline
+for _, entry in ipairs(list:encode()) do if entry.id == "xcode-app" then baseline = entry end end
+t.assertEqual(baseline.bytes, 12e9, "a missing resource preserves its last measured size")
+t.assertEqual(baseline.measuredAt, day, "missing does not advance the measurement date")
+Scans:apply({"xcode-app"}, {rootStates = {"measured"}, trees = {{kb = 0}}, breakdowns = {{}}})
+list:sync(day + 86400)
+for _, row in ipairs(list:rows()) do if row.resourceId == "xcode-app" then absent = row end end
+t.expect(not absent.missing and absent.size == "0 KB", "a genuinely measured empty root stays distinct")
+Scans:apply({"xcode-app"}, {rootStates = {"measured"}, trees = {{kb = 13e9 / 1024}}, breakdowns = {{}}})
+list:sync(day + 86400)
+t.assertEqual(list:change("resource:xcode-app"), 1e9, "a restored installation compares with the preserved baseline")
 
 -- End to end against the Mock HDD: watch from a row menu, open from the
 -- sidebar, watch a subfolder, persist, stop watching.
