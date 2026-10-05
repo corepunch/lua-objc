@@ -1,5 +1,5 @@
 <%
-  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, list = { minimum = 300, maximum = 330 }, meter = 130 }
+  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, meter = 130 }
 %>
 <% --[[ "Worth a look" sits under the list beside the rings, so the rings
   keep the pane's height, and under the rectangles when there is no list. ]]
@@ -37,10 +37,10 @@
   <Label id="mapSearchScope" text="<%= query ~= "" and ("Map list filtered by “" .. query .. "”. The chart shows the full level. Switch to Rings to see matches. Search clears when changing pages.") or "Storage Map groups measured locations by category. Folder Map inspects everything inside one folder." %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
   <HStack id="mapBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
     <% --[[ Rectangles already name every item, so the list serves the rings
-      only. It gives way before the chart does: in the narrowest window it
-      keeps its name and share columns, and the chart its size. ]] %>
+      only. Equal flexible panes give long names the spare width instead of
+      leaving it around a height-limited ring. ]] %>
     <% if style ~= "rectangles" then %>
-    <VStack minWidth="<%= MAP.list.minimum %>" maxWidth="<%= MAP.list.maximum %>" flexGrow="1" flexShrink="1" maxHeight="infinity" spacing="12">
+    <VStack id="mapListPane" minWidth="<%= MAP.minPane %>" maxWidth="infinity" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" spacing="12">
     <GroupBox maxWidth="infinity" maxHeight="infinity">
       <VStack maxHeight="infinity" spacing="0">
         <% if #rows == 0 and query ~= "" then %>
