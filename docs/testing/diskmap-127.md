@@ -132,3 +132,28 @@ between rings and rectangles while keeping exploration focus. All four
 selected split/page/alignment/navigation test files pass. Twelve native
 screenshots and layout dumps cover 950 × 580, 1400 × 900 and 1600 × 650,
 including light/dark and Mark/Marked states, under `/tmp/diskmap-split/`.
+
+## Grouped row alignment audit
+
+The Overview explanation used a different inset, symbol column and gap from
+the category list: its text was 4 points farther right and its symbols were
+centered 5 points farther right. Its header symbol was also clipped.
+`GroupedRowMetrics.etlua` now supplies the native list's 6-point cell inset,
+28-point image column and 8-point text gap to the explanation, recommendation
+cards, Clean Up tips, and Updates status/stage/snapshot rows. These are ordinary
+template row dimensions; no positional offsets or layout callbacks were added.
+At both supported widths the Overview symbols center at x=275 and its text
+starts at x=297, matching the adjacent category cells. The header symbol is
+no longer clipped.
+
+Reviewed native screenshots for all 25 destinations at 950 × 580 and
+1400 × 900, including empty workflows and disabled actions, with light and
+dark captures under `/tmp/diskmap-alignment-audit/`. Final captures cover
+the seven affected pages in both appearances and sizes, plus scrolled Clean Up
+tips and Updates snapshots. Other page headers, table rows, guide/help symbol
+rows, disclosures and empty states retain their consistent columns.
+
+All 77 Diskmap and shared component/resource test files passed. After the final
+Updates adjustment, all six affected page/alignment test files passed again;
+the alignment regression has 582 assertions and compares card columns against
+real AppKit table cells. The unsigned app bundle and `git diff --check` pass.

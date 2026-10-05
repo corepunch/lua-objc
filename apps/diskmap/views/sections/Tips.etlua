@@ -1,9 +1,11 @@
 <VStack spacing="6" alignment="leading">
   <Label text="Tips" size="11" weight="semibold" color="secondary" />
   <GroupBox>
+    <%- partial("../components/GroupedRowMetrics.etlua") %>
     <VStack spacing="0" alignment="leading">
       <% for index, tip in ipairs(tips) do %>
-      <SymbolRow padding="10" name="<%= tip.icon %>" size="18" color="accent">
+      <HStack paddingHorizontal="@groupedRowInset" paddingVertical="10" spacing="@groupedIconGap" alignment="center">
+        <SystemImage name="<%= tip.icon %>" size="18" color="accent" width="@groupedIconColumn" />
         <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="1" alignment="leading">
           <Label text="<%= tip.title %>" size="13" maxWidth="infinity" lines="2" />
           <Label text="<%= tip.text %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
@@ -11,7 +13,7 @@
         <% if tip.actionTitle then %>
         <Button title="<%= tip.actionTitle %>" style="link" action="tip_<%= tip.id %>" />
         <% end %>
-      </SymbolRow>
+      </HStack>
       <% if index < #tips then %><Divider /><% end %>
       <% end %>
     </VStack>

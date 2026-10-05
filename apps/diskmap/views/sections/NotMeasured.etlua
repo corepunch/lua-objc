@@ -6,13 +6,18 @@
   and every reason's symbol are centered in it, and the title, each reason's
   name, its explanation, its paths and its button start at one text edge. A
   symbol shares the center line of the text beside it. ]]
-  local CARD = { padding = 14, symbol = 20, itemSymbol = 15, column = 22, gap = 10 }
-  CARD.textEdge = CARD.column + CARD.gap
 %>
 <GroupBox id="notMeasuredCard">
-  <VStack padding="<%= CARD.padding %>" spacing="12" alignment="leading">
-    <HStack spacing="<%= CARD.gap %>" alignment="center">
-      <SystemImage name="questionmark.folder.fill" size="<%= CARD.symbol %>" color="secondary" width="<%= CARD.column %>" />
+  <%- partial("../components/GroupedRowMetrics.etlua") %>
+  <Resources>
+    <Number id="verticalInset" value="14" />
+    <Number id="headerSymbol" value="20" />
+    <Number id="reasonSymbol" value="15" />
+  </Resources>
+  <% -- The same image column and gap as the adjacent full-width list rows. %>
+  <VStack paddingHorizontal="@groupedRowInset" paddingVertical="@verticalInset" spacing="12" alignment="leading">
+    <HStack spacing="@groupedIconGap" alignment="center">
+      <SystemImage name="questionmark.folder.fill" size="@headerSymbol" color="secondary" width="@groupedIconColumn" />
       <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
         <Label text="What Diskmap could not measure" size="13" weight="semibold" maxWidth="infinity" lines="1" />
         <Label id="notMeasuredSummary" text="<%= summary %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
@@ -21,12 +26,12 @@
     </HStack>
     <% for _, item in ipairs(items) do %>
     <VStack id="unmeasured_<%= item.id %>" spacing="2" alignment="leading">
-      <HStack spacing="<%= CARD.gap %>" alignment="center">
-        <SystemImage name="<%= item.icon %>" size="<%= CARD.itemSymbol %>" color="<%= item.color %>" width="<%= CARD.column %>" />
+      <HStack spacing="@groupedIconGap" alignment="center">
+        <SystemImage name="<%= item.icon %>" size="@reasonSymbol" color="<%= item.color %>" width="@groupedIconColumn" />
         <Label text="<%= item.title %>" size="12" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="1" />
         <Label text="<%= item.value %>" size="12" color="secondary" monospacedDigit="true" lines="1" />
       </HStack>
-      <VStack paddingLeading="<%= CARD.textEdge %>" spacing="2" alignment="leading">
+      <VStack paddingLeading="@groupedTextInset" spacing="2" alignment="leading">
         <Label text="<%= item.detail %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
         <% for _, path in ipairs(item.paths or {}) do %>
         <Label text="<%= path %>" size="11" design="monospaced" color="secondary" maxWidth="infinity" lines="1" truncation="middle" />

@@ -1,0 +1,8 @@
+<% -- Match the adjacent full-width native list: cell inset, badge width and
+  image-to-text gap. Alignment tests compare these columns with AppKit cells. %>
+<Resources>
+  <Number id="groupedRowInset" value="6" />
+  <Number id="groupedIconColumn" value="28" />
+  <Number id="groupedIconGap" value="8" />
+  <Number id="groupedTextInset" value="36" />
+</Resources>
