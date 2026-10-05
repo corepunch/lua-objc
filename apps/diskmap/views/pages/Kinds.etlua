@@ -1,14 +1,11 @@
 <%
-  -- The chart is context for the decision above it, so it stays modest, but
-  -- it fills the height of the card and its center text scales with it.
-  local CHART = { units = 360, minSize = 112, maxSize = 200, padding = 14, spacing = 20, hole = 0.618, inset = 1.5, corner = 5, total = 40, caption = 24, totalScale = 9 / 40, captionScale = 0.5 }
-  -- The center text is set at its largest; the chart offers it the square
-  -- inscribed in the hole and it shrinks to fit on one line, like the Hero.
+  -- The ring has one size, `diameter`, about as tall as the legend column
+  -- beside it; it shrinks toward `minSize` only when the column needs its
+  -- `minText`. Its center text is in the same units, as on the Overview.
+  local CHART = { diameter = 240, minSize = 112, minText = 260, padding = 20, spacing = 28, hole = 0.618, inset = 1.5, corner = 4, total = 26, caption = 13, totalScale = 13 / 26, captionScale = 0.75, symbol = { column = 20, gap = 6 } }
 %>
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack padding="24" alignment="center">
-  <%- partial("../components/ReadableWidth.etlua") %>
-  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
+<PageFrame id="page">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = page, summary = summary}) %>
     <% if waiting then %>
     <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
@@ -18,14 +15,19 @@
     <%- partial("../components/Footnote.etlua", {id = "scopeNote", icon = "scope", text = scope}) %>
     <GroupBox id="kindsCard">
       <HStack padding="<%= CHART.padding %>" spacing="<%= CHART.spacing %>" alignment="center">
-        <SectorChart id="kindsChart" scalable="true" diameter="<%= CHART.units %>" minWidth="<%= CHART.minSize %>" maxWidth="<%= CHART.maxSize %>" minHeight="<%= CHART.minSize %>" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.inset %>" onSelect="chartSelect" onHover="chartHover" accessibilityLabel="<%= accessibilityLabel %>">
+        <SectorChart id="kindsChart" scalable="true" diameter="<%= CHART.diameter %>" flexGrow="0" flexShrink="1" minWidth="<%= CHART.minSize %>" minHeight="<%= CHART.minSize %>" fixedSize="vertical" innerRadius="<%= CHART.hole %>" angularInset="<%= CHART.inset %>" onSelect="chartSelect" onHover="chartHover" accessibilityLabel="<%= accessibilityLabel %>">
           <% for _, kind in ipairs(kinds) do %>
           <SectorMark cornerRadius="<%= CHART.corner %>" id="<%= kind.id %>" value="<%= kind.bytes %>" color="<%= kind.color %>" label="<%= kind.name %>" />
           <% end %>
           <ChartCenter id="kindsCenter" titleId="kindsTotal" detailId="kindsCaption" total="<%= center.title %>" caption="<%= center.detail %>" totalSize="<%= CHART.total %>" captionSize="<%= CHART.caption %>" totalScale="<%= CHART.totalScale %>" captionScale="<%= CHART.captionScale %>" />
         </SectorChart>
-        <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="8" alignment="leading">
+        <VStack id="kindsLegendColumn" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= CHART.minText %>" spacing="12" alignment="leading">
           <Label text="<%= headline.title %>" size="13" weight="semibold" maxWidth="infinity" lines="0" />
+          <VStack id="kindsLegend" spacing="4" alignment="leading">
+            <% for _, kind in ipairs(kinds) do %>
+            <LegendRow key="legend-<%= kind.id %>" label="<%= kind.name %>" color="<%= kind.color %>" sizeText="<%= kind.size %>" share="<%= kind.share %>" linked="false" column="<%= CHART.symbol.column %>" gap="<%= CHART.symbol.gap %>" />
+            <% end %>
+          </VStack>
           <Disclosure label="What this inventory includes" expanded="false">
             <Label text="<%= inventoryNote %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
           </Disclosure>
@@ -53,5 +55,4 @@
     <% end %>
     <% end %>
   </VStack>
-  </VStack>
-</ScrollView>
+</PageFrame>

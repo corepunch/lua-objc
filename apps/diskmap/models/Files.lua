@@ -3,6 +3,7 @@ local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
 local Scans = require("apps.diskmap.models.Scans")
 local Format = require("apps.diskmap.helpers.Format")
+local Palette = require("apps.diskmap.helpers.Palette")
 -- The files the last scan ranked: every file over the size threshold, and
 -- the ones unused for a year, each {path, bytes, used}. The store's `files`
 -- holds both lists with the extension totals of the same walk.
@@ -191,6 +192,10 @@ function Files:kinds()
 			share = all > 0 and total.bytes / all or 0})
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.id < b.id end)
+	-- Kinds share catalog colors (Videos and Music are both red); the ring,
+	-- its legend and both lists take distinct hues, largest kind first.
+	local palette, hues = Palette.new(), {}
+	for _, row in ipairs(rows) do row.color = palette:take(row.color); hues[row.id] = row.color end
 	local largest = rows[1] and rows[1].bytes or 0
 	for _, row in ipairs(rows) do
 		row.relative = largest > 0 and row.bytes / largest or 0
@@ -203,7 +208,7 @@ function Files:kinds()
 			local kind = FileKind.byExtension[row.extension] or FileKind.other
 			-- The Files column carries the count; the subtitle names the kind.
 			table.insert(top, {id = row.extension, name = "." .. row.extension, subtitle = kind.name,
-				icon = kind.icon, color = kind.color, bytes = row.bytes, size = Format.size(row.bytes), count = row.count, kindId = kind.id,
+				icon = kind.icon, color = hues[kind.id] or kind.color, bytes = row.bytes, size = Format.size(row.bytes), count = row.count, kindId = kind.id,
 				relative = extensions[1].bytes > 0 and row.bytes / extensions[1].bytes or 0,
 				shareText = Format.percent(row.bytes, all)})
 			if #top >= 12 then break end

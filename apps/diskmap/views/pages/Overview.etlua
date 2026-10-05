@@ -1,7 +1,5 @@
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack padding="24" alignment="center">
-  <%- partial("../components/ReadableWidth.etlua") %>
-  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
+<PageFrame id="page">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
     <VStack id="hero" spacing="0">
       <%- partial("../sections/Hero.etlua", hero) %>
     </VStack>
@@ -39,5 +37,4 @@
       <Button id="access" title="<%= accessTitle %>" hidden="<%= accessHidden %>" style="link" action="access" />
     </HStack>
   </VStack>
-  </VStack>
-</ScrollView>
+</PageFrame>

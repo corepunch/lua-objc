@@ -1,12 +1,13 @@
 <%
-  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, list = 340, minList = 260, minPane = 320, meter = 130, legendSize = 84, legendShare = 34 }
+  local FOLDER = { minChart = 160, chartUnits = 300, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, list = 340, minList = 260, minPane = 320, paneGap = 16, meter = 130, legendSize = 84, legendShare = 34 }
   local buttons = {{id = "openFolder", title = "Open Folder…", systemImage = "folder", action = "openFolder", help = "Choose a folder or disk to measure"}}
   if hasPath then
     table.insert(buttons, measuring and {id = "stop", title = "Stop", systemImage = "stop.circle", action = "stop", help = "Stop measuring"}
       or {id = "rescan", title = "Measure Again", systemImage = "arrow.clockwise", action = "rescan", help = "Measure this folder again"})
   end
 %>
-<VStack id="page" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
+<PageFrame id="page" scrolls="false">
+<VStack flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" alignment="leading">
   <%- partial("../components/PageHeader.etlua", {header = {icon = page.icon, color = page.color, title = title}, summary = summary, summaryId = "folderSummary", buttons = buttons}) %>
   <% if state == "empty" then %>
   <ContentUnavailable id="folderEmpty" descriptionAlignment="leading" title="Drop a Folder Here" systemImage="folder.badge.plus" description="Drag a folder or a disk from the Finder onto this window or onto Diskmap in the Dock, or choose File › Open Folder…, to see everything in it by size." />
@@ -97,3 +98,4 @@
   </HStack>
   <% end %>
 </VStack>
+</PageFrame>

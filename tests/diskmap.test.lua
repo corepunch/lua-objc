@@ -181,6 +181,9 @@ t.expect(naturalSheetWidth <= ui.window.size.width - 80, "category sheet fits 80
 ui.env.management:close()
 -- A window narrower than the sheet plus its margin clamps the sheet.
 local wideWindow = ui.window.size
+-- A window is never resized below its minimum, so lower it to reach a
+-- window narrower than the sheet.
+ui.window.contentMinSize = ns.Size(0, 0)
 ui.window.size = ns.Size(naturalSheetWidth, wideWindow.height)
 ui:open("developer")
 t.assertEqual(ui.env.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than a narrow window")

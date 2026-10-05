@@ -52,54 +52,20 @@
 	/* An omitted Lua width means the outline column follows its viewport.
 	 * This is especially important for navigator panes, whose final width is
 	 * assigned by NSSplitView after the outline has loaded its rows. */
-	CGFloat fixedDesired = 0, flexTotalWeight = 0, allMin = 0;
 	BOOL hasFlex = NO;
-
 	for (NSTableColumn *col in _outlineView.tableColumns) {
-		NSNumber *flexN = objc_getAssociatedObject(col, &kKeys[kColumnFlexKey]);
-		CGFloat flex = flexN ? flexN.doubleValue : 0;
-		allMin += col.minWidth;
-		if (flex > 0) {
-			flexTotalWeight += flex;
-			hasFlex = YES;
-		} else {
-			fixedDesired += col.width;
-		}
+		if (objc_getAssociatedObject(col, &kKeys[kColumnFlexKey])) hasFlex = YES;
 	}
-
-	BOOL overflows = NO;
-	CGFloat outlineWidth = viewport.width;
-
-	if (hasFlex) {
-		CGFloat declared = 0;
-		for (NSTableColumn *column in _outlineView.tableColumns) declared += column.width;
-		CGFloat overhead = _outlineView.numberOfRows > 0 ? MAX(0, NSMaxX([_outlineView frameOfCellAtColumn:_outlineView.tableColumns.count - 1 row:0]) - declared) : 0;
-		CGFloat remaining = viewport.width - fixedDesired - overhead;
-		if (remaining > 0) {
-			for (NSTableColumn *col in _outlineView.tableColumns) {
-				NSNumber *flexN = objc_getAssociatedObject(
-					col, &kKeys[kColumnFlexKey]);
-				CGFloat flex = flexN ? flexN.doubleValue : 0;
-				if (flex > 0) {
-					col.width = remaining * flex / flexTotalWeight;
-				}
-			}
-		} else {
-			for (NSTableColumn *col in _outlineView.tableColumns) {
-				col.width = col.minWidth;
-			}
-			overflows = viewport.width < allMin;
-			if (overflows) outlineWidth = allMin;
-		}
-	} else {
-		CGFloat totalColumnWidth = 0;
-		for (NSTableColumn *col in _outlineView.tableColumns) {
-			totalColumnWidth += col.width;
-		}
-		overflows = totalColumnWidth > viewport.width;
-		if (overflows) outlineWidth = totalColumnWidth;
-		else outlineWidth = viewport.width;
+	CGFloat overhead = 0;
+	if (hasFlex && _outlineView.numberOfRows > 0) {
+		CGFloat current = 0;
+		for (NSTableColumn *column in _outlineView.tableColumns) current += column.width;
+		overhead = MAX(0, NSMaxX([_outlineView frameOfCellAtColumn:_outlineView.tableColumns.count - 1 row:0]) - current);
 	}
+	CGFloat columnsWidth = lua_objc_size_columns(_outlineView.tableColumns,
+		hasFlex ? viewport.width - overhead : CGFLOAT_MAX);
+	BOOL overflows = columnsWidth > viewport.width + 0.5;
+	CGFloat outlineWidth = overflows ? columnsWidth : viewport.width;
 
 	CGRect frame = _outlineView.frame;
 	frame.size.width = outlineWidth;

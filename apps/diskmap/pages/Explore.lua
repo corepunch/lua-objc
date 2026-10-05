@@ -334,11 +334,11 @@ function kinds:data(state)
 	local all, marks, labels = 0, {}, {}
 	for _, kind in ipairs(kinds) do
 		all = all + kind.bytes
-		kind.detail = Format.count(kind.count)
-		table.insert(marks, {id = kind.id, name = kind.name, color = kind.color, bytes = kind.bytes})
+		kind.detail = Format.plural(Format.count(kind.count), "file")
+		table.insert(marks, {id = kind.id, name = kind.name, color = kind.color, bytes = kind.bytes, size = kind.size, share = kind.shareText})
 		table.insert(labels, kind.name .. " " .. kind.size)
 	end
-	for _, row in ipairs(extensions) do row.detail = Format.count(row.count) end
+	for _, row in ipairs(extensions) do row.detail = Format.plural(Format.count(row.count), "file") end
 	-- The headline names the selected kind, or else the largest kind a
 	-- person can act on; "Other files" and databases belong to apps.
 	local headline, selected

@@ -45,7 +45,7 @@ for _, page in ipairs({"map", "folder", "kinds"}) do
 		t.expect(math.min(chart.frame.size.width, chart.frame.size.height) >= (page == "kinds" and 112 or 160),
 			page .. " keeps a usable ring diameter")
 		if page == "kinds" then
-			t.assertSize(chart, 200, 200, "File Types uses its contextual chart maximum")
+			t.assertSize(chart, 240, 240, "File Types draws its ring at its one diameter beside the legend")
 		else
 			local parent = chart.superview
 			t.assertSize(chart, parent.frame.size.width, parent.frame.size.height, page .. " fills its chart host")

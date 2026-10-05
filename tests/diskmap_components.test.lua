@@ -11,7 +11,7 @@ t.expect(math.abs(three.hole - 0.3) < 1e-8, "three rings preserve the minimum ho
 t.assertEqual(three.sectors[1].opacity, 0.5 * 0.55, "folded sectors keep their parent's faded hue")
 for _, kind in ipairs({"devices", "runtimes", "plan", "worktrees"}) do
 	local data = Inventory.data({kind = kind})
-	t.assertEqual(data.columns.date, 150, kind .. " uses the same date column")
+	t.assertEqual(data.columns.date, 160, kind .. " uses the same date column, wide enough for \"Last change unknown\"")
 	t.assertEqual(data.columns.size, 110, kind .. " uses the same size column")
 	t.expect(type(data.role) == "string" and type(data.subtitle) == "string", kind .. " names native row fields")
 end

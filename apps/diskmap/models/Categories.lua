@@ -21,6 +21,8 @@ end
 -- the biggest sectors keep their catalog color and no two sectors of one
 -- ring share a hue. The Overview's ring, legend and category rows and the
 -- Map's inner ring all ask for it, so a category is one color on a page.
+-- Only the largest Palette.distinct get a hue; the rest have none, and a
+-- ring folds them into its gray "smaller" sector.
 function Categories:hues(rows)
 	local sorted = {}
 	for _, row in ipairs(rows) do table.insert(sorted, row) end
@@ -29,7 +31,11 @@ function Categories:hues(rows)
 		return a.id < b.id
 	end)
 	local palette, hues = Palette.new(), {}
-	for _, row in ipairs(sorted) do hues[row.id] = palette:take(row.color) end
+	local colored = 0
+	for _, row in ipairs(sorted) do
+		if Palette.neutral(row.color) then hues[row.id] = row.color
+		elseif colored < Palette.distinct then hues[row.id] = palette:take(row.color); colored = colored + 1 end
+	end
 	return hues
 end
 
@@ -131,7 +137,7 @@ function Categories:distribution(disk)
 	for _, row in ipairs(categories) do
 		local id = row.id
 		local bytes = row.bytes or 0; assigned = assigned + bytes
-		table.insert(segments, {id = id, name = row.name, color = id == "macos" and "secondary" or hues[id],
+		table.insert(segments, {id = id, name = row.name, color = id == "macos" and "secondary" or hues[id] or "systemGray",
 			bytes = bytes, weight = bytes / total, size = row.size})
 	end
 	table.sort(segments, function(left, right)
@@ -236,7 +242,7 @@ function Categories:shares(disk, query)
 	local largest, order = 0, {}
 	for index, row in ipairs(rows) do
 		row.children = nil
-		row.color = hues[row.id]
+		row.color = hues[row.id] or "systemGray"
 		order[row] = index
 		largest = math.max(largest, row.bytes or 0)
 	end
@@ -340,13 +346,13 @@ function Categories:mapNodes(focus, depth)
 		local other, otherBytes, shown = 0, 0, 0
 		for _, row in ipairs(rows) do
 			if measured(row) then
-				if total > 0 and row.bytes / total < Categories.mapMinimumShare then
+				if (total > 0 and row.bytes / total < Categories.mapMinimumShare) or (ring == 1 and not hues[row.id]) then
 					other, otherBytes = other + 1, otherBytes + row.bytes
 				else
 					shown = shown + 1
 					local resource = Locations:find(row.id)
 					local leaf = resource and resource:isLeaf()
-					local rowColor = ring == 1 and (hues[row.id] or "systemGray") or color
+					local rowColor = ring == 1 and hues[row.id] or color
 					table.insert(nodes, {id = row.id, parent = parent, value = row.bytes, color = rowColor,
 						label = row.name, detail = row.size, ring = ring, leaf = leaf,
 						hatched = leaf and resource.policy == "Rebuildable" or false})

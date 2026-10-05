@@ -1,4 +1,4 @@
-local COLUMNS = {name = 180, role = 110, roleMinimum = 90, date = 150, size = 110, sizeMinimum = 100}
+local COLUMNS = {name = 180, role = 110, roleMinimum = 90, date = 160, size = 110, sizeMinimum = 100}
 return {props = {kind = {type = "str", default = "devices"}}, data = function(props)
 	local worktree, runtime, plan = props.kind == "worktrees", props.kind == "runtimes", props.kind == "plan"
 	return {columns = COLUMNS, nameTitle = worktree and "Worktree" or runtime and "Runtime" or "Device",
