@@ -75,18 +75,18 @@ local overview = app.page
 local model = overview.request
 local results = overview.refs.results
 local category = model.categoryRows[2].id
--- Hovering the ring stays inside the chart: the line under it names the
--- sector and no category row follows the pointer.
+-- Hovering the ring names the sector in its center; no category row follows
+-- the pointer and there is no redundant line below it.
 overview.actions.chartHover(category)
 t.assertEqual(model.selectedId, nil, "hovering a sector selects no category row")
 t.assertEqual(results.documentView.selectedRow, -1, "natively")
-t.expect(overview.refs.chartDetail.text:find(model.categoryRows[2].name, 1, true) == 1, "the line under the ring names the sector")
+t.assertEqual(overview.refs.usedTotal.text, model.categoryRows[2].name, "the center names the sector")
 overview.actions.chartHover(Categories.folded)
-t.assertEqual(overview.refs.chartDetail.text:match("^[^·]+"), "Other categories ", "the folded categories name themselves")
+t.assertEqual(overview.refs.usedTotal.text, "Other categories", "the folded categories name themselves")
 overview.actions.chartHover("free")
-t.expect(overview.refs.chartDetail.text:find("of disk", 1, true) ~= nil, "free space is a share of the disk")
+t.assertEqual(overview.refs.usedTotal.text, "Free", "the center names free space")
 overview.actions.chartHover(nil)
-t.assertEqual(overview.refs.chartDetail.text, "", "leaving the chart clears the line")
+t.assertEqual(overview.refs.chartDetail, nil, "there is no subtitle taking space below the chart")
 -- "other" is a category too: its sector and legend row are its own, never
 -- the folded categories'.
 local mapped = {}

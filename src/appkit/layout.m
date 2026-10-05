@@ -426,6 +426,9 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 			CGFloat scale = view.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
 			CGFloat weight = view_flex_grow(children[i], YES);
 			CGFloat totalWeight = 0;
+			CGFloat reserved = 0;
+			for (NSUInteger next = order.count - left + 1; next < order.count; next++)
+				reserved += view_optional_dimension(children[order[next].unsignedIntegerValue], &kKeys[kMinWidthKey], 0);
 			if (weight > 0) for (NSUInteger next = order.count - left; next < order.count; next++)
 				totalWeight += view_flex_grow(children[order[next].unsignedIntegerValue], YES);
 			/* Fixed children keep the width of their title. Only flexible
@@ -433,7 +436,7 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 			 * a spacer still has room. */
 			CGFloat offer = weight > 0
 				? MAX(0, round((remaining * weight / totalWeight) * scale) / scale)
-				: remaining;
+				: MAX(0, remaining - reserved);
 			sizes[i] = measure_view(children[i], (LuaLayoutConstraint){
 				.width = offer, .widthMode = LuaMeasureAtMost,
 				.height = constraint.height, .heightMode = constraint.heightMode });
@@ -568,9 +571,19 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 	} break;
 	case LayoutAxisZStack: {
 		/* Content in units takes its size from the stack, not the reverse. */
-		BOOL units = view_fit_diameter(view) > 0;
+		CGFloat diameter = view_fit_diameter(view);
+		BOOL units = diameter > 0;
+		/* A scalable chart has an ideal square even in a scrolling stack,
+		 * which proposes no height. Constrain that square to the offered
+		 * space; bounded flexible containers can still grow the chart. */
+		if (units) {
+			CGFloat side = diameter;
+			if (constraint.widthMode != LuaMeasureUndefined) side = MIN(side, innerWidth);
+			if (constraint.heightMode != LuaMeasureUndefined) side = MIN(side, innerHeight);
+			natural = NSMakeSize(side, side);
+		}
 		for (NSView *child in view.subviews) {
-			if (is_hidden(child) || (units && !view_fills_stack(child))) continue;
+			if (is_hidden(child) || units) continue;
 			NSSize childSize = measure_view(child, (LuaLayoutConstraint){
 				.width = innerWidth,
 				.height = innerHeight,

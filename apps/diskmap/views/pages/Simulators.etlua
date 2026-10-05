@@ -1,5 +1,7 @@
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
+  <VStack padding="24" alignment="center">
+  <%- partial("../components/ReadableWidth.etlua") %>
+  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = page, summary = summary, summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Read simulator state and runtime information again"}, {id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
     <% if computing then %>
@@ -44,5 +46,6 @@
     </VStack>
     </Disclosure>
     <% end %>
+  </VStack>
   </VStack>
 </ScrollView>

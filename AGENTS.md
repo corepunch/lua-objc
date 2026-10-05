@@ -15,6 +15,8 @@ Read only the material needed for the current task:
 - [docs/agents/application-architecture.md](docs/agents/application-architecture.md) — how an app is
   built: what goes where, with examples; folder structure; sidebar and
   tab-bar shapes
+- [docs/agents/layout.md](docs/agents/layout.md) — page width (fill or
+  readable), chart sizing, chart colors, how to verify a layout
 - [src/README.md](src/README.md) — native bridge subsystem and symbol map
 - [docs/PROJECT_REFERENCE.md](docs/PROJECT_REFERENCE.md) — detailed API and
   implementation reference; consult the relevant heading, not the whole file

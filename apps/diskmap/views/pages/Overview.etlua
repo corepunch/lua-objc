@@ -1,5 +1,7 @@
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
+  <VStack padding="24" alignment="center">
+  <%- partial("../components/ReadableWidth.etlua") %>
+  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
     <VStack id="hero" spacing="0">
       <%- partial("../sections/Hero.etlua", hero) %>
     </VStack>
@@ -36,5 +38,6 @@
       <Label id="status" text="<%= status %>" size="11" color="secondary" flexGrow="1" flexBasis="0" flexShrink="1" lines="2" />
       <Button id="access" title="<%= accessTitle %>" hidden="<%= accessHidden %>" style="link" action="access" />
     </HStack>
+  </VStack>
   </VStack>
 </ScrollView>

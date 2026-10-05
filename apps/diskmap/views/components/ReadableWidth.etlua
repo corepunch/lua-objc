@@ -1,0 +1,7 @@
+<% --[[ A page of cards (Overview, File Types, Disks, the guides) is no wider
+  than this and centered in a wider window, as UIKit's readable content
+  guide and a grouped SwiftUI Form are: a label and its value stay within
+  one glance. Pages whose primary content is a table fill the window. ]] %>
+<Resources>
+  <Number id="readableWidth" value="960" />
+</Resources>

@@ -192,12 +192,10 @@ local heroActions = hero.actions
 local usedTotal, usedCaption = hero.refs.chartCenter.subviews[1].text, hero.refs.chartCenter.subviews[2].text
 t.assertEqual(hero.refs.chart.subviews[#hero.refs.chart.subviews].className, "LuaPointerView", "the overview ring takes the pointer")
 heroActions.chartHover("developer")
-t.expect(hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1, "a hovered sector names itself under the ring")
-t.expect(hero.refs.chartDetail.text:find("%d+%%$") ~= nil, "with its size and share")
+t.assertEqual(hero.refs.chartDetail, nil, "hover has no redundant subtitle below the ring")
 t.assertEqual(hero.refs.usedTotal.text, "Developer", "the hole names the hovered sector, as Apple's SectorMark sample does")
 t.expect(hero.refs.usedCaption.text ~= usedCaption and hero.refs.usedCaption.text:find("B$") ~= nil, "with its size")
 heroActions.chartHover(nil)
-t.assertEqual(hero.refs.chartDetail.text, "", "leaving it clears the line")
 t.assertEqual(hero.refs.usedTotal.text, usedTotal, "and returns the hole to the used total")
 t.assertEqual(hero.refs.usedCaption.text, usedCaption, "and its caption")
 heroActions.chartSelect("free")
@@ -230,19 +228,18 @@ hero = app.page
 local heroPointer = hero.refs.chart.subviews[#hero.refs.chart.subviews]
 t.expect(heroPointer.acceptsFirstResponder, "the overview ring takes keyboard focus")
 bridge._pointerSend(heroPointer, "key", "tab")
-t.expect(hero.refs.chartDetail.text ~= "", "a focused sector names itself under the ring")
 t.expect(hero.refs.usedTotal.text ~= usedTotal, "and in the hole")
 bridge._pointerSend(heroPointer, "key", "delete")
 t.assertEqual(app.destination, "overview", "delete stays on the overview")
 -- Tab starts at the largest sector: on the synthetic disk, free space.
-t.expect(hero.refs.chartDetail.text:find("Free · ", 1, true) == 1, "tab focuses the largest sector")
+t.expect(hero.refs.usedTotal.text == "Free", "tab focuses the largest sector")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "overview", "which has nothing inside to open")
 for _ = 1, 8 do
-	if hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1 then break end
+	if hero.refs.usedTotal.text == "Developer" then break end
 	bridge._pointerSend(heroPointer, "key", "right")
 end
-t.expect(hero.refs.chartDetail.text:find("Developer · ", 1, true) == 1, "arrows reach the categories")
+t.expect(hero.refs.usedTotal.text == "Developer", "arrows reach the categories")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "map", "return opens the Map inside the focused category")
 t.assertEqual(app.env:page("map").focusId, "developer", "focused on it")

@@ -6,7 +6,9 @@
   -- inscribed in the hole and it shrinks to fit on one line, like the Hero.
 %>
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
+  <VStack padding="24" alignment="center">
+  <%- partial("../components/ReadableWidth.etlua") %>
+  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = page, summary = summary}) %>
     <% if waiting then %>
     <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
@@ -50,5 +52,6 @@
     <%- partial("../components/Footnote.etlua", {text = "Totals cover every measured location, including files inside app bundles and libraries. Excluded media libraries are not counted."}) %>
     <% end %>
     <% end %>
+  </VStack>
   </VStack>
 </ScrollView>

@@ -2,6 +2,7 @@ local Model = require("data.model")
 local Locations = require("apps.diskmap.models.Locations")
 local Scans = require("apps.diskmap.models.Scans")
 local Format = require("apps.diskmap.helpers.Format")
+local Palette = require("apps.diskmap.helpers.Palette")
 
 -- Categories: the catalog's tree of locations with each group's measurement
 -- rolled up from its children, the rows every list, chart and map of
@@ -16,6 +17,22 @@ local function projection(source)
 		action = source.action, consequence = source.consequence, settingsSection = source.settingsSection,
 		reviewThreshold = source.reviewThreshold, agent = source.agent, icon = source.icon, color = source.color, appIcon = source.appIcon, fileIcon = source.fileIcon}
 end
+-- The ring color of each of `rows` (id -> color), claimed largest first so
+-- the biggest sectors keep their catalog color and no two sectors of one
+-- ring share a hue. The Overview's ring, legend and category rows and the
+-- Map's inner ring all ask for it, so a category is one color on a page.
+function Categories:hues(rows)
+	local sorted = {}
+	for _, row in ipairs(rows) do table.insert(sorted, row) end
+	table.sort(sorted, function(a, b)
+		if (a.bytes or -1) ~= (b.bytes or -1) then return (a.bytes or -1) > (b.bytes or -1) end
+		return a.id < b.id
+	end)
+	local palette, hues = Palette.new(), {}
+	for _, row in ipairs(sorted) do hues[row.id] = palette:take(row.color) end
+	return hues
+end
+
 function Categories:rows(rootId, query)
 	local model = Model.db
 	local needle = (query or ""):lower()
@@ -109,11 +126,12 @@ function Categories:distribution(disk)
 	local measured = Scans:measured()
 	if measured > total - free then return {}, "Measured allocation exceeds reported usage; shared storage needs reconciliation." end
 	local categories = Categories:rows()
+	local hues = Categories:hues(categories)
 	local segments, assigned = {}, 0
 	for _, row in ipairs(categories) do
 		local id = row.id
 		local bytes = row.bytes or 0; assigned = assigned + bytes
-		table.insert(segments, {id = id, name = row.name, color = id == "macos" and "secondary" or row.color,
+		table.insert(segments, {id = id, name = row.name, color = id == "macos" and "secondary" or hues[id],
 			bytes = bytes, weight = bytes / total, size = row.size})
 	end
 	table.sort(segments, function(left, right)
@@ -147,10 +165,11 @@ function Categories:managementRows(rootId, query, filter)
 	return result
 end
 
--- The donut draws at most this many named categories; smaller measured
+-- The donut draws at most this many named categories, each in its own hue
+-- (Categories:hues), so most of the used space is in color; smaller measured
 -- categories share one "Other categories" sector so thin slivers stay legible,
 -- and the legend beside it stays one short column.
-local CHART = {categories = 5}
+local CHART = {categories = 7}
 
 local percent = Format.percent
 
@@ -197,14 +216,9 @@ function Categories:chart(disk)
 	if free and free.bytes > 0 then
 		table.insert(marks, {id = "free", value = free.bytes, color = "quaternaryLabel", label = "Free"})
 	end
-	-- `detail` is the line under the ring for the sector under the pointer,
-	-- as the Map names its hovered node. Used space is shared out of what is
-	-- used, like the legend; free space out of the whole disk.
 	local summary = {}
 	for _, mark in ipairs(marks) do
 		mark.size = Format.size(mark.value)
-		mark.detail = mark.label .. " · " .. mark.size .. " · "
-			.. (mark.id == "free" and (percent(mark.value, total) .. " of disk") or percent(mark.value, used))
 		table.insert(summary, mark.label .. " " .. mark.size)
 	end
 	return {marks = marks, legend = legend, explanation = explanation,
@@ -217,10 +231,12 @@ end
 -- readable next to a dominant one.
 function Categories:shares(disk, query)
 	local rows = Categories:rows(nil, query)
+	local hues = Categories:hues(Categories:rows())
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	local largest, order = 0, {}
 	for index, row in ipairs(rows) do
 		row.children = nil
+		row.color = hues[row.id]
 		order[row] = index
 		largest = math.max(largest, row.bytes or 0)
 	end
@@ -319,6 +335,7 @@ function Categories:mapNodes(focus, depth)
 	local total = 0
 	for _, row in ipairs(top) do if measured(row) then total = total + row.bytes end end
 	local nodes = {}
+	local hues = Categories:hues(top)
 	local function visit(rows, parent, ring, color)
 		local other, otherBytes, shown = 0, 0, 0
 		for _, row in ipairs(rows) do
@@ -329,7 +346,7 @@ function Categories:mapNodes(focus, depth)
 					shown = shown + 1
 					local resource = Locations:find(row.id)
 					local leaf = resource and resource:isLeaf()
-					local rowColor = ring == 1 and (row.color or "systemGray") or color
+					local rowColor = ring == 1 and (hues[row.id] or "systemGray") or color
 					table.insert(nodes, {id = row.id, parent = parent, value = row.bytes, color = rowColor,
 						label = row.name, detail = row.size, ring = ring, leaf = leaf,
 						hatched = leaf and resource.policy == "Rebuildable" or false})
