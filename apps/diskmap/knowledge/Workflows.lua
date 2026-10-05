@@ -26,6 +26,18 @@ local Workflows = {}
 Workflows.visibleBytes = 500e6
 
 Workflows.list = {
+	{id = "everyday",
+		noun = "app storage", summary = "across messaging, cloud sync, offline downloads and Office",
+		empty = "WhatsApp, Telegram, Dropbox, Google Drive, Spotify downloads and Office data appear here once measured.",
+		footnote = "Chat media and recordings may be the only copy you have. Diskmap never removes them; each row says where its app lets you review it.",
+		markers = {"/Applications/WhatsApp.app", "/Applications/Telegram.app", "/Applications/Signal.app", "/Applications/WeChat.app",
+			"/Applications/Spotify.app", "/Applications/Dropbox.app", "/Applications/Google Drive.app", "/Applications/Microsoft Outlook.app"},
+		sections = {
+			{id = "messaging", title = "Messaging & calls", detail = "Photos and videos people sent you pile up in each chat app. Review them in the app's storage settings.", groups = {"messaging"}},
+			{id = "cloud", title = "Cloud sync", detail = "Only downloaded files take space. Remove Download in the Finder keeps a file in the cloud and frees it here.", groups = {"cloud-sync"}},
+			{id = "offline", title = "Offline media", detail = "Downloads for offline listening, watching and reading. Finished ones download again when you want them.", groups = {"offline-media"}},
+			{id = "office", title = "Office & browser", detail = "Local mail copies, shared Office data and browser profiles, with the AI model Chrome downloads on its own.", groups = {"office", "browser-data"}},
+		}},
 	{id = "developer",
 		noun = "developer storage", summary = "across Xcode, packages, containers and AI tools",
 		empty = "Xcode, package managers, containers and AI tools appear here once measured.",
@@ -61,7 +73,7 @@ Workflows.list = {
 	{id = "photography",
 		noun = "photography storage", summary = "across catalogs, previews and raw caches",
 		empty = "Lightroom, Capture One and Camera Raw data appear here once measured.",
-		footnote = "Previews and raw caches are rebuilt from your photos. Catalogs and sessions are your work: Diskmap never removes them. The Photos library is measured under Photos.",
+		footnote = "Previews and raw caches are rebuilt from your photos. Catalogs and sessions are your work: Diskmap never removes them. The Photos library is measured under Photos, once media libraries are included.",
 		markers = {"/Applications/Adobe Lightroom Classic", "~/Pictures/Lightroom", "~/Pictures/Capture One"},
 		sections = {
 			{id = "catalogs", title = "Catalogs, previews & caches", detail = "Previews and the Camera Raw cache can be rebuilt; catalog backups accumulate until you remove old ones.", groups = {"photography"}},
@@ -87,9 +99,9 @@ Workflows.list = {
 		}},
 	{id = "games",
 		noun = "game storage", summary = "across installed games and launchers",
-		empty = "Steam, Epic Games, GOG, Minecraft and Windows game bottles appear here once measured.",
+		empty = "Steam, Epic Games, GOG, Minecraft, Roblox, emulators and Windows game bottles appear here once measured.",
 		footnote = "Games download again from their store. Uninstall them from the launcher that installed them, which keeps saves and its library consistent.",
-		markers = {"/Applications/Steam.app", "/Applications/Epic Games Launcher.app", "/Applications/Heroic.app"},
+		markers = {"/Applications/Steam.app", "/Applications/Epic Games Launcher.app", "/Applications/Heroic.app", "/Applications/Roblox.app", "/Applications/OpenEmu.app"},
 		sections = {
 			{id = "installed", title = "Installed games & launchers", detail = "The largest games come first. Saved games kept only on this Mac are lost when a game's folder is removed by hand.", groups = {"games"}, items = {"epic-games"}},
 		}},

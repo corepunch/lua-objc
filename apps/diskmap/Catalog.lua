@@ -15,6 +15,7 @@ local providers = {
 	(require("apps.diskmap.catalog.MusicCreation")),
 	(require("apps.diskmap.catalog.Creative")),
 	(require("apps.diskmap.catalog.Games")),
+	(require("apps.diskmap.catalog.Everyday")),
 	(require("apps.diskmap.catalog.Photos")),
 	Apple.podcasts,
 	Apple.tv,
@@ -34,7 +35,11 @@ function Catalog.tree(home)
 		docker = "com.docker.docker", mail = "com.apple.mail", ["mail-library"] = "com.apple.mail",
 		messages = "com.apple.MobileSMS", ["messages-library"] = "com.apple.MobileSMS",
 		books = "com.apple.iBooksX", ["music-library"] = "com.apple.Music",
-		photos = "com.apple.Photos", podcasts = "com.apple.podcasts", tv = "com.apple.TV",
+		photos = "com.apple.Photos", ["photos-library"] = "com.apple.Photos",
+		whatsapp = "net.whatsapp.WhatsApp", telegram = "ru.keepcoder.Telegram", signal = "org.whispersystems.signal-desktop",
+		wechat = "com.tencent.xinWeChat", ["spotify-downloads"] = "com.spotify.client", ["prime-video"] = "com.amazon.aiv.AIVApp",
+		kindle = "com.amazon.Lassen", ["voice-memos"] = "com.apple.VoiceMemos", outlook = "com.microsoft.Outlook",
+		["chrome-profiles"] = "com.google.Chrome", podcasts = "com.apple.podcasts", tv = "com.apple.TV",
 	}
 	local function resolve(rows)
 		for _, row in ipairs(rows) do

@@ -22,5 +22,11 @@ return function()
 		item("heroic", "Heroic Games Launcher", "Launcher data, Wine versions and prefixes", "~/Library/Application Support/heroic",
 			{reviewThreshold = 5e9, consequence = "Remove unused Wine versions and games from Heroic's settings and library."}),
 		item("heroic-games", "Heroic games", "Games Heroic installed at its default location", "~/Games/Heroic", store("Heroic's library")),
+		item("prism-launcher", "Prism Launcher", "Minecraft instances with their worlds, mods and game versions", "~/Library/Application Support/PrismLauncher",
+			{reviewThreshold = 5e9, consequence = "Each instance holds its own worlds and mods. Delete instances you no longer play in Prism Launcher; game versions download again."}),
+		item("roblox", "Roblox", "The Roblox player, Studio and their downloads", "~/Library/Roblox",
+			{reviewThreshold = 2e9, consequence = "Roblox downloads what it needs again. Experiences are saved online, not here."}),
+		item("openemu", "OpenEmu", "Your game library, save states and screenshots", "~/Library/Application Support/OpenEmu",
+			{reviewThreshold = 5e9, consequence = "Remove games in OpenEmu's library. Save states exist only here unless you back them up."}),
 	})
 end
