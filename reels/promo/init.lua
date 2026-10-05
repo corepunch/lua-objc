@@ -120,9 +120,9 @@ local function load(template)
 	}
 	data.environment = Stage.environment(Reel.native(), Reel.Pen)
 	data.C = C
-	-- Green Meadow, played by a scripted pad: up and left across the hub's
-	-- mounds to a coin, then on up to the next.
-	local script = { { 1.25, "left", 0.42 }, { 1.25, "up", 0.42 }, { 1.8, "up", 0.42 }, { 1.8, "left", 0.12 } }
+	-- Green Meadow, played by a scripted pad: walk up the opening ramp
+	-- and follow the first two coins onto the broad hub.
+	local script = { { 1.25, "up", 0.7 } }
 	data.quest = CoinQuest.new({ level = 1, script = script, duration = C.SHOT.hero - C.QUEST.start + 0.5 })
 	data.questStates = function(t)
 		local states = data.quest:poses(t - C.QUEST.start)

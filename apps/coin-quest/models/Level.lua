@@ -2,7 +2,7 @@
 -- blocks, the props on them, and where everything starts.
 --
 -- Blocks are placed in the order written: `{kind, x, z}` centred on x, z,
--- with optional `yaw` (degrees, any angle), `h` (stretched to that height) and
+-- with optional `yaw` (degrees, any angle), `w`, `d`, `h` (world dimensions) and
 -- `y`. `facing` turns where the camera starts, in degrees round the hero
 -- (0 looks from +z). A block without `y` sits on whatever is already under its centre, or
 -- on the sea floor, so a level is built the way the kit's sample scene is:
@@ -50,12 +50,15 @@ function Level.parse(def)
 		-- `h` stretches the piece to another height, so a column is one
 		-- piece with one grass top rather than a stack of them.
 		local height = block.h or size.h
-		local shaped = setmetatable({h = height, low = size.low and size.low * height / size.h}, {__index = size})
+		local width, depth = block.w or size.w, block.d or size.d
+		if width <= 0 or depth <= 0 or height <= 0 then fail("block " .. index .. " needs positive dimensions") end
+		local shaped = setmetatable({w = width, d = depth, h = height,
+			low = size.low and size.low * height / size.h}, {__index = size})
 		local solid = Terrain.solid(x, y, z, shaped, block.yaw)
 		table.insert(self.solids, solid)
 		table.insert(perches, solid)
 		table.insert(self.blocks, {kind = block[1], x = x, y = y, z = z, yaw = block.yaw or 0,
-			stretch = height / size.h, solid = solid})
+			scaleX = width / size.w, scaleZ = depth / size.d, stretch = height / size.h, solid = solid})
 	end
 	if #self.blocks == 0 then fail("no blocks") end
 	-- A block with another standing on its top is buried: it shows the

@@ -3,10 +3,17 @@
 A small 3-D platformer on SceneKit, written as an ordinary lua-objc app, in
 the spirit of Mario 64 and Kenney's own
 [3D platformer starter kit](https://github.com/KenneyNL/Starter-Kit-3D-Platformer).
-Ten little worlds of floating islands built from Kenney's
-[Platformer Kit](https://kenney.nl/assets/platformer-kit): run and jump
-across them, take every coin, then reach the flag that rises once the last
-coin is gone. Three stars hide in each world.
+Ten little worlds of raised terrain built from Kenney's
+[Platformer Kit](https://kenney.nl/assets/platformer-kit): run and jump,
+take every coin, then reach the flag that rises once the last coin is gone.
+Continuous grass or snow beneath each course catches missed jumps. Walk
+back to a low ledge, ramp, spring or lift to try again. The ocean beyond
+the outer coastline still costs a life, as do saws and raised spikes.
+Three stars hide in each world.
+
+See [Level design direction](LEVEL_DESIGN.md) for the gameplay and visual
+references, the populated areas in all ten worlds, and terrain, ramp and
+object-placement rules for future work.
 
 ```sh
 make run ARGS="apps/coin-quest"
@@ -37,7 +44,7 @@ make ios-run PROJECT=apps/coin-quest
 
 | | World | What it teaches |
 |---|---|---|
-| 1 | Green Meadow | running, jumping, a plank bridge, stepping stones, an arch |
+| 1 | Green Meadow | a safe ramp and broad hub; orchard, lookout and terraced summit; optional stars |
 | 2 | Spring Cliffs | springs throw you onto the cliffs; bridges join their tops |
 | 3 | Saw Ridge | saws sweep a ridge climbing north |
 | 4 | Plank Bay | loose planks fall a moment after you land; spikes |
@@ -45,8 +52,30 @@ make ios-run PROJECT=apps/coin-quest
 | 6 | Locked Keep | a gate in a walled corridor; the key is up a spring |
 | 7 | Frost Slopes | snow; slopes and wooden ramps; small hexagon stones |
 | 8 | Glacier Lifts | lifts up the glacier, saws on top |
-| 9 | Avalanche Loop | everything, round a frozen lake, with checkpoints |
+| 9 | Avalanche Loop | combined mechanics around a snowfield, with checkpoints |
 | 10 | Flagspire | a spiral of stones up the spire |
+
+The opening meadow applies two ideas from the
+[1996 Mario 64 developer interviews](https://shmuplations.com/mario64/):
+make movement enjoyable to explore, and give 3-D jumps generous landing
+areas. A coin trail leads up the first ramp before splitting towards three
+landmarks. The summit door is visible before the flag is earned. Low
+approaches rejoin the raised routes after a fall, and the summit's checkpoint
+marks progress. Later courses introduce their individual mechanics over
+the same safe ground. Locked Keep encloses its courtyard so the new ground
+does not create a walk around the key-and-gate challenge.
+
+Every world has broad ramps from the recovery ground and individually
+placed scenery: orchard trees in the meadow, a timber yard by the saws,
+cargo at ferry stops, a garden inside the keep, and supply camps among snow
+groves. Trees and crates sit beside approaches rather than in their landing
+lanes. Headless tests walk every broad ramp with the real hero and verify
+that scenery remains on land.
+
+The ground uses the kit's existing grass/snow model and its palette texture,
+matching the rounded terrain, plants, bridges and props in Kenney's sample
+scene. It is one static mesh and collision solid per course, with no extra
+animation or terrain renderer.
 
 ## Layers
 
@@ -80,6 +109,7 @@ placed where they stand, turned to any angle, overlapping, stacked.
 
 ```lua
 blocks = {
+	{"large", 0, 0, w = 32, d = 28, h = 0.8, y = -0.8}, -- solid lawn, top at zero
 	{"large", 0, 4, yaw = 15, h = 0.75},       -- a grass block, turned, squashed to 0.75 high
 	{"tall", 8.2, 2.4, yaw = -18, h = 2},      -- a tall one, stretched to 2
 	{"arch", -0.6, -0.4, yaw = 82, h = 1.2},   -- an arch over the water
@@ -99,6 +129,10 @@ another stands on shows the kit's plain model; a top block shows the
 overhang model, its grass or snow draping over the edge. Every prop that
 can be bumped or stood on has a collision box in `catalog/Props.lua`, so a
 bridge is wooden planks you walk on and a fence is a rail you cannot.
+`w`, `d` and `h` size both the model and its collision solid, before `yaw`
+turns them. Use explicit `y` for adjacent terraces so widening one does not
+accidentally stack the next. Place the recovery ground first, with its top
+at zero; include a landing margin beyond the course and both ends of lifts.
 
 Designing a world never touches code. `models/Reach.lua` checks each one:
 a graph of the surfaces the hero can stand on, joined where a jump carries

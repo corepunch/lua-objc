@@ -11,13 +11,13 @@ is the reference game.
 | Piece | Where |
 |---|---|
 | Native view, reconciliation, poses, frame and key hooks | `src/shared/scene_view.m` (`LuaSceneView`) |
-| Tuning constants (lens, lights, shadows, transitions) | `kScene*` in `src/main.m` |
+| Tuning constants (lens, lights, shadows, transitions) | `kScene*` in `src/main.m` and `src/uikit/bridge.m` |
 | Lua constructor and `sceneGraph` | `AppKit.SceneView`, `AppKit.sceneGraph` in `lua/embedded/AppKit.lua` |
 | XML tags | `SceneView`, `Node`, `Camera`, `Light` in `lua/ui/xml.lua` |
 | Tests | `tests/scene_view.test.lua`, `tests/coin_quest.test.lua` |
 | Reference game | `apps/coin-quest/` and its `README.md` |
 
-`SceneView` is AppKit only; UIKit has no counterpart yet.
+`SceneView` uses the shared SceneKit implementation on AppKit and UIKit.
 
 ## The tag
 
@@ -45,7 +45,7 @@ proposal. It takes the keyboard when it appears.
 | `SceneView` | `background` (semantic name or `#rrggbb`), `onKey`, `onFrame`, `onSwipe`, `onTap`, `virtualGamepad`, `showsStatistics`, plus layout attributes |
 | `Node` | `id`, `model` or `geometry`, `width`, `height`, `length`, `radius`, `chamfer`, `color`, `position`, `rotation`, `scale`, `hidden`, `opacity`, `castsShadow`, `spin`, `bob`, `bobPeriod`, `transition`, `lookAt` |
 | `Camera` | `id`, `position`, `rotation`, `lookAt`, `fieldOfView`, `fieldOfViewAxis`, `zNear`, `zFar`, `orthographicScale` |
-| `Light` | `id`, `type`, `position`, `rotation`, `lookAt`, `intensity`, `color`, `castsShadow`, `shadowRadius`, `shadowOpacity` |
+| `Light` | `id`, `type`, `position`, `rotation`, `lookAt`, `intensity`, `color`, `castsShadow`, `shadowRadius`, `shadowOpacity`, `shadowMapSize`, `shadowSampleCount`, `shadowBias`, `automaticallyAdjustsShadowProjection`, `orthographicScale`, `zNear`, `zFar` |
 
 - **Units.** Positions and sizes are scene units; `rotation` is `"x y z"` in
   degrees; `position` and `scale` take `"x y z"` or one number for all three.
@@ -68,7 +68,19 @@ proposal. It takes the keyboard when it appears.
   vertical by default; `fieldOfViewAxis="horizontal"` keeps the scene's
   width framed however the view is shaped.
 - **Lights.** `type` is `directional` (default), `ambient`, `omni` or
-  `spot`. Only lights with `castsShadow="true"` cast shadows.
+  `spot`. Directional and spot lights support `castsShadow="true"`.
+  Shadows use SceneKit's forward shadow maps. `shadowMapSize` is the square
+  map's pixel size (default 2048; 0 lets SceneKit choose). `shadowRadius`
+  (default 4) and `shadowSampleCount` (default 16; 0 lets SceneKit choose)
+  control filtering; a small radius keeps silhouettes crisp. `shadowOpacity`
+  defaults to 0.35 and `shadowBias` to 1.
+  For bounded terrain, set `automaticallyAdjustsShadowProjection="false"`,
+  place the light above the level, aim it with `lookAt`, and set the
+  directional light's `orthographicScale` to cover the terrain. `zNear` and
+  `zFar` are distances from the light, defaulting to 1 and 100. Automatic
+  projection is the default; removing these attributes restores defaults
+  on a retained light. This is native SceneKit rendering, with no separate
+  shadow geometry or application update loop.
 - **Aiming.** `lookAt` turns a node (a camera, usually) to face a point and
   keeps it upright, whatever it was turned to before.
 
@@ -213,7 +225,10 @@ t.expect(nodes["coin-1"] == nil, "a taken coin leaves the scene")
 `bridge._sceneNodes(view)` returns every identified node keyed by id, with
 its `kind`, `parent`, `x`/`y`/`z`, `yaw`, `scale`, `opacity`, `hidden`,
 `parts` (content pieces), `spinning`, `bobbing`, `camera` (the point of
-view) and `light` (its type). Transitions are SceneKit actions that only
+view) and `light` (its type). Lights also expose their native `castsShadow`,
+`shadowRadius`, `shadowSampleCount`, `shadowMapSize`, `shadowBias`,
+`automaticallyAdjustsShadowProjection`, `orthographicScale`, `zNear` and
+`zFar` for regression checks. Transitions are SceneKit actions that only
 advance while the scene renders, so headless tests see a node's starting
 state (an inserted `pop` node at scale 0) and never a finished animation.
 Capture visual states with `--capture-plan`; see `AGENTS.md`.

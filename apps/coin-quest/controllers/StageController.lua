@@ -24,8 +24,25 @@ local BIOMES = {
 	snow = {sky = "#cfe0ee", sea = "#3a6f9e"},
 }
 
--- The sea's surface, just over the sea floor the lowest blocks stand on.
-local SEA = {level = 0.15}
+-- Water surrounds the land; the recovery lawn at y=0 stays visibly dry.
+local SEA = {level = -0.45}
+
+-- One sun and one fixed shadow map per level. The broad recovery ground
+-- encloses the course; fitting its diagonal leaves room for tree shadows
+-- and keeps the map stable as the camera follows the hero.
+local SUN = {x = -24, y = 36, z = 20, margin = 6}
+
+local function sunlight(scene)
+	local ground = scene.blocks[1]
+	local size = Blocks[ground.kind]
+	local halfWidth = size.w * ground.scaleX / 2
+	local halfDepth = size.d * ground.scaleZ / 2
+	return {
+		position = string.format("%.3f %.3f %.3f", ground.x + SUN.x, SUN.y, ground.z + SUN.z),
+		lookAt = string.format("%.3f 0 %.3f", ground.x, ground.z),
+		orthographicScale = math.sqrt(halfWidth * halfWidth + halfDepth * halfDepth) + SUN.margin,
+	}
+end
 
 local StageController = {}
 StageController.__index = StageController
@@ -83,7 +100,8 @@ function StageController.viewData(scene)
 	local blocks, props = {}, {}
 	for _, block in ipairs(scene.blocks) do
 		table.insert(blocks, {model = StageController.blockModel(block, biome),
-			x = block.x, y = block.y + (block.lift or 0), z = block.z, yaw = block.yaw, stretch = block.stretch})
+			x = block.x, y = block.y + (block.lift or 0), z = block.z, yaw = block.yaw,
+			scaleX = block.scaleX, scaleZ = block.scaleZ, stretch = block.stretch})
 	end
 	for _, prop in ipairs(scene.props) do
 		local model = StageController.propModel(prop.kind, biome)
@@ -99,6 +117,7 @@ function StageController.viewData(scene)
 		sea = BIOMES[biome].sea,
 		seaLevel = SEA.level,
 		camera = StageController.camera(scene.view),
+		sun = sunlight(scene),
 		blocks = blocks,
 		props = props,
 		start = {x = scene.start.x, y = scene.start.y, z = scene.start.z},

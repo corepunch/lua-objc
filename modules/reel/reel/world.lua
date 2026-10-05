@@ -55,20 +55,20 @@ local ATTRIBUTES = {
 	Camera = { "fieldOfView", "fieldOfViewAxis", "zNear", "zFar", "focusDistance", "fStop", "bloom", "bloomThreshold",
 		"exposure", "vignetting", "hdr" },
 	Light = { "type", "intensity", "color", "temperature", "castsShadow", "shadowRadius", "shadowOpacity",
-		"shadowMapSize", "shadowScale", "shadowSamples", "spotInner", "spotOuter" },
+		"shadowMapSize", "orthographicScale", "shadowSampleCount", "shadowBias", "automaticallyAdjustsShadowProjection", "zNear", "zFar", "spotInner", "spotOuter" },
 }
 local VECTORS = { position = true, rotation = true, scale = true, lookAt = true, spin = true }
 local COLORS = { color = true, emission = true }
 local STRINGS = { id = true, model = true, geometry = true, lighting = true, blend = true, transition = true,
 	fieldOfViewAxis = true, type = true, imageSlot = true }
-local BOOLEANS = { hidden = true, castsShadow = true, doubleSided = true, writesDepth = true, readsDepth = true, hdr = true }
+local BOOLEANS = { automaticallyAdjustsShadowProjection = true, hidden = true, castsShadow = true, doubleSided = true, writesDepth = true, readsDepth = true, hdr = true }
 local GEOMETRY = { "width", "height", "length", "radius", "chamfer", "cornerRadius", "pipe", "reflectivity", "reflectionFalloff" }
 local MATERIAL = { "color", "emission", "metalness", "roughness", "clearcoat", "clearcoatRoughness", "lighting",
 	"doubleSided", "transparency", "order", "writesDepth", "readsDepth", "blend" }
 local LENS = { "fieldOfView", "fieldOfViewAxis", "zNear", "zFar", "focusDistance", "fStop", "bloom", "bloomThreshold",
 	"exposure", "vignetting", "hdr" }
 local LIGHT = { "type", "intensity", "color", "temperature", "castsShadow", "shadowRadius", "shadowOpacity",
-	"shadowMapSize", "shadowScale", "shadowSamples", "spotInner", "spotOuter" }
+	"shadowMapSize", "orthographicScale", "shadowSampleCount", "shadowBias", "automaticallyAdjustsShadowProjection", "zNear", "zFar", "spotInner", "spotOuter" }
 -- Root attributes the live view uses that have no meaning offline.
 local APP_ONLY = { onKey = true, onFrame = true, showsStatistics = true }
 

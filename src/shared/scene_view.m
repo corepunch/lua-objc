@@ -328,8 +328,16 @@ static float scene_ease_out_back(float t) {
 		if (light.castsShadow) {
 			light.shadowMode = SCNShadowModeForward;
 			light.shadowRadius = scene_number(spec, @"shadowRadius", kSceneShadowRadius);
-			light.shadowSampleCount = kSceneShadowSamples;
-			light.shadowMapSize = CGSizeMake(kSceneShadowMapSize, kSceneShadowMapSize);
+			light.shadowSampleCount = MAX(0, scene_number(spec, @"shadowSampleCount", kSceneShadowSamples));
+			CGFloat mapSize = MAX(0, scene_number(spec, @"shadowMapSize", kSceneShadowMapSize));
+			light.shadowMapSize = CGSizeMake(mapSize, mapSize);
+			light.shadowBias = scene_number(spec, @"shadowBias", kSceneShadowBias);
+			/* A bounded level can fit one stable map to its terrain instead of
+			 * fitting the moving camera and an unbounded floor every frame. */
+			light.automaticallyAdjustsShadowProjection = scene_bool(spec, @"automaticallyAdjustsShadowProjection", YES);
+			light.orthographicScale = scene_number(spec, @"orthographicScale", kSceneShadowScale);
+			light.zNear = scene_number(spec, @"zNear", kSceneShadowNearPlane);
+			light.zFar = scene_number(spec, @"zFar", kSceneShadowFarPlane);
 			light.shadowColor = [SceneColor colorWithWhite:0 alpha:scene_number(spec, @"shadowOpacity", kSceneShadowOpacity)];
 		}
 	}
@@ -838,7 +846,19 @@ static int bridge_scene_nodes(lua_State *L) {
 		lua_pushboolean(L, [entry.content actionForKey:@"spin"] != nil); lua_setfield(L, -2, "spinning");
 		lua_pushboolean(L, [entry.content actionForKey:@"bob"] != nil); lua_setfield(L, -2, "bobbing");
 		lua_pushboolean(L, view.pointOfView == node); lua_setfield(L, -2, "camera");
-		if (node.light) { lua_pushstring(L, node.light.type.UTF8String); lua_setfield(L, -2, "light"); }
+		if (node.light) {
+			SCNLight *light = node.light;
+			lua_pushstring(L, light.type.UTF8String); lua_setfield(L, -2, "light");
+			lua_pushboolean(L, light.castsShadow); lua_setfield(L, -2, "castsShadow");
+			lua_pushnumber(L, light.shadowRadius); lua_setfield(L, -2, "shadowRadius");
+			lua_pushinteger(L, light.shadowSampleCount); lua_setfield(L, -2, "shadowSampleCount");
+			lua_pushnumber(L, light.shadowMapSize.width); lua_setfield(L, -2, "shadowMapSize");
+			lua_pushnumber(L, light.shadowBias); lua_setfield(L, -2, "shadowBias");
+			lua_pushboolean(L, light.automaticallyAdjustsShadowProjection); lua_setfield(L, -2, "automaticallyAdjustsShadowProjection");
+			lua_pushnumber(L, light.orthographicScale); lua_setfield(L, -2, "orthographicScale");
+			lua_pushnumber(L, light.zNear); lua_setfield(L, -2, "zNear");
+			lua_pushnumber(L, light.zFar); lua_setfield(L, -2, "zFar");
+		}
 		lua_setfield(L, -2, entry.key.UTF8String);
 	}
 	return 1;

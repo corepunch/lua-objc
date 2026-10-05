@@ -823,7 +823,9 @@ local TAG_SCHEMA = {
     Light = {
         kind = "record", children = "items",
         props = { id = "str", type = "str", position = "str", rotation = "str", lookAt = "str", intensity = "num",
-            color = "str", castsShadow = "bool", shadowRadius = "num", shadowOpacity = "num" },
+            color = "str", castsShadow = "bool", shadowRadius = "num", shadowOpacity = "num",
+            shadowMapSize = "num", shadowSampleCount = "num", shadowBias = "num",
+            automaticallyAdjustsShadowProjection = "bool", orthographicScale = "num", zNear = "num", zFar = "num" },
         transform = function(rec) rec.sceneKind = "light" end,
     },
     -- Squarified treemap; nested nodes name their `parent`.

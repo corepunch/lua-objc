@@ -397,8 +397,8 @@ static int reel_scene_camera(lua_State *L) {
 }
 
 /* light(handle, {type, intensity, color, temperature, castsShadow,
- * shadowRadius, shadowOpacity, shadowMapSize, shadowScale, spotInner,
- * spotOuter}): `type` is directional (default), ambient, omni or spot. */
+ * shadowRadius, shadowOpacity, shadowMapSize, orthographicScale, shadowSampleCount,
+ * shadowBias, automaticallyAdjustsShadowProjection, zNear, zFar, spotInner, spotOuter}): `type` is directional (default), ambient, omni or spot. */
 static int reel_scene_light(lua_State *L) {
 	ReelSceneState *state = reel_check_scene(L, 1);
 	SCNNode *node = state.nodes[reel_scene_handle(L, state, 2)];
@@ -416,17 +416,17 @@ static int reel_scene_light(lua_State *L) {
 	light.spotOuterAngle = reel_field(L, 3, "spotOuter", 45);
 	light.castsShadow = reel_field_bool(L, 3, "castsShadow", NO);
 	if (light.castsShadow) {
-		double size = reel_field(L, 3, "shadowMapSize", 2048);
+		double size = MAX(0, reel_field(L, 3, "shadowMapSize", 2048));
 		light.shadowMode = SCNShadowModeForward;
 		light.shadowRadius = reel_field(L, 3, "shadowRadius", 4);
-		light.shadowSampleCount = (NSUInteger)reel_field(L, 3, "shadowSamples", 16);
+		light.shadowSampleCount = (NSUInteger)MAX(0, reel_field(L, 3, "shadowSampleCount", 16));
 		light.shadowMapSize = CGSizeMake(size, size);
 		light.shadowColor = [NSColor colorWithWhite:0 alpha:reel_field(L, 3, "shadowOpacity", 0.35)];
-		double scale = reel_field(L, 3, "shadowScale", 0);
-		if (scale > 0) {
-			light.orthographicScale = scale;
-			light.automaticallyAdjustsShadowProjection = NO;
-		}
+		light.shadowBias = reel_field(L, 3, "shadowBias", 1);
+		light.orthographicScale = reel_field(L, 3, "orthographicScale", 1);
+		light.automaticallyAdjustsShadowProjection = reel_field_bool(L, 3, "automaticallyAdjustsShadowProjection", YES);
+		light.zNear = reel_field(L, 3, "zNear", 1);
+		light.zFar = reel_field(L, 3, "zFar", 100);
 	}
 	return 0;
 }

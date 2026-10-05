@@ -99,6 +99,26 @@ local function frame(r, time)
 	return canvas
 end
 
+-- The game and its promo consume the same native shadow vocabulary.
+-- Compare actual projected shadows, not just successful XML parsing.
+local shadows = reel([[
+<SceneView>
+	<Camera id="camera" position="0 6 7" lookAt="0 0 0" fieldOfView="50" />
+	<Light type="ambient" intensity="200" />
+	<Light type="directional" position="-4 6 4" lookAt="0 0 0" intensity="1000"
+	       castsShadow="t &lt; 1" shadowMapSize="1024" shadowRadius="0" shadowSampleCount="1"
+	       shadowBias="1" shadowOpacity="0.8" automaticallyAdjustsShadowProjection="false"
+	       orthographicScale="5" zNear="1" zFar="20" />
+	<Node geometry="box" width="1" height="1" length="1" position="0 0.5 0" color="#ffffff" lighting="lambert" />
+	<Node geometry="floor" color="#ffffff" lighting="lambert" castsShadow="false" />
+</SceneView>]])
+local withShadow, withoutShadow = frame(shadows, 0), frame(shadows, 2)
+local darker = 0
+for y = 0, 47 do for x = 0, 63 do
+	if withoutShadow:pixel(x, y) - withShadow:pixel(x, y) > 0.1 then darker = darker + 1 end
+end end
+t.expect(darker > 5, "native fixed shadow maps darken the floor beneath a caster in an offline reel")
+
 local lens = '<Camera position="0 0 4" lookAt="0 0 0" fieldOfView="40" />'
 local moving = reel('<SceneView>' .. lens
 	.. '<Node geometry="box" color="#FF0000" lighting="constant" position="step(t - 1) * 5, 0, 0" /></SceneView>')

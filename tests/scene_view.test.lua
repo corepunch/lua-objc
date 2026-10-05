@@ -49,6 +49,35 @@ t.assertEqual(nodes.child.parent, "group", "child records hang from their parent
 t.expect(near(nodes.group.yaw, 90), "rotation is in degrees")
 t.expect(near(nodes.coin.scale, 1), "the first build plays no insertion transition")
 
+-- Shadow controls reach SceneKit through XML, and retained lights reset
+-- omitted attributes instead of keeping a previous scene's projection.
+local shadowView = xml.render([[
+<SceneView>
+	<Light id="sun" type="directional" position="-20 30 20" lookAt="0 0 0" castsShadow="true"
+	       shadowMapSize="1024" shadowRadius="0" shadowSampleCount="1" shadowBias="0.5"
+	       automaticallyAdjustsShadowProjection="false" orthographicScale="24" zNear="2" zFar="80" />
+	<Node id="ground" geometry="box" />
+</SceneView>]], {})
+local sun = bridge._sceneNodes(shadowView).sun
+t.expect(sun.castsShadow and not sun.automaticallyAdjustsShadowProjection, "a directional light uses the authored fixed shadow projection")
+t.expect(sun.shadowMapSize == 1024 and sun.shadowSampleCount == 1 and sun.shadowRadius == 0, "XML sets map resolution and crisp filtering")
+t.expect(sun.shadowBias == 0.5 and sun.orthographicScale == 24 and sun.zNear == 2 and sun.zFar == 80, "XML sets shadow coverage and depth bias")
+shadowView.nodeStates = {{id = "ground", x = 4}}
+ns.sceneGraph(shadowView, {
+	{sceneKind = "light", id = "sun", castsShadow = false},
+	{sceneKind = "node", id = "ground", geometry = "box"},
+})
+t.expect(not bridge._sceneNodes(shadowView).sun.castsShadow, "reconciliation can disable shadow rendering")
+ns.sceneGraph(shadowView, {
+	{sceneKind = "light", id = "sun", castsShadow = true},
+	{sceneKind = "node", id = "ground", geometry = "box"},
+})
+sun = bridge._sceneNodes(shadowView).sun
+t.expect(sun.automaticallyAdjustsShadowProjection and sun.orthographicScale == 1, "omitting fixed coverage restores automatic projection")
+t.expect(sun.shadowMapSize == 2048 and sun.shadowSampleCount == 16 and sun.shadowRadius == 4, "omitting filtering restores framework defaults")
+t.expect(sun.shadowBias == 1 and sun.zNear == 1 and sun.zFar == 100, "omitting depth settings restores defaults")
+t.expect(near(bridge._sceneNodes(shadowView).ground.x, 4), "updating a light leaves posed geometry in place")
+
 -- Poses from game state move nodes without describing the scene again.
 stage.nodeStates = {
 	{id = "coin", x = 3, y = 0.5, z = -1, yaw = 45, opacity = 0.5},

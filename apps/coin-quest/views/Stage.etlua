@@ -4,12 +4,14 @@
     poses move the camera after the hero. -->
 <SceneView id="scene" background="<%= sky %>" onKey="key" onFrame="frame" onSwipe="swipe" onTap="tap" virtualGamepad="true">
 	<Camera id="camera" position="<%= camera.position %>" lookAt="<%= camera.lookAt %>" fieldOfView="<%= camera.fieldOfView %>" fieldOfViewAxis="<%= camera.fieldOfViewAxis %>" />
-	<Light id="sun" type="directional" rotation="-58 38 0" intensity="1150" castsShadow="true" />
-	<Light id="skylight" type="ambient" intensity="480" color="#d6ecff" />
+	<Light id="sun" type="directional" position="<%= sun.position %>" lookAt="<%= sun.lookAt %>" intensity="1150"
+	       castsShadow="true" shadowMapSize="2048" shadowRadius="1" shadowSampleCount="4" shadowOpacity="0.65" shadowBias="1"
+	       automaticallyAdjustsShadowProjection="false" orthographicScale="<%= sun.orthographicScale %>" zNear="1" zFar="100" />
+	<Light id="skylight" type="ambient" intensity="300" color="#d6ecff" />
 	<Node id="sea" geometry="floor" color="<%= sea %>" position="0 <%= seaLevel %> 0" castsShadow="false" />
 	<Node id="level-<%= level %>">
 		<% for _, block in ipairs(blocks) do -%>
-		<Node model="<%= assets .. block.model %>" position="<%= block.x %> <%= block.y %> <%= block.z %>" rotation="0 <%= block.yaw %> 0" scale="1 <%= block.stretch %> 1" />
+		<Node model="<%= assets .. block.model %>" position="<%= block.x %> <%= block.y %> <%= block.z %>" rotation="0 <%= block.yaw %> 0" scale="<%= block.scaleX %> <%= block.stretch %> <%= block.scaleZ %>" />
 		<% end -%>
 		<% for _, prop in ipairs(props) do -%>
 		<Node model="<%= assets .. prop.model %>" position="<%= prop.x %> <%= prop.y %> <%= prop.z %>" rotation="0 <%= prop.yaw %> 0" scale="<%= prop.scale %>" />

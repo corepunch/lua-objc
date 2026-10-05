@@ -106,9 +106,22 @@ t.assertEqual(Terrain.ground(built.solids, 0, 3, 5, 0), deck.y1, "a bridge plank
 local onTree = Level.parse({id = "t", title = "T", start = {0, 0}, flag = {0, 0}, coins = {{0, 0}},
 	blocks = {{"large", 0, 0}}, props = {{"tree", 0, 0}}})
 t.assertEqual(onTree.spawns.coins[1].y, 1, "items never sit on top of a tree")
+local wide = level({blocks = {{"large", 0, 0, w = 12, d = 8, h = 0.8, y = -0.8},
+	{"slope", 0, 0, w = 4, d = 6, h = 1, yaw = 90}}, coins = {{4, 2}}})
+t.assertEqual(wide.blocks[1].solid.y1, 0, "a recovery lawn has a solid top at zero")
+t.expect(wide.blocks[1].scaleX == 6 and wide.blocks[1].scaleZ == 4,
+	"wide terrain scales the Kenney mesh with its collision footprint")
+t.assertEqual(wide.spawns.coins[1].y, 0, "items can be placed directly on the lawn")
+t.expect(near(wide.blocks[2].solid.x1, 3) and near(wide.blocks[2].solid.z1, 2),
+	"a wide ramp turns its scaled footprint")
+t.expect(Terrain.top(wide.blocks[2].solid, -2.9, 0) > 0.95,
+	"a scaled ramp keeps its climb direction")
 for _, bad in ipairs({
 	{def = {blocks = {}}, message = "no blocks"},
 	{def = {blocks = {{"castle", 0, 0}}}, message = "unknown kind"},
+	{def = {blocks = {{"large", 0, 0, w = 0}}}, message = "positive dimensions"},
+	{def = {blocks = {{"large", 0, 0, d = -1}}}, message = "positive dimensions"},
+	{def = {blocks = {{"large", 0, 0, h = 0}}}, message = "positive dimensions"},
 	{def = {blocks = {{"large", 0, 0}}, props = {{"statue", 0, 0}}}, message = "unknown kind"},
 	{def = {blocks = {{"large", 0, 0}}, start = false}, message = "no start"},
 	{def = {blocks = {{"large", 0, 0}}, coins = {}}, message = "no coins"},
@@ -162,6 +175,39 @@ for _, def in ipairs(Levels) do
 		if (coin.x - start.x) ^ 2 + (coin.z - start.z) ^ 2 < 1 then clear = false end
 	end
 	t.expect(clear, def.id .. ": no coin is taken by standing at the start")
+	-- The course and a generous landing margin are above real terrain.
+	local lawn = parsed.blocks[1].solid
+	t.assertEqual(lawn.y1, 0, def.id .. ": the recovery ground stays above the death threshold")
+	for index = 2, #parsed.blocks do
+		for _, corner in ipairs(Terrain.corners(parsed.blocks[index].solid)) do
+			t.expect(Terrain.contains(lawn, corner[1], corner[2], -2), def.id .. ": two units of land beyond ledges")
+		end
+	end
+	for _, mover in ipairs(parsed.spawns.movers) do
+		t.expect(Terrain.contains(lawn, mover.x, mover.z, -2) and Terrain.contains(lawn, mover.x2, mover.z2, -2),
+			def.id .. ": ground below both ends of each moving platform")
+	end
+	-- Drop through the former gaps on a coarse grid using the real physics
+	-- and session, so this catches a decorative floor with no collision.
+	local session = Model.new({def})
+	for x = lawn.x0 + 1, lawn.x1 - 1, 3 do
+		for z = lawn.z0 + 1, lawn.z1 - 1, 3 do
+			local safe = true
+			for _, list in ipairs({parsed.spawns.saws, parsed.spawns.spikes, parsed.spawns.springs}) do
+				for _, item in ipairs(list) do
+					if (x - item.x) ^ 2 + (z - item.z) ^ 2 < 4 then safe = false end
+				end
+			end
+			if safe and Terrain.ground(parsed.solids, x, z, math.huge, World.RULES.radius) == 0 then
+				session:load(1)
+				local p = session.world.player
+				p.x, p.y, p.z, p.vx, p.vy, p.vz, p.grounded = x, 8, z, 0, 0, 0, false
+				for _ = 1, 20 do session:step(0.1, pad()) end
+				t.expect(p.grounded and p.y >= 0 and session.lives == Model.RULES.lives,
+					def.id .. ": a missed jump lands without losing a life")
+			end
+		end
+	end
 end
 local function problem(def, pattern)
 	for _, message in ipairs(Reach.problems(level(def))) do
@@ -179,6 +225,73 @@ t.expect(problem({blocks = {{"tall", 0, 0, h = 3}, {"large", 2.5, 0}}, start = {
 	"a drop with no way back up is caught")
 t.expect(not problem({blocks = {{"tall", 0, 0, h = 3}, {"large", 2.5, 0}}, springs = {{2.5, 0}}, start = {0, 0},
 	coins = {{0, 0}}}, "dead end"), "a spring makes the drop safe")
+
+-- Walk the meadow's recovery approaches with the actual hero, without
+-- jumping. World directions keep these checks independent of camera turns.
+local function direction(world, x, z)
+	return {axis = function()
+		local fx, fz = Camera.forward(world)
+		return -fz * x + fx * z, -fx * x - fz * z
+	end}
+end
+for _, def in ipairs(Levels) do
+	local parsed, ramps = Level.parse(def), 0
+	for _, block in ipairs(parsed.blocks) do
+		-- Broad authored slopes are the recovery approaches. Original
+		-- narrow climbing pieces may deliberately start above ground.
+		if block.kind == "slope" and block.scaleX > 1 then
+			ramps = ramps + 1
+			local s = block.solid
+			local world = World.new(parsed)
+			local p = world.player
+			p.x, p.z = s.cx + s.s * (s.hd + 0.2), s.cz + s.c * (s.hd + 0.2)
+			p.y = Terrain.ground(world:solids(), p.x, p.z, math.huge, 0)
+			Camera.place(world)
+			run(world, direction(world, -s.s, -s.c), (s.hd * 2 + 0.3) / world.rules.runSpeed + 0.06)
+			local progress = (p.x - s.cx) * -s.s + (p.z - s.cz) * -s.c
+			t.expect(progress >= s.hd - 0.3 and p.y >= s.y1 - world.rules.step,
+				def.id .. ": ramp at " .. block.x .. ", " .. block.z .. " can be walked up without hitting a prop or ledge")
+		end
+	end
+	t.expect(ramps > 0, def.id .. ": has a broad approach from the recovery ground")
+	for _, prop in ipairs(parsed.props) do
+		t.expect(Terrain.contains(parsed.blocks[1].solid, prop.x, prop.z), def.id .. ": scenery stays on land")
+	end
+end
+for _, route in ipairs({
+	{x = 0, z = 8.2, dx = 0, dz = -1, seconds = 0.8, height = 0.5},
+	{x = -9, z = 7.2, dx = 0, dz = -1, seconds = 0.65, height = 0.8},
+	{x = 5, z = -2, dx = -1, dz = 0, seconds = 0.65, height = 1},
+}) do
+	local meadow = World.new(Level.parse(Levels[1]))
+	local p = meadow.player
+	p.x, p.y, p.z = route.x, 0, route.z
+	Camera.place(meadow)
+	local events = run(meadow, direction(meadow, route.dx, route.dz), route.seconds)
+	t.expect(p.grounded and near(p.y, route.height) and not has(events, "hurt"),
+		"the meadow's ramps rejoin the course from the lawn without a jump")
+end
+
+local keep = World.new(Level.parse(Levels[6]))
+for z = -7.5, 0, 0.5 do
+	for _, x in ipairs({-4.5, 4.5}) do
+		t.expect(Terrain.blocked(keep:solids(), x, Reach.JUMP.rise, z, keep.rules.radius, keep.rules.height, keep.rules.step),
+			"the keep cannot be entered from the lawn round its side")
+	end
+end
+for x = -4.5, 4.5, 0.5 do
+	t.expect(Terrain.blocked(keep:solids(), x, Reach.JUMP.rise, -8, keep.rules.radius, keep.rules.height, keep.rules.step),
+		"the keep cannot be entered from its back")
+end
+keep.player.x, keep.player.y, keep.player.z = 0, 1, 2.6
+Camera.place(keep)
+run(keep, direction(keep, 0, -1), 1)
+t.expect(keep.player.z > 0.4, "the gate stops the hero in the front corridor")
+keep.hasKey = true
+run(keep, direction(keep, 0, -1), 1)
+t.expect(keep.player.z < -1, "the key opens the same corridor")
+run(keep, direction(keep, 0, -1), 0.5)
+t.expect(keep.player.z < -3, "courtyard props leave the route beyond the unlocked gate clear")
 
 -- ── Running and jumping ────────────────────────────────────────────────
 local field = level({blocks = {{"large", 0, 0}, {"large", 2, 0}, {"low", 4.5, 0}}})
@@ -415,7 +528,7 @@ t.expect(poses[1].scaleX and poses[1].scaleY and poses[#poses].id == "flag", "po
 local scene = Model.new(Levels):scene()
 local data = StageController.viewData(scene)
 t.assertEqual(#data.blocks, #scene.blocks, "every block is drawn")
-t.expect(data.blocks[1].model:find("^block%-grass") and data.blocks[1].model:find("overhang"),
+t.expect(StageController.blockModel({kind = "large"}, "grass") == "block-grass-overhang-large.obj",
 	"a top block drapes its grass over the edge")
 t.expect(StageController.blockModel({kind = "large", buried = true}, "snow") == "block-snow-large.obj",
 	"a buried block is plain, in its biome")
@@ -477,7 +590,28 @@ full:createWindow()
 for index = 1, #full.model.levels do
 	full.model:load(index)
 	full:render()
-	t.expect(bridge._sceneNodes(full.stage.view)["level-" .. full.model:level().id], "level " .. index .. " renders")
+	local levelId = "level-" .. full.model:level().id
+	local rendered = bridge._sceneNodes(full.stage.view)
+	t.expect(rendered[levelId], "level " .. index .. " renders")
+	local base = rendered[levelId .. "/1"]
+	local block = full.model:level().blocks[1]
+	local stageData = StageController.viewData(full.model:scene())
+	local viewBlock = stageData.blocks[1]
+	local sun = rendered.sun
+	t.expect(sun.castsShadow and sun.shadowMapSize == 2048 and sun.shadowSampleCount == 4 and sun.shadowRadius == 1,
+		"level " .. index .. ": one crisp 2048 shadow map")
+	t.expect(not sun.automaticallyAdjustsShadowProjection and near(sun.orthographicScale, stageData.sun.orthographicScale),
+		"level " .. index .. ": a fixed shadow projection covers the ground")
+	local halfWidth, halfDepth = (block.solid.x1 - block.solid.x0) / 2, (block.solid.z1 - block.solid.z0) / 2
+	t.expect(sun.orthographicScale > math.sqrt(halfWidth * halfWidth + halfDepth * halfDepth),
+		"level " .. index .. ": shadow coverage includes the ground diagonal and a caster margin")
+	full.stage:pose(full.model:poses(), {position = {x = 14, y = 18, z = 20}, focus = {x = 0, y = 0, z = 0}})
+	local posedSun = bridge._sceneNodes(full.stage.view).sun
+	t.expect(posedSun.x == sun.x and posedSun.y == sun.y and posedSun.z == sun.z and posedSun.orthographicScale == sun.orthographicScale,
+		"level " .. index .. ": camera motion leaves the shadow map stable")
+	t.expect(base and near(base.scale, block.scaleX) and near(viewBlock.scaleZ, block.scaleZ)
+		and near(base.scaleY, block.stretch) and near(base.y, block.y),
+		"level " .. index .. ": the rendered recovery ground matches its collision dimensions")
 end
 
 local frameBefore = app.model.world.time

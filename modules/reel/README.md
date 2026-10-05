@@ -177,6 +177,12 @@ the display clock is a function of `t` here, so any instant renders exactly:
 </SceneView>
 ```
 
+Light shadow controls match the live SceneView: `shadowMapSize`,
+`shadowSampleCount`, `shadowRadius`, `shadowOpacity`, `shadowBias`,
+`automaticallyAdjustsShadowProjection`, `orthographicScale`, `zNear` and
+`zFar`. A fixed directional map sets automatic projection to `false`,
+aims the light at the level, and supplies its coverage and clipping planes.
+
 Beyond the live vocabulary, for product shots:
 
 | Attribute or record | Purpose |
@@ -187,7 +193,7 @@ Beyond the live vocabulary, for product shots:
 | `image` (`imageSlot`) | A capture, piece or image on the node's geometry, self-lit (`emission`) by default. |
 | `<Surface width height density slot background>` | The node's screen, drawn every frame by ordinary reel elements in points, so app content animates on the glass. A surface may hold a `<SceneView>`: a game on a phone. |
 | Camera `focusDistance fStop bloom exposure vignetting hdr roll` | Lens: depth of field, bloom and a roll about the view axis. |
-| Light `temperature shadowScale shadowMapSize spotInner spotOuter` | Physical light and shadow control. |
+| Light `temperature spotInner spotOuter` | Colour temperature and spotlight cone control. |
 | SceneView `environment environmentIntensity` | Image-based lighting and reflections from an equirectangular image (an expression). |
 | SceneView `camera` | The camera record to look through (an id, or an expression that cuts). |
 
