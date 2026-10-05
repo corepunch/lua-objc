@@ -149,3 +149,24 @@ still apply.
 
 The rebuilt temporary synthetic app also navigated from Storage Map to Overview
 and back, showing fresh native elements and final ring geometry immediately.
+
+Favorite contents correction: scan measurements now retain whether a catalog
+root was missing. Favorites show Missing with its saved path instead of
+claiming a first measurement of 0 KB. Missing resources preserve their last
+known size/date, offer removal and omit unavailable destination actions and
+the empty contents table. A measured empty root remains a valid 0 KB result;
+a restored root compares against the preserved baseline.
+
+All 75 Diskmap test files passed. Nine model assertions cover missing versus
+empty roots, baseline preservation and recovery; five additional Favorites
+assertions cover the missing installation's page and actions. The unsigned
+bundle builds and `git diff --check` passes. Native missing and populated
+Xcode favorites were captured and inspected at 950 × 580 and 1400 × 900 in
+light/dark under `/tmp/diskmap-favorite-contents/`.
+
+The previous temporary synthetic app supplied SDK rows separately from its
+virtual disk, which contained no Xcode files. That inconsistent test setup
+caused the reported empty contents. It now uses synthetic Xcode/SDK files for
+all measurements, SDK rows and folder contents; its favorite shows 8.7 GB and
+a populated top-level listing. These values are test data, not the host's
+Xcode installation.

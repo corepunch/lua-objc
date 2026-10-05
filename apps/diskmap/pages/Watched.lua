@@ -96,7 +96,7 @@ routes.watched = ListRoute.extend({focus = function(page, params) page.key = par
 			local buttons = {}
 			if row.path and not row.missing then table.insert(buttons, {id = "reveal", title = "Show in Finder", action = "showInFinder"}) end
 			local open = category(page, row)
-			if open then table.insert(buttons, {id = "openCategory", title = "Open " .. open.name .. "…", action = "openCategory"}) end
+			if open and not row.missing then table.insert(buttons, {id = "openCategory", title = "Open " .. open.name .. "…", action = "openCategory"}) end
 			table.insert(buttons, {id = "unwatch", title = "Remove from Favorites", systemImage = "star.slash", action = "unwatch"})
 			-- A category's locations differ by policy; a folder's children are
 			-- already labeled Folder or File under their names.

@@ -77,7 +77,10 @@ end
 function Watchlist:sync(time)
 	for _, entry in ipairs(self:select({kind = "resource"})) do
 		local row = Categories:row(entry.id)
-		if row and row.status == "complete" and row.bytes then
+		local measurement = Model.db.measurements[entry.id]
+		if measurement and measurement.missing then
+			sizes()[entry.key] = {missing = true}
+		elseif row and row.status == "complete" and row.bytes then
 			sizes()[entry.key] = {bytes = row.bytes, time = time or os.time()}
 		end
 	end
@@ -112,7 +115,7 @@ function Watchlist:rows()
 		row.calculating = resource and resource.calculating or false
 		row.missing = current.missing == true
 		row.delta, row.changeText = self:change(key)
-		if row.missing then row.size, row.changeText = "Missing", "This folder no longer exists"
+		if row.missing then row.size, row.changeText = "Missing", "This location was not found at its saved path"
 		else row.size = row.bytes and Format.size(row.bytes) or "Not measured" end
 		row.changeText = row.changeText or (current.bytes and "Measured for the first time" or "Waiting for a measurement")
 		table.insert(rows, row)
