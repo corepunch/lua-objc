@@ -19,6 +19,9 @@
 		<Page id="disks" title="Disks &amp; Volumes" icon="internaldrive.fill" color="systemGray" />
 		<Page id="updates" title="Updates &amp; Snapshots" icon="arrow.triangle.2.circlepath" color="systemGray" />
 	</Section>
+	<Section title="Everyday">
+		<Page id="everyday" route="workflow" title="Everyday Apps" sidebar="Apps" icon="bubble.left.and.bubble.right.fill" color="systemCyan" workflow="everyday" />
+	</Section>
 	<Section title="Developer">
 		<Page id="developer" route="workflow" title="Developer tools" sidebar="Dev tools" icon="hammer.fill" color="systemPurple" key="8" workflow="developer" />
 		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" workflow="developer" />

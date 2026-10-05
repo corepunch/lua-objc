@@ -10,7 +10,7 @@ local Navigation = require("apps.diskmap.controllers.NavigationController")
 -- system pages, and appear only on a Mac that does that work.
 local order = {}
 for _, row in ipairs(Navigation.destinations) do if row.section then table.insert(order, row.title) end end
-t.assertEqual(table.concat(order, ","), "Free Up Space,Explore,System,Developer,Creative & Games,Learn", "work follows System")
+t.assertEqual(table.concat(order, ","), "Free Up Space,Explore,System,Everyday,Developer,Creative & Games,Learn", "work follows System")
 -- #102: the cleanup entry points lead; browsing tools follow them.
 t.assertEqual(Navigation.destinations[1].id, "overview", "Overview leads the sidebar")
 t.assertEqual(Navigation.destinations[2].id, "cleanup", "Clean Up follows it, without a section to look for")

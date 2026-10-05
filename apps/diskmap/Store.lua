@@ -22,7 +22,9 @@ function Store.new(home)
 	assert(locations, err and err.message or "Could not build Diskmap locations")
 	for _, row in ipairs(Locations:leaves()) do
 		if row.mediaAccess then db.measurements[row.id] = {status = "excluded"} end
-		if row.measurement then db.measurements[row.id] = {status = row.measurement} end
+		-- rawget: a catalog row's `measurement` field, not the Location:measurement method.
+		local measurement = rawget(row, "measurement")
+		if measurement then db.measurements[row.id] = {status = measurement} end
 	end
 	return db
 end

@@ -27,7 +27,7 @@ t.assertEqual(Navigation.page("cleanup").title, nil, "with no second title to dr
 -- The Overview leads with its chart and the Folder Map with the open folder.
 local OWN_HEADER = {overview = true, folder = true}
 local LIST_PAGES = {"largest", "files", "duplicates", "cleanup", "applications", "disks", "xcode", "projects",
-	"developer", "music", "video", "photography", "design", "studio3d", "games"}
+	"everyday", "developer", "music", "video", "photography", "design", "studio3d", "games"}
 local listPage = {}
 for _, id in ipairs(LIST_PAGES) do listPage[id] = true end
 

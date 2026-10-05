@@ -19,6 +19,7 @@ return {
 	applications = {conclusion = "Leftover data of removed apps first, high confidence marked together; then apps with a known last use over six months. Unknown usage stays unknown.", next = "cleanup"},
 	disks = {none = "Volumes and capacity are system-managed; Diskmap explains them and offers no removal."},
 	updates = {none = "macOS updates, snapshots and staged installers are managed by macOS; the page explains what supported owner action helps and never suggests deleting protected system volumes; it routes to Clean Up with Clean Up's own estimate."},
+	everyday = {conclusion = "Chat media, cloud downloads, offline media and Office data by app; each row names the app setting that reduces it.", next = "cleanup"},
 	developer = {conclusion = "Developer storage by ecosystem with its rebuildable total; Simulators and Worktrees link into their review flows.", next = "simulators"},
 	xcode = {conclusion = "Older device support and archives, with the newest version kept.", next = "cleanup"},
 	projects = {conclusion = "Generated build output grouped by owning project, validated by marker files.", next = "cleanup"},

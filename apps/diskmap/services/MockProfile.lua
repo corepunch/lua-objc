@@ -67,6 +67,10 @@ return {
 		{path = "/Applications/Microsoft Excel.app/Contents/MacOS/Microsoft Excel", bytes = 2100000000, usedDaysAgo = 6},
 		{path = "/Applications/Adobe Photoshop 2026/Adobe Photoshop 2026.app/Contents/MacOS/Adobe Photoshop 2026", bytes = 4800000000, usedDaysAgo = 14},
 		{path = "~/Library/Caches/com.spotify.client/Data/cache", bytes = 3100000000, usedDaysAgo = 1},
+		{path = "~/Library/Group Containers/6N38VWS5BX.ru.keepcoder.Telegram/account-1/postbox/media/video-4211.mp4", bytes = 9200000000, usedDaysAgo = 25},
+		{path = "~/Library/Group Containers/group.net.whatsapp.WhatsApp.shared/Message/Media/Family/VID-0712.mp4", bytes = 4600000000, usedDaysAgo = 60},
+		{path = "~/Library/CloudStorage/Dropbox/Photos/2024 Trip.zip", bytes = 6800000000, usedDaysAgo = 200},
+		{path = "~/Library/Application Support/Google/Chrome/OptGuideOnDeviceModel/2025.8.8.1141/weights.bin", bytes = 4000000000, usedDaysAgo = 7},
 		-- Xcode device support and archives, a DerivedData folder whose project
 		-- is gone, a project file, and data left by uninstalled apps.
 		{path = "~/Library/Developer/Xcode/iOS DeviceSupport/iPhone17,1 26.0 (23A341)/Symbols", bytes = 3800000000, usedDaysAgo = 60},
