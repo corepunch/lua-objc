@@ -370,15 +370,10 @@ static int bridge_on_window_close(lua_State *L) {
 	return 0;
 }
 
-/* An arc or sector (shared/arc_path.m) as a filled CAShapeLayer path. Its
- * shape animates itself when `animated` (ArcAnimator), so a chart's
- * sectors turn and grow along their circles rather than morphing point by
- * point. The layer is not clipped: SwiftUI never clips a stroke to its
- * frame. */
+/* An arc or sector as a filled CAShapeLayer path. Shape and color changes
+ * apply immediately. The layer is not clipped: a stroke may extend beyond
+ * the view's frame. */
 @interface LuaArcView ()
-@property(nonatomic) BOOL animated;
-/* True while the arc's own path animation runs (read by tests). */
-@property(nonatomic, readonly) BOOL animating;
 @property(nonatomic) CGFloat startAngle;
 @property(nonatomic) CGFloat endAngle;
 @property(nonatomic) CGFloat lineWidth;
@@ -392,16 +387,13 @@ static int bridge_on_window_close(lua_State *L) {
 - (ArcShape)shape;
 @end
 
-@implementation LuaArcView {
-	ArcAnimator *_animator;
-}
+@implementation LuaArcView
 
 + (Class)layerClass { return CAShapeLayer.class; }
 
 - (instancetype)initWithFrame:(CGRect)frame {
 	self = [super initWithFrame:frame];
 	if (self) {
-		_animator = [ArcAnimator new];
 		_lineWidth = 1;
 		_strokeAlpha = 1;
 		_stroke = @"accent";
@@ -422,24 +414,21 @@ static int bridge_on_window_close(lua_State *L) {
 		self.inset, self.cornerRadius, [self.lineCap isEqualToString:@"round"]};
 }
 
-- (BOOL)animating { return [self.layer animationForKey:@"arc.shape"] != nil; }
-- (BOOL)animated { return _animator.animated; }
-- (void)setAnimated:(BOOL)value { _animator.animated = value; }
-
 - (void)updateShape {
 	CAShapeLayer *layer = (CAShapeLayer *)self.layer;
+	[CATransaction begin];
+	[CATransaction setDisableActions:YES];
 	ArcShape shape = self.shape;
 	CGPathRef path = arc_path_create(self.bounds, shape);
 	layer.path = path;
 	if (path) CGPathRelease(path);
-	[_animator layer:layer shows:shape inWindow:self.window != nil
-		pathFor:^CGPathRef(ArcShape mixed) { return arc_path_create(self.bounds, mixed); }];
 	layer.fillRule = kCAFillRuleEvenOdd;
 	// Label colors carry their own translucency; strokeAlpha scales it.
 	UIColor *color = [lua_objc_uikit_system_color((self.stroke ?: @"accent").UTF8String)
 		resolvedColorWithTraitCollection:self.traitCollection];
 	layer.fillColor = [color colorWithAlphaComponent:
 		CGColorGetAlpha(color.CGColor) * MIN(1, MAX(0, self.strokeAlpha))].CGColor;
+	[CATransaction commit];
 }
 
 - (void)layoutSubviews {

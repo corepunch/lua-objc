@@ -52,7 +52,7 @@ local cancelled = false
 service.findDuplicates = function() return {cancel = function() cancelled = true end} end
 service.pickFolder = function() return service.home .. "/Library" end
 app:show("duplicates")
-local duplicates = app.pages.duplicates
+local duplicates = app.page
 duplicates.actions.addFolder()
 duplicates.actions.search()
 t.expect(duplicates.refs.computing ~= nil and duplicates.refs.computingStatus.text:find("Comparing", 1, true), "a running search is one status line")
@@ -67,7 +67,7 @@ local guide = app.env:page("guide")
 local before = guide:data({}).chapters
 t.expect(guide:data({}).chapters == before, "the same search is the same answer")
 t.expect(guide:data({query = "swap"}).chapters ~= before, "another search is asked again")
-t.expect(app.pages.guide.actions["open_preboot"] ~= nil, "a topic that opens something has an action")
+t.expect(app.page.actions["open_preboot"] ~= nil, "a topic that opens something has an action")
 app:show("help")
 t.expect(app.page.refs.help_welcome ~= nil, "Help is the same class under its own id")
 os.exit(t.summary() and 0 or 1)

@@ -25,7 +25,7 @@ local service = Mock.new()
 local app = Controller.new(service)
 app:createWindow()
 app:show("disks")
-local page = app.pages.disks
+local page = app.page
 t.expect(page.refs.contentsSection.hidden, "no disk is analysed until asked")
 local menu = bridge._tableRowMenu(page.refs.external, 1)
 t.assertEqual(menu[1].title, "Analyze Contents", "an external disk offers to analyse its contents")

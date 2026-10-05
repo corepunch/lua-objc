@@ -153,10 +153,6 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 /* ----- Motion ----- */
 /* The system push transition of a view's contents (a tour page). */
 #define kPushTransitionDuration       0.3
-/* ----- Arc ----- */
-#define kArcAnimationDuration         0.35
-/* Path samples per second when an Arc's angles and radius animate. */
-#define kArcShapeFrameRate            60
 #define kPointerDragThreshold         3.0
 #define kPointerDragIconSize          32.0
 /* ----- ShaderView ----- */

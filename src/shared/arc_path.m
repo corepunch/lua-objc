@@ -108,19 +108,6 @@ typedef struct {
 	BOOL roundCap;
 } ArcShape;
 
-/* The shape `progress` of the way from `a` to `b`, for animation: numbers
- * interpolate, so an arc keeps to its circle while it grows or turns. */
-static ArcShape arc_shape_mix(ArcShape a, ArcShape b, CGFloat progress) {
-	ArcShape mix = b;
-	mix.startAngle = a.startAngle + (b.startAngle - a.startAngle) * progress;
-	mix.endAngle = a.endAngle + (b.endAngle - a.endAngle) * progress;
-	mix.lineWidth = a.lineWidth + (b.lineWidth - a.lineWidth) * progress;
-	mix.diameter = a.diameter + (b.diameter - a.diameter) * progress;
-	mix.inset = a.inset + (b.inset - a.inset) * progress;
-	mix.cornerRadius = a.cornerRadius + (b.cornerRadius - a.cornerRadius) * progress;
-	return mix;
-}
-
 /* The filled outline an Arc draws in `bounds` (y down): SwiftUI strokes a
  * shape centered on its path and never clips it to the frame, so a stroke
  * reaches lineWidth/2 past the circle. Equal angles close the circle. */
@@ -148,80 +135,3 @@ static CGPathRef arc_path_create(CGRect bounds, ArcShape shape) {
 	CGPathRelease(line);
 	return outline;
 }
-
-
-/* ----- The arc's own animation ----- */
-
-static BOOL arc_shape_equal(ArcShape a, ArcShape b) {
-	return a.startAngle == b.startAngle && a.endAngle == b.endAngle && a.lineWidth == b.lineWidth
-		&& a.diameter == b.diameter && a.fitDiameter == b.fitDiameter && a.inset == b.inset
-		&& a.cornerRadius == b.cornerRadius && a.roundCap == b.roundCap;
-}
-
-static CGFloat arc_ease(CGFloat t) { return t * t * (3 - 2 * t); }
-
-/*
- * An `animated` Arc turns, grows and changes rings along its circle when its
- * numbers change, instead of the layer morphing point by point. The motion
- * belongs to the arc alone: nothing else in the view tree is snapshotted,
- * diffed or animated. The layer's path is always the final one; the
- * animation only decorates how it is reached, so skipping or interrupting it
- * never leaves a stale shape. Several property writes in one run-loop turn
- * (angles, then radius) make one animation from where the arc was.
- */
-@interface ArcAnimator : NSObject
-@property(nonatomic) BOOL animated;
-- (void)layer:(CAShapeLayer *)layer shows:(ArcShape)shape inWindow:(BOOL)inWindow
-	pathFor:(CGPathRef (^)(ArcShape))pathFor;
-@end
-
-@implementation ArcAnimator {
-	ArcShape _shown, _from, _to, _batchFrom;
-	BOOL _hasShown, _animating, _batching;
-	CFTimeInterval _start;
-}
-
-/* What is on screen now, partway through a running animation. */
-- (ArcShape)displayed {
-	if (!_animating) return _shown;
-	CGFloat t = (CGFloat)((CACurrentMediaTime() - _start) / kArcAnimationDuration);
-	return t >= 1 ? _shown : arc_shape_mix(_from, _to, arc_ease(MAX(0, t)));
-}
-
-- (void)layer:(CAShapeLayer *)layer shows:(ArcShape)shape inWindow:(BOOL)inWindow
-	pathFor:(CGPathRef (^)(ArcShape))pathFor {
-	if (_hasShown && arc_shape_equal(shape, _shown)) return;
-	BOOL animate = self.animated && _hasShown && inWindow && !reduce_motion_enabled();
-	if (animate) {
-		if (!_batching) {
-			_batching = YES;
-			_batchFrom = [self displayed];
-			dispatch_async(dispatch_get_main_queue(), ^{ self->_batching = NO; });
-		}
-		NSInteger frames = (NSInteger)ceil(kArcAnimationDuration * kArcShapeFrameRate) + 1;
-		NSMutableArray *paths = [NSMutableArray arrayWithCapacity:(NSUInteger)frames];
-		NSMutableArray<NSNumber *> *times = [NSMutableArray arrayWithCapacity:(NSUInteger)frames];
-		for (NSInteger frame = 0; frame < frames; frame++) {
-			CGFloat t = (CGFloat)frame / (CGFloat)(frames - 1);
-			CGPathRef path = pathFor(frame == frames - 1 ? shape : arc_shape_mix(_batchFrom, shape, arc_ease(t)));
-			[paths addObject:path ? (__bridge_transfer id)path : (__bridge_transfer id)CGPathCreateMutable()];
-			[times addObject:@(t)];
-		}
-		CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:@"path"];
-		animation.values = paths;
-		animation.keyTimes = times;
-		animation.calculationMode = kCAAnimationLinear;
-		animation.duration = kArcAnimationDuration;
-		[layer addAnimation:animation forKey:@"arc.shape"];
-		_from = _batchFrom;
-		_to = shape;
-		_start = CACurrentMediaTime();
-		_animating = YES;
-	} else {
-		[layer removeAnimationForKey:@"arc.shape"];
-		_animating = NO;
-	}
-	_shown = shape;
-	_hasShown = YES;
-}
-@end

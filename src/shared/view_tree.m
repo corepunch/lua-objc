@@ -2,8 +2,7 @@
 
 /*
  * Declarative templates insert, move and remove views by position. None of
- * it animates: the platform's own containers (and `ArcView`'s own path
- * animation) are the only motion in the runtime.
+ * it animates: motion comes from the platform's own containers.
  */
 
 #if TARGET_OS_IPHONE

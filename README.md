@@ -135,7 +135,7 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 | Add a macOS native bridge primitive | `src/README.md`, then the matching `src/appkit/*.m` fragment |
 | Change flex layout | `src/appkit/layout.m` |
 | Change lists or outlines | `src/appkit/table_data_source.m`, `src/appkit/table_cell_template.m`, `src/appkit/outline_data_source.m`, `src/appkit/controls.m`, `src/appkit/outline.m`, `docs/tableview_swiftui.md` |
-| Stop a live view from jumping, or change an arc's own animation | `lua/ui/template.lua`, `lua/ui/xml.lua` (reconcile), `src/shared/arc_path.m`, [`docs/retained-templates.md`](docs/retained-templates.md) |
+| Keep live updates steady, or change static chart geometry | `lua/ui/template.lua`, `lua/ui/xml.lua` (reconcile), `src/shared/arc_path.m`, [`docs/retained-templates.md`](docs/retained-templates.md) |
 | Build a 3-D scene or a game | `src/shared/scene_view.m`, `apps/coin-quest/`, [`docs/scenekit.md`](docs/scenekit.md) |
 | Change async state ownership, HTTP, timers, or JSON | `src/shared/lua_async.m` |
 | Change CLI preview rendering | `src/main.m`, `src/appkit/platform.m` |

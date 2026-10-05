@@ -138,9 +138,6 @@ static const CGFloat kLazyLayoutGuardPixels = 1.0;
 static const NSInteger kLazyStackColumns = 1;
 static const NSInteger kLazyGridColumns = 2;
 static const CGFloat kPushTransitionDuration = 0.3;
-static const CGFloat kArcAnimationDuration = 0.35;
-/* Path samples per second when an Arc's angles and radius animate. */
-static const CGFloat kArcShapeFrameRate = 60;
 static int bridge_UIKitNavigation_stack(lua_State *L);
 static int bridge_UIKitNavigation_push(lua_State *L);
 static int bridge_UIKitTabView_selectTab(lua_State *L);

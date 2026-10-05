@@ -174,37 +174,34 @@ t.expect(chosen and chosen[1] == "a" and chosen[2] == 1, "clicking selects a sec
 bridge._pointerSend(pointer, "click", 100, 100, 1)
 t.expect(centered, "clicking the hole calls onCenter")
 
--- New data moves the existing arcs, as SwiftUI Charts does, instead of
--- rebuilding the chart and replaying its entrance.
-local live = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.5,
-	{__sectorMark = true, id = "a", value = 1, color = "systemBlue"},
-	{__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
-	onHover = function() end}
-local firstArc, secondArc = live.subviews[1], live.subviews[2]
-t.expect(Sectors.update(live, {{__sectorMark = true, id = "a", value = 3, color = "systemBlue"}, {__sectorMark = true, id = "b", value = 1, color = "systemGreen"}}),
-	"a chart built here takes new marks")
-t.expect(live.subviews[1] == firstArc and live.subviews[2] == secondArc, "arcs keep their views")
-t.expect(firstArc.endAngle - firstArc.startAngle > secondArc.endAngle - secondArc.startAngle, "arcs take the new angles")
-Sectors.update(live, {{__sectorMark = true, id = "a", value = 3, color = "systemBlue"}, {__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
-	{__sectorMark = true, id = "c", value = 1, color = "systemRed"}})
-t.assertEqual(live.subviews[3].className, "LuaArcView", "a new mark adds an arc below the overlay")
-t.assertEqual(live.subviews[#live.subviews].className, "LuaPointerView", "the pointer view stays on top")
-Sectors.update(live, {})
-t.assertEqual(live.subviews[1].stroke, "quaternaryLabel", "no data draws the empty ring")
-t.assertEqual(live.subviews[2].className, "LuaPointerView", "extra arcs are removed")
-t.expect(not Sectors.update(ns.ZStack {}, {}), "a view the chart module did not build is refused")
-
--- A retained template reconciles changed marks into the same chart.
+-- Changed chart records replace the complete chart with final geometry.
 local Template = require("ui.template")
 local chartHost = ns.VStack {}
 local chartTemplate = Template.new(chartHost, "tests/fixtures/sector_chart.etlua", ns)
-chartTemplate:update({label = "Used 1 GB", total = "1 GB", marks = {{id = "a", value = 1, color = "systemBlue"}, {id = "b", value = 2, color = "systemGreen"}}})
-local mountedChart = chartTemplate.refs.chart
+local data = {label = "Used 1 GB", total = "1 GB", marks = {{id = "a", value = 1, color = "systemBlue"}, {id = "b", value = 2, color = "systemGreen"}}}
+chartTemplate:update(data)
+local mountedChart, oldArc = chartTemplate.refs.chart, chartTemplate.refs.chart.subviews[1]
+chartTemplate:update(data)
+t.assertEqual(chartTemplate.refs.chart, mountedChart, "unchanged data does not rebuild a chart")
+data.total = "Current total"
+chartTemplate:update(data)
+t.assertEqual(chartTemplate.refs.chart, mountedChart, "unchanged marks keep the chart when its nested overlay changes")
+t.assertEqual(chartTemplate.refs.total.text, "Current total", "mixed record and view children retain live native targets")
+data.total = "Updated total"
+chartTemplate:update(data)
+t.assertEqual(chartTemplate.refs.total.text, "Updated total", "a second overlay update keeps its native refs intact")
 chartTemplate:update({label = "Used 4 GB", total = "4 GB", marks = {{id = "a", value = 2, color = "systemBlue"}, {id = "b", value = 2, color = "systemGreen"}, {id = "c", value = 1, color = "systemRed"}}})
-t.expect(chartTemplate.refs.chart == mountedChart, "changed marks keep the chart view")
-t.assertEqual(chartTemplate.refs.total.stringValue, "4 GB", "the overlay updates in place")
-t.assertEqual(#mountedChart.subviews, 4, "three arcs and the overlay")
-t.assertEqual(mountedChart.accessibilityLabel, "Used 4 GB", "the VoiceOver summary updates in place")
+local changed = chartTemplate.refs.chart
+t.expect(changed ~= mountedChart, "changed records create a fresh chart")
+t.expect(changed.subviews[1] ~= oldArc, "a matching mark id does not carry an old arc into the new chart")
+t.assertEqual(mountedChart.superview, nil, "the old chart is detached")
+t.assertEqual(chartTemplate.refs.total.stringValue, "4 GB", "the new overlay shows its total immediately")
+t.assertEqual(#changed.subviews, 4, "three arcs and the overlay")
+t.assertEqual(changed.accessibilityLabel, "Used 4 GB", "the fresh chart has the current VoiceOver summary")
+t.assertEqual(changed.subviews[1].layer.animationKeys, nil, "new arcs have no layer animations")
+chartTemplate:update({label = "Empty", total = "0 GB", marks = {}})
+t.assertEqual(chartTemplate.refs.chart.subviews[1].stroke, "quaternaryLabel", "empty data draws its own empty ring")
+t.assertEqual(#chartTemplate.refs.chart.subviews, 2, "empty data removes previous sectors")
 
 -- A scalable chart fills the room it is given and keeps its sectors in fixed
 -- units: every arc fills the chart and draws its circle in those units, so
@@ -246,41 +243,18 @@ bridge._pointerSend(scalablePointer, "hover", largerWidth / 2 + outerMid * scale
 t.assertEqual(scalableHovered, "a1", "the pointer lands in chart units")
 bridge._pointerSend(scalablePointer, "click", largerWidth / 2, largerHeight / 2, 1)
 t.expect(scalableCentered, "the view's center is the chart's hole")
-t.expect(Sectors.update(scalable, {mark("a", 1), mark("b", 1)}), "a scalable chart takes new marks")
-t.assertEqual(scalable.subviews[1], first, "keeping its arcs")
-t.assertEqual(first.fitDiameter, 360, "which still draw in the chart's units")
-
--- An arc animates itself, and nothing else does: marks that arrive appear
--- where they belong, and an arc that is already shown turns, grows and
--- changes rings along its circle (sampled as keyframes by the arc, not a
--- point-by-point path morph). Marks that come or go appear and leave at once.
-local growing = ns.SectorChart {scalable = true, diameter = 360, innerRadius = 0.4, angularInset = 3,
-	mark("a", 3), mark("b", 1), onHover = function() end}
-local growingHost = ns.VStack {alignment = "center", flexGrow = 1, growing}
-growingHost.size = ns.Size(600, 400)
-growingHost:layout(600)
-Sectors.update(growing, {mark("a", 3), mark("b", 1), mark("c", 1)})
-growingHost:layout(600)
-t.expect(not growing.subviews[3].animating, "a new sector is not animated into place")
-
-local drill = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3, angularInset = 2,
-	mark("a", 3), mark("b", 1), mark("a1", 2, 2, "a"), mark("a2", 1, 2, "a")}
-local drillWindow = ns.Window {title = "Arcs", width = 200, height = 200, content = ns.VStack {drill}}
-local childArc = drill.subviews[3]
-t.expect(not childArc.animating, "an arc that has not changed does not animate")
-Sectors.update(drill, {mark("a1", 2), mark("a2", 1), mark("a1x", 1, 2, "a1")})
-t.expect(childArc.superview == drill, "an arc keeps its view when its mark keeps its id")
-t.expect(childArc.animating, "and turns into its new shape by its own animation")
-t.assertEqual(#drill.subviews, 3, "the level it left is gone at once")
-Sectors.update(drill, {mark("a", 3), mark("b", 1)})
-t.assertEqual(#drill.subviews, 2, "going back removes the marks the level lacks at once")
+-- Direct geometry changes and hover styling apply without layer motion.
+first.startAngle, first.endAngle = 0, 90
+t.assertEqual(first.endAngle, 90, "angle changes apply immediately")
+t.assertEqual(first.layer.animationKeys, nil, "shape changes start no implicit or explicit animation")
+Sectors.highlight(scalable, "a")
+t.assertEqual(first.layer.animationKeys, nil, "hover styling starts no animation")
 
 -- UIKit composes the same chart from its own Arc and ZStack.
 local file = assert(io.open("lua/embedded/UIKit.lua")); local uikit = file:read("*a"); file:close()
 t.expect(uikit:find('require("ui.sectors").chart(UIKit, props)', 1, true) ~= nil, "UIKit shares the sector geometry")
 
--- New marks take the chart's arcs in place: a drill into a sector and back
--- out keeps the chart and its view, and a new hole applies with the marks.
+-- A different level and hole are independent charts with fresh native views.
 local top = {mark("a", 3), mark("b", 1), mark("a1", 2, 2, "a"), mark("a2", 1, 2, "a"), mark("b1", 1, 2, "b"), mark("a1x", 1, 3, "a1")}
 local inside = {mark("a1", 2), mark("a2", 1), mark("a1x", 1, 2, "a1"), mark("a1y", 1, 2, "a1")}
 local function sunburstOf(marks, props)
@@ -289,21 +263,18 @@ local function sunburstOf(marks, props)
 	for _, record in ipairs(marks) do table.insert(chart, record) end
 	return ns.SectorChart(chart)
 end
-local hit
-local drilled = sunburstOf(inside, {onCenter = function() hit = true end})
-t.expect(Sectors.configure(drilled, {innerRadius = 0.5}), "a chart takes a new hole for its next marks")
-Sectors.update(drilled, top)
-t.assertEqual(#drilled.subviews, 7, "six arcs and the pointer view")
-bridge._pointerSend(drilled.subviews[#drilled.subviews], "click", 100, 60)
-t.expect(hit, "the center follows the new hole")
-
--- A retained template takes a new hole with its marks, keeping the chart.
 local holeTemplate = Template.new(ns.VStack {}, "tests/fixtures/sector_sunburst.etlua", ns)
 holeTemplate:update({hole = 0.3, level = "top", marks = top})
 local holeChart = holeTemplate.refs.chart
 holeTemplate:update({hole = 0.5, level = "a", marks = inside})
-t.expect(holeTemplate.refs.chart == holeChart, "a new inner radius keeps the chart view")
-t.assertEqual(#holeChart.subviews, 4, "with one arc per new mark")
+local insideChart = holeTemplate.refs.chart
+t.expect(insideChart ~= holeChart, "a new level and radius create a fresh chart")
+t.assertEqual(#insideChart.subviews, 4, "the new chart contains only the current level's arcs")
+t.assertEqual(holeChart.superview, nil, "the previous level leaves the host")
+t.assertEqual(insideChart.subviews[1].layer.animationKeys, nil, "the drilled level appears immediately")
+holeTemplate:update({hole = 0.3, level = "top", marks = top})
+t.expect(holeTemplate.refs.chart ~= holeChart and holeTemplate.refs.chart ~= insideChart, "going back builds another fresh chart")
+t.assertEqual(#holeTemplate.refs.chart.subviews, 6, "going back restores the parent level's sectors")
 
 -- The keyboard reaches an interactive chart: focus reports through onHover,
 -- Return activates, and Delete goes back, which is not a click in the hole.

@@ -248,9 +248,11 @@ local snapshots and unreadable locations. With **Keep storage history** on in
 Settings, category totals are recorded after each scan (no file names), and
 the overview shows what grew.
 
-Pages switch instantly and scan progress never animates. The only motion is
-the donut and map rings turning to a new level (the arcs' own animation),
-and the tour's system push transition; Reduce Motion turns both off.
+Navigation disposes the previous page and mounts fresh native elements.
+Changed ring data or levels build a new chart directly in its final shape;
+there is no arc animation or cross-level identity matching. Scan progress
+never animates. The welcome tour uses the system push transition, which
+honors Reduce Motion.
 
 Launch a page by itself with `--page=<id> --isolated`. Cross-page actions
 replace the content in that window; Back and Forward still work. The native

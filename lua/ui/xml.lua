@@ -774,11 +774,6 @@ local TAG_SCHEMA = {
         constructor = "SectorChart",
         children = "array",
         props = { innerRadius = "num", angularInset = "num", scalable = "bool", diameter = "num", accessibilityLabel = "str" },
-        -- New marks move the existing arcs, like SwiftUI Charts, instead of
-        -- rebuilding the chart (see ui/sectors.lua).
-        updateRecords = function(view, records) return require("ui.sectors").update(view, records) end,
-        -- Attributes the marks are laid out with; a change lays them out again.
-        recordLayout = { "innerRadius", "angularInset" },
         transform = function(props, attrs)
             bindActions(props, attrs, { "onSelect", "onHover", "onCenter", "onBack", "dragItem" })
         end,
@@ -2282,8 +2277,6 @@ local TAG_INNER = {
             if hasProperty(view, name) then return function() view[name] = num(v) or 0 end end
         end
     end },
-    -- An arc moves to new angles in place, so a change of value animates
-    -- like SwiftUI interpolating a trimmed shape.
     Arc = {
         startAngle = setter("startAngle", number(0)),
         endAngle = setter("endAngle", number(0)),
@@ -2292,11 +2285,7 @@ local TAG_INNER = {
         stroke = setter("stroke"),
         lineCap = setter("lineCap"),
     },
-    -- The chart lays its marks out again with these (see `recordLayout`).
-    SectorChart = {
-        innerRadius = function(view, v) return function() require("ui.sectors").configure(view, { innerRadius = num(v) or 0 }) end end,
-        angularInset = function(view, v) return function() require("ui.sectors").configure(view, { angularInset = num(v) or 0 }) end end,
-    },
+
 }
 
 -- Layout attributes a view reads from itself. Padding needs a stack (a
@@ -2419,11 +2408,7 @@ local function reconcileRecordsInPlace(old, new, ns, plan)
     for index, child in ipairs(newViews) do
         if not reconcileNode(oldViews[index], child, ns, plan) then return false end
     end
-    local relayout = false
-    for _, key in ipairs(entry.recordLayout or {}) do
-        if old.attrs[key] ~= new.attrs[key] then relayout = true end
-    end
-    if relayout or not sameRecords(oldRecords, newRecords, ns) then
+    if not sameRecords(oldRecords, newRecords, ns) then
         local records = compile(newRecords, ns, registry, {})
         local view = old.target
         table.insert(plan.ops, function()
@@ -2443,7 +2428,7 @@ local function reconcileChildren(old, new, ns, plan)
             -- Records (columns, marks, options) configure their parent.
             if #oldChildren ~= #newChildren then return false end
             for index, other in ipairs(newChildren) do
-                if not reconcileNode(oldChildren[index], other, ns, plan, true) then return false end
+                if not reconcileNode(oldChildren[index], other, ns, plan, isRecord(oldChildren[index])) then return false end
             end
             return true
         end
