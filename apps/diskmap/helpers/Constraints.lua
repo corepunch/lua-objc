@@ -52,24 +52,6 @@ local operations = {
 			return true
 		end,
 	},
-	-- A watch names a catalog resource that still exists, or a folder by
-	-- absolute path. Folders need not exist yet: a watched folder that
-	-- disappears stays listed as missing rather than silently dropped.
-	watch = {
-		function(context)
-			local entry = context.entry
-			if type(entry) ~= "table" then return failure("malformed_watch", "Watch entry must be a table.") end
-			if entry.kind == "resource" then
-				if not context.row then return failure("unknown_resource", "Resource is not registered.") end
-				return true
-			end
-			if entry.kind ~= "folder" then return failure("malformed_watch", "Watch entry must name a resource or a folder.") end
-			if type(entry.path) ~= "string" or entry.path:sub(1, 1) ~= "/" then
-				return failure("relative_path", "A watched folder needs an absolute path.")
-			end
-			return true
-		end,
-	},
 	trash = {
 		function(context)
 			if not context.row then return failure("unknown_resource", "Resource is not registered.") end

@@ -1,3 +1,3 @@
-<List id="sidebar" style="sourceList" header="false" alternatingRows="false" onSelect="navigate" rowMenu="rowMenu" maxHeight="infinity">
-  <Column id="name" title="" imageKey="icon" badgeKey="badge" helpKey="help" />
+<List id="sidebar" style="sourceList" header="false" alternatingRows="false" onSelect="navigate" maxHeight="infinity">
+  <Column id="name" title="" imageKey="icon" badgeKey="badge" />
 </List>

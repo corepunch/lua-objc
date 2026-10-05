@@ -26,7 +26,7 @@ The earlier review artifact in `docs/research/diskmap-ux-review/` was left untou
 
 ## Automated checks
 
-All 74 Diskmap test files passed across the final group and targeted reruns.
+The original navigation changes passed all Diskmap test files. Final removal verification is recorded below.
 `tests/diskmap_ux_navigation.test.lua` adds 50 assertions for destinations,
 selection, history/search state, discovery defaults and folder/build scope.
 
@@ -67,106 +67,38 @@ selected native table row retained selection; the explicit destination button
 was used to open it. Existing loading/error/empty/selection/cleanup headless
 coverage passed.
 
-## Favorites follow-up
+## Header and chart layout
 
-The persisted watchlist now appears as Favorites. A shortcut opens its original
-location destination: the saved SDK installation's sheet, Derived Data's Xcode
-page, or the exact saved folder in Folder Map. The favorite's native sidebar
-menu retains View Size Changes and offers Remove from Favorites. Visible pin
-buttons are present on selected Storage Map and Largest Locations entries,
-Folder Map, and SDK installations; individual SDK folders are pinnable from
-native row menus. Long favorite names keep their full path in native help.
+More than two visible header actions follow the heading on a separate row.
+One or two move below when their combined native width exceeds 30% of the
+available header width; FlowStack wraps long groups. Stacked headings keep
+intrinsic height. Shared AppKit/UIKit layout tests cover the exact threshold,
+narrow/wide/zero-width round trips, hidden and disabled buttons, changed titles,
+wrapping and retained property changes.
 
-All 75 Diskmap test files passed in the Favorites group run. Subsequent targeted
-checks passed after the final sidebar/help/menu changes. The new Favorites test
-has 50 assertions covering minimum-width layout, persistence, dedicated SDK destinations, exact folder
-paths in Back/Forward, selection versus hover, removal, missing locations, and
-menu actions retained across two windows. An unsigned Diskmap bundle builds.
+Ring charts render in their final shape. The shared path animator, animation
+properties/constants, cross-level arc matching and chart-specific geometry
+patching are deleted. Arc shape/color changes disable implicit layer actions.
+Changed chart records or geometry create a fresh chart. Navigation disposes
+its page controller and mounts a new controller/template; model state remains
+separate from native elements. The generic reconciler preserves native overlays
+alongside record children. SectorChart has 109 regression assertions and the
+Diskmap page lifecycle has 21 assertions.
 
-Final native captures were inspected at 950 × 580 and 1400 × 900 in light and
-dark appearances under `/tmp/diskmap-favorites/min/` and
-`/tmp/diskmap-favorites/large/`. These cover Storage Map and Largest Locations
-selection actions, Folder Map, size changes, and the SDK sheet. SDK rows use
-synthetic names and sizes. Favorites use the existing native source-list
-truncation; full names and paths remain available through help and accessibility.
+## Final navigation surfaces
 
-Live checks against a temporary synthetic app confirmed one-click SDK and
-Derived Data shortcuts, adding an individual SDK through its native context
-menu, and opening size changes from the favorite's sidebar menu. No real SDKs
-or build data were modified. The existing complete-live-review limits above
-still apply.
+Favorites and per-location size tracking are removed completely: sidebar
+shortcuts, route, buttons, menus, model, service and persistence provider APIs.
+The SDK sheet contains search, SDK rows, status and Done. Storage Map and
+Largest Locations retain their explicit destination/folder actions; Folder Map
+retains exploration and preview. The 30-assertion navigation-surfaces test checks
+these native controls, clean sidebar, resource/folder menus and Back/Forward.
+Shared Application Support API coverage was moved to its own three-assertion
+test before deleting the old location-tracking test.
 
-Overview correction: removed the duplicate exploration buttons and map
-explanation above the storage summary, along with the unused folder action.
-The navigation regression now checks that exploration remains accessible from
-the sidebar without those duplicate controls. All four affected test files
-passed (680 assertions). Native Overview screenshots were inspected at
-950 × 580 and 1400 × 900 in light and dark under
-`/tmp/diskmap-overview-clean/`; the unsigned bundle rebuilt successfully.
-
-
-Adaptive header correction: more than two visible buttons always follow the
-heading on a separate row. One or two move below when their combined native
-width exceeds 30% of the available header width; action groups wrap further
-with FlowStack. The shared AppKit/UIKit HStack rule measures and lays out the
-same native children on every resize. Removed the dedicated FavoriteActions
-partial and use the shared page header for size changes. Stacked headings
-keep their intrinsic height, fixing the initial oversized first row.
-
-Nine focused test files passed across the layout and final targeted runs
-(551 assertions). The adaptive header test has 33 assertions covering the exact
-threshold, narrow/wide/zero-width round trips, hidden/disabled buttons, changed
-titles, wrapping, intrinsic heading height and retained property changes.
-Native screenshots and layout dumps at 950 × 580 and 1400 × 900 in light and
-dark were inspected under `/tmp/diskmap-adaptive/final-min/` and
-`/tmp/diskmap-adaptive/final-large/`. All 40 captured page headers have no
-clipped text or children outside their bounds. The rebuilt temporary synthetic
-app also showed the corrected compact SDK favorite header before and while
-opening its SDK sheet. Both bridges and the unsigned Diskmap bundle build.
-
-Static ring and page lifecycle correction: deleted the shared arc path animator,
-animation properties and constants, cross-level arc matching, and chart-specific
-retained geometry updates. Arc shape and color writes disable implicit layer
-actions. Changed chart records or geometry create a new chart immediately.
-Diskmap navigation disposes the current page controller and mounts a fresh
-controller/template; route data and navigation history remain in the models.
-The general reconciler now preserves native overlay views alongside data records.
-
-All 81 targeted test files passed across the broad run and final affected reruns
-(75 Diskmap files plus six shared layout/template/chart files). SectorChart's
-109 assertions cover fresh charts and arcs, detached old views, nested overlays,
-unchanged chart identity, geometry, hit testing, keyboard access and absent layer
-animations. Diskmap lifecycle coverage has 21 assertions for drill/Up, disposal,
-fresh navigation, Back/Forward and immediate scan updates. Both bridges and the
-unsigned Diskmap bundle build successfully; `git diff --check` passes.
-
-Native captures at 950 × 580 and 1400 × 900 in light and dark were inspected under
-`/tmp/diskmap-static-rings/min/` and `/tmp/diskmap-static-rings/large/`. Each size
-includes Overview, Storage Map, a drilled map, Up, Folder Map and return to
-Overview. Static ring geometry, compact headers and fresh page layout remain
-correct through navigation. The broader full-suite/live-review limits above
-still apply.
-
-The rebuilt temporary synthetic app also navigated from Storage Map to Overview
-and back, showing fresh native elements and final ring geometry immediately.
-
-Favorite contents correction: scan measurements now retain whether a catalog
-root was missing. Favorites show Missing with its saved path instead of
-claiming a first measurement of 0 KB. Missing resources preserve their last
-known size/date, offer removal and omit unavailable destination actions and
-the empty contents table. A measured empty root remains a valid 0 KB result;
-a restored root compares against the preserved baseline.
-
-All 75 Diskmap test files passed. Nine model assertions cover missing versus
-empty roots, baseline preservation and recovery; five additional Favorites
-assertions cover the missing installation's page and actions. The unsigned
-bundle builds and `git diff --check` passes. Native missing and populated
-Xcode favorites were captured and inspected at 950 × 580 and 1400 × 900 in
-light/dark under `/tmp/diskmap-favorite-contents/`.
-
-The previous temporary synthetic app supplied SDK rows separately from its
-virtual disk, which contained no Xcode files. That inconsistent test setup
-caused the reported empty contents. It now uses synthetic Xcode/SDK files for
-all measurements, SDK rows and folder contents; its favorite shows 8.7 GB and
-a populated top-level listing. These values are test data, not the host's
-Xcode installation.
+Final removal verification: all 81 selected test files passed (74 Diskmap and
+seven shared chart/template/layout/storage-directory files). The unsigned bundle
+built successfully. Twenty native captures at 950 × 580 and 1400 × 900 cover
+Overview, selected Storage Map, selected Largest Locations, Folder Map and the
+SDK sheet in light and dark under `/tmp/diskmap-clean/`. The sidebar begins with
+Overview and no pin controls or location-tracking pages remain.

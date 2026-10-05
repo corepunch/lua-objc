@@ -87,7 +87,6 @@ local function measurement(node, state)
 	-- read as a measurement of nothing, where the truth is "No access".
 	if state == "unreadable" and (tree.kb or 0) == 0 then return {status = "denied"} end
 	return {bytes = type(node) == "table" and node.kb * 1024 or state == "missing" and 0 or nil,
-		missing = state == "missing" or nil,
 		logicalBytes = tree.logicalKb and math.floor(tree.logicalKb * 1024 + 0.5) or nil,
 		cloudBytes = tree.cloudKb and math.floor(tree.cloudKb * 1024 + 0.5) or nil, cloudFiles = tree.cloudFiles,
 		status = state == "skipped" and "skipped" or state == "missing" and "complete" or type(node) == "table" and (node.partial and "partial" or "complete") or "denied"}

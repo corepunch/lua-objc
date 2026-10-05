@@ -84,7 +84,6 @@
     <HStack spacing="8" alignment="center">
       <Button id="mapOpen" title="<%= selection.title %>" action="openSelection" disabled="<%= not selected %>" />
       <Button id="mapInspect" title="Inspect Folder Contents" action="inspectSelection" disabled="<%= selection.path == nil %>" />
-      <Button id="mapFavorite" title="<%= favorite and favorite.title or "Add to Favorites" %>" systemImage="star" action="favoriteSelection" disabled="<%= not favorite %>" />
     </HStack>
   </VStack>
 </VStack>

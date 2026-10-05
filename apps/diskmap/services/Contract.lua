@@ -40,7 +40,6 @@ Contract.members = {
 	loadKeep = "()",
 	loadSettings = "()",
 	loadSnapshotSummary = "()",
-	loadWatchlist = "()",
 	logOperation = "(line)",
 	measure = "(paths, completion) -> completion(sizes, states)",
 	monitor = "(visible, refresh)",
@@ -74,7 +73,6 @@ Contract.members = {
 	saveKeep = "(kept)",
 	saveSettings = "(enabled)",
 	saveSnapshotSummary = "(text)",
-	saveWatchlist = "(entries)",
 	savedSnapshotPath = "()",
 	scanFolder = "(path, options, completion, progress) -> completion(tree?, failure?, coverage)",
 	showError = "(title, message, parent?)",
@@ -108,10 +106,10 @@ function Contract.stub(overrides)
 	local function empty() return {} end
 	local function no() return false end
 	for name in pairs(Contract.members) do service[name] = none end
-	for _, name in ipairs({"children", "bundles", "agentEntries", "protectedLocations", "loadKeep", "loadWatchlist", "loadFolders", "cleanupProbes", "operationLog"}) do service[name] = empty end
+	for _, name in ipairs({"children", "bundles", "agentEntries", "protectedLocations", "loadKeep", "loadFolders", "cleanupProbes", "operationLog"}) do service[name] = empty end
 	for _, name in ipairs({"loadSettings", "loadFlag", "loadHistorySetting", "exists", "sandboxed", "notificationsAvailable", "requestDiskAccess"}) do service[name] = no end
 	for _, name in ipairs({"loadHistory", "loadSnapshotSummary"}) do service[name] = function() return "" end end
-	for _, name in ipairs({"saveKeep", "saveWatchlist", "saveFolders", "saveSettings", "saveFlag", "saveHistorySetting", "saveHistory", "saveSnapshotSummary", "logOperation"}) do service[name] = function() return true end end
+	for _, name in ipairs({"saveKeep", "saveFolders", "saveSettings", "saveFlag", "saveHistorySetting", "saveHistory", "saveSnapshotSummary", "logOperation"}) do service[name] = function() return true end end
 	for _, name in ipairs({"trash", "emptyTrash", "openOwner", "confirmTrash", "confirmTrashPath", "confirmEmptyTrash", "confirmOwnerCleanup", "confirmAction"}) do service[name] = no end
 	service.start = function() return {} end
 	service.await = function(_, done) done({trees = {}, rootStates = {}}) end

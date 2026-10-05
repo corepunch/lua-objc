@@ -53,9 +53,8 @@ function Controller.new(service, launch)
 	self.env = Environment.new(service or launch.service, launch, router)
 	for _, sheet in pairs(self.env.context.sheets) do SheetController.attach(sheet, self.env.model) end
 	self.navigation = NavigationController.new(function(id, fromHistory)
-		local key = id:match("^watched:(.+)$")
-		if key then self:openFavorite(key, fromHistory) else self:show(id, {}, fromHistory) end
-	end, function(row) return self:favoriteMenu(row) end)
+		self:show(id, {}, fromHistory)
+	end)
 	self.collectorController = CollectorController.new(self.env.context)
 	self.progress = ScanProgress.new(self.env.scan)
 	self.commands = CommandsController.new(self.env.model, self.env.service, {
@@ -108,44 +107,6 @@ function Controller:open(id, filter)
 	end
 end
 
--- A favorite is the same destination as its source row. The saved key also
--- records the exact folder in history, rather than a generic Folder Map visit.
-function Controller:openFavorite(key, fromHistory)
-	local entry = self.env.watchlist:find(key)
-	if not entry then return end
-	local navigationId = "watched:" .. key
-	if entry.kind == "folder" then
-		self.env.management:close(); self.env.sdks:close()
-		self:show("folder", {path = entry.path, navigationId = navigationId}, fromHistory)
-		return
-	end
-	local destination = Locations:destination(entry.id)
-	if not destination then return end
-	if destination.page then
-		self.env.management:close(); self.env.sdks:close()
-		self:show(destination.page, {navigationId = navigationId}, fromHistory)
-	else
-		self:show("watched", {key = key}, fromHistory)
-		self:open(entry.id)
-	end
-end
-
-function Controller:favoriteMenu(row)
-	local key = row and row.id and row.id:match("^watched:(.+)$")
-	local entry = key and self.env.watchlist:find(key)
-	if not entry then return {} end
-	local remove = self.env.watchlist:menuItem(entry)
-	local toggle = remove.action
-	remove.action = Model.bound(self.env.model, function()
-		local selected = self.navigation.current == row.id
-		toggle()
-		if selected then self:show("overview") end
-	end)
-	return {
-		{title = "View Size Changes", systemImage = "chart.bar", action = function() self:show("watched", {key = key}) end},
-		remove,
-	}
-end
 function Controller:state()
 	local state = self.env:state()
 	state.query = self.query
@@ -191,7 +152,6 @@ function Controller:updateRows()
 	-- A page may re-render its template, so its refs are read after updating.
 	if self.page then self.page:update(self:state()) end
 	self.navigation:setBadges(self:badges())
-	self.navigation:setWatched(self.env.watchlist:rows())
 	self.navigation:setWorkflows(self.env:presentWorkflows())
 	self.env.management:draw()
 	self.env.sdks:draw()
@@ -261,11 +221,9 @@ end
 function Controller:show(id, params, fromHistory)
 	params = params or {}
 	local remount = next(params) ~= nil
-	local key = id == "watched" and params.key
 	local entry = self.env.manifest.pages[id]
 	if not entry then error("Unknown Diskmap page: " .. tostring(id), 0) end
 	if not self.content then return end
-	if key and not self.env.watchlist:find(key) then return end
 	if self.destination == id and self.page and not remount then return end
 	local request = self.env:page(entry.id)
 	if request.focus and type(request.focus) == "function" then request:focus(params) end
@@ -283,7 +241,7 @@ function Controller:show(id, params, fromHistory)
 		store = self.env.model, request = request})
 	self.destination, self.page = id, page
 	page:mount(self.content, self:state())
-	self.navigation:select(params.navigationId or key and ("watched:" .. key) or id, fromHistory)
+	self.navigation:select(id, fromHistory)
 	self:updateRows()
 end
 
@@ -361,7 +319,6 @@ function Controller:createWindow()
 		pageDrag = function(targeted) self.collectorController:drag("page", targeted) end,
 		collectorDrag = function(targeted) self.collectorController:drag("collector", targeted) end,
 	}})
-	self.navigation:setWatched(self.env.watchlist:rows())
 	self.navigation:setWorkflows(self.env:presentWorkflows())
 	cfg.content = content
 	if not self.launch.isolated then cfg.sidebar = self.navigation:render() end

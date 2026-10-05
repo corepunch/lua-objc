@@ -34,7 +34,7 @@ for _, row in ipairs(Navigation.destinations) do
 	t.assertEqual(row.section and ("section:" .. row.title) or row.id, rows[index], "sidebar row " .. index .. " follows app.xml")
 end
 t.assertEqual(index, #rows, "and there are no others")
-t.expect(Navigation.page("watched") == nil, "an unlisted page has no sidebar row")
+t.assertEqual(manifest.pages.watched, nil, "size tracking has no route")
 
 -- The Go menu lists the same pages.
 local data = app.commands:data()

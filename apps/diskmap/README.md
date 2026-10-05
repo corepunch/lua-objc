@@ -206,21 +206,6 @@ emptying the Trash. It then offers to empty the
 Trash and reports how much more free space macOS actually sees. Every action
 is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 
-**Add to Favorites** pins a location at the top of the sidebar with its current
-size. The selected location on Storage Map or Largest Locations offers this
-action directly, as do the Folder Map and SDK installation sheet. Row menus
-can also favorite individual SDK folders or a project's Derived Data folder.
-Clicking a favorite opens the same dedicated destination as its source:
-an installation's SDK sheet, Derived Data's Xcode page, or the exact folder's
-Folder Map. Back and Forward remember favorite folder paths.
-
-A favorite's sidebar menu offers **View Size Changes** and **Remove from
-Favorites**. Size changes compare complete measurements with the previous
-session, so an interrupted scan never looks like shrinkage. A missing folder
-stays listed as Missing, and a bookmark follows a moved or renamed folder.
-Favorites persist across launches and are measured on demand or after a scan;
-they introduce no background polling.
-
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
 and Essential to keep filters. Back, Forward, Refresh, Stop, Clean Up,
 Marked, Settings and Search live in the toolbar; search applies to the current
@@ -402,7 +387,7 @@ Every startup and refresh recalculates the inventory. Each pending category
 shows a native spinner and “Calculating…” in place of its size, then displays
 its fresh result once all of its locations finish. No live scan results or
 diagnostics are retained between launches. What persists is what you chose:
-Keep choices, watched locations with their last size, the settings (background
+Keep choices, the settings (background
 checks, media libraries, storage history and notifications), folders added to
 Projects, and, once you export a snapshot, that snapshot with its cached
 per-location totals (`snapshot-summary`), in Diskmap's Application
@@ -504,7 +489,6 @@ independently.
 | `models/Applications.lua` | Installed apps, their data folders, last use and possible leftovers |
 | `models/Projects.lua` | Project build folders grouped by project, git state and age |
 | `models/Marks.lua` | Marked items, location refusals and parent/child de-duplication |
-| `models/Watchlist.lua` | Watched resources and folders, their previous-session baseline and change |
 | `models/Workflows.lua`, `knowledge/Workflows.lua` | The kinds of work (Developer, Music Production, …): a page's ranked rows per section, totals, presence on this Mac and sidebar badge |
 | `models/Scans.lua` | The running or last scan and what it writes: each location's measurement, the ranked files, coverage, what could not be read |
 | `models/Categories.lua` | The location tree with measurements rolled up: category rows, the overview's chart and shares, the map's nodes, history of totals |
@@ -571,8 +555,8 @@ A page appears in the sidebar only on a Mac that has its data: one of its
 
 A page that ranks storage in lists has no template of its own. It is a
 `layout` table rendered by `views/pages/Page.etlua`: Largest Items, Large Files,
-Duplicates, Clean Up, Applications, Disks & Volumes, Xcode, Projects, a
-watched location and every kind of work. Its route extends `pages/ListRoute.lua`
+Duplicates, Clean Up, Applications, Disks & Volumes, Xcode, Projects and
+every kind of work. Its route extends `pages/ListRoute.lua`
 with a `layout`, `present(self, state)` and its actions. A page that reads
 folders, runs a search or keeps a filter keeps that state on its page and starts
 its service requests in `activate`. Only pages with a presentation of their own keep a template: the Overview,

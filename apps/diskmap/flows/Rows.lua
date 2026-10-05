@@ -15,7 +15,7 @@ local Rows = Flow:extend()
 -- A flow (lua/data/flow.lua) over a page: `self:flow("Rows"):resource(id)`.
 -- It acts through the app's services, `self.app`: `open(id)` opens a
 -- resource where its location sends it, `keep(id)` toggles Keep,
--- `watchlist` watches, `trashed(path, bytes)` and `removed(path, bytes, to)`
+-- `trashed(path, bytes)` and `removed(path, bytes, to)`
 -- take what left the disk out of the model, `openReview(path)` shows the
 -- marked items, and `review` is the review sheet: "Mark for Cleanup" adds a
 -- row to the marks (models/Marks.lua), and nothing touches the disk until
@@ -107,11 +107,6 @@ function Rows:reveal(path)
 	return {title = "Show in Finder", systemImage = "folder", action = function() self.app.service.reveal(path) end}
 end
 
--- Favorites share the persisted size-tracking list.
-function Rows:favorite(entry)
-	return self.app.watchlist and self.app.watchlist:menuItem(entry) or nil
-end
-
 function Rows:copyPath(path)
 	return {title = "Copy Path", systemImage = "doc.on.doc", action = function() self.app.service.copy(path) end}
 end
@@ -189,7 +184,6 @@ function Rows:item(row, handlers)
 		action = function() self:trashItem(row, validate, function() handlers.changed(row.path) end) end})
 	if ok then table.insert(items, self:mark({path = row.path, name = row.name, bytes = row.bytes, source = "Folder"})) end
 	table.insert(items, separator())
-	if row.directory then table.insert(items, self:favorite({kind = "folder", path = row.path, name = row.name})) end
 	table.insert(items, self:copyPath(row.path))
 	return items
 end
@@ -253,7 +247,6 @@ function Rows:resource(id)
 	table.insert(items, separator())
 	table.insert(items, {title = Model.db.kept[id] and "Stop Keeping" or "Keep", systemImage = "checkmark.shield",
 		action = function() self.app.keep(id) end})
-	table.insert(items, self:favorite({kind = "resource", id = id}))
 	if row.path then table.insert(items, self:copyPath(row.path)) end
 	return items
 end
@@ -307,7 +300,6 @@ function Rows:folder(row, trash, mark)
 	table.insert(items, self:reveal(row.path))
 	table.insert(items, separator())
 	-- Folders only: a single file's size is not worth a sidebar row.
-	if row.directory ~= false then table.insert(items, self:favorite({kind = "folder", path = row.path, name = row.name})) end
 	table.insert(items, self:copyPath(row.path))
 	return items
 end

@@ -37,23 +37,12 @@ end
 
 -- `show(id)` mounts the destination; the root controller owns page lifetime.
 -- Back and forward follow destinations the way a browser follows pages.
-function Controller.new(show, menu)
-	return setmetatable({show = show, menu = menu, history = {}, position = 0, badges = {}, watched = {}, workflows = {}}, Controller)
+function Controller.new(show)
+	return setmetatable({show = show, history = {}, position = 0, badges = {}, workflows = {}}, Controller)
 end
 
--- Watched locations lead the sidebar, as Favorites lead Finder's: they are
--- what the person chose to come back to. The section appears only once
--- something is watched. Each row's badge is its current size.
 function Controller:list()
 	local list = {}
-	if #self.watched > 0 then
-		table.insert(list, {section = true, title = "Favorites"})
-		for _, row in ipairs(self.watched) do
-			table.insert(list, {id = row.id, name = row.name, icon = row.icon, color = row.color,
-				badge = not row.calculating and row.size or nil,
-				help = row.name .. (row.path and ("\n" .. row.path) or "") .. "\nClick to open. Use the menu to view size changes or remove this favorite."})
-		end
-	end
 	-- A section header is listed once one of its rows is.
 	local header
 	for _, row in ipairs(Controller.destinations) do
@@ -94,7 +83,6 @@ end
 function Controller:render()
 	local view, refs = xml.renderFile("apps/diskmap/views/layouts/Sidebar.etlua", {actions = {
 		navigate = function(_, _, row) if not self.selecting and row and row.id then self.show(row.id) end end,
-		rowMenu = function(_, _, row) return self.menu and self.menu(row) or {} end,
 	}}, ns)
 	self.refs = refs
 	self.selecting = true
@@ -152,22 +140,6 @@ function Controller:setBadges(badges)
 	end
 	if not changed then return false end
 	self.badges = badges
-	self:reload()
-	return true
-end
-
--- Replaces the Watched section. Adding the section shifts every row below
--- it, so the selection follows the current destination, not its index.
--- A watch removed while its row is selected leaves nothing selected.
-function Controller:setWatched(rows)
-	rows = rows or {}
-	local function signature(list)
-		local parts = {}
-		for _, row in ipairs(list) do table.insert(parts, row.id .. "\t" .. row.name .. "\t" .. tostring(not row.calculating and row.size or "")) end
-		return table.concat(parts, "\n")
-	end
-	if signature(rows) == signature(self.watched) then return false end
-	self.watched = rows
 	self:reload()
 	return true
 end
