@@ -45,7 +45,7 @@ t.expect(page.refs.waiting ~= nil and page.refs.files == nil, "a running scan dr
 model.scan = {running = false}
 page:update({query = ""})
 t.expect(page.refs.waiting == nil and page.refs.files ~= nil, "the finished scan is drawn")
-t.assertEqual(page.refs.filter.selectedSegment, 0, "the page opens on the first filter")
+t.assertEqual(page.refs.filter.selectedSegment, 1, "the page opens on All measured files")
 page.actions.filter(1)
 t.assertEqual(page.request.filterIndex, 2, "the picker is the model's filter index")
 t.assertEqual(page.refs.filter.selectedSegment, 1, "and the picker follows it")
@@ -56,7 +56,7 @@ page.actions.clearKind()
 t.expect(page.refs.clearKind.hidden and page.request.kind == nil, "and clearing the kind restores them")
 t.assertEqual(page.request.filterIndex, 4, "without touching the filter")
 page.request:focus({})
-t.assertEqual(page.request.filterIndex, 1, "focusing without a filter opens the first")
+t.assertEqual(page.request.filterIndex, 2, "focusing without a filter opens All")
 page:dispose()
 
 -- File Types waits for the scan too.

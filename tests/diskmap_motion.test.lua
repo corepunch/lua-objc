@@ -28,6 +28,6 @@ t.expect(app.page ~= nil, "a scan update applies at once")
 
 -- Pointing at a resource selects; it does not change level.
 app.page.actions.chartHover("developer")
-t.assertEqual(app.env:page("map").selectedId, "developer", "map hover and the list share one token")
+t.assertEqual(app.env:page("map").selectedId, nil, "hover points at the list without changing the kept selection")
 t.assertEqual(app.env:page("map").focusId, "", "hovering does not look inside a group")
 os.exit(t.summary() and 0 or 1)

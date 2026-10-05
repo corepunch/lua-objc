@@ -124,6 +124,21 @@ function Projects:groups(filter, query, now)
 	return rows
 end
 
+-- Generated artifacts within a location, separate from the whole folder's
+-- measured bytes. Missing measurements remain unknown rather than zero.
+function Projects:bytesWithin(path)
+	local bytes, measured = 0, false
+	for _, row in ipairs(Locations:leaves()) do
+		if row.project and row.path and (row.path == path or row.path:sub(1, #path + 1) == path .. "/") then
+			local measurement = row:measurement()
+			if measurement and measurement.bytes ~= nil then
+				bytes, measured = bytes + measurement.bytes, true
+			end
+		end
+	end
+	return measured and bytes or nil
+end
+
 function Projects:badge()
 	local bytes = 0
 	for _, group in ipairs(self:groups(self.filters[1])) do bytes = bytes + group.bytes end

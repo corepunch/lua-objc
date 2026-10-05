@@ -35,7 +35,7 @@ t.assertEqual(page.refs.contents.rowCount, 6, "every top-level item is listed")
 local titles = {}
 for index = 1, page.refs.contents.rowCount do
 	local items = bridge._tableRowMenu(page.refs.contents, index)
-	titles[items[1].title] = true
+	for _, item in ipairs(items) do if item.title then titles[item.title] = true end end
 end
 t.expect(titles["Empty Trash…"] and titles["Spotlight Settings…"], "the disk's Trash and index offer their owners' actions")
 t.expect(titles["Mark for Cleanup"], "ordinary folders can be marked for cleanup")

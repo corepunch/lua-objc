@@ -16,6 +16,7 @@ local LAYOUT = {
 		{id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year", value = "—", detail = "Not opened or changed since"},
 		{id = "movableTile", icon = "trash.fill", color = "systemRed", title = "Yours to review", value = "—", detail = "Unused documents you can move to the Trash"},
 	},
+	details = true,
 	sections = {{
 		controlsId = "fileControls",
 		links = {{id = "clearKind", title = "Show All Kinds", style = "link", action = "clearKind"}},
@@ -27,7 +28,7 @@ local LAYOUT = {
 			{id = "filesEmpty", title = "No Files Here", systemImage = "doc", description = "No large file fits this filter. Choose All to see every file Diskmap ranked."},
 		},
 		panelId = "filesPanel",
-		list = {id = "files", menu = "rowMenu", activate = "reveal", detailColumn = true, fileIcons = true}}},
+		list = {id = "files", menu = "rowMenu", activate = "reveal", selectAction = "select", detailColumn = true, fileIcons = true}}},
 	footnote = {text = "Diskmap reads only names, sizes and dates. Files inside apps, libraries and hidden tool folders are listed for context and managed by their owners; only your own documents can be moved to the Trash here."},
 }
 
@@ -51,7 +52,7 @@ local function decision(page, rows, fileState, reason, query, kind, noFiles)
 		title = (kind and kind.name or filter) .. " · " .. Format.plural(#rows, "file"),
 		detail = filter == "Installers & archives" and "Check that these are installed or extracted. Marking stages them for your final review."
 			or "Review the contents before marking. Files inside apps or libraries stay with their owners.",
-		amount = Format.size(bytes), amountCaption = "to review",
+		amount = Format.size(bytes), amountCaption = filter == "All" and "measured" or "to review",
 		actionTitle = reviewable > 0 and ("Mark " .. Format.plural(reviewable, "File")) or (marked > 0 and "Review Marked Items…" or "No Files to Mark"),
 		action = reviewable > 0 and "markFiles" or "reviewMarked", disabled = reviewable == 0 and marked == 0,
 		secondaryTitle = reviewable > 0 and marked > 0 and "Review Marked Items…" or nil, secondaryAction = "reviewMarked"}
@@ -65,7 +66,7 @@ local function decision(page, rows, fileState, reason, query, kind, noFiles)
 	elseif fileState == "error" or fileState == "unavailable" then
 		say("File results unavailable", reason, "not measured", "Refresh Scan", "refreshFiles")
 	elseif #rows == 0 and query ~= "" then
-		say("Nothing matches this search", "Clear the search or choose another filter to review the measured files.", "no matches", "Clear Search", "clearSearch")
+		say("Nothing matches this search", "No files match “" .. query .. "” in " .. filter .. (kind and (" · " .. kind.name) or "") .. ". Clear Search or change the filter.", "no matches", "Clear Search", "clearSearch")
 	end
 	return data
 end
@@ -73,10 +74,14 @@ end
 -- Large Files: the individual files the last scan ranked, with filters for
 -- files unused for a year, installers and media. File Types opens it on one
 -- kind (`focus`).
-routes.files = ListRoute.extend({layout = LAYOUT, children = {lead = "sections/Decision"}, menu = function(page, row) return page.rowActions:file(row) end,
+routes.files = ListRoute.extend({layout = LAYOUT,
+	init = function(page) ListRoute.init(page); page.filterIndex = Files.filters:index("All") end, children = {lead = "sections/Decision"},
+	details = function(_, row) return {title = row.name, detail = row.path, size = row.size, actionTitle = "Show in Finder"} end,
+	openSelection = function(page) if page.selectedRow then page.app.service.reveal(page.selectedRow.path) end end,
+	menu = function(page, row) return page.rowActions:file(row) end,
 	-- Opens the page narrowed to one File Types kind and one filter.
 	focus = function(page, params)
-		page.kind, page.filterIndex = params.kind, params.filter and assert(Files.filters:index(params.filter), "Unknown file filter") or 1
+		page.kind, page.filterIndex = params.kind, params.filter and assert(Files.filters:index(params.filter), "Unknown file filter") or Files.filters:index("All")
 	end,
 	clearKind = function(page) page.kind = nil end,
 	-- Mark only the visible, user-owned subset. This stages the files; the
@@ -104,7 +109,8 @@ routes.files = ListRoute.extend({layout = LAYOUT, children = {lead = "sections/D
 		local noFiles = fileState == "empty" or (fileState == "loaded" and noLarge)
 		local unavailable = fileState == "error" or fileState == "unavailable"
 		local listed = files ~= nil and #rows == 0 and fileState == "loaded" and not noLarge
-		local texts = {scopeNote = Scope.text("files", Scans:coverage()), summary = not summary and "No file results are available. Refresh to try again."
+		local texts = {filesNoResultsDescription = "No files match “" .. query .. "” in " .. Files.filters[page.filterIndex] .. (kind and (" · " .. kind.name) or "") .. ". Clear Search or change the filter.",
+			scopeNote = Scope.text("files", Scans:coverage()), summary = not summary and "No file results are available. Refresh to try again."
 			or "Files over " .. THRESHOLD .. " · " .. (summary.partial and "scan coverage is incomplete" or "largest first")}
 		if summary then
 			texts.largeTileValue, texts.largeTileDetail = Format.size(summary.bytes), Format.plural(Format.count(summary.count), "file") .. ", largest first"

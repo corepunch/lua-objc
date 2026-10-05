@@ -29,6 +29,7 @@ local overview = routes.overview
 function overview:access() self.app.access() end
 overview.grantAccess = overview.access
 function overview:reclaim() self.app.show("cleanup") end
+function overview:inspectFolder() self.app.show("folder") end
 function overview:showLargest() self.app.show("largest") end
 function overview:showAllChanges() self.app.openChanges() end
 function overview:exploreFolders() self.app.show("filesystem") end

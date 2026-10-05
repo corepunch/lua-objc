@@ -22,6 +22,7 @@
 <VStack id="page" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
   <%- partial("../components/PageHeader.etlua", {header = page, summary = subtitle, summaryId = "mapSummary"}) %>
   <Breadcrumb id="mapBar">
+    <Button id="mapUp" title="Up" systemImage="arrow.up" action="up" disabled="<%= not canUp %>" help="Show the parent map level; Back and Forward visit pages" />
     <% for index, step in ipairs(trail) do %>
     <Crumb name="<%= step.name %>" action="focus_<%= index %>" current="<%= index == #trail and "true" or "false" %>" />
     <% end %>
@@ -31,6 +32,7 @@
       <Option title="Rectangles" />
     </Picker>
   </Breadcrumb>
+  <Label id="mapSearchScope" text="<%= query ~= "" and ("Map list filtered by “" .. query .. "”. The chart shows the full level. Switch to Rings to see matches. Search clears when changing pages.") or "Storage Map groups measured locations by category. Folder Map inspects everything inside one folder." %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
   <HStack id="mapBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
     <% --[[ Rectangles already name every item, so the list serves the rings
       only. It gives way before the chart does: in the narrowest window it
@@ -77,4 +79,11 @@
       <% if style == "rectangles" then worthBox() end %>
     </VStack>
   </HStack>
+  <VStack spacing="6" alignment="leading">
+    <Label id="mapSelection" text="<%= selection.detail %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
+    <HStack spacing="8" alignment="center">
+      <Button id="mapOpen" title="<%= selection.title %>" action="openSelection" disabled="<%= not selected %>" />
+      <Button id="mapInspect" title="Inspect Folder Contents" action="inspectSelection" disabled="<%= selection.path == nil %>" />
+    </HStack>
+  </VStack>
 </VStack>
