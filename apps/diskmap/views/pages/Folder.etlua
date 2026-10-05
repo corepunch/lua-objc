@@ -21,6 +21,7 @@
   <ContentUnavailable id="folderFailed" title="Could Not Measure This Folder" systemImage="exclamationmark.triangle" description="<%= failure %>" />
   <% else %>
   <Breadcrumb id="folderBar">
+    <Button id="folderUp" title="Up" systemImage="arrow.up" action="up" disabled="<%= not canUp %>" help="Show the parent folder; Back and Forward visit pages" />
     <% for index, step in ipairs(trail) do %>
     <Crumb name="<%= step.name %>" action="focus_<%= index %>" current="<%= index == #trail and "true" or "false" %>" />
     <% end %>
@@ -90,5 +91,9 @@
       <% end %>
     </VStack>
   <% if style ~= "rectangles" then %></HSplit><% else %></HStack><% end %>
+  <HStack spacing="8" alignment="center">
+    <Label id="folderSelection" text="<%= selection.detail %>" size="12" color="secondary" flexGrow="1" flexShrink="1" lines="0" />
+    <Button id="folderOpen" title="<%= selection.title %>" action="openSelection" disabled="<%= not selection.enabled %>" />
+  </HStack>
   <% end %>
 </VStack>

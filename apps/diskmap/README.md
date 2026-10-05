@@ -219,7 +219,16 @@ Categories open their resources in a sheet with Safe/rebuildable, Needs review
 and Essential to keep filters. Back, Forward, Refresh, Stop, Clean Up,
 Marked, Settings and Search live in the toolbar; search applies to the current
 page (on the Map it narrows the list beside the chart, which keeps the whole
-level so its proportions stay true), and a search without matches says so.
+level so its proportions stay true). The field names its scope and clears when
+changing pages, including Back and Forward. Folder Map has no search filter.
+Large Files opens on All measured files; Yours narrows to documents eligible
+for review. Both maps offer Up for their parent level; Back and Forward visit
+pages. Storage Map and Largest Locations open the originating location
+through the same destination, retaining leaf selection in category sheets.
+Selected-item buttons name the destination without requiring a double-click.
+Inspect Folder Contents opens a location's exact path in Folder Map; Review
+Build Data opens Projects. Their amounts distinguish measured folder contents
+from generated build data. Overview exposes both discovery entry points.
 `--page=<id>` (for example `--page=files`) opens a destination at launch for
 screenshots and walkthroughs. The window subtitle shows free and available space (available includes
 purgeable storage) and how many items are marked. Sidebar rows show sizes as

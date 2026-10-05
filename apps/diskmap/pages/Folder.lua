@@ -3,6 +3,7 @@ local Model = require("data.model")
 local FolderTree = require("apps.diskmap.helpers.FolderTree")
 local Sectors = require("ui.sectors")
 local Format = require("apps.diskmap.helpers.Format")
+local Selection = require("apps.diskmap.helpers.Selection")
 
 -- The Folder page: any folder or disk dropped on the window or the Dock icon,
 -- or chosen with File › Open Folder…, measured in one scan and shown as
@@ -125,7 +126,7 @@ function Folder:setFocus(path)
 		if generation == self.generation and self.loading then self.job = job end
 		return
 	end
-	self.focusPath = path
+	self.focusPath, self.selected = path, nil
 end
 
 function Folder:up()
@@ -157,7 +158,23 @@ function Folder:chartSelect(id, count)
 	local node = self.tree and self.tree:find(id)
 	if count and count > 1 then self:drill(id)
 	elseif node and node.directory and (node.children == nil or #node.children > 0) then self:setFocus(id)
-	else self.selected = node and id or self.selected; self:describe(id) end
+	else self.selected = node and id or self.selected; self:describe(id); self:showSelection() end
+end
+
+function Folder:openSelection() if self.selected then self:drill(self.selected) end end
+
+function Folder:selection()
+	local node = self.tree and self.tree:find(self.selected)
+	return {title = node and (node.directory and "Inspect Folder Contents" or "Preview File") or "Open Selection",
+		detail = node and (node.name .. " · " .. Format.size(node.bytes)) or "Select an item to inspect its contents or preview it.",
+		enabled = node ~= nil}
+end
+
+function Folder:showSelection()
+	if not self.refs or not self.refs.folderOpen then return end
+	local selection = self:selection()
+	self.refs.folderOpen.title, self.refs.folderOpen.enabled = selection.title, selection.enabled
+	self.refs.folderSelection.text = selection.detail
 end
 
 function Folder:chartHover(id) self:describe(id) end
@@ -166,6 +183,7 @@ function Folder:selectRow(_, _, row)
 	if not row then return end
 	if not row.other then self.selected = row.path end
 	self:describe(row.id)
+	self:showSelection()
 	if self.refs.folderSunburst then Sectors.highlight(self.refs.folderSunburst, row.id) end
 end
 
@@ -284,16 +302,19 @@ function Folder:data()
 	local nodes, total = self.tree:nodes(self.focusPath, self.coloring, now)
 	data.nodes = nodes
 	data.rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:catalogName(path) end)
+	self.rows = data.rows
 	data.trail = self.tree:trail(self.focusPath)
 	self.nodeById = {}
 	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
 	self.center = {title = Format.size(total), detail = #data.trail > 1 and "Click to go up" or "Measured"}
 	data.center = self.center
+	data.canUp = #data.trail > 1
+	data.selection = self:selection()
 	data.legend = self.tree:legend(self.focusPath, self.coloring, now)
 	data.lists = self.style ~= "rectangles" and {folderList = data.rows} or nil
 	self.trail = data.trail
 	for _, row in ipairs(data.rows) do self.rowsByPath[row.id] = row end
-	self.hover = #nodes == 0 and "" or "Hover over the map for details; click a folder to look inside."
+	self.hover = #nodes == 0 and "" or "Click a folder to look inside. Select a file, then Preview File; double-click also previews it."
 	data.hover = self.hover
 	-- The breadcrumb buttons are named by position (`focus_2`).
 	data.handlers = {}
@@ -305,7 +326,11 @@ function Folder:data()
 	return data
 end
 
-function Folder:rendered(refs) self.refs = refs end
+function Folder:rendered(refs)
+	self.refs = refs
+	Selection.show(refs.folderList, self.rows or {}, self.selected)
+	self:showSelection()
+end
 
 function Folder:deactivate() self.refs = nil end
 

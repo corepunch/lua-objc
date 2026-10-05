@@ -79,7 +79,7 @@
       </HStack>
       <% end %>
       <% for _, empty in ipairs(section.empties or {}) do %>
-      <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= empty.description %>" />
+      <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= texts and texts[empty.id .. "Description"] or empty.description %>" />
       <% end %>
       <% if section.collapsed then %>
       <Disclosure id="<%= section.id %>_disclosure" label="<%= section.collapsed %>" expanded="false" spacing="8">

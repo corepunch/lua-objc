@@ -28,8 +28,8 @@ end
 
 -- Large Files filters. "Unused" is a year without being opened or changed,
 -- the threshold CleanMyMac's Large & Old Files and most Reddit advice use.
--- "Yours" leads: the files a person can act on. Files inside apps, system
--- volumes and tool folders stay under "All", for context.
+-- "All" is the discovery default; "Yours" narrows to actionable documents.
+-- Files inside apps, system volumes and tool folders remain visible in All.
 Files.filters = Model.enum({"Yours", "All", "Unused for a year", "Installers & archives", "Media"})
 local FILTER_KINDS = {["Installers & archives"] = {installers = true, archives = true}, Media = {video = true, images = true, audio = true}}
 

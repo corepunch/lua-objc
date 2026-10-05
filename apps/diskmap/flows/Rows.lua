@@ -194,16 +194,42 @@ function Rows:item(row, handlers)
 	return items
 end
 
+-- Explicit destinations for selected locations, shared by map and ranking.
+function Rows:locationAction(id)
+	local row = Locations:find(id)
+	if not row then return {title = "Open Selection", detail = "Select an item to choose its destination."} end
+	local destination = row:destination()
+	local title = destination.page == "projects" and "Review Build Data"
+		or destination.page == "xcode" and "Review Xcode Data" or ("Open " .. row.name)
+	local measurement = row:measurement()
+	local detail = row.name .. " · " .. Format.size(measurement and measurement.bytes)
+	if destination.page == "projects" and row.path then
+		local bytes = require("apps.diskmap.models.Projects"):bytesWithin(row.path)
+		detail = row.name .. " · " .. Format.size(Locations:folderBytes(row.path)) .. " measured folder contents · " .. Format.size(bytes) .. " generated build data"
+	end
+	return {title = title, detail = detail, path = row.path}
+end
+
+function Rows:inspect(path)
+	return {title = "Inspect Folder Contents", systemImage = "chart.pie", action = function() self.app.show("folder", {path = path}) end}
+end
+
 -- A catalog resource (leaf or group).
 function Rows:resource(id)
 	local row = Locations:find(id)
 	if not row then return {} end
 	local items = {}
+	if row.path then table.insert(items, self:inspect(row.path)) end
+	if row:destination().page == "projects" then
+		local action = self:locationAction(id)
+		table.insert(items, {title = action.title .. "…", systemImage = "folder.badge.gearshape",
+			action = function() self.app.open(id) end})
+	end
 	if not row:isLeaf() then
 		table.insert(items, {title = "Open " .. row.name .. "…", systemImage = "list.bullet", action = function() self.app.open(id) end})
 	else
 		local detail = Locations:details(id)
-		if row.action ~= "finder" and detail then
+		if row.action ~= "finder" and detail and row:destination().page ~= "projects" then
 			table.insert(items, {title = detail.manageTitle, disabled = not detail.canManage,
 				action = function()
 					if Locations:opensElsewhere(id) then self.app.open(id); return end
@@ -272,7 +298,7 @@ end
 -- possible leftover, Xcode data or a project's build folder. `trash(row)`
 -- performs a validated move when given; `mark` is the basket item for it.
 function Rows:folder(row, trash, mark)
-	local items = {}
+	local items = {self:inspect(row.path)}
 	if trash then
 		table.insert(items, {title = "Move to Trash…", systemImage = "trash", action = function() trash(row) end})
 	end

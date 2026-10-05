@@ -73,7 +73,7 @@ for _, node in ipairs(mapNodes) do
 end
 app.page.actions.chartSelect("developer", 1)
 t.assertEqual(app.env:page("map").focusId, "developer", "clicking a group focuses it")
-t.assertEqual(page().mapBar.subviews[#page().mapBar.subviews - 2].text, "Developer", "the breadcrumb ends at the focus")
+t.expect(page().mapSummary.text:find("Developer", 1, true) == 1 and page().mapUp.enabled, "the focused map names Developer and offers Up")
 app.page.actions.pickStyle(1)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
 t.assertEqual(page().mapList, nil, "rectangles name every item, so the list serves the rings only")
@@ -124,7 +124,9 @@ app.page.actions.bulk_support()
 app.page.actions.bulk_derived()
 t.assertEqual(app.env.basket:count(), marked + 3, "older device support and missing projects are marked")
 t.expect(not page().bulk_support.enabled, "marked sections disable their bulk action")
-t.assertEqual(bridge._tableRowMenu(page().list_support, 2)[1].title, "Unmark", "marked rows say so in their menu")
+local unmark
+for _, item in ipairs(bridge._tableRowMenu(page().list_support, 2)) do if item.title == "Unmark" then unmark = true end end
+t.expect(unmark, "marked rows say so in their menu")
 
 -- Projects: artifacts grouped with git state.
 app:show("projects")

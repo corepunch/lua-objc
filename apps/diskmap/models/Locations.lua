@@ -228,6 +228,21 @@ function Location:validateEmpty()
 	return Constraints.evaluate("empty", {row = self, action = "empty"})
 end
 
+-- Scan roots partition storage: a parent's measurement excludes separately
+-- catalogued descendants. Rejoin those disjoint amounts for folder inspection.
+function Locations:folderBytes(path)
+	local bytes, measured = 0, false
+	for _, row in ipairs(self:leaves()) do
+		if row.path and (row.path == path or row.path:sub(1, #path + 1) == path .. "/") then
+			local measurement = row:measurement()
+			if measurement and measurement.bytes ~= nil then
+				bytes, measured = bytes + measurement.bytes, true
+			end
+		end
+	end
+	return measured and bytes or nil
+end
+
 -- Where opening the location goes. Every list, menu and link in Diskmap
 -- opens a location by its own id and asks here; no page decides for itself.
 -- The catalog declares the exceptions on the location: `page` names the

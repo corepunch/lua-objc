@@ -85,9 +85,10 @@ function Controller.new(service, launch)
 end
 
 function Controller:search(id, text)
+	self:show(id)
 	self.query = text or ""
 	if self.searchField then self.searchField.stringValue = self.query end
-	self:show(id, {remount = true})
+	self:updateRows()
 end
 function Controller:focusSearch()
 	if self.window and self.searchField then self.window:focus(self.searchField) end
@@ -234,6 +235,15 @@ function Controller:show(id, params, fromHistory)
 	if self.destination == id and self.page and not remount then return end
 	local request = self.env:page(entry.id)
 	if request.focus and type(request.focus) == "function" then request:focus(params) end
+	if self.destination ~= id then self.query = "" end
+	if self.searchField then
+		local scope = id == "map" and "Map list" or entry.title
+		self.searchField.stringValue = self.query
+		self.searchField.placeholderString = "Search " .. scope
+		self.searchField.accessibilityLabel = "Search " .. scope .. ". Cleared when changing pages."
+		self.searchField.enabled = id ~= "folder"
+		if id == "folder" then self.searchField.placeholderString = "Folder search unavailable" end
+	end
 	if self.page then self.page:dispose() end
 	self.destination, self.page = id, page
 	page:mount(self.content, self:state())

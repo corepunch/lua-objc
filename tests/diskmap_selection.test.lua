@@ -104,7 +104,7 @@ t.assertEqual(overview.actions["category_" .. Categories.folded], nil, "the fold
 app:show("map")
 local mapPage = app.pages.map
 mapPage.actions.chartHover("developer")
-t.assertEqual(map.selectedId, "developer", "the Map's wedge and rows share one token")
+t.assertEqual(map.selectedId, nil, "hovering points at a row without changing the kept selection")
 t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, Selection.index(map.rows, "developer"),
 	"hovering a wedge selects its row")
 t.assertEqual(map.focusId, "", "without looking inside it")

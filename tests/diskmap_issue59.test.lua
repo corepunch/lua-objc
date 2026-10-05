@@ -105,14 +105,14 @@ local deadline = os.time() + 10
 while not app.env.model.files and os.time() < deadline do ns.sleep(0.05) end
 t.expect(app.env.model.files ~= nil, "the mock scan finishes")
 
--- Large Files leads with what can be acted on.
-t.assertEqual(Files.filters[1], "Yours", "Large Files opens on the files a person can act on")
+-- Large Files leads with discovery; Yours is the actionable subset.
+t.expect(Files.filters:index("All") ~= nil and Files.filters:index("Yours") ~= nil, "Large Files distinguishes discovery and review")
 t.assertEqual(Files.filters:index("Installers & archives"), 4, "pages open a filter by name")
 local yours, all = Files:rows("Yours"), Files:rows("All")
 t.expect(#yours > 0 and #yours < #all, "Yours is a part of All")
 for _, file in ipairs(yours) do t.expect(file.trashable, file.name .. " can be moved to the Trash") end
 app:show("files")
-t.assertEqual(app.page.refs.files.rowCount, #yours, "the page opens on Yours")
+t.assertEqual(app.page.refs.files.rowCount, #all, "the page opens on All measured files")
 t.expect(app.page.refs.filesNoResults.hidden and app.page.refs.filesEmpty.hidden, "a list with files shows no empty state")
 app:search("files", "no such file anywhere")
 t.assertEqual(app.page.refs.files.rowCount, 0, "a search can match nothing")

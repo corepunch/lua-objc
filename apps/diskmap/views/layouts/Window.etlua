@@ -5,6 +5,7 @@
   <Number id="isolatedMinWidth" value="724" />
   <Number id="windowMinHeight" value="580" />
   <Number id="sidebarWidth" value="226" />
+  <Number id="searchWidth" value="210" />
 </Resources>
 <Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="@windowWidth" height="@windowHeight" minWidth="<%= navigation and "@windowMinWidth" or "@isolatedMinWidth" %>" minHeight="@windowMinHeight" <% if navigation then %>sidebarWidth="@sidebarWidth"<% end %> onBack="back" onForward="forward">
   <Commands appName="Diskmap">
@@ -72,7 +73,7 @@
     <ToolbarItem id="review" label="Marked" icon="tray.full" tooltip="Review items marked for cleanup" action="review" />
     <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Settings" action="settings" />
     <ToolbarItem id="search" label="Search">
-      <SearchField id="search" placeholder="Search" width="180" accessibilityLabel="Search storage and guide" onChange="search" />
+      <SearchField id="search" placeholder="Search this page" width="@searchWidth" accessibilityLabel="Search this page. Cleared when changing pages." onChange="search" />
     </ToolbarItem>
   </Toolbar>
 </Window>

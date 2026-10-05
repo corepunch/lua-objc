@@ -24,7 +24,7 @@ local map = {view = "pages/Map"}
 routes.map = map
 
 local STYLES = {"rings", "rectangles"}
-local DEFAULT_HOVER = "Hover over the map for details; click a group to look inside."
+local DEFAULT_HOVER = "Click a group to look inside. Select a location, then use its action below; double-click opens it."
 
 function map:focus(params)
 	if params.focus ~= nil then self:setFocus(params.focus) end
@@ -48,6 +48,7 @@ end
 -- The view animates the change of focus: the rings move to the new level.
 function map:setFocus(id)
 	if id ~= "" and not isGroup(Model.db, id) then return end
+	if self.focusId ~= (id or "") then self.selectedId = nil end
 	self.focusId = id or ""
 end
 
@@ -70,7 +71,6 @@ function map:pickStyle(index) self:setStyle(STYLES[(index or 0) + 1]) end
 -- sample does, and the line under the chart its path; its row follows.
 -- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function map:point(id)
-	self.selectedId = Selection.index(self.rows, id) and id or nil
 	if self.refs then
 		local node = id and self.nodeById and self.nodeById[id]
 		if self.refs.mapCenterTitle then
@@ -78,7 +78,9 @@ function map:point(id)
 			self.refs.mapCenterDetail.text = node and node.detail or self.center.detail
 		end
 		self.refs.mapHover.text = id and Categories:describe(id, self.total) or self.hover
-		Selection.show(self.refs.mapList, self.rows, self.selectedId)
+		self.pointing = true
+		Selection.show(self.refs.mapList, self.rows, id or self.selectedId)
+		self.pointing = false
 	end
 end
 
@@ -87,23 +89,38 @@ function map:chartHover(id) self:point(id) end
 function map:chartSelect(id, count)
 	if count and count > 1 then self:drill(id)
 	elseif isGroup(Model.db, id) then self:setFocus(id)
-	else self:point(id) end
+	else self.selectedId = Locations:find(id) and id or nil; self:point(id); self:showSelection() end
 end
 
--- A group looks inside; a leaf opens its category sheet.
+-- A leaf keeps its own destination, just as it does in Largest Locations.
 function map:drill(id)
 	if not id or id:find("#other", 1, true) then return end
 	if isGroup(Model.db, id) then self:setFocus(id); return end
-	local resource = Locations:find(id)
-	local parent = resource and resource:parent()
-	self.app.open(parent and parent.id or id)
+	self.app.open(id)
 end
 
 -- A selected row points at its sector, as hovering the sector would.
 function map:selectRow(_, _, row)
-	if not row then return end
+	if not row or self.pointing then return end
+	self.selectedId = row.id
 	self:point(row.id)
+	self:showSelection()
 	if self.refs.sunburst then Sectors.highlight(self.refs.sunburst, row.id) end
+end
+
+function map:openSelection() self:drill(self.selectedId) end
+function map:inspectSelection()
+	local row = Locations:find(self.selectedId)
+	if row and row.path then self.app.show("folder", {path = row.path}) end
+end
+
+-- Selection is the only live value here; hover never changes its action.
+function map:showSelection()
+	if not self.refs then return end
+	local action = self.rowActions:locationAction(self.selectedId)
+	self.refs.mapSelection.text = action.detail
+	self.refs.mapOpen.title, self.refs.mapOpen.enabled = action.title, self.selectedId ~= nil
+	self.refs.mapInspect.enabled = action.path ~= nil
 end
 
 function map:drillRow(_, _, row) if row then self:drill(row.id) end end
@@ -163,14 +180,15 @@ function map:data(state)
 	for index, step in ipairs(trail) do handlers["focus_" .. index] = function() self:setFocus(step.id) end end
 	for index, item in ipairs(worth) do handlers["worth_" .. index] = function() self:toggleWorth(item) end end
 	self.hover = #nodes == 0 and "" or DEFAULT_HOVER
-	if not Selection.index(rows, self.selectedId) then self.selectedId = nil end
+	if not Selection.index(rows, self.selectedId) and not self.nodeById[self.selectedId] then self.selectedId = nil end
 	local focusRow = self.focusId ~= "" and Categories:row(self.focusId) or nil
 	-- The Overview counts what the disk reports as used; the Map counts
 	-- what Diskmap measured. Saying both keeps the two pages reconcilable.
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	return {nodes = nodes, rows = rows, trail = trail, worth = worth, style = self.style, hover = self.hover,
-		center = self.center, query = query,
+		center = self.center, query = query, canUp = self.focusId ~= "",
+		selection = self.rowActions:locationAction(self.selectedId), selected = self.selectedId ~= nil,
 		-- Rectangles have no list beside them.
 		lists = self.style ~= "rectangles" and {mapList = rows} or nil,
 		subtitle = (focusRow and (focusRow.name .. " · ") or "") .. Format.size(total) .. " measured"
@@ -184,6 +202,7 @@ end
 function map:rendered(refs)
 	self.refs = refs
 	Selection.show(refs.mapList, self.rows, self.selectedId)
+	self:showSelection()
 end
 
 function map:deactivate() self.refs = nil end
@@ -196,9 +215,19 @@ function map:deactivate() self.refs = nil end
 local LARGEST = {limit = 100}
 
 routes.largest = ListRoute.extend({layout = {summaryId = "largestSummary", scopeNote = Scope.pages.largest,
-	sections = {{list = {id = "largest", menu = "rowMenu", activate = "open", status = true}}},
+	details = true,
+	sections = {{list = {id = "largest", menu = "rowMenu", activate = "open", selectAction = "select", status = true}}},
 	footnote = {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."},
 }, limit = LARGEST.limit})
+
+function routes.largest:details(row)
+	local action = self.rowActions:locationAction(row.id)
+	return {title = row.name, detail = action.detail, actionTitle = action.title,
+		inspectPath = action.path}
+end
+function routes.largest:inspectSelection()
+	if self.selectedRow and self.selectedRow.path then self.app.show("folder", {path = self.selectedRow.path}) end
+end
 
 function routes.largest:present(state)
 	local rows = Locations:largest(state.disk, LARGEST.limit, state.query)
@@ -206,7 +235,7 @@ function routes.largest:present(state)
 	for _, row in ipairs(rows) do bytes = bytes + row.bytes end
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
-	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest", Scans:coverage()), largestSummary = #rows == 0 and "No measured items match yet."
+	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest", Scans:coverage()), largestSummary = #rows == 0 and ((state.query or "") ~= "" and ("No locations match “" .. state.query .. "” in Largest Locations.") or "No measured items match yet.")
 		or string.format("The %d largest measured locations use %s%s.", #rows, Format.size(bytes),
 			used and used >= bytes and (" of " .. Format.size(used) .. " used") or "")}}
 end
