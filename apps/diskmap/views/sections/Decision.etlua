@@ -13,11 +13,12 @@
     actionTitle, action   the primary button; `disabled` starts it disabled
     secondaryTitle, secondaryAction  an optional quieter route elsewhere
     hidden                the whole card starts hidden ]]
-  local DECISION = { padding = 14, spacing = 14, symbol = 32, textSpacing = 3, title = 14, detail = 12, amount = 17, caption = 11, amountSpacing = 1, buttonSpacing = 8 }
+  local DECISION = { padding = 14, textSpacing = 3, title = 14, detail = 12, amount = 17, caption = 11, amountSpacing = 1, buttonSpacing = 8 }
 %>
 <GroupBox id="<%= id %>"<% if hidden then %> hidden="true"<% end %>>
-  <HStack padding="<%= DECISION.padding %>" spacing="<%= DECISION.spacing %>" alignment="center">
-    <SystemImage name="<%= icon %>" size="<%= DECISION.symbol %>" badgeColor="<%= color %>" />
+  <%- partial("../components/GroupedRowMetrics.etlua") %>
+  <HStack paddingHorizontal="@groupedRowInset" paddingVertical="<%= DECISION.padding %>" spacing="@groupedIconGap" alignment="center">
+    <SystemImage name="<%= icon %>" size="@groupedIconColumn" width="@groupedIconColumn" badgeColor="<%= color %>" />
     <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="<%= DECISION.textSpacing %>" alignment="leading">
       <Label id="<%= id %>Title" text="<%= title %>" size="<%= DECISION.title %>" weight="semibold" maxWidth="infinity" lines="0" />
       <Label id="<%= id %>Detail" text="<%= detail or "" %>" size="<%= DECISION.detail %>" color="secondary" maxWidth="infinity" lines="0" />

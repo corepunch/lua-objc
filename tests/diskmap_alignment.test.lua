@@ -65,6 +65,20 @@ local notMeasured = app.page.refs
 t.expect(notMeasured.notMeasuredCard ~= nil, "the Overview explains what was not measured")
 local reasons = symbolRows(notMeasured.notMeasuredCard)
 assertOneColumn(reasons, 2, "the not-measured card")
+local function tableColumns(list)
+	local cell = bridge._tableCell(list, 0, 0)
+	local frame = bridge._tableCellFrames(list, 0)[1]
+	-- The headless helper asks the native delegate for a detached cell.
+	-- AppKit supplies its position separately through frameOfCellAtColumn.
+	local x = windowX(list.documentView) + frame.x
+	return x + cell.imageView.frame.origin.x + cell.imageView.frame.size.width / 2,
+		x + cell.textField.frame.origin.x
+end
+local categoryCenter, categoryText = tableColumns(hero.results)
+for index, row in ipairs(reasons) do
+	t.assertEqual(row.center, categoryCenter, "not-measured symbol " .. index .. " shares the category image column")
+	t.assertEqual(row.label, categoryText, "not-measured text " .. index .. " shares the category text column")
+end
 local explained = 0
 for id, reason in pairs(notMeasured) do
 	if id:find("^unmeasured_") then
@@ -77,6 +91,54 @@ for id, reason in pairs(notMeasured) do
 	end
 end
 t.expect(explained > 0, "the card names its reasons")
+
+-- Shared recommendation cards use the same columns as the native lists on
+-- their pages, rather than a larger icon and an unrelated inset.
+for _, id in ipairs({"cleanup", "applications", "files", "worktrees", "kinds", "updates"}) do
+	app:show(id)
+	bridge._flushLayout()
+	local refs = app.page.refs
+	local list
+	local function firstList(view)
+		if list then return end
+		if view.className == "LuaScrollView" and view.documentView.className == "NSTableView" and view.rowCount > 0 then
+			list = view
+			return
+		end
+		for _, child in ipairs(view.subviews) do firstList(child) end
+	end
+	firstList(refs.pageContent)
+	t.expect(list ~= nil and refs.decisionTitle ~= nil, id .. " has a recommendation and native list")
+	local center, text = tableColumns(list)
+	local title = refs.decisionTitle
+	local row = title.superview.superview
+	local symbol = row.subviews[1]
+	t.assertEqual(windowX(symbol) + symbol.frame.size.width / 2, center, id .. " recommendation shares the list icon column")
+	t.assertEqual(windowX(title), text, id .. " recommendation shares the list text column")
+	if id == "cleanup" then
+		for index, tip in ipairs(symbolRows(refs.tips)) do
+			t.assertEqual(tip.center, center, "cleanup tip " .. index .. " shares the list icon column")
+			t.assertEqual(tip.label, text, "cleanup tip " .. index .. " shares the list text column")
+		end
+		t.expect(#symbolRows(refs.tips) > 0, "cleanup has tips to align with its list")
+	end
+	if id == "updates" then
+		local checked = 0
+		local function compareCards(view)
+			if view.className == "NSBox" then
+				for index, item in ipairs(symbolRows(view)) do
+					checked = checked + 1
+					t.assertEqual(item.center, center, "update card row " .. index .. " shares the installer icon column")
+					t.assertEqual(item.label, text, "update card row " .. index .. " shares the installer text column")
+				end
+				return
+			end
+			for _, child in ipairs(view.subviews) do compareCards(child) end
+		end
+		compareCards(refs.pageContent)
+		t.expect(checked >= 7, "updates aligns the recommendation, status, stages and snapshots")
+	end
+end
 
 -- Pages whose rows lead with symbols of different widths.
 for _, id in ipairs({"updates", "guide", "help", "cleanup"}) do
