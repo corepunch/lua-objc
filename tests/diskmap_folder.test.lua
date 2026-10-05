@@ -79,6 +79,7 @@ app:show("overview")
 t.expect(bridge._dropFiles(app.content, {downloads}), "a folder dropped on the window is taken")
 t.assertEqual(app.destination, "folder", "a dropped folder shows the Folder Map")
 t.assertEqual(page.path, downloads, "the dropped folder is measured")
+pc = app.page
 local refs = pc.refs
 t.expect(refs.folderSunburst ~= nil and refs.folderList.rowCount >= 3, "the folder shows as rings beside its contents")
 t.assertEqual(bridge._tableCell(refs.folderList, 0, 0).textField.stringValue, "Old macOS Installer.dmg", "the largest item comes first")
@@ -160,6 +161,7 @@ t.expect(not FolderTree.validateDestination(downloads .. "/a", downloads .. "/a/
 local options = FolderTree.scanOptions
 FolderTree.scanOptions = {treeDepth = 1, treeMinimumBytes = options.treeMinimumBytes}
 app:openFolder(home)
+pc = app.page
 t.expect(page.tree:needsScan(home .. "/Library"), "a folder below the first scan's depth is measured when opened")
 pc.actions.setFocus(home .. "/Library")
 t.assertEqual(page.focusPath, home .. "/Library", "opening it shows its contents")
@@ -185,7 +187,7 @@ t.assertEqual(page.path, home .. "/Library", "Open Folder… opens the chosen fo
 
 -- A folder that cannot be read explains itself.
 app:openFolder("/Nowhere")
-t.expect(pc.refs.folderFailed ~= nil, "a folder that cannot be measured says so")
+t.expect(app.page.refs.folderFailed ~= nil, "a folder that cannot be measured says so")
 
 -- Large Files rows offer Quick Look and Move to… as well.
 local Files = require("apps.diskmap.models.Files")

@@ -8,7 +8,6 @@ view's own business:
 
 | Motion | Where |
 |---|---|
-| `Arc` and `SectorChart` turn, grow and change rings along their circles | the arc itself: `ArcAnimator` in `src/shared/arc_path.m`; a chart builds its arcs with `animated = true`. Honours Reduce Motion. |
 | The welcome tour slides its pages | `ns._pushTransition(view, edge)` in `src/shared/view_tree.m`: Core Animation's own `CATransition`, played by the system |
 | Scrolling to an item | native: `NSAnimationContext` on macOS, `setContentOffset:animated:` on iOS |
 | Table rows, navigation pushes, sheets | the platform's own animated APIs |
@@ -49,12 +48,11 @@ How nodes match and what happens to them:
    rewritten.
 4. **Records** (`SectorMark`, `TreemapNode`, `Column`, …) configure their
    parent. A tag whose schema entry has `updateRecords(view, records)` takes
-   changed records in place: `SectorChart` moves its existing arcs to the new
-   angles (each arc animates itself), adds or removes arcs below its overlay, and keeps its hover and
-   keyboard handling (`Sectors.update` in `lua/ui/sectors.lua`). Attributes
-   named in the entry's `recordLayout` (`innerRadius`, `angularInset`) are
-   applied with the records instead of rebuilding the chart. Its other
-   children reconcile normally. Any other record change rebuilds the parent.
+   changed records in place when the parent offers that native operation.
+   Its view children reconcile normally. Other record changes rebuild the
+   parent: changed `SectorMark` data creates a fresh `SectorChart` and arcs,
+   with no cross-level matching or animation. Chart geometry changes also
+   rebuild the chart; unchanged marks can keep a changing text overlay.
 5. **Rebuild.** Any other change rebuilds that one node: a new native view
    replaces the old one.
 
@@ -83,20 +81,20 @@ many times a second. They should change values, not structure:
   so “Calculating…” and “≥ 998.9 MB” occupy the same space.
 - Prefer one view with changing attributes over an `if` that swaps between
   different tags; every swap rebuilds that node.
-- Put charts' changing data in their records (`SectorMark` values) and let
-  `updateRecords` apply it.
+- Put chart data in records (`SectorMark` values); changed records rebuild
+  the chart directly in its final geometry.
 - Apply progress immediately. Never wrap frequent updates in an animated
   transaction (there is none).
 
-Diskmap's overview is the reference case: during a 30-second scan the donut
-is never rebuilt and legend rows never overlap
+Diskmap's pages mount fresh elements on navigation. Charts rebuild when
+their data changes, and legend rows never overlap
 (`apps/diskmap/views/sections/Hero.etlua`, `LegendRow.etlua`).
 
 ## Testing
 
 | Hook | Use |
 |---|---|
-| `arc.animating` | Whether an Arc's own path animation is running. |
+| `arc.layer.animationKeys` | Nil when the arc has no Core Animation animations. |
 | `bridge._pendingLayoutCount()` | Views waiting for the next layout pass. |
 | `bridge._flushLayout()` | Run the pending layout pass. |
 

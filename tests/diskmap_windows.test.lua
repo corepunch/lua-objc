@@ -23,7 +23,7 @@ t.expect(seen == first.env.model, "a callback of the first window's service read
 -- A page action binds the store of the window it belongs to.
 Model.bind(second.env.model)
 first:show("map")
-first.pages.map.actions.pickStyle(1)
+first.page.actions.pickStyle(1)
 t.expect(Model.db == first.env.model, "an action of the first window reads the first store")
 t.expect(first.env:page("map").style == "rectangles" and second.env:page("map").style == "rings", "and changes only its own page")
 

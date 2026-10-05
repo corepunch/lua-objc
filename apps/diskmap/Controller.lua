@@ -22,7 +22,7 @@ local Controller = {}; Controller.__index = Controller
 local function render(name, data) return xml.renderFile("apps/diskmap/views/layouts/" .. name .. ".etlua", data or {}, ns) end
 function Controller.new(service, launch)
 	launch = launch or Provider.launch(App.args(), service)
-	local self = setmetatable({launch = launch, query = "", pages = {}}, Controller)
+	local self = setmetatable({launch = launch, query = ""}, Controller)
 	local router = {
 		open = function(id, params) return self:open(id, params) end,
 		show = function(id, params) return self:show(id, params) end,
@@ -263,13 +263,7 @@ function Controller:show(id, params, fromHistory)
 	local remount = next(params) ~= nil
 	local key = id == "watched" and params.key
 	local entry = self.env.manifest.pages[id]
-	local page = self.pages[entry and entry.id]
-	if entry and not page then
-		page = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/", store = self.env.model,
-			request = function() return self.env:page(entry.id) end})
-		self.pages[entry.id] = page
-	end
-	if not page then error("Unknown Diskmap page: " .. tostring(id), 0) end
+	if not entry then error("Unknown Diskmap page: " .. tostring(id), 0) end
 	if not self.content then return end
 	if key and not self.env.watchlist:find(key) then return end
 	if self.destination == id and self.page and not remount then return end
@@ -285,6 +279,8 @@ function Controller:show(id, params, fromHistory)
 		if id == "folder" then self.searchField.placeholderString = "Folder search unavailable" end
 	end
 	if self.page then self.page:dispose() end
+	local page = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/",
+		store = self.env.model, request = request})
 	self.destination, self.page = id, page
 	page:mount(self.content, self:state())
 	self.navigation:select(params.navigationId or key and ("watched:" .. key) or id, fromHistory)

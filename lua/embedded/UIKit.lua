@@ -664,8 +664,6 @@ function UIKit.Arc(props)
 	if props.fitDiameter then view.fitDiameter = props.fitDiameter end
 	if props.inset then view.inset = props.inset end
 	if props.cornerRadius then view.cornerRadius = props.cornerRadius end
-	-- An animated arc turns, grows and changes rings by its own animation.
-	if props.animated then view.animated = true end
 	return applyLayout(view, props)
 end
 

@@ -26,7 +26,7 @@ end
 
 t.expect(window.subtitle:find("available of", 1, true) ~= nil and not window.subtitle:find("free", 1, true),
 	"the window subtitle is Finder's one number, purgeable storage included, short enough for the toolbar")
-t.expect(app.pages.overview.refs.hiddenSpace ~= nil, "the overview lists hidden space")
+t.expect(app.page.refs.hiddenSpace ~= nil, "the overview lists hidden space")
 
 -- Map: rings by default, drill in and out, switch to rectangles.
 app:show("map")
@@ -187,7 +187,7 @@ t.expect(bridge._navigationGesture(window, "forward") and app.destination == "up
 -- whole map.
 app.env:page("map"):setFocus("")
 app:show("overview")
-local hero = app.pages.overview
+local hero = app.page
 local heroActions = hero.actions
 local usedTotal, usedCaption = hero.refs.chartCenter.subviews[1].text, hero.refs.chartCenter.subviews[2].text
 t.assertEqual(hero.refs.chart.subviews[#hero.refs.chart.subviews].className, "LuaPointerView", "the overview ring takes the pointer")
@@ -206,7 +206,7 @@ heroActions.chartSelect("developer")
 t.assertEqual(app.destination, "map", "clicking a category's sector opens the Map")
 t.assertEqual(app.env:page("map").focusId, "developer", "inside that category")
 app:show("overview")
-app.pages.overview.actions.chartCenter()
+app.page.actions.chartCenter()
 t.assertEqual(app.destination, "map", "the center opens the Map")
 t.assertEqual(app.env:page("map").focusId, "", "at the whole disk")
 
@@ -216,17 +216,17 @@ app:show("map")
 local mapPage = app.env:page("map")
 local mapTitle, mapDetail = mapPage.refs.mapCenterTitle.text, mapPage.refs.mapCenterDetail.text
 local mapNode = mapPage.nodeById.developer
-app.pages.map.actions.chartHover("developer")
+app.page.actions.chartHover("developer")
 t.assertEqual(mapPage.refs.mapCenterTitle.text, mapNode.label, "the Map's hole names the hovered sector")
 t.assertEqual(mapPage.refs.mapCenterDetail.text, mapNode.detail, "with its size")
-app.pages.map.actions.chartHover(nil)
+app.page.actions.chartHover(nil)
 t.assertEqual(mapPage.refs.mapCenterTitle.text, mapTitle, "leaving returns the hole to the total")
 t.assertEqual(mapPage.refs.mapCenterDetail.text, mapDetail, "and its caption")
 
 -- The keyboard does the same: focus names a sector, Return opens it, and
 -- Delete, which has no level to go up to here, stays on the page.
 app:show("overview")
-hero = app.pages.overview
+hero = app.page
 local heroPointer = hero.refs.chart.subviews[#hero.refs.chart.subviews]
 t.expect(heroPointer.acceptsFirstResponder, "the overview ring takes keyboard focus")
 bridge._pointerSend(heroPointer, "key", "tab")
@@ -248,12 +248,14 @@ t.assertEqual(app.destination, "map", "return opens the Map inside the focused c
 t.assertEqual(app.env:page("map").focusId, "developer", "focused on it")
 app.env:page("map"):setFocus("")
 
--- Drilling takes the new level in place.
+-- Drilling creates the new level directly.
+app:updateRows()
 local rings = app.page.refs.sunburst
 app.page.actions.chartSelect("developer", 1)
-t.expect(app.page.refs.sunburst == rings, "drilling keeps the chart view")
+t.expect(app.page.refs.sunburst ~= rings, "drilling creates a new chart")
+local inside = app.page.refs.sunburst
 app.page.actions.up()
-t.expect(app.page.refs.sunburst == rings, "and so does going back out")
+t.expect(app.page.refs.sunburst ~= rings and app.page.refs.sunburst ~= inside, "going back creates another new chart")
 
 
 os.exit(t.summary() and 0 or 1)

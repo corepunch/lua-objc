@@ -49,7 +49,7 @@ for index = 1, 8 do table.insert(issues, {path = home .. "/Library/Protected " .
 table.insert(issues, {path = home .. "/Library/Protected 1", reason = "Operation not permitted"})
 other.env.model.scan.issues = issues
 other:show("overview", {remount = true})
-local notice = other.pages.overview.refs
+local notice = other.page.refs
 t.expect(notice.unmeasured_privacy ~= nil and notice.grantAccess ~= nil, "the Overview shows which folders need Full Disk Access")
 local card = Categories:unmeasured(other:state().disk, {fullDiskAccess = false})
 local privacy
@@ -61,7 +61,7 @@ t.assertEqual(unreadable.paths[1], "~/Library/Protected 1", "folders are shown f
 t.assertEqual(unreadable.total, 8, "a folder reported twice counts once")
 other.env.model.scan.issues = {}
 other:show("overview", {remount = true})
-t.expect(other.pages.overview.refs.unmeasured_privacy == nil, "no access request when everything was readable")
+t.expect(other.page.refs.unmeasured_privacy == nil, "no access request when everything was readable")
 
 -- The App Store build runs in the App Sandbox, which hides the startup disk
 -- until the person chooses it, whatever Full Disk Access says. The sheet
@@ -124,7 +124,7 @@ for _, item in ipairs(diskCard.items) do if item.id == "privacy" then diskItem =
 t.assertEqual(diskItem.title, "Needs access to your disk", "the card names the disk as what is missing")
 t.assertEqual(diskItem.grantTitle, "Allow Access to Disk…", "and offers the disk")
 skipped:show("overview", {remount = true})
-t.assertEqual(skipped.pages.overview.refs.grantAccess.title, "Allow Access to Disk…", "the button says so")
+t.assertEqual(skipped.page.refs.grantAccess.title, "Allow Access to Disk…", "the button says so")
 local rescans, start = 0, skipped.env.scan.start
 skipped.env.scan.start = function(scan) rescans = rescans + 1; return start(scan) end
 t.expect(skipped:grantAccess(), "the button asks for the disk")

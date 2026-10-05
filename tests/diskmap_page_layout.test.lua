@@ -54,8 +54,8 @@ for _, row in ipairs(Navigation.destinations) do
 end
 
 -- A page disposed while it waits for a measurement ignores the answer.
-local xcode = app.pages.xcode
 app:show("xcode")
+local xcode = app.page
 local model = xcode.request
 local stock = model.stock
 app:show("overview")

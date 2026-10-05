@@ -123,3 +123,29 @@ dark were inspected under `/tmp/diskmap-adaptive/final-min/` and
 clipped text or children outside their bounds. The rebuilt temporary synthetic
 app also showed the corrected compact SDK favorite header before and while
 opening its SDK sheet. Both bridges and the unsigned Diskmap bundle build.
+
+Static ring and page lifecycle correction: deleted the shared arc path animator,
+animation properties and constants, cross-level arc matching, and chart-specific
+retained geometry updates. Arc shape and color writes disable implicit layer
+actions. Changed chart records or geometry create a new chart immediately.
+Diskmap navigation disposes the current page controller and mounts a fresh
+controller/template; route data and navigation history remain in the models.
+The general reconciler now preserves native overlay views alongside data records.
+
+All 81 targeted test files passed across the broad run and final affected reruns
+(75 Diskmap files plus six shared layout/template/chart files). SectorChart's
+109 assertions cover fresh charts and arcs, detached old views, nested overlays,
+unchanged chart identity, geometry, hit testing, keyboard access and absent layer
+animations. Diskmap lifecycle coverage has 21 assertions for drill/Up, disposal,
+fresh navigation, Back/Forward and immediate scan updates. Both bridges and the
+unsigned Diskmap bundle build successfully; `git diff --check` passes.
+
+Native captures at 950 × 580 and 1400 × 900 in light and dark were inspected under
+`/tmp/diskmap-static-rings/min/` and `/tmp/diskmap-static-rings/large/`. Each size
+includes Overview, Storage Map, a drilled map, Up, Folder Map and return to
+Overview. Static ring geometry, compact headers and fresh page layout remain
+correct through navigation. The broader full-suite/live-review limits above
+still apply.
+
+The rebuilt temporary synthetic app also navigated from Storage Map to Overview
+and back, showing fresh native elements and final ring geometry immediately.

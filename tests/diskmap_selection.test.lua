@@ -71,7 +71,7 @@ local app = Controller.new(Mock.new())
 app:createWindow()
 
 app:show("overview")
-local overview = app.pages.overview
+local overview = app.page
 local model = overview.request
 local results = overview.refs.results
 local category = model.categoryRows[2].id
@@ -102,7 +102,7 @@ app:show("overview")
 t.assertEqual(overview.actions["category_" .. Categories.folded], nil, "the folded legend row opens nothing")
 
 app:show("map")
-local mapPage = app.pages.map
+local mapPage = app.page
 mapPage.actions.chartHover("developer")
 t.assertEqual(map.selectedId, nil, "hovering points at a row without changing the kept selection")
 t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, Selection.index(map.rows, "developer"),
@@ -113,7 +113,7 @@ t.assertEqual(map.selectedId, nil, "a folded remainder is no resource")
 t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, -1, "and selects no row")
 
 app:show("kinds")
-local page = app.pages.kinds
+local page = app.page
 local model = page.request
 local opened
 local showFiles = model.showFiles

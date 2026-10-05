@@ -147,8 +147,8 @@ t.assertEqual(sidebar.documentView.selectedRow, 0, "the overview row starts sele
 t.assertEqual(bridge._tableCell(sidebar, 0, 1).textField.stringValue, "Clean Up", "Overview and Clean Up lead the sidebar without a header")
 t.assertEqual(bridge._tableCell(sidebar, 0, 2).textField.stringValue, "Free Up Space", "sidebar sections are native group headers")
 t.expect(ui.page.refs.results ~= nil and ui.page.refs.largest ~= nil, "overview shows categories and largest items")
-t.expect(ui.pages.overview.refs.chart ~= nil, "overview leads with the storage chart")
-t.expect(ui.pages.overview.refs.chart.subviews[1].className == "LuaArcView", "the overview chart uses calm flat sectors")
+t.expect(ui.page.refs.chart ~= nil, "overview leads with the storage chart")
+t.expect(ui.page.refs.chart.subviews[1].className == "LuaArcView", "the overview chart uses calm flat sectors")
 local categoryRows = ui.page.refs.results.rowCount
 t.expect(not ui.page.refs.results.hasVerticalScroller, "the category list has no scrollbar of its own")
 t.expect(ui.page.refs.results.scrollDisabled, "the category list is declared scrollDisabled")

@@ -61,7 +61,7 @@ service.pickFolder = function() return service.home .. "/Library" end
 local app = Controller.new(service)
 app:createWindow()
 app:show("duplicates")
-local page = app.pages.duplicates
+local page = app.page
 t.expect(not page.refs.search.enabled and page.refs.duplicatesList.hidden, "with no folder there is nothing to search")
 page.actions.addFolder()
 t.expect(page.refs.search.enabled and page.refs.duplicateRoots.text:find("~/Library", 1, true), "an added folder can be searched")

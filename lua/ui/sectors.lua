@@ -167,24 +167,21 @@ function Sectors.hit(sectors, diameter, x, y)
 	end
 end
 
--- Charts keep their marks, sectors and arcs so `Sectors.update` can move the
--- arcs to new values in place, as SwiftUI Charts does when its data changes,
--- instead of rebuilding the chart and replaying its entrance.
+-- Chart state serves hit testing and hover emphasis for this chart only.
 local charts = setmetatable({}, {__mode = "k"})
 
 -- The arcs to draw: one per sector over its whole share, which the Arc's
 -- inset separates from its neighbours, or the empty ring in the quaternary
 -- label color when no value is positive, so the chart keeps its shape. Each
--- has a key: its mark's id, or its place among marks without one.
+-- appears directly in its final geometry.
 local function arcSpecs(sectors, ring)
 	if #sectors == 0 then
-		return {{key = "empty", startAngle = TOP, endAngle = TOP, lineWidth = ring.lineWidth, stroke = "quaternaryLabel",
+		return {{startAngle = TOP, endAngle = TOP, lineWidth = ring.lineWidth, stroke = "quaternaryLabel",
 			frame = ring.frame, alpha = 1, cornerRadius = 0}}
 	end
 	local specs = {}
-	for index, sector in ipairs(sectors) do
-		table.insert(specs, {key = sector.id and ("id:" .. sector.id) or index,
-			startAngle = sector.spanStart, endAngle = sector.spanEnd, lineWidth = sector.lineWidth,
+	for _, sector in ipairs(sectors) do
+		table.insert(specs, {startAngle = sector.spanStart, endAngle = sector.spanEnd, lineWidth = sector.lineWidth,
 			stroke = sector.color or "accent", frame = sector.frame, alpha = sector.alpha, cornerRadius = sector.cornerRadius})
 	end
 	return specs
@@ -203,17 +200,11 @@ local function splitChildren(children)
 end
 
 -- Every arc fills the chart and draws its circle in the chart's units, so
--- the rings share one center, scale with a scalable chart's view, and a
--- sector can move between rings by changing numbers alone.
-local function shapeOf(state, spec)
-	return {startAngle = spec.startAngle, endAngle = spec.endAngle, lineWidth = spec.lineWidth, diameter = spec.frame,
-		inset = state.inset, cornerRadius = spec.cornerRadius, stroke = spec.stroke, strokeAlpha = spec.alpha}
-end
-
+-- the rings share one center and scale with the chart's view.
 local function newArc(state, spec)
-	local props = shapeOf(state, spec)
+	local props = {startAngle = spec.startAngle, endAngle = spec.endAngle, lineWidth = spec.lineWidth, diameter = spec.frame,
+		inset = state.inset, cornerRadius = spec.cornerRadius, stroke = spec.stroke, strokeAlpha = spec.alpha}
 	props.fitDiameter = state.diameter
-	props.animated = true
 	for key, value in pairs(state.layerSize) do props[key] = value end
 	return state.ns.Arc(props)
 end
@@ -255,10 +246,10 @@ function Sectors.chart(ns, props)
 	local diameter = scalable and (tonumber(props.diameter) or 360)
 		or math.min(props.fixedWidth or props.fixedHeight or 160, props.fixedHeight or props.fixedWidth or 160)
 	local marks, overlays = splitChildren(props)
-	local state = {ns = ns, diameter = diameter, innerRadius = props.innerRadius,
+	local state = {ns = ns, diameter = diameter,
 		-- Arcs and the pointer view cover the whole chart.
 		layerSize = scalable and {fillWidth = true, fillHeight = true} or {width = diameter, height = diameter},
-		angularInset = props.angularInset, marks = marks, arcs = {}}
+		angularInset = props.angularInset, arcs = {}}
 	state.ring = Sectors.ring(diameter, props.innerRadius)
 	state.sectors = Sectors.layout(marks, diameter, props.innerRadius, props.angularInset)
 	state.inset = insetFor(state)
@@ -272,17 +263,14 @@ function Sectors.chart(ns, props)
 			stack[key] = value
 		end
 	end
-	state.arcKeys = {}
 	for index, spec in ipairs(arcSpecs(state.sectors, state.ring)) do
-		state.arcs[index], state.arcKeys[index] = newArc(state, spec), spec.key
+		state.arcs[index] = newArc(state, spec)
 		table.insert(stack, state.arcs[index])
 	end
 	local hole = state.ring.inner * 2
-	state.fitted = {}
 	for _, overlay in ipairs(overlays) do
 		if hole > 0 and overlay.maxWidth == nil then
 			overlay.maxWidth = hole * STYLE.holeContent
-			table.insert(state.fitted, overlay)
 		end
 		table.insert(stack, overlay)
 	end
@@ -322,7 +310,6 @@ function Sectors.chart(ns, props)
 				if state.arcs[index] then state.arcs[index].strokeAlpha = alpha end
 			end
 		end
-		state.restyle = restyle
 		local function highlight(sector)
 			if sector == highlighted then return end
 			highlighted = sector
@@ -340,7 +327,6 @@ function Sectors.chart(ns, props)
 			back = function() if props.onBack then props.onBack() end end,
 			filtered = restyle,
 		})
-		state.unhighlight = function() highlighted = nil end
 		state.highlight = function(id) highlight(id and sectorFor(id) or nil) end
 		-- The sector under a pointer, and the pointer in chart units.
 		local function locate(view, x, y)
@@ -384,63 +370,6 @@ function Sectors.highlight(view, id)
 	local state = charts[view]
 	if not (state and state.highlight) then return false end
 	state.highlight(id)
-	return true
-end
-
--- Sets the `innerRadius` or `angularInset` the chart lays its next marks out
--- with; `Sectors.update` applies them. Returns false for a view this module
--- did not build.
-function Sectors.configure(view, props)
-	local state = charts[view]
-	if not state then return false end
-	if props.innerRadius ~= nil then state.pendingInnerRadius = props.innerRadius end
-	if props.angularInset ~= nil then state.pendingAngularInset = props.angularInset end
-	return true
-end
-
--- Applies new `SectorMark` records to a chart built by `Sectors.chart`. An
--- arc stays with its mark's id and takes the new shape, turning, growing and
--- changing rings along its circle by its own animation, so showing the
--- inside of a sector opens that sector's children to the whole chart. Marks
--- that come or go appear and disappear at once. Omitting
--- `records` lays the same marks out again. Returns false for a view this
--- module did not build.
-function Sectors.update(view, records)
-	local state = charts[view]
-	if not state then return false end
-	local ns = state.ns
-	local marks = records and splitChildren(records) or state.marks
-	state.marks = marks
-	if state.pendingInnerRadius ~= nil or state.pendingAngularInset ~= nil then
-		state.innerRadius = state.pendingInnerRadius or state.innerRadius
-		state.angularInset = state.pendingAngularInset or state.angularInset
-		state.pendingInnerRadius, state.pendingAngularInset = nil, nil
-		state.ring = Sectors.ring(state.diameter, state.innerRadius)
-		for _, overlay in ipairs(state.fitted) do overlay.maxWidth = state.ring.inner * 2 * STYLE.holeContent end
-	end
-	state.sectors = Sectors.layout(marks, state.diameter, state.innerRadius, state.angularInset)
-	state.inset = insetFor(state)
-	local specs = arcSpecs(state.sectors, state.ring)
-	if state.keys then
-		state.keys.marks = marks
-		state.unhighlight()
-	end
-	local previous = {}
-	for index, arc in ipairs(state.arcs) do previous[state.arcKeys[index]] = arc end
-	state.arcs, state.arcKeys = {}, {}
-	for index, spec in ipairs(specs) do
-		local arc = previous[spec.key]
-		if arc then
-			previous[spec.key] = nil
-			for key, value in pairs(shapeOf(state, spec)) do arc[key] = value end
-		else
-			arc = newArc(state, spec)
-			ns._insertSubview(view, arc, index)
-		end
-		state.arcs[index], state.arcKeys[index] = arc, spec.key
-	end
-	for _, arc in pairs(previous) do ns._removeSubview(arc) end
-	if state.restyle then state.restyle() end
 	return true
 end
 

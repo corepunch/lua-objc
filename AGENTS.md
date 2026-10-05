@@ -193,8 +193,7 @@ that, and outranks any feature request that conflicts with it.
   snapshotted and diffed whole layout subtrees and started about 35 Core
   Animation animations on every scan tick, on every page, and it fought
   scrolling. Nothing like it comes back. A view may animate itself with a
-  system facility (`Arc` animates its own path; a page slides with
-  `CATransition`); nothing animates the view tree, and frequent updates
+  system facility (a tour page slides with `CATransition`); nothing animates the view tree, and frequent updates
   (scan progress, streaming text, per-tick refreshes) are never animated.
 - **An idle app uses 0% CPU.** Nothing redraws, lays out, polls or ticks
   unless something asked for it: a user action, a completed async result,

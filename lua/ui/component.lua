@@ -9,7 +9,7 @@
 -- is compiled, each component tag is replaced by the elements its template
 -- renders, so a component is ordinary template content: the XML renderer
 -- stays the only caller of view constructors, and retained templates
--- reconcile and animate a component's views like any others.
+-- reconcile a component's views like any others.
 --
 -- An optional `<Tag>.lua` beside the template declares what the tag takes:
 --
