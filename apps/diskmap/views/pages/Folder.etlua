@@ -96,5 +96,4 @@
     <Button id="folderOpen" title="<%= selection.title %>" action="openSelection" disabled="<%= not selection.enabled %>" />
   </HStack>
   <% end %>
-  <% if favoriteTitle then %><Button id="favoriteFolder" title="<%= favoriteTitle %>" systemImage="star" action="favoriteFolder" help="Remember this folder in Favorites" /><% end %>
 </VStack>

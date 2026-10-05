@@ -249,7 +249,6 @@ function Mock.new(options)
 		agents = agents,
 		availableBytes = fixture.availableBytes,
 		kept = {},
-		watchlist = {},
 		monitoring = false,
 		-- A showcase disk shows the whole Mac, its Photos, Music and TV
 		-- libraries included.
@@ -441,15 +440,6 @@ end
 
 function Mock:saveKeep(kept)
 	self.kept = copy(kept)
-	return true
-end
-
-function Mock:loadWatchlist()
-	return copy(self.watchlist)
-end
-
-function Mock:saveWatchlist(entries)
-	self.watchlist = copy(entries)
 	return true
 end
 

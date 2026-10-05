@@ -37,6 +37,4 @@
 		<Page id="help" route="topics" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
 	</Section>
 
-	<!-- Size changes opened from a favorite's menu; shortcuts use the location's destination. -->
-	<Page id="watched" title="Favorite Size Changes" icon="star.fill" color="systemBlue" listed="false" />
 </App>

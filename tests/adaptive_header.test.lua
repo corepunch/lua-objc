@@ -50,7 +50,7 @@ end
 local actions = {
 	{id = "reveal", title = "Show in Finder", action = "reveal"},
 	{id = "open", title = "Open Xcode DerivedData…", action = "open"},
-	{id = "remove", title = "Remove from Favorites", action = "remove"},
+	{id = "remove", title = "Clear Selected Locations", action = "remove"},
 }
 local page, r = header(actions)
 resize(page, 2000)

@@ -119,7 +119,7 @@ generic page controller per page for free.
     <Page id="music" route="workflow" title="Music" icon="pianokeys" workflow="music" />
     <Page id="video" route="workflow" title="Video" icon="film.fill" workflow="video" />
   </Section>
-  <Page id="watched" title="Watched" listed="false" />
+  <Page id="details" title="Details" listed="false" />
 </App>
 ```
 

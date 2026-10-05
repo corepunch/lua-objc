@@ -6,7 +6,6 @@
       <% if actionTitle then %><Button id="openSelection" title="<%= actionTitle %>" action="openSelection" style="borderedProminent" /><% end %>
     </HStack>
     <% if inspectPath then %><Button id="inspectSelection" title="Inspect Folder Contents" action="inspectSelection" /><% end %>
-    <% if favoriteTitle then %><Button id="favoriteSelection" title="<%= favoriteTitle %>" systemImage="star" action="favoriteSelection" /><% end %>
     <% if status then %><Label id="selectionStatus" text="<%= status %>" size="12" weight="semibold" /><% end %>
     <Label id="selectionAdvice" text="<%= detail %>" size="13" maxWidth="infinity" lines="0" />
     <% if consequence then %><Label id="selectionConsequence" text="<%= consequence %>" size="12" maxWidth="infinity" lines="0" /><% end %>

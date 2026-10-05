@@ -45,27 +45,6 @@ function System.savedSnapshotPath() return System.supportPath("mock-hdd.bin") en
 
 function System.loadKeep() return readJson("kept.json", {}) end
 function System.saveKeep(kept) return writeJson("kept.json", kept) end
--- Watched locations: resources by id, folders by path plus a bookmark that
--- follows the folder when it is moved or renamed.
-function System.loadWatchlist()
-	local entries = readJson("watchlist.json", {})
-	for _, entry in ipairs(entries) do
-		if entry.kind == "folder" and type(entry.bookmark) == "string" and entry.bookmark ~= "" then
-			entry.path = ns.resolveBookmark(entry.bookmark) or entry.path
-		end
-	end
-	return entries
-end
-function System.saveWatchlist(entries)
-	local stored = {}
-	for _, entry in ipairs(entries) do
-		local copy = {}
-		for key, value in pairs(entry) do copy[key] = value end
-		if copy.kind == "folder" then copy.bookmark = ns.bookmark(copy.path) end
-		table.insert(stored, copy)
-	end
-	return writeJson("watchlist.json", stored)
-end
 local Scanner = require("apps.diskmap.services.Scanner")
 System.start = Scanner.start
 System.cancel = Scanner.cancel
@@ -495,9 +474,8 @@ function System.volumes(completion)
 		end)
 	end)
 end
--- A folder's immediate children, such as another disk's top level or a
--- watched folder, measured like the startup disk: metadata only, staying on
--- that volume.
+-- A folder's immediate children, measured like the startup disk: metadata
+-- only, staying on that volume.
 function System.analyzeFolder(path, completion)
 	local ok, job = pcall(Scanner.start, {path}, {}, {breakdown = true})
 	if not ok then completion(nil, tostring(job)); return end

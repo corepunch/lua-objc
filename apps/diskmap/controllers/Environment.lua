@@ -19,7 +19,6 @@ local Basket = require("apps.diskmap.flows.Basket")
 local Operations = require("apps.diskmap.flows.Operations")
 local Rows = require("apps.diskmap.flows.Rows")
 local Notifications = require("apps.diskmap.services.Notifications")
-local WatchlistStore = require("apps.diskmap.services.WatchlistStore")
 local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
 local Sheets = require("apps.diskmap.pages.Sheets")
 local InventoryService = require("apps.diskmap.services.Inventories")
@@ -65,8 +64,6 @@ function Environment.new(service, launch, router)
 	self.review = sheet("review")
 	context.review = self.review
 	self.rowActions = Rows({app = context})
-	self.watchlist = WatchlistStore.new(self.model, service, router.refresh)
-	context.watchlist = self.watchlist
 	self.notifications = Notifications.new(self.model, service, {
 		mark = function(items) self.rowActions:markAll(items) end,
 		review = router.openReview, show = router.raise or function() end,
@@ -174,7 +171,6 @@ function Environment:scanFinished()
 		self.session.changes = nil
 	end
 	if self.snapshots then self.snapshots:compare() end
-	self.watchlist:scanFinished()
 end
 
 function Environment:snapshotComparison(path, cache)
@@ -195,7 +191,6 @@ function Environment:dispose()
 	end
 	for _, sheet in pairs(self.context.sheets) do if sheet.presenter then sheet:close() end end
 	self.inventories:dispose()
-	self.watchlist:dispose()
 	if self.snapshots then self.snapshots:dispose() end
 	self.scan:dispose()
 	self.notifications:stop()
