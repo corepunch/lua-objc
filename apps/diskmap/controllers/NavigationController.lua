@@ -37,8 +37,8 @@ end
 
 -- `show(id)` mounts the destination; the root controller owns page lifetime.
 -- Back and forward follow destinations the way a browser follows pages.
-function Controller.new(show)
-	return setmetatable({show = show, history = {}, position = 0, badges = {}, watched = {}, workflows = {}}, Controller)
+function Controller.new(show, menu)
+	return setmetatable({show = show, menu = menu, history = {}, position = 0, badges = {}, watched = {}, workflows = {}}, Controller)
 end
 
 -- Watched locations lead the sidebar, as Favorites lead Finder's: they are
@@ -47,10 +47,11 @@ end
 function Controller:list()
 	local list = {}
 	if #self.watched > 0 then
-		table.insert(list, {section = true, title = "Watched"})
+		table.insert(list, {section = true, title = "Favorites"})
 		for _, row in ipairs(self.watched) do
 			table.insert(list, {id = row.id, name = row.name, icon = row.icon, color = row.color,
-				badge = not row.calculating and row.size or nil})
+				badge = not row.calculating and row.size or nil,
+				help = row.name .. (row.path and ("\n" .. row.path) or "") .. "\nClick to open. Use the menu to view size changes or remove this favorite."})
 		end
 	end
 	-- A section header is listed once one of its rows is.
@@ -92,10 +93,13 @@ end
 
 function Controller:render()
 	local view, refs = xml.renderFile("apps/diskmap/views/layouts/Sidebar.etlua", {actions = {
-		navigate = function(_, _, row) if row and row.id then self.show(row.id) end end,
+		navigate = function(_, _, row) if not self.selecting and row and row.id then self.show(row.id) end end,
+		rowMenu = function(_, _, row) return self.menu and self.menu(row) or {} end,
 	}}, ns)
 	self.refs = refs
+	self.selecting = true
 	refs.sidebar:replaceRows(self:rows())
+	self.selecting = false
 	return view
 end
 
@@ -116,7 +120,9 @@ function Controller:select(id, fromHistory)
 	end
 	local index = self:index(id)
 	if self.refs and index and self.refs.sidebar.documentView.selectedRow ~= index then
+		self.selecting = true
 		self.refs.sidebar:selectRow(index)
+		self.selecting = false
 	end
 end
 
@@ -168,9 +174,12 @@ end
 
 function Controller:reload()
 	if not self.refs then return end
+	-- Native row replacement and selection restoration are not new visits.
+	self.selecting = true
 	self.refs.sidebar:replaceRows(self:rows())
 	local index = self.current and self:index(self.current)
 	if index and self.refs.sidebar.documentView.selectedRow ~= index then self.refs.sidebar:selectRow(index) end
+	self.selecting = false
 end
 
 return Controller

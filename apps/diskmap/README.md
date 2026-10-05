@@ -206,14 +206,20 @@ emptying the Trash. It then offers to empty the
 Trash and reports how much more free space macOS actually sees. Every action
 is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 
-**Watch** in any category's or folder's menu adds it to a Watched section at
-the top of the sidebar, like Finder's Favorites, with its current size as the
-badge. Selecting a watched location shows how much it grew or shrank since
-the previous session and what it holds one level down. A category lists its
-locations; a folder is measured when its page opens. Only complete
-measurements count, so an interrupted scan never looks like shrinkage. A
-watched folder that disappears stays listed as Missing, and a bookmark follows
-it when it is moved or renamed.
+**Add to Favorites** pins a location at the top of the sidebar with its current
+size. The selected location on Storage Map or Largest Locations offers this
+action directly, as do the Folder Map and SDK installation sheet. Row menus
+can also favorite individual SDK folders or a project's Derived Data folder.
+Clicking a favorite opens the same dedicated destination as its source:
+an installation's SDK sheet, Derived Data's Xcode page, or the exact folder's
+Folder Map. Back and Forward remember favorite folder paths.
+
+A favorite's sidebar menu offers **View Size Changes** and **Remove from
+Favorites**. Size changes compare complete measurements with the previous
+session, so an interrupted scan never looks like shrinkage. A missing folder
+stays listed as Missing, and a bookmark follows a moved or renamed folder.
+Favorites persist across launches and are measured on demand or after a scan;
+they introduce no background polling.
 
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
 and Essential to keep filters. Back, Forward, Refresh, Stop, Clean Up,

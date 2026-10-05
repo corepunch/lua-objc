@@ -1,0 +1,3 @@
+<HStack spacing="12" alignment="center">
+  <%- partial("../components/Buttons.etlua", {buttons = buttons}) %>
+</HStack>

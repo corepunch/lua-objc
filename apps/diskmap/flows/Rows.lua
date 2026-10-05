@@ -107,8 +107,8 @@ function Rows:reveal(path)
 	return {title = "Show in Finder", systemImage = "folder", action = function() self.app.service.reveal(path) end}
 end
 
--- Watch/Stop Watching; nil when the app keeps no watchlist.
-function Rows:watch(entry)
+-- Favorites share the persisted size-tracking list.
+function Rows:favorite(entry)
 	return self.app.watchlist and self.app.watchlist:menuItem(entry) or nil
 end
 
@@ -189,7 +189,7 @@ function Rows:item(row, handlers)
 		action = function() self:trashItem(row, validate, function() handlers.changed(row.path) end) end})
 	if ok then table.insert(items, self:mark({path = row.path, name = row.name, bytes = row.bytes, source = "Folder"})) end
 	table.insert(items, separator())
-	if row.directory then table.insert(items, self:watch({kind = "folder", path = row.path, name = row.name})) end
+	if row.directory then table.insert(items, self:favorite({kind = "folder", path = row.path, name = row.name})) end
 	table.insert(items, self:copyPath(row.path))
 	return items
 end
@@ -253,7 +253,7 @@ function Rows:resource(id)
 	table.insert(items, separator())
 	table.insert(items, {title = Model.db.kept[id] and "Stop Keeping" or "Keep", systemImage = "checkmark.shield",
 		action = function() self.app.keep(id) end})
-	table.insert(items, self:watch({kind = "resource", id = id}))
+	table.insert(items, self:favorite({kind = "resource", id = id}))
 	if row.path then table.insert(items, self:copyPath(row.path)) end
 	return items
 end
@@ -307,7 +307,7 @@ function Rows:folder(row, trash, mark)
 	table.insert(items, self:reveal(row.path))
 	table.insert(items, separator())
 	-- Folders only: a single file's size is not worth a sidebar row.
-	if row.directory ~= false then table.insert(items, self:watch({kind = "folder", path = row.path, name = row.name})) end
+	if row.directory ~= false then table.insert(items, self:favorite({kind = "folder", path = row.path, name = row.name})) end
 	table.insert(items, self:copyPath(row.path))
 	return items
 end

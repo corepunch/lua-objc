@@ -98,20 +98,23 @@ local function perform(items, title)
 	end
 	return false
 end
-t.expect(perform(app.env.rowActions:resource("xcode"), "Watch"), "a category's menu offers Watch")
+t.expect(perform(app.env.rowActions:resource("xcode"), "Add to Favorites"), "a category's menu offers Watch")
 t.assertEqual(sidebar.rowCount, plainRows + 2, "the Watched section and its row lead the sidebar")
-t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Watched", "the section is a native group header")
+t.assertEqual(bridge._tableCell(sidebar, 0, 0).textField.stringValue, "Favorites", "the section is a native group header")
 t.assertEqual(bridge._tableCell(sidebar, 0, 1).textField.stringValue, "Xcode", "the watched category is listed by name")
 t.expect(bridge._tableCell(sidebar, 0, 1).badgeField.stringValue:find("B$") ~= nil, "its badge is its measured size")
 t.assertEqual(app.destination, "overview", "watching does not navigate away")
 t.assertEqual(sidebar.documentView.selectedRow, app.navigation:index("overview"), "the selection follows the overview down")
 local menu = app.env.rowActions:resource("xcode")
-t.assertEqual(menu[#menu].title, "Stop Watching", "a watched resource offers Stop Watching after Keep")
+t.assertEqual(menu[#menu].title, "Remove from Favorites", "a watched resource offers Stop Watching after Keep")
 t.assertEqual(#service.watchlist, 1, "the watch is saved at once")
 t.expect(service.watchlist[1].bytes ~= nil, "the saved entry carries its size")
 
 sidebar:selectRow(1)
-t.assertEqual(app.navigation.current, "watched:resource:xcode", "the sidebar row opens the watched page")
+t.assertEqual(app.navigation.current, "watched:resource:xcode", "the sidebar preserves its shortcut identity")
+t.expect(app.env.management.sheet ~= nil, "a category favorite opens its category immediately")
+app.env.management:close()
+app:show("watched", {key = "resource:xcode"})
 local refs = app.page.refs
 t.expect(refs.watchedSummary.text:find("Measured for the first time", 1, true) ~= nil, "a new watch has nothing to compare with yet")
 t.expect(refs.contents.rowCount >= 2, "a watched category lists its locations")
@@ -119,8 +122,8 @@ t.expect(refs.openCategory ~= nil and refs.unwatch ~= nil, "the page opens the c
 
 -- A plain folder: measured on demand, one level down.
 local home = service.home
-t.expect(perform(app.env.rowActions:folder({path = home .. "/Library/Developer", name = "Developer"}), "Watch"), "a folder's menu offers Watch")
-t.expect(not perform(app.env.rowActions:folder({path = home .. "/notes.txt", name = "notes.txt", directory = false}), "Watch"), "files are not watched")
+t.expect(perform(app.env.rowActions:folder({path = home .. "/Library/Developer", name = "Developer"}), "Add to Favorites"), "a folder's menu offers Watch")
+t.expect(not perform(app.env.rowActions:folder({path = home .. "/notes.txt", name = "notes.txt", directory = false}), "Add to Favorites"), "files are not watched")
 app:show("watched", {key = "folder:" .. home .. "/Library/Developer"})
 refs = app.page.refs
 t.expect(refs.contents.rowCount >= 1, "a watched folder lists its immediate children")
@@ -128,7 +131,7 @@ t.expect(refs.contentsDetail.text:find("at the top level", 1, true) ~= nil, "the
 t.expect(refs.reveal ~= nil and refs.openCategory == nil, "a folder offers Finder but no category")
 t.assertEqual(sidebar.documentView.selectedRow, 2, "the folder's sidebar row is selected")
 local folderMenu = app.env:page("watched"):menu({path = home .. "/Library/Developer/Xcode", name = "Xcode", directory = true})
-t.expect(perform(folderMenu, "Watch"), "a subfolder can be watched from the contents list")
+t.expect(perform(folderMenu, "Add to Favorites"), "a subfolder can be watched from the contents list")
 t.assertEqual(#service.watchlist, 3, "three locations are saved")
 
 -- The next launch compares with how this one ended.

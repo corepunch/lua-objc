@@ -12,7 +12,7 @@ local routes = {}
 -- app's current destination): its size, the change since the previous session
 -- and what it holds one level down. A category lists its locations; a folder
 -- is measured when the page opens, unless the scan already broke it down.
-local FOOTNOTE = {icon = "eye", text = "Diskmap stores each watched location's size after every scan and shows how it changed the next time you open it. Only the location and its size are kept, never file names inside it."}
+local FOOTNOTE = {icon = "star", text = "Diskmap stores each favorite's size after every scan and shows how it changed the next time you open it. Only the location and its size are kept, never file names inside it."}
 
 local function service(page) return page.app.service end
 
@@ -24,12 +24,11 @@ local function watched(page)
 	end
 end
 
--- The resource whose category sheet the page's Open button shows: a group
--- itself, or a leaf's parent.
+-- Opening a favorite keeps the leaf's dedicated page or SDK sheet.
 local function category(page, row)
 	local resource = row.resourceId and Locations:find(row.resourceId)
 	if not resource then return nil end
-	return resource:isLeaf() and resource:parent() or resource
+	return resource
 end
 
 local function group(page, row)
@@ -76,6 +75,7 @@ local function menu(page, item)
 end
 
 routes.watched = ListRoute.extend({focus = function(page, params) page.key = params.key end, layout = function(_, presented) return presented.shape end,
+		children = {favoriteActions = "sections/FavoriteActions"},
 		queries = {showInFinder = true, openCategory = true}, menu = menu,
 			showInFinder = function(page) service(page).reveal(watched(page).path) end,
 			openCategory = function(page) page.app.open(category(page, watched(page)).id) end,
@@ -98,15 +98,17 @@ routes.watched = ListRoute.extend({focus = function(page, params) page.key = par
 			if row.path and not row.missing then table.insert(buttons, {id = "reveal", title = "Show in Finder", action = "showInFinder"}) end
 			local open = category(page, row)
 			if open then table.insert(buttons, {id = "openCategory", title = "Open " .. open.name .. "…", action = "openCategory"}) end
-			table.insert(buttons, {id = "unwatch", title = "Stop Watching", systemImage = "eye.slash", action = "unwatch"})
+			table.insert(buttons, {id = "unwatch", title = "Remove from Favorites", systemImage = "star.slash", action = "unwatch"})
 			-- A category's locations differ by policy; a folder's children are
 			-- already labeled Folder or File under their names.
-			local shape = {summary = table.concat(summary, " · "), summaryId = "watchedSummary", buttons = buttons, footnote = FOOTNOTE}
-			if row.missing or not (group(page, row) or row.path) then return {shape = shape} end
+			local shape = {summary = table.concat(summary, " · "), summaryId = "watchedSummary", leads = {"favoriteActions"}, footnote = FOOTNOTE}
+			local presented = {shape = shape, children = {favoriteActions = {buttons = buttons}}}
+			if row.missing or not (group(page, row) or row.path) then return presented end
 			local rows, detail, loading = contents(page, row)
 			shape.sections = {{id = "contentsSection", title = "Contents", detail = detail, detailId = "contentsDetail",
 				list = {id = "contents", menu = "rowMenu", activate = "openContents", detailColumn = group(page, row) ~= nil}}}
-			return {shape = shape, lists = {contents = rows}, loading = {contents = loading}}
+			presented.lists, presented.loading = {contents = rows}, {contents = loading}
+			return presented
 		end})
 
 return routes

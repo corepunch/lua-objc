@@ -15,7 +15,7 @@ function SdksSheet:init()
 end
 
 function SdksSheet:open(parent, row)
-	self.root, self.title, self.query = row.path, row.name, ""
+	self.resourceId, self.root, self.title, self.query = row.id, row.path, row.name, ""
 	self.rows = Discovery.discover(self.service, self.root)
 	self.unknown = {}
 	for _, sdk in ipairs(self.rows) do
@@ -28,12 +28,22 @@ end
 -- Sizes still being measured show one progress state in place of the list.
 function SdksSheet:data()
 	local rows = self.measuring and {} or Sdks.filter(self.rows, self.query)
-	return {lists = {rows = rows}, loading = {rows = self.measuring}, texts = {title = self.title,
+	local favorite = self.resourceId and self.app.watchlist and self.app.watchlist:menuItem({kind = "resource", id = self.resourceId})
+	return {favoriteTitle = favorite and favorite.title, lists = {rows = rows}, loading = {rows = self.measuring}, texts = {title = self.title,
 		status = self.measuring and "Measuring SDKs…" or #rows == 0 and "No matching SDKs."
 			or (#rows .. (#rows == 1 and " SDK" or " SDKs"))}}
 end
 
 function SdksSheet:search(value) self.query = value or "" end
+
+function SdksSheet:favorite()
+	if self.resourceId and self.app.watchlist then self.app.watchlist:toggle({kind = "resource", id = self.resourceId}) end
+end
+
+function SdksSheet:rowMenu(_, _, row)
+	if not row or not self.app.watchlist then return {} end
+	return {self.app.watchlist:menuItem({kind = "folder", path = row.path, name = row.name})}
+end
 
 -- Closing the sheet first drops the answer.
 function SdksSheet:activate()

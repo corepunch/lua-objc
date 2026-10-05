@@ -37,6 +37,6 @@
 		<Page id="help" route="topics" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
 	</Section>
 
-	<!-- Opened from the Watched section of the sidebar and from Settings; not a sidebar row of its own. -->
-	<Page id="watched" title="Watched" icon="eye.fill" color="systemBlue" listed="false" />
+	<!-- Size changes opened from a favorite's menu; shortcuts use the location's destination. -->
+	<Page id="watched" title="Favorite Size Changes" icon="star.fill" color="systemBlue" listed="false" />
 </App>

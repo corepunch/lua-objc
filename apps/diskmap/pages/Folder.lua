@@ -92,6 +92,13 @@ function Folder:rescan()
 	if self.path then self:open(self.path, self.focusPath) end
 end
 
+function Folder:favoriteFolder()
+	local path = self.focusPath or self.path
+	if not path then return end
+	local favorite = self.rowActions:favorite({kind = "folder", path = path, name = self:displayName(path)})
+	if favorite then favorite.action() end
+end
+
 function Folder:stop()
 	self:cancel()
 	self.generation = self.generation + 1
@@ -295,6 +302,9 @@ function Folder:data()
 		failure = self.failure or "", colorings = FolderTree.colorings, colorIndex = 0, nodes = {}, rows = {}, trail = {}, legend = {},
 		title = self.tree and self.tree.root.name or (self.path and self:displayName(self.path)) or "Folder",
 		hasPath = self.path ~= nil, measuring = self.loading ~= nil, loadingDeeper = self.loading ~= nil and self.loading.deeper == true}
+	local path = self.focusPath or self.path
+	local favorite = path and self.rowActions:favorite({kind = "folder", path = path, name = self:displayName(path)})
+	data.favoriteTitle = favorite and favorite.title
 	for index, coloring in ipairs(FolderTree.colorings) do if coloring.id == self.coloring then data.colorIndex = index - 1 end end
 	self.trail, self.rowsByPath = data.trail, {}
 	if phase ~= "loaded" then return data end

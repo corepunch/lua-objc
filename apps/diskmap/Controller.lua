@@ -54,8 +54,8 @@ function Controller.new(service, launch)
 	for _, sheet in pairs(self.env.context.sheets) do SheetController.attach(sheet, self.env.model) end
 	self.navigation = NavigationController.new(function(id, fromHistory)
 		local key = id:match("^watched:(.+)$")
-		self:show(key and "watched" or id, key and {key = key} or {}, fromHistory)
-	end)
+		if key then self:openFavorite(key, fromHistory) else self:show(id, {}, fromHistory) end
+	end, function(row) return self:favoriteMenu(row) end)
 	self.collectorController = CollectorController.new(self.env.context)
 	self.progress = ScanProgress.new(self.env.scan)
 	self.commands = CommandsController.new(self.env.model, self.env.service, {
@@ -107,6 +107,45 @@ function Controller:open(id, filter)
 		self.env.management:open(self.window, destination.category, {filter = filter, select = destination.select})
 	end
 end
+
+-- A favorite is the same destination as its source row. The saved key also
+-- records the exact folder in history, rather than a generic Folder Map visit.
+function Controller:openFavorite(key, fromHistory)
+	local entry = self.env.watchlist:find(key)
+	if not entry then return end
+	local navigationId = "watched:" .. key
+	if entry.kind == "folder" then
+		self.env.management:close(); self.env.sdks:close()
+		self:show("folder", {path = entry.path, navigationId = navigationId}, fromHistory)
+		return
+	end
+	local destination = Locations:destination(entry.id)
+	if not destination then return end
+	if destination.page then
+		self.env.management:close(); self.env.sdks:close()
+		self:show(destination.page, {navigationId = navigationId}, fromHistory)
+	else
+		self:show("watched", {key = key}, fromHistory)
+		self:open(entry.id)
+	end
+end
+
+function Controller:favoriteMenu(row)
+	local key = row and row.id and row.id:match("^watched:(.+)$")
+	local entry = key and self.env.watchlist:find(key)
+	if not entry then return {} end
+	local remove = self.env.watchlist:menuItem(entry)
+	local toggle = remove.action
+	remove.action = Model.bound(self.env.model, function()
+		local selected = self.navigation.current == row.id
+		toggle()
+		if selected then self:show("overview") end
+	end)
+	return {
+		{title = "View Size Changes", systemImage = "chart.bar", action = function() self:show("watched", {key = key}) end},
+		remove,
+	}
+end
 function Controller:state()
 	local state = self.env:state()
 	state.query = self.query
@@ -155,6 +194,7 @@ function Controller:updateRows()
 	self.navigation:setWatched(self.env.watchlist:rows())
 	self.navigation:setWorkflows(self.env:presentWorkflows())
 	self.env.management:draw()
+	self.env.sdks:draw()
 end
 -- A kind of work leads nobody who does not do it (#52): its pages appear
 -- once one of its markers exists (Xcode for Developer, Logic Pro for Music
@@ -247,7 +287,7 @@ function Controller:show(id, params, fromHistory)
 	if self.page then self.page:dispose() end
 	self.destination, self.page = id, page
 	page:mount(self.content, self:state())
-	self.navigation:select(key and ("watched:" .. key) or id, fromHistory)
+	self.navigation:select(params.navigationId or key and ("watched:" .. key) or id, fromHistory)
 	self:updateRows()
 end
 
