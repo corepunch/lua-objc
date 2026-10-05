@@ -65,3 +65,32 @@ page, VoiceOver operation, or all access/error/loading states. Return on a
 selected native table row retained selection; the explicit destination button
 was used to open it. Existing loading/error/empty/selection/cleanup headless
 coverage passed.
+
+## Favorites follow-up
+
+The persisted watchlist now appears as Favorites. A shortcut opens its original
+location destination: the saved SDK installation's sheet, Derived Data's Xcode
+page, or the exact saved folder in Folder Map. The favorite's native sidebar
+menu retains View Size Changes and offers Remove from Favorites. Visible pin
+buttons are present on selected Storage Map and Largest Locations entries,
+Folder Map, and SDK installations; individual SDK folders are pinnable from
+native row menus. Long favorite names keep their full path in native help.
+
+All 75 Diskmap test files passed in the Favorites group run. Subsequent targeted
+checks passed after the final sidebar/help/menu changes. The new Favorites test
+has 50 assertions covering minimum-width layout, persistence, dedicated SDK destinations, exact folder
+paths in Back/Forward, selection versus hover, removal, missing locations, and
+menu actions retained across two windows. An unsigned Diskmap bundle builds.
+
+Final native captures were inspected at 950 × 580 and 1400 × 900 in light and
+dark appearances under `/tmp/diskmap-favorites/min/` and
+`/tmp/diskmap-favorites/large/`. These cover Storage Map and Largest Locations
+selection actions, Folder Map, size changes, and the SDK sheet. SDK rows use
+synthetic names and sizes. Favorites use the existing native source-list
+truncation; full names and paths remain available through help and accessibility.
+
+Live checks against a temporary synthetic app confirmed one-click SDK and
+Derived Data shortcuts, adding an individual SDK through its native context
+menu, and opening size changes from the favorite's sidebar menu. No real SDKs
+or build data were modified. The existing complete-live-review limits above
+still apply.

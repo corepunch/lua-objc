@@ -21,20 +21,20 @@ end
 -- `entry` is {kind = "resource", id} or {kind = "folder", path, name}.
 function WatchlistStore:toggle(entry)
 	local ok, watching = self.list:toggle(entry)
-	if not ok then self.service.showError("Cannot watch this location", watching and watching.message or ""); return false end
+	if not ok then self.service.showError("Cannot favorite this location", watching and watching.message or ""); return false end
 	if watching then
 		self.list:sync()
 		if entry.kind == "folder" then self:measure({self.list:find(Watchlist.key(entry))}) end
 	end
-	if not self:save() then self.service.showError("Watched locations could not be saved", "Check that your Library folder is writable.") end
+	if not self:save() then self.service.showError("Favorites could not be saved", "Check that your Library folder is writable.") end
 	self.changed()
 	return true
 end
 
--- The row-menu item that watches or stops watching `entry`.
+-- The watchlist supplies both quick shortcuts and size tracking.
 function WatchlistStore:menuItem(entry)
 	local watching = self.list:has(Watchlist.key(entry))
-	return {title = watching and "Stop Watching" or "Watch", systemImage = watching and "eye.slash" or "eye",
+	return {title = watching and "Remove from Favorites" or "Add to Favorites", systemImage = watching and "star.slash" or "star",
 		action = function() self:toggle(entry) end}
 end
 

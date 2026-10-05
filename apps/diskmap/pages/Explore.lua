@@ -109,6 +109,11 @@ function map:selectRow(_, _, row)
 end
 
 function map:openSelection() self:drill(self.selectedId) end
+function map:favoriteSelection()
+	if not self.selectedId then return end
+	local item = self.rowActions:favorite({kind = "resource", id = self.selectedId})
+	if item then item.action(); self:showSelection() end
+end
 function map:inspectSelection()
 	local row = Locations:find(self.selectedId)
 	if row and row.path then self.app.show("folder", {path = row.path}) end
@@ -121,6 +126,9 @@ function map:showSelection()
 	self.refs.mapSelection.text = action.detail
 	self.refs.mapOpen.title, self.refs.mapOpen.enabled = action.title, self.selectedId ~= nil
 	self.refs.mapInspect.enabled = action.path ~= nil
+	local favorite = self.selectedId and self.rowActions:favorite({kind = "resource", id = self.selectedId})
+	self.refs.mapFavorite.title = favorite and favorite.title or "Add to Favorites"
+	self.refs.mapFavorite.enabled = favorite ~= nil
 end
 
 function map:drillRow(_, _, row) if row then self:drill(row.id) end end
@@ -189,6 +197,7 @@ function map:data(state)
 	return {nodes = nodes, rows = rows, trail = trail, worth = worth, style = self.style, hover = self.hover,
 		center = self.center, query = query, canUp = self.focusId ~= "",
 		selection = self.rowActions:locationAction(self.selectedId), selected = self.selectedId ~= nil,
+		favorite = self.selectedId and self.rowActions:favorite({kind = "resource", id = self.selectedId}),
 		-- Rectangles have no list beside them.
 		lists = self.style ~= "rectangles" and {mapList = rows} or nil,
 		subtitle = (focusRow and (focusRow.name .. " · ") or "") .. Format.size(total) .. " measured"
@@ -222,8 +231,14 @@ routes.largest = ListRoute.extend({layout = {summaryId = "largestSummary", scope
 
 function routes.largest:details(row)
 	local action = self.rowActions:locationAction(row.id)
+	local favorite = self.rowActions:favorite({kind = "resource", id = row.id})
 	return {title = row.name, detail = action.detail, actionTitle = action.title,
-		inspectPath = action.path}
+		inspectPath = action.path, favoriteTitle = favorite and favorite.title}
+end
+function routes.largest:favoriteSelection()
+	if not self.selectedRow then return end
+	local favorite = self.rowActions:favorite({kind = "resource", id = self.selectedRow.id})
+	if favorite then favorite.action() end
 end
 function routes.largest:inspectSelection()
 	if self.selectedRow and self.selectedRow.path then self.app.show("folder", {path = self.selectedRow.path}) end
