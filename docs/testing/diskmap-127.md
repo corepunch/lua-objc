@@ -21,7 +21,8 @@ The earlier review artifact in `docs/research/diskmap-ux-review/` was left untou
   Inspect Folder Contents or Preview File.
 - Back/Forward visit pages. Both maps expose Up for exploration levels.
   Hover points at native rows without replacing the kept action selection.
-- Overview exposes Find Largest Locations and Inspect a Folder.
+- Overview leads with its storage summary; exploration destinations remain in
+  the sidebar without duplicate buttons or explanatory text above the summary.
 
 ## Automated checks
 
@@ -94,3 +95,11 @@ Derived Data shortcuts, adding an individual SDK through its native context
 menu, and opening size changes from the favorite's sidebar menu. No real SDKs
 or build data were modified. The existing complete-live-review limits above
 still apply.
+
+Overview correction: removed the duplicate exploration buttons and map
+explanation above the storage summary, along with the unused folder action.
+The navigation regression now checks that exploration remains accessible from
+the sidebar without those duplicate controls. All four affected test files
+passed (680 assertions). Native Overview screenshots were inspected at
+950 × 580 and 1400 × 900 in light and dark under
+`/tmp/diskmap-overview-clean/`; the unsigned bundle rebuilt successfully.

@@ -74,7 +74,7 @@ t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly 
 t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
 local _, refs = render("Overview", {status = "Measured", measured = true, coverage = "", largestHidden = false, accessTitle = "Scan access…", accessHidden = false,
 	unmeasured = {items = {}}, hero = {summary = Scans:summary(disk), center = Overview.center(Scans:summary(disk)), chart = {marks = chart.marks, legend = {}, explanation = "Measured"}, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
-	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, inspectFolder = function() end, access = function() end}})
+	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")
 t.expect(not refs.results.drawsBackground, "the category list lets its native group background show through")
