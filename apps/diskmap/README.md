@@ -232,6 +232,11 @@ for review. Both maps offer Up for their parent level; Back and Forward visit
 pages. Storage Map and Largest Locations open the originating location
 through the same destination, retaining leaf selection in category sheets.
 Selected-item buttons name the destination without requiring a double-click.
+Page headers put more than two visible actions below the title. One or two
+actions stay inline only when their combined native width, including spacing,
+is at most 30% of the header width. Resizing recalculates placement; action
+groups wrap onto further rows when needed. Stacked headings keep their
+intrinsic height instead of taking vertical flexible space.
 Inspect Folder Contents opens a location's exact path in Folder Map; Review
 Build Data opens Projects. Their amounts distinguish measured folder contents
 from generated build data. Exploration destinations live in the sidebar.

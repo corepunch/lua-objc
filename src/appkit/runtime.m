@@ -114,6 +114,8 @@ LUA_NUMBER_ACCESSORS(paddingTop, setPaddingTop, kPaddingTopKey, 0, value)
 LUA_NUMBER_ACCESSORS(paddingBottom, setPaddingBottom, kPaddingBottomKey, 0, value)
 LUA_NUMBER_ACCESSORS(spacing, setSpacing, kSpacingKey,
 	kStackSpacing, MAX(0, value))
+LUA_NUMBER_ACCESSORS(trailingMaxWidthFraction, setTrailingMaxWidthFraction,
+	kTrailingMaxWidthFractionKey, 0, MIN(1, MAX(0, value)))
 LUA_NUMBER_ACCESSORS(maxRows, setMaxRows, kFlowMaxRowsKey, 0, MAX(0, floor(value)))
 LUA_NUMBER_ACCESSORS(minWidth, setMinWidth, kMinWidthKey, 0, value)
 LUA_NUMBER_ACCESSORS(minHeight, setMinHeight, kMinHeightKey, 0, value)

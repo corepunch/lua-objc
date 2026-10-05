@@ -390,7 +390,7 @@ local function layoutProps(attrs)
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
         "spacing", "alignment", "maxRows", "fixedSize",
         "flexGrow", "flexShrink", "flexBasis",
-        "containerRelativeWidth", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe", "onScroll",
+        "containerRelativeWidth", "trailingMaxWidthFraction", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe", "onScroll",
         "opacity", "offsetX", "offsetY",
         "help", "dropExternalOnly",
     }
@@ -2304,7 +2304,7 @@ local TAG_INNER = {
 -- together because width, maxWidth="infinity" and flex interact.
 local DIMENSIONS = { width = true, height = true, minWidth = true, minHeight = true, maxWidth = true, maxHeight = true }
 local STACK_LAYOUT = { padding = true, paddingHorizontal = true, paddingVertical = true, paddingLeading = true,
-    paddingTrailing = true, paddingTop = true, paddingBottom = true, spacing = true, alignment = true }
+    paddingTrailing = true, paddingTop = true, paddingBottom = true, spacing = true, alignment = true, trailingMaxWidthFraction = true }
 local FLEX = { flexGrow = true, flexShrink = true, flexBasis = true }
 
 local function layoutPatch(node, attrs, changed, ns)
@@ -2313,8 +2313,8 @@ local function layoutPatch(node, attrs, changed, ns)
     local ops, dimensions = {}, false
     for key in pairs(changed) do
         if STACK_LAYOUT[key] then
-            if not isStack or attrs[key] == nil then return nil end
-            local value = coerce(attrs[key])
+            if not isStack or (attrs[key] == nil and key ~= "trailingMaxWidthFraction") then return nil end
+            local value = key == "trailingMaxWidthFraction" and (num(attrs[key]) or 0) or coerce(attrs[key])
             table.insert(ops, function() view[key] = value end)
         elseif key == "fixedSize" then
             local value = attrs.fixedSize

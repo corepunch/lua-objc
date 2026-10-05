@@ -34,6 +34,7 @@ static char kMaxWidthKey;
 static char kMaxHeightKey;
 static char kSpacingKey;
 static char kFlowMaxRowsKey;
+static char kTrailingMaxWidthFractionKey;
 static char kFlowOverflowKey;
 static char kFlexGrowKey;
 static char kFlexShrinkKey;

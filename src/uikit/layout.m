@@ -144,6 +144,24 @@ static void apply_scroll_container_widths(UIView *content, CGFloat viewportWidth
 
 static CGSize measure_size(UIView *view, CGSize proposal);
 
+/* Use native trailing content width, with the same decision in measurement
+ * and placement, so an existing header adapts to each width proposal. */
+static NSString *proposed_stack_axis(UIView *view, CGFloat innerWidth) {
+	NSString *axis = objc_getAssociatedObject(view, &kAxisKey);
+	CGFloat fraction = [objc_getAssociatedObject(view, &kTrailingMaxWidthFractionKey) doubleValue];
+	if (![axis isEqualToString:@"hstack"] || fraction <= 0 || !isfinite(innerWidth) || innerWidth >= CGFLOAT_MAX / 2) return axis;
+	UIView *trailing = nil;
+	NSUInteger count = 0;
+	for (UIView *child in view.subviews) {
+		if (uikit_is_hidden(child)) continue;
+		trailing = child;
+		count++;
+	}
+	if (count != 2) return axis;
+	CGSize size = measure_size(trailing, CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX));
+	return size.width > MAX(0, innerWidth) * fraction ? @"vstack" : axis;
+}
+
 static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize *sizes) {
 	NSArray<UIView *> *children = view.subviews;
 	NSMutableArray<NSNumber *> *order = [NSMutableArray array];
@@ -266,6 +284,7 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 		CGFloat padX = view_padding_edge(view, YES) + view_padding_edge(view, NO);
 		CGFloat padY = view_padding_top(view) + view_padding_bottom(view);
 		CGSize inner = CGSizeMake(MAX(0, proposal.width - padX), MAX(0, proposal.height - padY));
+		axis = proposed_stack_axis(view, inner.width);
 		NSUInteger count = 0;
 		if ([axis isEqualToString:@"flow"]) {
 			size = layout_flow_children(view, inner.width, NO);
@@ -365,6 +384,7 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 	CGFloat availableWidth = view.bounds.size.width > 0
 		? view.bounds.size.width : width;
 	CGFloat availableHeight = view.bounds.size.height;
+	axis = proposed_stack_axis(view, MAX(0, availableWidth - view_padding_edge(view, YES) - view_padding_edge(view, NO)));
 
 	if ([axis isEqualToString:@"flow"]) {
 		layout_flow_children(view, MAX(0, availableWidth - view_padding_edge(view, YES) - view_padding_edge(view, NO)), YES);

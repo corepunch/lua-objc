@@ -23,7 +23,7 @@ static BOOL lua_objc_key_affects_layout(const char *key) {
 			/* declarative layout attributes */
 			@"padding", @"paddingHorizontal", @"paddingVertical", @"paddingLeading",
 			@"paddingTrailing", @"paddingTop", @"paddingBottom", @"spacing",
-			@"alignment", @"maxRows", @"fixedWidth", @"fixedHeight", @"minWidth",
+			@"alignment", @"maxRows", @"trailingMaxWidthFraction", @"fixedWidth", @"fixedHeight", @"minWidth",
 			@"minHeight", @"maxWidth", @"maxHeight", @"fillWidth", @"fillHeight",
 			@"flexGrow", @"flexShrink", @"flexBasis", @"scrollDisabled", @"scrollEnabled",
 		]];

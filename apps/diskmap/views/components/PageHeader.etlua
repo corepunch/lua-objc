@@ -1,9 +1,22 @@
-<% --[[ `header` is the page's sidebar row: its icon, color and title. ]] %>
-<HStack id="pageHeader" spacing="14" alignment="center">
-  <SystemImage name="<%= header.icon %>" size="36" badgeColor="<%= header.color %>" />
-  <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
-    <Label id="pageTitle" text="<%= header.title or header.name %>" size="22" weight="semibold" lines="1" />
-    <Label id="<%= summaryId or "summary" %>" text="<%= summary or "" %>" size="13" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="0" />
-  </VStack>
-  <%- partial("Buttons.etlua", {buttons = buttons}) %>
-</HStack>
+<%
+  -- Count visible actions; native layout measures their widths on resize.
+  local count = 0
+  for _, button in ipairs(buttons or {}) do
+    if not button.hidden then count = count + 1 end
+  end
+  local stack = count > 2 and "VStack" or "HStack"
+%>
+<<%= stack %> id="pageHeader" spacing="14" alignment="center"<% if count > 0 and count <= 2 then %> trailingMaxWidthFraction="0.3"<% end %>>
+  <HStack id="pageHeading" flexGrow="<%= count > 2 and 0 or 1 %>" maxWidth="infinity" spacing="14" alignment="center">
+    <SystemImage name="<%= header.icon %>" size="36" badgeColor="<%= header.color %>" />
+    <VStack flexGrow="1" flexBasis="0" flexShrink="1" spacing="2" alignment="leading">
+      <Label id="pageTitle" text="<%= header.title or header.name %>" size="22" weight="semibold" lines="1" />
+      <Label id="<%= summaryId or "summary" %>" text="<%= summary or "" %>" size="13" color="secondary" monospacedDigit="true" maxWidth="infinity" lines="0" />
+    </VStack>
+  </HStack>
+  <% if count > 0 then %>
+  <FlowStack id="pageActions" flexGrow="0" maxWidth="infinity" spacing="12">
+    <%- partial("Buttons.etlua", {buttons = buttons}) %>
+  </FlowStack>
+  <% end %>
+</<%= stack %>>

@@ -34,6 +34,7 @@ enum {
 	kPaddingBottomKey,
 	kSpacingKey,
 	kFlowMaxRowsKey,
+	kTrailingMaxWidthFractionKey,
 	kFlowOverflowKey,
 	kAlignmentKey,
 	kFixedWidthKey,
