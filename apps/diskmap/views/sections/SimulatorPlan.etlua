@@ -4,7 +4,9 @@
   could recover and the review button sit in one card, so the decision and
   its action are read together; the device-by-device plan follows. Data
   comes from pages/Simulators.lua (the plan: helpers/SimulatorPlan.lua). ]] %>
-<% local PLAN = { label = 54, padding = 14, spacing = 10, amount = 17, caption = 11, amountSpacing = 1, actionSpacing = 14 } %>
+<% -- The keep choices are one column: every popup is `picker` wide, as a
+  -- the pickers of a Form are, so a short runtime name makes no short popup.
+  local PLAN = { label = 54, picker = 240, padding = 14, spacing = 10, amount = 17, caption = 11, amountSpacing = 1, actionSpacing = 14 } %>
 <VStack id="planSection" spacing="8" alignment="leading">
   <%- partial("../components/SectionHeader.etlua", {title = "Keep one iPhone and one iPad", detailId = "planDetail",
     detail = "The other devices are redundant for this setup, not unused: deleting one removes its installed apps, accounts and data, and lowers your test coverage. Shared runtimes stay."}) %>
@@ -15,7 +17,7 @@
     <VStack padding="<%= PLAN.padding %>" spacing="<%= PLAN.spacing %>" alignment="leading">
       <HStack spacing="10" alignment="center">
         <Label text="Runtime" size="12" color="secondary" width="<%= PLAN.label %>" />
-        <Picker id="planRuntime" value="<%= runtimeIndex %>" onChange="planRuntime">
+        <Picker id="planRuntime" width="<%= PLAN.picker %>" value="<%= runtimeIndex %>" onChange="planRuntime">
           <% for _, runtime in ipairs(runtimes) do %><Option title="<%= runtime.name %>" /><% end %>
         </Picker>
         <Spacer />
@@ -26,7 +28,7 @@
         <% if #family.options == 0 then %>
         <Label id="plan<%= family.id %>None" text="No available <%= family.title %> on this runtime" size="12" color="secondary" />
         <% else %>
-        <Picker id="plan<%= family.id %>" value="<%= family.index %>" onChange="plan<%= family.id %>">
+        <Picker id="plan<%= family.id %>" width="<%= PLAN.picker %>" value="<%= family.index %>" onChange="plan<%= family.id %>">
           <% for _, option in ipairs(family.options) do %><Option title="<%= option %>" /><% end %>
         </Picker>
         <% end %>

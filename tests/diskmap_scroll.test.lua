@@ -11,7 +11,9 @@ app.content = ns.VStack {}
 app:show("overview")
 local page, list = app.page.refs.page, app.page.refs.results
 t.assertEqual(list.documentView.gridStyleMask, 2, "categories use native horizontal separators without vertical grid lines")
-for _, size in ipairs({{700, 720}, {540, 400}, {1000, 900}}) do
+-- 724x580 is the narrowest window (isolated, no sidebar). Narrower than its
+-- columns' minimums, a table scrolls sideways instead of breaking them.
+for _, size in ipairs({{700, 720}, {724, 580}, {1000, 900}}) do
 	app.content.frameSize = ns.Size(size[1], size[2])
 	app.content:layout(size[1])
 	t.expect(page.documentView.frame.size.height > page.contentSize.height, "overview overflows at test size")

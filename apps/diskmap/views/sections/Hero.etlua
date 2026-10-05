@@ -3,7 +3,7 @@
   -- tall as the legend column beside it, so neither leaves empty card above
   -- and below the other. It shrinks, down to `minChart`, only when the card
   -- cannot also give the legend `minText`; it never grows past `diameter`,
-  -- since a page is no wider than @readableWidth. The center text is laid
+  -- since no page is wider than its frame (components/PageFrame). The center text is laid
   -- out in the same units, so ring and total shrink together, the text no
   -- smaller than the scale factors allow.
   local HERO = { diameter = 260, minChart = 120, hole = 0.618, inset = 1, corner = 3.5, total = 32, caption = 14, totalScale = 13 / 32, captionScale = 0.75 }

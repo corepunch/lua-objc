@@ -5,10 +5,8 @@
   one spinner (`computing`); the rows are drawn when it is done. ]]
   local ROW = { padding = 12, spacing = 12, stateSymbol = 13, sizeWidth = 130, actionsWidth = 52 }
 %>
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack padding="24" alignment="center">
-  <%- partial("../components/ReadableWidth.etlua") %>
-  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
+<PageFrame id="page">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = page,
       summary = "Where macOS keeps things on this Mac, what each folder is for and how much it takes. Locations no app can read are named with the reason."}) %>
     <% if computing then %>
@@ -57,5 +55,4 @@
     <% end %>
     <% end %>
   </VStack>
-  </VStack>
-</ScrollView>
+</PageFrame>

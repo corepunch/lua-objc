@@ -11,10 +11,12 @@ t.assertEqual(palette:take("systemGray"), "systemGray", "neutral colors pass thr
 t.assertEqual(palette:take("systemGray"), "systemGray", "and are never claimed")
 t.assertEqual(palette:take("quaternaryLabel"), "quaternaryLabel", "free space stays the track")
 local seen = {systemGreen = true, [second] = true}
-for _ = 1, #Palette.hues - 2 do
+-- Pink reads as red and cyan as teal, so twelve hues are ten choices.
+local LOOK_ALIKE = {systemPink = "systemRed", systemCyan = "systemTeal"}
+for _ = 1, #Palette.hues - 2 - 2 do
 	local hue = palette:take(nil)
-	t.expect(not seen[hue], "every hue is handed out once: " .. hue)
-	seen[hue] = true
+	t.expect(not seen[LOOK_ALIKE[hue] or hue], "no hue is handed out beside its look-alike: " .. hue)
+	seen[LOOK_ALIKE[hue] or hue] = true
 end
 t.expect(palette:take(nil) ~= nil, "an exhausted palette starts over")
 
@@ -30,8 +32,9 @@ local function distinct(colors, what)
 	local used = {}
 	for _, color in ipairs(colors) do
 		if not NEUTRAL[color] then
-			t.expect(not used[color], what .. " uses " .. color .. " once")
-			used[color] = true
+			local hue = LOOK_ALIKE[color] or color
+			t.expect(not used[hue], what .. " uses " .. color .. " once, with no look-alike")
+			used[hue] = true
 		end
 	end
 end
@@ -69,5 +72,12 @@ for _, row in ipairs(mapData.rows) do
 	local node = map.nodeById[row.id]
 	if node then t.assertEqual(row.color, node.color, row.name .. " has the color of its sector in the Map list") end
 end
+-- File Types: the ring, its legend and both lists share distinct hues.
+app:show("kinds")
+local kinds = app.page.request:data(app:state())
+local kindColors = {}
+for _, mark in ipairs(kinds.kinds) do table.insert(kindColors, mark.color) end
+distinct(kindColors, "File Types")
+t.assertEqual(LOOK_ALIKE.systemPink, "systemRed", "Videos (pink) and Music (red) never share the ring")
 window:close()
 os.exit(t.summary() and 0 or 1)

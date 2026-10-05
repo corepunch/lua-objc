@@ -21,7 +21,8 @@
         </VStack>
       </GroupBox>
 <% end %>
-<VStack id="page" flexGrow="1" maxHeight="infinity" spacing="16" padding="24" alignment="leading">
+<PageFrame id="page" scrolls="false">
+<VStack flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" alignment="leading">
   <%- partial("../components/PageHeader.etlua", {header = page, summary = subtitle, summaryId = "mapSummary"}) %>
   <Breadcrumb id="mapBar">
     <Button id="mapUp" title="Up" systemImage="arrow.up" action="up" disabled="<%= not canUp %>" help="Show the parent map level; Back and Forward visit pages" />
@@ -89,3 +90,4 @@
     </HStack>
   </VStack>
 </VStack>
+</PageFrame>

@@ -74,6 +74,7 @@ enum {
 	kSplitProportionsKey,
 	kSplitProportionsAppliedKey,
 	kColumnFlexKey,
+	kColumnWidthKey,
 	kColumnCellKey,
 	kColumnSortableKey,
 	kTabViewDelegateKey,
@@ -863,7 +864,7 @@ int lua_objc_main(int argc, char *argv[]) {
 			NSSize size = window.contentView.bounds.size;
 			if (layout_width_set) size.width = preview_width;
 			if (layout_height_set) size.height = preview_height;
-			[window setContentSize:size];
+			window.size = size;
 		}
 		if (!window || !write_layout_debug_dump(window, layout_out)) {
 			fprintf(stderr, "layout dump: cannot write %s\n", layout_out);
@@ -897,7 +898,7 @@ int lua_objc_main(int argc, char *argv[]) {
 		NSSize size = window.contentView.bounds.size;
 		if (layout_width_set) size.width = preview_width;
 		if (layout_height_set) size.height = preview_height;
-		[window setContentSize:size];
+		window.size = size;
 	}
 
 	if (capture_plan) {
@@ -937,12 +938,10 @@ int lua_objc_main(int argc, char *argv[]) {
 			NSData *png = nil;
 			if (window && window.contentView) {
 				[window.contentView layoutSubtreeIfNeeded];
-				CGFloat captureWidth = layout_width_set
-					? preview_width : window.contentView.bounds.size.width;
-				CGFloat captureHeight = layout_height_set
-					? preview_height : window.contentView.bounds.size.height;
-				png = offscreen_render(window.contentView,
-					captureWidth, captureHeight);
+				// The window was resized to the requested size, clamped to
+				// its minimum; render what it actually is.
+				NSSize size = window.contentView.bounds.size;
+				png = offscreen_render(window.contentView, size.width, size.height);
 			}
 			BOOL captured = png && [png writeToFile:screenshotPath atomically:YES];
 			if (captured) {

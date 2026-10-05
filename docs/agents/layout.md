@@ -3,28 +3,27 @@
 How a page uses the width and height it is given. Read before changing a
 page's sizing; the rules are short so that every page follows them.
 
-## Width: fill or read
+## Width: one frame for every page
 
-A page is one of two kinds, and its kind decides what a wider window does.
-
-| Page | Wider window | Examples |
-| --- | --- | --- |
-| **Table page**: its primary content is a native table or a chart pane | fills the window; the spare width goes to the name column or the chart | Large Files, Largest Locations, Storage Map, Folder Map |
-| **Card page**: grouped cards, a hero, rows of label and value, prose | no wider than `@readableWidth` (960pt), centered | Overview, File Types, Disks, Updates, guides |
-
-A card page wraps its content in the readable column (Diskmap's
-`views/components/ReadableWidth.etlua` declares the constant):
+Every page, card pages and table pages alike, sits in one frame: Diskmap's
+`components/PageFrame` component. It owns the page margin and the readable
+column (960pt, centered in a wider window), and the scroll view when the
+page scrolls. One frame for all pages: moving between pages never changes
+where content starts or ends, and no page can forget the cap.
 
 ```xml
-<ScrollView id="page" vertical="true" ...>
-  <VStack padding="24" alignment="center">
-  <%- partial("../components/ReadableWidth.etlua") %>
-  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
+<PageFrame id="page">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
     ...
   </VStack>
-  </VStack>
-</ScrollView>
+</PageFrame>
 ```
+
+A page that fills the height and does not scroll (Storage Map, Folder Map)
+passes `scrolls="false"`. A page never writes its own `ScrollView`,
+margin or width cap. Never cap the window's content frame
+(`layouts/Content.etlua`) instead: the scroll bar would then sit in the
+middle of the window.
 
 Why: Apple caps reading width in its own layouts (UIKit's
 `readableContentGuide` is 672pt at the default text size; a grouped SwiftUI
@@ -37,6 +36,7 @@ Do not:
 
 - cap single rows or legends with their own `maxWidth` to fight the
   stretch: cap the page once;
+- let a page fill the window because its content is a table or a chart;
 - add a multi-column layout for wide windows. Apple's utilities do not, and
   it is machinery. Grids of equal tiles are the exception.
 
@@ -70,6 +70,10 @@ not gray.
   largest first (`Categories:hues`).
 - The legend and every list beside the ring use the ring's colors, never
   the catalog colors again.
+- Look-alike hues are one hue: pink reads as red and cyan as teal beside
+  each other, so the palette claims them together. A ring colors at most
+  `Palette.distinct` sectors (ten); smaller ones fold into its gray
+  "N smaller" sector rather than repeat a hue.
 - Gray means "the rest": free space (the track, `quaternaryLabel`), what is
   not attributed (`tertiary`), folded categories (`systemGray`). Fold
   late enough that the named sectors hold most of the used space (the
@@ -79,7 +83,10 @@ not gray.
 
 - `--capture-plan` with one launch per window size; switch pages inside
   the plan with `app:show(page)`. Never start one app instance per page.
-- Check 760×468 (minimum), 1280×800 and 1900×1000, light and dark.
+- Check the window's minimum (Diskmap: 950×580, 724×580 with
+  `--isolated`), 1280×800 and 1900×1000, light and dark. A requested size
+  below the window's `minWidth`/`minHeight` is clamped to it, as a drag
+  is, so a capture never shows a size no one can reach.
 - `rg 'outsideParent="true"|cropped="true"'` in the `.layout.xml`.
 - Headless tests: `tests/diskmap_ring_sizing.test.lua`,
   `tests/sector_chart_sizing.test.lua`, `tests/diskmap_palette.test.lua`.

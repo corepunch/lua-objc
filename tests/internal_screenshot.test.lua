@@ -1,11 +1,10 @@
 local t = require("TestKit")
 
 local source = assert(io.open("src/main.m", "r")):read("*a")
-t.expect(source:find("CGFloat captureWidth", 1, true) ~= nil
-		and source:find("CGFloat captureHeight", 1, true) ~= nil,
-	"internal screenshots honor explicit requested dimensions")
-t.expect(source:find("captureWidth, captureHeight", 1, true) ~= nil,
-	"internal screenshots render using the requested capture frame")
+-- The window is resized to the requested size, clamped to its minimum as a
+-- drag is; the screenshot renders the size the window actually has.
+t.expect(source:find("offscreen_render(window.contentView, size.width, size.height)", 1, true) ~= nil,
+	"internal screenshots render the window's actual content size")
 
 t.expect(source:find('capture.arguments = @[@"-x", @"-l"', 1, true) ~= nil,
 	"native screenshot passes paths as arguments without shell interpolation")

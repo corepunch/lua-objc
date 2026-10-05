@@ -388,7 +388,13 @@ static NSWindow *lua_objc_app_window(void) {
 
 @implementation NSWindow (LuaProperties)
 - (NSSize)size { return self.contentView.frame.size; }
-- (void)setSize:(NSSize)value { [self setContentSize:value]; }
+// A size set from Lua is a resize, so it obeys contentMinSize as a user's
+// drag does; setContentSize: alone would not. Captures and audits then
+// never lay out a window smaller than anyone can make it.
+- (void)setSize:(NSSize)value {
+	NSSize minimum = self.contentMinSize;
+	[self setContentSize:NSMakeSize(MAX(value.width, minimum.width), MAX(value.height, minimum.height))];
+}
 - (NSString *)tabbing {
 	switch (self.tabbingMode) {
 		case NSWindowTabbingModeDisallowed: return @"disallowed";

@@ -663,6 +663,55 @@ static void table_refresh_trailing_separator(NSTableView *table) {
 	}];
 }
 
+/* A fixed column's declared width. The column's own width is only what
+ * the last layout gave it: a narrow first layout shrinks it, and the
+ * declared width must survive that to come back in a wider viewport. */
+static CGFloat lua_objc_declared_column_width(NSTableColumn *col) {
+	NSNumber *width = objc_getAssociatedObject(col, &kKeys[kColumnWidthKey]);
+	return width ? width.doubleValue : col.width;
+}
+
+/* Gives each fixed column its declared width and the flexible ones
+ * `remaining` by weight. When the columns do not fit (`remaining` <= 0),
+ * flexible columns take their minimum and every fixed column gives up the
+ * same share of its slack above its minimum, only as much as `available`
+ * requires; returns the width the columns then need. */
+static CGFloat lua_objc_size_columns(NSArray<NSTableColumn *> *columns,
+	CGFloat available) {
+	CGFloat fixedDesired = 0, fixedMin = 0, flexMin = 0, flexWeight = 0;
+	for (NSTableColumn *col in columns) {
+		NSNumber *flexN = objc_getAssociatedObject(col, &kKeys[kColumnFlexKey]);
+		CGFloat flex = flexN ? flexN.doubleValue : 0;
+		if (flex > 0) {
+			flexWeight += flex;
+			flexMin += col.minWidth;
+		} else {
+			fixedDesired += MAX(col.minWidth, lua_objc_declared_column_width(col));
+			fixedMin += col.minWidth;
+		}
+	}
+	CGFloat remaining = available - fixedDesired;
+	CGFloat keep = 1;
+	if (remaining <= 0 || remaining < flexMin) {
+		CGFloat slack = fixedDesired - fixedMin;
+		keep = slack > 0 ? MAX(0, MIN(1, (available - flexMin - fixedMin) / slack)) : 0;
+	}
+	CGFloat total = 0;
+	for (NSTableColumn *col in columns) {
+		NSNumber *flexN = objc_getAssociatedObject(col, &kKeys[kColumnFlexKey]);
+		CGFloat flex = flexN ? flexN.doubleValue : 0;
+		if (flex > 0) {
+			col.width = keep < 1 || remaining < flexMin ? col.minWidth
+				: MAX(col.minWidth, remaining * flex / flexWeight);
+		} else {
+			CGFloat declared = MAX(col.minWidth, lua_objc_declared_column_width(col));
+			col.width = col.minWidth + (declared - col.minWidth) * keep;
+		}
+		total += col.width;
+	}
+	return total;
+}
+
 @implementation LuaTableViewSource
 
 - (instancetype)initWithTableView:(NSTableView *)tv columns:(NSArray *)cols {
@@ -818,59 +867,21 @@ static void table_refresh_trailing_separator(NSTableView *table) {
 	NSSize viewport = clipView.bounds.size;
 
 	/*
-	 * Separate columns into fixed and flex groups. When no flex columns
-	 * are present, the old sizeLastColumnToFit behaviour is preserved.
-	 * When flex columns exist, they split remaining space by their flex
-	 * weight; if the viewport is too narrow even for minimum widths, a
-	 * horizontal scroller appears.
+	 * Fixed columns keep their declared widths and flexible columns split
+	 * the rest by weight. When no flex columns are present, the table is as
+	 * wide as its columns. If the viewport is too narrow even for minimum
+	 * widths, a horizontal scroller appears.
 	 */
-	CGFloat fixedDesired = 0, flexTotalWeight = 0, allMin = 0;
 	BOOL hasFlex = NO;
-
 	for (NSTableColumn *col in _tableView.tableColumns) {
-		NSNumber *flexN = objc_getAssociatedObject(col, &kKeys[kColumnFlexKey]);
-		CGFloat flex = flexN ? flexN.doubleValue : 0;
-		allMin += col.minWidth;
-		if (flex > 0) {
-			flexTotalWeight += flex;
-			hasFlex = YES;
-		} else {
-			fixedDesired += col.width;
-		}
+		if (objc_getAssociatedObject(col, &kKeys[kColumnFlexKey])) hasFlex = YES;
 	}
-
-	BOOL overflows = NO;
-	CGFloat tableWidth = viewport.width;
 	CGFloat cellOverhead = [self horizontalCellOverhead];
-
-	if (hasFlex) {
-		CGFloat remaining = viewport.width - fixedDesired - cellOverhead;
-		if (remaining > 0) {
-			for (NSTableColumn *col in _tableView.tableColumns) {
-				NSNumber *flexN = objc_getAssociatedObject(
-					col, &kKeys[kColumnFlexKey]);
-				CGFloat flex = flexN ? flexN.doubleValue : 0;
-				if (flex > 0) {
-					col.width = remaining * flex / flexTotalWeight;
-				}
-			}
-		} else {
-			for (NSTableColumn *col in _tableView.tableColumns) {
-				col.width = col.minWidth;
-			}
-			overflows = (viewport.width < allMin + cellOverhead);
-			if (overflows) tableWidth = allMin + cellOverhead;
-		}
-	} else {
-		CGFloat totalColumnWidth = 0;
-		for (NSTableColumn *col in _tableView.tableColumns) {
-			totalColumnWidth += col.width;
-		}
-		CGFloat contentWidth = totalColumnWidth + cellOverhead;
-		overflows = contentWidth > viewport.width;
-		if (overflows) tableWidth = contentWidth;
-		else tableWidth = viewport.width;
-	}
+	CGFloat contentWidth = (hasFlex
+		? lua_objc_size_columns(_tableView.tableColumns, viewport.width - cellOverhead)
+		: lua_objc_size_columns(_tableView.tableColumns, CGFLOAT_MAX)) + cellOverhead;
+	BOOL overflows = contentWidth > viewport.width + 0.5;
+	CGFloat tableWidth = overflows ? contentWidth : viewport.width;
 
 	CGRect frame = _tableView.frame;
 	frame.size.width = tableWidth;

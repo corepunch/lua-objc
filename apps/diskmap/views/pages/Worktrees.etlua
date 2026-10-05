@@ -9,8 +9,8 @@
 %>
         <InventoryList id="<%= id %>" onSelect="select" kind="worktrees" />
 <% end %>
-<ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
+<PageFrame id="page">
+  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = page, summary = summary, summaryId = "summary",
       buttons = {{id = "retry", title = "Retry", action = "retry", help = "Look for worktrees again"}}}) %>
     <% if computing then %>
@@ -51,7 +51,7 @@
     <%- partial("../components/Footnote.etlua", {text = "Diskmap reads each repository with git worktree list, status and rev-list, and removes only with git worktree remove, never with force. Session activity is not visible to Diskmap: In use means a process was confirmed; a worktree changed in the last few days is Recent and waits for your review. Claude and Codex worktrees are best removed by archiving their session in the app."}) %>
     <% end %>
   </VStack>
-</ScrollView>
+</PageFrame>
 
     <VStack id="selectionSection" spacing="8" padding="14" alignment="leading">
       <ScrollView id="selectionEvidence" vertical="true" maxHeight="<%= SELECTION.detailMaximum %>">

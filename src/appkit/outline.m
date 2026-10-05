@@ -108,6 +108,8 @@ static int bridge_outlineview(lua_State *L) {
 		if ([column[@"cell"] isKindOfClass:NSDictionary.class])
 			objc_setAssociatedObject(col, &kKeys[kColumnCellKey], column[@"cell"], OBJC_ASSOCIATION_RETAIN);
 		col.width = requestedWidth;
+		if (hasExplicitWidth) objc_setAssociatedObject(col, &kKeys[kColumnWidthKey],
+			@(requestedWidth), OBJC_ASSOCIATION_RETAIN);
 		col.minWidth = MAX(kTableColumnMinWidth, requestedMinWidth);
 		NSTextAlignment alignment = colAlignment
 			? (NSTextAlignment)lookupNameValue(colAlignment,
