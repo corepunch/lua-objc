@@ -1,5 +1,7 @@
 <ScrollView id="page" vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
-  <VStack id="pageContent" spacing="24" padding="24" alignment="leading">
+  <VStack padding="24" alignment="center">
+  <%- partial("../components/ReadableWidth.etlua") %>
+  <VStack id="pageContent" maxWidth="@readableWidth" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = page,
       summary = "Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk."}) %>
     <% if computing then %>
@@ -62,5 +64,6 @@
       </GroupBox>
     </VStack>
     <% end %>
+  </VStack>
   </VStack>
 </ScrollView>

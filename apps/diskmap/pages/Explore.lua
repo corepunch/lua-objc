@@ -154,8 +154,13 @@ function map:data(state)
 	local rows = scanning and {} or Categories:rows(self.focusId ~= "" and self.focusId or nil, query)
 	table.sort(rows, function(a, b) return (a.bytes or -1) > (b.bytes or -1) end)
 	local largest = rows[1] and rows[1].bytes or 0
+	-- A row has the color of its sector, which may not be its catalog color
+	-- (Categories:hues), so the list and the ring read as one.
+	local hues = {}
+	for _, node in ipairs(nodes) do hues[node.id] = node.color end
 	for _, row in ipairs(rows) do
 		row.children = nil
+		row.color = hues[row.id] or row.color
 		row.relative = row.bytes and largest > 0 and row.bytes / largest or nil
 		row.shareText = row.bytes and total > 0 and string.format("%d%%", math.floor(row.bytes * 100 / total + 0.5)) or ""
 	end

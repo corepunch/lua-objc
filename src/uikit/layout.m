@@ -187,9 +187,12 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 			CGFloat scale = view.traitCollection.displayScale ?: 1;
 			CGFloat weight = flex_weight(children[i], YES);
 			CGFloat totalWeight = 0;
+			CGFloat reserved = 0;
+			for (NSUInteger next = order.count - left + 1; next < order.count; next++)
+				reserved += children[order[next].unsignedIntegerValue].minWidth;
 			if (weight > 0) for (NSUInteger next = order.count - left; next < order.count; next++)
 				totalWeight += flex_weight(children[order[next].unsignedIntegerValue], YES);
-			CGFloat offer = MAX(0, round((weight > 0 ? remaining * weight / totalWeight : remaining / left) * scale) / scale);
+			CGFloat offer = MAX(0, round((weight > 0 ? remaining * weight / totalWeight : remaining - reserved) * scale) / scale);
 			sizes[i] = measure_size(children[i], CGSizeMake(offer, proposal.height));
 			/* Flex is a proposal; explicit minimum dimensions remain layout constraints. */
 			if (is_flexible(children[i])) sizes[i].width = MAX(offer, children[i].minWidth);
@@ -295,8 +298,12 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 		} else {
 			/* Content in units takes its size from the stack, not the reverse. */
 			BOOL units = [axis isEqualToString:@"zstack"] && view.fitDiameter > 0;
+			if (units) {
+				CGFloat side = MIN(view.fitDiameter, MIN(inner.width, inner.height));
+				size = CGSizeMake(side, side);
+			}
 			for (UIView *child in view.subviews) {
-				if (uikit_is_hidden(child) || (units && !fills_stack(child))) continue;
+				if (uikit_is_hidden(child) || units) continue;
 				CGSize childSize = measure_size(child, CGSizeMake(inner.width,
 					[axis isEqualToString:@"vstack"] ? CGFLOAT_MAX : inner.height));
 				size.width = MAX(size.width, childSize.width);

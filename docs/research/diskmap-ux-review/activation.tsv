@@ -1,0 +1,75 @@
+ACTIVATE	pictures	Pictures	largest	sheet:photos	pictures	ok
+ACTIVATE	steam-games	Steam games	largest	sheet:games	steam-games	ok
+ACTIVATE	device-backups	iPhone & iPad backups	largest	sheet:ios-files	device-backups	ok
+ACTIVATE	downloads	Downloads	largest	sheet:documents	downloads	ok
+ACTIVATE	simulators	Simulator devices	simulators	-	-	ok
+ACTIVATE	movies	Other videos	largest	sheet:tv	movies	ok
+ACTIVATE	imovie-library	iMovie library	largest	sheet:video-production	imovie-library	ok
+ACTIVATE	devices	Device support	xcode	-	-	ok
+ACTIVATE	logic-sound-library	Logic sound library	largest	sheet:apple-music-apps	logic-sound-library	ok
+ACTIVATE	apps-system-other	Other files in Applications	applications	-	-	ok
+ACTIVATE	derived	Xcode DerivedData	xcode	-	-	ok
+ACTIVATE	music	Music library	largest	sheet:music-library	music	ok
+ACTIVATE	messages-attachments	Message attachments	largest	sheet:messages-library	messages-attachments	ok
+ACTIVATE	resolve-cache	DaVinci Resolve render cache	largest	sheet:video-production	resolve-cache	ok
+ACTIVATE	app-containers	Sandboxed application data	largest	sheet:system-data	app-containers	ok
+ACTIVATE	iphone-updates	iPhone software updates	largest	sheet:ios-files	iphone-updates	ok
+ACTIVATE	ableton	Ableton Live	largest	sheet:sample-libraries	ableton	ok
+ACTIVATE	documents-user	Documents	largest	sheet:documents	documents-user	ok
+ACTIVATE	game-app	Chess Arena.app	applications	-	-	ok
+ACTIVATE	ollama	Ollama models	largest	sheet:local-models	ollama	ok
+ACTIVATE	desktop	Desktop	largest	sheet:documents	desktop	ok
+ACTIVATE	podcasts-library	Podcasts library	largest	sheet:podcasts	podcasts-library	ok
+ACTIVATE	icloud-docs	iCloud Drive	largest	sheet:icloud-drive	icloud-docs	ok
+ACTIVATE	minecraft	Minecraft	largest	sheet:games	minecraft	ok
+ACTIVATE	video-studio	Reel Studio.app	applications	-	-	ok
+ACTIVATE	adobe-media-cache	Adobe media cache	largest	sheet:caches	adobe-media-cache	ok
+ACTIVATE	spotify-cache	Spotify cache	largest	sheet:caches	spotify-cache	ok
+ACTIVATE	archives	Archives	xcode	-	-	ok
+ACTIVATE	huggingface	Hugging Face cache	largest	sheet:local-models	huggingface	ok
+ACTIVATE	user-trash	Your Trash	largest	sheet:trash	user-trash	ok
+ACTIVATE	garageband-sound-library	GarageBand sound library	largest	sheet:apple-music-apps	garageband-sound-library	ok
+ACTIVATE	mail	Mailboxes	largest	sheet:mail-library	mail	ok
+ACTIVATE	watch-devices	watchOS device support	xcode	-	-	ok
+ACTIVATE	logic	Logic Pro projects	largest	sheet:apple-music-apps	logic	ok
+ACTIVATE	sim-caches	Simulator caches	largest	sheet:xcode	sim-caches	ok
+ACTIVATE	support	Application support	largest	sheet:system-data	support	ok
+ACTIVATE	cargo-target	Rust build output · Lumen	projects	-	-	ok
+ACTIVATE	apple-loops	Apple Loops	largest	sheet:apple-music-apps	apple-loops	ok
+ACTIVATE	npm	npm downloads	largest	sheet:packages	npm	ok
+ACTIVATE	documentation	Offline developer documentation	largest	sheet:xcode	documentation	ok
+ACTIVATE	playwright	Playwright browsers	largest	sheet:test-browsers	playwright	ok
+ACTIVATE	notes-app	Notes Plus.app	applications	-	-	ok
+ACTIVATE	brew-logs	Homebrew service logs	largest	sheet:packages	brew-logs	ok
+ACTIVATE	user-caches	Application caches	largest	sheet:caches	user-caches	ok
+ACTIVATE	audio-plugins-shared	Plug-ins for all users	largest	sheet:audio-plugins	audio-plugins-shared	ok
+ACTIVATE	pip	Python package downloads	largest	sheet:packages	pip	ok
+ACTIVATE	final-cut-backups	Final Cut Pro library backups	largest	sheet:video-production	final-cut-backups	ok
+ACTIVATE	node-modules	Node modules · Lumen	projects	-	-	ok
+ACTIVATE	chrome-cache	Google Chrome cache	largest	sheet:caches	chrome-cache	ok
+ACTIVATE	brew	Homebrew downloads	largest	sheet:packages	brew	ok
+ACTIVATE	group-containers	Shared application data	largest	sheet:system-data	group-containers	ok
+ACTIVATE	home-other	Other home files	largest	sheet:other	home-other	ok
+ACTIVATE	website-node-modules	Node modules · website	projects	-	-	ok
+ACTIVATE	library-user	Other user library data	largest	sheet:system-data	library-user	ok
+ACTIVATE	projects	Developer projects	projects	-	-	ok
+ACTIVATE	vscode	VS Code settings & work	largest	sheet:vscode-data	vscode	ok
+MAP_DOUBLE	projects	map	developer	none
+MAP_DOUBLE	derived	map	xcode	none
+MAP_DOUBLE	devices	map	xcode	none
+MAP_DOUBLE	downloads	map	documents	none
+FILES_YOURS	21	70.1 GB
+FILES_ALL	84	355.7 GB
+FILE_ACTIVATE	image.heic	Finder:/Users/appleseed/Pictures/Photos Library.photoslibrary/originals/image.heic
+ROOT_MAP_SEARCH	1	
+LARGEST_SEARCH	1
+FOLDER_OPEN	/Users/appleseed/Downloads	7	Old macOS Installer.dmg
+FOLDER_ACTIVATE	Old macOS Installer.dmg	QuickLook:/Users/appleseed/Downloads/Old macOS Installer.dmg
+FOLDER_ACTIVATE	Family Trip Photos.zip	QuickLook:/Users/appleseed/Downloads/Family Trip Photos.zip
+FOLDER_ACTIVATE	Lecture Recordings	/Users/appleseed/Downloads/Lecture Recordings
+FOLDER_ACTIVATE	ubuntu-24.04-desktop-arm64.iso	QuickLook:/Users/appleseed/Downloads/ubuntu-24.04-desktop-arm64.iso
+FOLDER_ACTIVATE	Design Assets.zip	QuickLook:/Users/appleseed/Downloads/Design Assets.zip
+FOLDER_ACTIVATE	Microsoft Office Installer.pkg	QuickLook:/Users/appleseed/Downloads/Microsoft Office Installer.pkg
+FOLDER_ACTIVATE	Zoom Installer.pkg	QuickLook:/Users/appleseed/Downloads/Zoom Installer.pkg
+ALL_FILES_REVEAL	84	91
+KIND_ACTIVATE	files	video	2	9

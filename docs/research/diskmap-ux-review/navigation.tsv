@@ -1,0 +1,61 @@
+PAGE	overview	Overview	overview	0
+PAGE	cleanup	Clean Up	cleanup	40
+PAGE	applications	Applications	applications	9
+PAGE	files	Large Files	files	21
+PAGE	duplicates	Duplicates	duplicates	0
+PAGE	simulators	Simulators	simulators	0
+PAGE	worktrees	Worktrees	worktrees	0
+PAGE	projects	Projects	projects	2
+PAGE	map	Storage Map	map	0
+PAGE	folder	Folder Map	folder	0
+PAGE	largest	Largest Locations	largest	56
+PAGE	kinds	File Types	kinds	0
+PAGE	disks	Disks & Volumes	disks	7
+PAGE	updates	Updates & Snapshots	updates	0
+PAGE	developer	Developer tools	developer	18
+PAGE	xcode	Xcode	xcode	8
+PAGE	music	Music Production	music	6
+PAGE	video	Video Production	video	4
+PAGE	photography	Photography	photography	0
+PAGE	design	Design	design	0
+PAGE	studio3d	3D & Game Engines	studio3d	0
+PAGE	games	Games	games	2
+PAGE	guide	Storage Guide	guide	0
+PAGE	filesystem	macOS Folders	filesystem	0
+PAGE	help	Diskmap Help	help	0
+LARGEST	pictures	Pictures	63.0 GB	photos	largest	ok
+LARGEST	steam-games	Steam games	36.5 GB	games	largest	ok
+LARGEST	device-backups	iPhone & iPad backups	28.2 GB	ios-files	largest	ok
+LARGEST	downloads	Downloads	24.2 GB	documents	largest	ok
+LARGEST	simulators	Simulator devices	22.1 GB	simulators	simulators	ok
+LARGEST	movies	Other videos	19.0 GB	tv	largest	ok
+LARGEST	imovie-library	iMovie library	14.0 GB	video-production	largest	ok
+LARGEST	devices	Device support	11.5 GB	xcode	xcode	ok
+LARGEST	logic-sound-library	Logic sound library	9.6 GB	apple-music-apps	largest	ok
+LARGEST	apps-system-other	Other files in Applications	9.2 GB	applications	applications	ok
+LARGEST	derived	Xcode DerivedData	8.0 GB	xcode	xcode	ok
+LARGEST	music	Music library	8.0 GB	music-library	largest	ok
+LARGEST	messages-attachments	Message attachments	7.7 GB	messages-library	largest	ok
+LARGEST	resolve-cache	DaVinci Resolve render cache	7.4 GB	video-production	largest	ok
+LARGEST	app-containers	Sandboxed application data	5.7 GB	system-data	largest	ok
+LARGEST	iphone-updates	iPhone software updates	5.4 GB	ios-files	largest	ok
+LARGEST	ableton	Ableton Live	5.2 GB	sample-libraries	largest	ok
+LARGEST	documents-user	Documents	5.1 GB	documents	largest	ok
+LEGEND	photos	overview
+OVERVIEW_WEDGE	photos	map	photos
+LEGEND	developer	overview
+OVERVIEW_WEDGE	developer	map	developer
+LEGEND	games	overview
+OVERVIEW_WEDGE	games	map	games
+LEGEND	ios-files	overview
+OVERVIEW_WEDGE	ios-files	map	ios-files
+LEGEND	documents	overview
+OVERVIEW_WEDGE	documents	map	documents
+MAP_CLICK	developer	map	developer
+MAP_LEAF_SINGLE	projects	map	developer
+MAP_LEAF_DOUBLE	projects	map	?
+MAP_LEAF_ACTIVATE	projects	map
+SEARCH	largest	DerivedData	1
+SEARCH_PERSIST	files	DerivedData	0
+BEFORE_BACK	map	xcode	47	47
+AFTER_BACK	files	xcode	46	47

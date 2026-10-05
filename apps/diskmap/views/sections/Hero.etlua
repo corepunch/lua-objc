@@ -1,18 +1,15 @@
 <%
-  local HERO = { chartUnits = 360, minChart = 120, hole = 0.618, inset = 1.5, corner = 5, total = 44, caption = 20, totalScale = 13 / 44, captionScale = 0.5 }
-  -- The line under the ring naming the hovered sector: as wide as the column the
-  -- ring leaves beside the legend, so a category, its size and share fit.
-  HERO.detail = { size = 12, height = 16, gap = 8 }
-  -- The chart fills the room the card gives it and its center text is laid
-  -- out in units of the chart (`chartUnits` across), so ring and total grow
-  -- together. The text shrinks to fit the hole, no smaller than the scale
-  -- factors allow.
+  -- The size of the ring is one number, `diameter`: its ideal square, about as
+  -- tall as the legend column beside it, so neither leaves empty card above
+  -- and below the other. It shrinks, down to `minChart`, only when the card
+  -- cannot also give the legend `minText`; it never grows past `diameter`,
+  -- since a page is no wider than @readableWidth. The center text is laid
+  -- out in the same units, so ring and total shrink together, the text no
+  -- smaller than the scale factors allow.
+  local HERO = { diameter = 260, minChart = 120, hole = 0.618, inset = 1, corner = 3.5, total = 32, caption = 14, totalScale = 13 / 32, captionScale = 0.75 }
   local hiddenRows = hiddenSpace or {}
-  -- One legend column, no wider than a name, a size and a share read well
-  -- across: two columns ran into each other in the narrowest window.
-  HERO.legend = 440
   -- The text column keeps this much width; the chart takes what is left.
-  HERO.minText = 250
+  HERO.minText = 300
   -- One symbol column for the whole card: the warning, the legend dots, the
   -- hidden-space symbols and the cleanup symbol are each centered in it, so
   -- their centers share a line and every label starts at one edge.
@@ -31,19 +28,13 @@
       <% end %>
 <GroupBox id="heroCard">
   <HStack padding="20" spacing="28" alignment="center">
-    <% --[[ The ring and the line under it are one chart: the hovered sector
-      is named there, and the line keeps its height while empty so the ring
-      never moves. ]] %>
-    <VStack id="chartColumn" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= HERO.minChart %>" maxHeight="infinity" spacing="<%= HERO.detail.gap %>" alignment="center">
-      <SectorChart id="chart" scalable="true" diameter="<%= HERO.chartUnits %>" flexGrow="1" flexBasis="0" minHeight="<%= HERO.minChart %>" maxWidth="infinity" maxHeight="infinity" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.inset %>" onSelect="chartSelect" onHover="chartHover" onCenter="chartCenter" accessibilityLabel="<%= chart.accessibilityLabel %>">
-        <% for _, mark in ipairs(chart.marks) do %>
-        <SectorMark cornerRadius="<%= HERO.corner %>" id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
-        <% end %>
-        <ChartCenter id="chartCenter" titleId="usedTotal" detailId="usedCaption" total="<%= center.title %>" caption="<%= center.detail %>" totalSize="44" captionSize="20" totalScale="<%= HERO.totalScale %>" captionScale="<%= HERO.captionScale %>" />
-      </SectorChart>
-      <Label id="chartDetail" text="" size="<%= HERO.detail.size %>" color="secondary" monospacedDigit="true" maxWidth="infinity" height="<%= HERO.detail.height %>" alignment="center" lines="1" truncation="middle" />
-    </VStack>
-    <VStack flexGrow="1" flexBasis="<%= HERO.legend %>" flexShrink="1" minWidth="<%= HERO.minText %>" spacing="14" alignment="leading">
+    <SectorChart id="chart" scalable="true" diameter="<%= HERO.diameter %>" flexGrow="0" flexShrink="1" minWidth="<%= HERO.minChart %>" minHeight="<%= HERO.minChart %>" fixedSize="vertical" innerRadius="<%= HERO.hole %>" angularInset="<%= HERO.inset %>" onSelect="chartSelect" onHover="chartHover" onCenter="chartCenter" accessibilityLabel="<%= chart.accessibilityLabel %>">
+      <% for _, mark in ipairs(chart.marks) do %>
+      <SectorMark cornerRadius="<%= HERO.corner %>" id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" />
+      <% end %>
+      <ChartCenter id="chartCenter" titleId="usedTotal" detailId="usedCaption" total="<%= center.title %>" caption="<%= center.detail %>" totalSize="<%= HERO.total %>" captionSize="<%= HERO.caption %>" totalScale="<%= HERO.totalScale %>" captionScale="<%= HERO.captionScale %>" />
+    </SectorChart>
+    <VStack id="heroLegendColumn" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= HERO.minText %>" spacing="14" alignment="leading">
       <VStack spacing="2" alignment="leading">
         <HStack spacing="10" alignment="center">
           <Label text="<%= volumeName %>" size="22" weight="semibold" />
@@ -57,7 +48,7 @@
         <% end %>
       </VStack>
       <% if #chart.legend > 0 then %>
-      <VStack id="legend" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
+      <VStack id="legend" spacing="4" alignment="leading">
         <% for _, item in ipairs(chart.legend) do %>
         <LegendRow key="legend-<%= item.id %>" label="<%= item.name %>" color="<%= item.color %>" sizeText="<%= item.size %>" share="<%= item.share %>" linked="<%= item.id ~= "#other" and "true" or "false" %>" action="category_<%= item.id %>" column="<%= HERO.symbol.column %>" gap="<%= HERO.symbol.gap %>" />
         <% end %>
@@ -66,7 +57,7 @@
       <Label id="legendExplanation" text="<%= chart.explanation %>" size="12" color="secondary" maxWidth="infinity" lines="3" />
       <% end %>
       <% if #hiddenRows > 0 then %>
-      <VStack id="hiddenSpace" maxWidth="<%= HERO.legend %>" spacing="4" alignment="leading">
+      <VStack id="hiddenSpace" spacing="4" alignment="leading">
         <% for _, row in ipairs(hiddenRows) do %>
         <HStack spacing="<%= HERO.symbol.gap %>" alignment="center" help="<%= row.detail %>">
           <SystemImage name="<%= row.icon %>" size="11" color="tertiary" width="<%= HERO.symbol.column %>" />

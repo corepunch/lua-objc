@@ -1,6 +1,7 @@
 local Paths = require("apps.diskmap.helpers.Paths")
 local FileKind = require("apps.diskmap.helpers.FileKind")
 local Format = require("apps.diskmap.helpers.Format")
+local Palette = require("apps.diskmap.helpers.Palette")
 local Kinds = require("apps.diskmap.knowledge.FileKinds")
 local FolderTree = {}; FolderTree.__index = FolderTree
 
@@ -25,8 +26,6 @@ FolderTree.colorings = {
 	{id = "kinds", title = "Kinds"},
 	{id = "age", title = "Last Used"},
 }
-FolderTree.palette = {"systemBlue", "systemPurple", "systemPink", "systemOrange", "systemYellow", "systemGreen",
-	"systemTeal", "systemIndigo", "systemMint", "systemCyan", "systemBrown", "systemRed"}
 -- Last-use bands, newest first. A folder's last use is the latest use of
 -- anything inside it, so a folder is old only when all of it is.
 FolderTree.ages = {
@@ -198,7 +197,7 @@ function FolderTree:nodes(focus, coloring, now, depth)
 	local root = self:find(focus) or self.root
 	local total = root.bytes
 	local nodes = {}
-	local paletteIndex = 0
+	local palette = Palette.new()
 	local function visit(node, parentId, ring, inherited)
 		local other, otherBytes, shown = node.otherCount, node.otherBytes, 0
 		for _, child in ipairs(node.children or {}) do
@@ -209,8 +208,7 @@ function FolderTree:nodes(focus, coloring, now, depth)
 					shown = shown + 1
 					local branch = inherited
 					if ring == 1 then
-						paletteIndex = paletteIndex + 1
-						branch = FolderTree.palette[(paletteIndex - 1) % #FolderTree.palette + 1]
+						branch = palette:take(nil)
 					end
 					local leaf = not child.directory or not child.children or #child.children == 0
 					table.insert(nodes, {id = child.path, parent = parentId, value = child.bytes,

@@ -20,7 +20,7 @@ local PREVIEW = {largest = 6}
 -- The Overview page: the disk's ring and legend, what changed, what could not
 -- be measured, the categories and the largest items. Everything is drawn from
 -- `data` once the scan has finished. The sector under the pointer is named on
--- the line under the ring and no list row follows it; a selected category row
+-- the hole of the ring and no list row follows it; a selected category row
 -- points at its sector. Every action navigates or points, so none draws the
 -- page again.
 routes.overview = {view = "pages/Overview", queries = setmetatable({}, {__index = function() return true end})}
@@ -60,12 +60,11 @@ end
 function overview:chartCenter() self:showMap("") end
 
 -- The hole names the pointed category and its size, as Apple's SectorMark
--- sample does, and the line under the ring its share.
+-- sample does. Its share is already available in the legend.
 -- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function overview:chartHover(id)
 	local mark = id and self.marks[id]
 	if not self.refs then return end
-	self.refs.chartDetail.text = mark and mark.detail or ""
 	self.refs.usedTotal.text = mark and mark.label or self.center.title
 	self.refs.usedCaption.text = mark and Format.size(mark.value) or self.center.detail
 end
