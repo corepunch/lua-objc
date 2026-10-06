@@ -27,8 +27,8 @@ function Simulators.symbol(name)
 	return "iphone"
 end
 
-function Simulators.rows(inventory, query, filter, now)
-	local rows, runtimes, needle = {}, {}, (query or ""):lower()
+function Simulators.rows(inventory, filter, now)
+	local rows, runtimes = {}, {}
 	for _, runtime in ipairs(inventory.runtimes or {}) do runtimes[runtime.identifier] = runtime.name end
 	for runtime, devices in pairs(inventory.devices or {}) do
 		for _, device in ipairs(devices) do
@@ -39,9 +39,8 @@ function Simulators.rows(inventory, query, filter, now)
 			if device.state == "Shutdown" then running = false
 			elseif device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down" then running = true end
 			local age = Simulators.age(device.lastUsedAt, now)
-			local matchesFilter = (filter ~= "Unavailable" or available == false)
-				and (filter ~= Simulators.filters[3] or (age ~= nil and age >= Simulators.staleDays))
-			if matchesFilter and (name .. " " .. runtimeName .. " " .. (device.udid or "")):lower():find(needle, 1, true) then
+			if (filter ~= "Unavailable" or available == false)
+				and (filter ~= Simulators.filters[3] or (age ~= nil and age >= Simulators.staleDays)) then
 				-- A value names itself or stays empty: a dash in a list without
 				-- headers says nothing.
 				table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
@@ -65,8 +64,8 @@ local PLATFORMS = {
 -- Installed runtimes from `xcrun simctl runtime list -j`: an object keyed by
 -- runtime image UUID. Unknown fields stay unknown; sizes are never invented.
 -- Device counts come from the device inventory's runtime identifiers.
-function Simulators.runtimeRows(list, inventory, query, now)
-	local rows, needle = {}, (query or ""):lower()
+function Simulators.runtimeRows(list, inventory, now)
+	local rows = {}
 	local counts = {}
 	for runtime, devices in pairs(inventory and inventory.devices or {}) do counts[runtime] = #devices end
 	for key, entry in pairs(type(list) == "table" and list or {}) do
@@ -80,15 +79,13 @@ function Simulators.runtimeRows(list, inventory, query, now)
 			local build = type(entry.build) == "string" and entry.build or nil
 			local bytes = tonumber(entry.sizeBytes)
 			local devices = counts[entry.runtimeIdentifier] or 0
-			if (name .. " " .. (build or "") .. " " .. id):lower():find(needle, 1, true) then
-				table.insert(rows, {id = id, name = name, icon = Simulators.symbol(platform), color = "systemIndigo", subtitle = table.concat({build and ("Build " .. build) or nil,
-					type(entry.kind) == "string" and entry.kind or nil, type(entry.state) == "string" and entry.state or nil}, " · "),
-					platform = platform, version = version, runtimeIdentifier = entry.runtimeIdentifier,
-					bytes = bytes, size = Format.size(bytes), deletable = entry.deletable == true,
-					devices = devices, deviceText = devices == 0 and "No devices" or Format.plural(devices, "device"),
-					lastUse = age and Format.used(Format.ago(age)) or "Last use unknown",
-					path = type(entry.path) == "string" and entry.path or nil})
-			end
+			table.insert(rows, {id = id, name = name, icon = Simulators.symbol(platform), color = "systemIndigo", subtitle = table.concat({build and ("Build " .. build) or nil,
+				type(entry.kind) == "string" and entry.kind or nil, type(entry.state) == "string" and entry.state or nil}, " · "),
+				platform = platform, version = version, runtimeIdentifier = entry.runtimeIdentifier,
+				bytes = bytes, size = Format.size(bytes), deletable = entry.deletable == true,
+				devices = devices, deviceText = devices == 0 and "No devices" or Format.plural(devices, "device"),
+				lastUse = age and Format.used(Format.ago(age)) or "Last use unknown",
+				path = type(entry.path) == "string" and entry.path or nil})
 		end
 	end
 	table.sort(rows, function(a, b)
@@ -102,7 +99,7 @@ end
 function Simulators.summary(inventory, runtimes, now)
 	local result = {devices = 0, deviceBytes = 0, unavailable = 0, unavailableBytes = 0, stale = 0, staleBytes = 0,
 		runtimes = #(runtimes or {}), runtimeBytes = 0, unknownAvailability = 0}
-	for _, row in ipairs(Simulators.rows(inventory or {}, nil, nil, now)) do
+	for _, row in ipairs(Simulators.rows(inventory or {}, nil, now)) do
 		result.devices = result.devices + 1
 		result.deviceBytes = result.deviceBytes + (row.bytes or 0)
 		if row.available == nil then result.unknownAvailability = result.unknownAvailability + 1 end

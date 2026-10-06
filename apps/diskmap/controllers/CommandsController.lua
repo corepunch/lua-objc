@@ -8,8 +8,8 @@ local Controller = {}; Controller.__index = Controller
 -- The menu bar: its actions, their validation and the Help menu's search
 -- topics. Window.etlua lays the menus out; this controller supplies what
 -- they do. `handlers` come from the root controller:
--- `show(id)`, `destination()`, `scanning()`, `refresh()`, `cancel()`,
--- `settings()`, `find()`, `search(page, text)`, `emptyTrash()`, `review()`,
+-- `show(id, params)`, `destination()`, `scanning()`, `refresh()`, `cancel()`,
+-- `settings()`, `find()`, `emptyTrash()`, `review()`,
 -- `history()`, `openFolder()`, `quickLook()`/`canQuickLook()` for the
 -- current page's selection, and `navigation`, the sidebar's back/forward
 -- history.
@@ -48,7 +48,7 @@ function Controller:actions()
 		diskUtility = function() self.service.openDiskUtility() end,
 		find = h.find,
 		help = function() h.show("help") end,
-		shortcuts = function() h.search("help", "Keyboard shortcuts") end,
+		shortcuts = function() h.show("help", {topic = "shortcuts"}) end,
 		guide = function() h.show("guide") end,
 		filesystem = function() h.show("filesystem") end,
 		tour = h.tour,
@@ -75,11 +75,11 @@ function Controller:actions()
 		end
 	end
 	for _, topic in ipairs(Help.searchTopics()) do
-		actions["helpTopic_" .. topic.id] = function() h.search("help", topic.title) end
+		actions["helpTopic_" .. topic.id] = function() h.show("help", {topic = topic.id}) end
 	end
 	for _, chapter in ipairs(Guide.chapters) do
 		for _, topic in ipairs(chapter.topics) do
-			actions["guideTopic_" .. topic.id] = function() h.search("guide", topic.title) end
+			actions["guideTopic_" .. topic.id] = function() h.show("guide", {topic = topic.id}) end
 		end
 	end
 	return actions

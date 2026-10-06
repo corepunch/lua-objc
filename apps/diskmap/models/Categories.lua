@@ -39,19 +39,17 @@ function Categories:hues(rows)
 	return hues
 end
 
-function Categories:rows(rootId, query)
+function Categories:rows(rootId)
 	local model = Model.db
-	local needle = (query or ""):lower()
-	local function build(source, inheritedMatch)
+	local function build(source)
 		local row = projection(source)
-		local matches = inheritedMatch or (source.name .. " " .. source.subtitle .. " " .. (source.path or "")):lower():find(needle, 1, true) ~= nil
 		local m = model.measurements[source.id] or {}
 		row.bytes, row.status = m.bytes, m.status or "notMeasured"
 		if not source:isLeaf() then
 			row.children = {}; local total, measured, complete, attempted, calculating, failed, excluded, unsupported, protected = 0, false, true, false, false, false, true, true, true
 			local denied = false
 			for _, child in ipairs(source:children()) do
-				local value, visible = build(child, matches)
+				local value, visible = build(child)
 				if value.status == "denied" then denied = true end
 				if value.bytes then total = total + value.bytes; measured = true end
 				if value.status ~= "excluded" then excluded = false end
@@ -73,18 +71,19 @@ function Categories:rows(rootId, query)
 			-- readable siblings its total is a lower bound, like any partial one.
 			row.status = excluded and "excluded" or unsupported and "unsupported" or protected and "protected" or calculating and "calculating" or complete and "complete" or measured and "partial" or failed and "failed" or attempted and "denied" or "notMeasured"
 			row.expanded = (source.id == "xcode" or source.id == "intelligence")
-			row.forceExpanded = needle ~= ""
 		end
 		Format.sizeLabel(row, row.status, row.bytes)
 		row.color = source.color or "secondary"
 		row.icon = source.icon or "doc"
 		row.kept = model.kept[row.id] == true
-		return row, matches or row.children and #row.children > 0
+		-- A location that is not on this Mac is not listed as "0 KB".
+		if m.missing then return row, false end
+		return row, true
 	end
 	local source = rootId and Locations:find(rootId)
 	local rows = source and (source:isLeaf() and {source} or source:children()) or Locations:roots()
 	local result = {}
-	for _, row in ipairs(rows) do local value, visible = build(row, false); if visible then table.insert(result, value) end end
+	for _, row in ipairs(rows) do local value, visible = build(row); if visible then table.insert(result, value) end end
 	return result
 end
 -- One rolled-up row (leaf or group) by id, with the same status and size text
@@ -235,9 +234,9 @@ end
 -- Top-level category rows with a share of used capacity. The level bar
 -- compares each category with the largest one so small categories stay
 -- readable next to a dominant one.
-function Categories:shares(disk, query)
-	local rows = Categories:rows(nil, query)
-	local hues = Categories:hues(Categories:rows())
+function Categories:shares(disk)
+	local rows = Categories:rows()
+	local hues = Categories:hues(rows)
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	local largest, order = 0, {}
 	for index, row in ipairs(rows) do

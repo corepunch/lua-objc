@@ -26,7 +26,7 @@ function Controller.new(service, launch)
 	local router = {
 		open = function(id, params) return self:open(id, params) end,
 		show = function(id, params) return self:show(id, params) end,
-		search = function(id, text) return self:search(id, text) end,
+		search = function(text) return self:search(text) end,
 		refresh = function() self:updateRows() end,
 		changed = function() self:scanChanged() end,
 		basketChanged = function() self:basketChanged() end,
@@ -58,14 +58,13 @@ function Controller.new(service, launch)
 	self.collectorController = CollectorController.new(self.env.context)
 	self.progress = ScanProgress.new(self.env.scan)
 	self.commands = CommandsController.new(self.env.model, self.env.service, {
-		show = function(id) self:show(id) end,
+		show = function(id, params) self:show(id, params) end,
 		destination = function() return self.destination end,
 		scanning = function() return self.env.scan.job ~= nil end,
 		refresh = function() self.env.scan:start() end,
 		cancel = function() self.env.scan:cancel() end,
 		settings = function() self:openSettings() end,
 		find = function() self:focusSearch() end,
-		search = function(id, text) self:search(id, text) end,
 		emptyTrash = function() Manage({app = self.env.context}):manage("user-trash") end,
 		navigation = self.navigation,
 		review = function() self:openReview() end,
@@ -83,11 +82,21 @@ function Controller.new(service, launch)
 	return self
 end
 
-function Controller:search(id, text)
-	self:show(id)
+-- The toolbar's search field: typing opens the Search page over the page it
+-- leaves, and clearing it returns there. The query stays with Search, so
+-- Back from a result returns to the results; every other page shows the
+-- field empty, since no page filters by text.
+function Controller:search(text)
 	self.query = text or ""
-	if self.searchField then self.searchField.stringValue = self.query end
-	self:updateRows()
+	if self.searchField and self.searchField.stringValue ~= self.query then self.searchField.stringValue = self.query end
+	if self.query == "" then
+		if self.destination == "search" then self:show(self.returnTo or "overview") end
+	elseif self.destination ~= "search" then
+		self.returnTo = self.destination
+		self:show("search")
+	else
+		self:updateRows()
+	end
 end
 function Controller:focusSearch()
 	if self.window and self.searchField then self.window:focus(self.searchField) end
@@ -127,7 +136,7 @@ function Controller:badges()
 	-- Clean Up's badge is what it could recover, the number its page leads
 	-- with; every other badge is a total stored.
 	if self.env.scan.job == nil then
-		local eligible = Suggestions:presentation("", self.env:sources()).eligibleBytes
+		local eligible = Suggestions:presentation(self.env:sources()).eligibleBytes
 		if eligible > 0 then badges.cleanup = Format.size(eligible) end
 	end
 	local simulators = Categories:row("simulators")
@@ -226,17 +235,11 @@ function Controller:show(id, params, fromHistory)
 	if not self.content then return end
 	if self.destination == id and self.page and not remount then return end
 	local request = self.env:page(entry.id)
-	if request.focus and type(request.focus) == "function" then request:focus(params) end
-	if self.destination ~= id then self.query = "" end
-	if self.searchField then
-		local scope = id == "map" and "Map list" or entry.title
-		self.searchField.stringValue = self.query
-		self.searchField.placeholderString = "Search " .. scope
-		self.searchField.accessibilityLabel = "Search " .. scope .. ". Cleared when changing pages."
-		self.searchField.enabled = id ~= "folder"
-		if id == "folder" then self.searchField.placeholderString = "Folder search unavailable" end
-	end
+	if self.searchField then self.searchField.stringValue = id == "search" and self.query or "" end
+	-- The page that goes is deactivated before the one shown is focused: the
+	-- two may be one route, reopened on other params.
 	if self.page then self.page:dispose() end
+	if request.focus and type(request.focus) == "function" then request:focus(params) end
 	local page = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/",
 		store = self.env.model, request = request})
 	self.destination, self.page = id, page
@@ -301,7 +304,7 @@ end
 function Controller:createWindow()
 	self.env:prepare()
 	local actions = setmetatable({
-		search = function(value) self.query = value or ""; self:updateRows() end,
+		search = function(value) self:search(value) end,
 		reclaim = function() self:show("cleanup") end,
 	}, {__index = self.commandActions})
 	local data = self.commands:data()

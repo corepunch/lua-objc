@@ -23,7 +23,7 @@ local totals = {}
 for _, deferred in ipairs({false, true}) do
 	local host = Harness.env({deferred = deferred})
 	Model.bind(host.env.model)
-	table.insert(totals, Suggestions:presentation("", host.env:sources()).eligibleBytes)
+	table.insert(totals, Suggestions:presentation(host.env:sources()).eligibleBytes)
 	for id in pairs(host.env.manifest.pages) do
 		local page = Harness.mount(id, host)
 		host.service.settle()

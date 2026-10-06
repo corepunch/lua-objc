@@ -97,8 +97,8 @@ local unknown = SimulatorService.discover(service, model.home)
 local row = Simulators.rows(unknown)[1]
 t.assertEqual(row.lastUse, "Last use unknown", "no boot date does not imply never started")
 t.assertEqual(row.available, nil, "filesystem discovery cannot prove runtime availability")
-t.assertEqual(#Simulators.rows(unknown, nil, "Unavailable"), 0, "unknown device is not falsely called unavailable")
-t.assertEqual(#Simulators.rows(unknown, nil, "Unused for 90 days"), 0, "unknown age cannot qualify as stale")
+t.assertEqual(#Simulators.rows(unknown, "Unavailable"), 0, "unknown device is not falsely called unavailable")
+t.assertEqual(#Simulators.rows(unknown, "Unused for 90 days"), 0, "unknown age cannot qualify as stale")
 local ok, reason = Simulators.validate("delete", row)
 t.expect(not ok and reason.code == "state_unknown", "unknown running state prevents device deletion")
 local live = {devices = {[runtime] = {{udid = uuid, state = "Booted", isAvailable = true}}}}
@@ -142,7 +142,7 @@ t.expect(not app.env.tour:needed(disk), "low-space launch bypasses automatic tou
 t.expect(app.env.tour:needed({totalKb = 256e9 / 1024, freeKb = 100e9 / 1024}), "normal-space launch preserves the tour preference")
 app:show("cleanup")
 local page = app.page
-local data = Suggestions:presentation("")
+local data = Suggestions:presentation()
 local expected = data.decisions[1]
 -- #102: with nothing selected the inspector takes no space.
 t.expect(page.refs.selectionDetails.hidden, "an empty inspector is hidden until a suggestion is selected")
@@ -156,8 +156,9 @@ t.expect(page.refs.openSelection.title:find("Open", 1, true) == 1, "selected sug
 page:update(app:state())
 t.assertEqual(page.request.selectedRow.id, expected.id, "live measurements preserve the selection by id")
 t.assertEqual(page.refs.selectionAdvice.text, expected.subtitle, "refresh keeps the matching explanation")
-page:update({query = "no-such-suggestion", disk = disk})
-t.assertEqual(page.request.selectedRow, nil, "filtering away a suggestion removes the stale detail")
+page.request.selectedId = "no-such-suggestion"
+page:update({disk = disk})
+t.assertEqual(page.request.selectedRow, nil, "a selection no row matches removes the stale detail")
 t.expect(page.refs.selectionDetails.hidden, "an empty selection hides the inspector, so no stale item can be opened")
 local opened
 page.request.app.show = function(id, params) opened = {id, params.filter} end

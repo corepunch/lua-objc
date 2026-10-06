@@ -84,7 +84,7 @@ select("MockProject")
 t.expect(not refs.keep.enabled, "the primary cannot be kept or removed")
 
 -- Clean Up carries the same plan and does not count the tool's folder again.
-local data = Suggestions:presentation("", {})
+local data = Suggestions:presentation({})
 local candidate
 for _, row in ipairs(data.decisions) do if row.id == "worktrees" then candidate = row end end
 t.expect(candidate and candidate.page == "worktrees", "Clean Up offers the worktree review")
@@ -148,11 +148,7 @@ t.expect(failedPage.actions.review(), "review runs when a removal will fail")
 t.assertEqual(attempts, 2, "the second removal is still attempted after the first fails")
 t.expect(failed.result:find("Failed", 1, true) and failed.result:find("Removed 1 worktree", 1, true), "failures and successes are both reported: " .. tostring(failed.result))
 
--- Empty and search states.
-page:update({query = "no-such-worktree"})
-refs = page.refs
-t.assertEqual(listed(), 0, "a search with no match shows no rows")
-page:update({query = ""})
+-- Empty states.
 local empty = Mock.new()
 empty.worktreeScan = function(_, done) done({}, {}) end
 local routed

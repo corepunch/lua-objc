@@ -40,7 +40,7 @@ function Environment.new(service, launch, router)
 	self.session.historyEnabled = service.loadHistorySetting() == true
 	self.manifest = Manifest.load("apps/diskmap/app.xml")
 	self.routes = require("apps.diskmap.routes")
-	local context = {model = self.model, service = service, pages = self.manifest.pages, sheets = {}, mapStyle = self.launch.mapStyle}
+	local context = {model = self.model, service = service, manifest = self.manifest, pages = self.manifest.pages, sheets = {}, mapStyle = self.launch.mapStyle}
 	for name, value in pairs(router) do context[name] = value end
 	self.context = context
 	context.request = function(id) return self:page(id) end
@@ -51,6 +51,7 @@ function Environment.new(service, launch, router)
 	context.remeasure = function(id) self:remeasure(id) end
 	context.volumeName = function() return self:state().volumeName end
 	context.cleanupSources = function() return self:sources() end
+	context.workflowsPresent = function() return self:presentWorkflows() end
 	local function sheet(id)
 		local page = Routes.page(Sheets[id], {id = id}, context, "apps.diskmap")
 		context.sheets[id] = page

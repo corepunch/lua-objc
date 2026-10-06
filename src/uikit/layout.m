@@ -342,6 +342,10 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 			[table layoutIfNeeded];
 			size.height = table.contentSize.height;
 		}
+		if ([view isKindOfClass:UILabel.class] && ((UILabel *)view).reservesSpace && ((UILabel *)view).numberOfLines > 0) {
+			UILabel *label = (UILabel *)view;
+			size.height = ceil(label.font.lineHeight * label.numberOfLines);
+		}
 	}
 	if (fixedW) size.width = MAX(0, fixedW.doubleValue);
 	if (fixedH) size.height = MAX(0, fixedH.doubleValue);

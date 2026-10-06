@@ -100,16 +100,15 @@ local function texts(self, runtimes)
 		.. Format.plural(summary.devices, "device") .. " · " .. runtimeSummary), table.concat(detail, " ")
 end
 
-function Page:data(state)
+function Page:data()
 	-- Nothing is known until the first read ends: a zero would read as a measurement.
 	if not self.stock.loaded and not self.error then
 		self.lists = {}
 		return {computing = "Reading simulator devices and runtimes…", disabled = {retry = true}}
 	end
-	local inventory, query = self.stock.inventory, state.query or ""
-	local rows = Simulators.rows(inventory, query, Simulators.filters[self.filterIndex])
-	local allRuntimes = Simulators.runtimeRows(self.stock.runtimeList, inventory)
-	local runtimes = query == "" and allRuntimes or Simulators.runtimeRows(self.stock.runtimeList, inventory, query)
+	local inventory = self.stock.inventory
+	local rows = Simulators.rows(inventory, Simulators.filters[self.filterIndex])
+	local runtimes = Simulators.runtimeRows(self.stock.runtimeList, inventory)
 	local plan = self:plan()
 	self.selected, self.selectedRuntime = pick(rows, self.selected), pick(runtimes, self.selectedRuntime)
 	self.planSelected = pick(plan.devices, self.planSelected)
@@ -119,14 +118,14 @@ function Page:data(state)
 	local _, runtimeReason = Simulators.validateRuntime(runtime, Locations.keeps)
 	local status = self.stock.deviceError or (#rows == 0 and "No matching devices." or Format.plural(#rows, "device"))
 	if selected then status = deviceReason and deviceReason.message or (selected.name .. " · " .. selected.state) end
-	local summary, detail = texts(self, allRuntimes)
+	local summary, detail = texts(self, runtimes)
 	local row = self.planSelected
 	return {
 		filters = Simulators.filters, filter = self.filterIndex - 1, summary = summary, devicesDetail = detail, status = status,
 		runtimeStatus = runtime and runtimeReason and runtimeReason.message or self.stock.runtimeError or "",
 		plan = planView(self, plan),
 		lists = self.lists,
-		hidden = {runtimesSection = self.stock.runtimeList ~= nil and #allRuntimes == 0},
+		hidden = {runtimesSection = self.stock.runtimeList ~= nil and #runtimes == 0},
 		disabled = {
 			erase = not (allowed and Simulators.command("erase", selected, Locations.keeps)),
 			delete = not (allowed and Simulators.command("delete", selected, Locations.keeps)),
@@ -226,7 +225,7 @@ end
 -- The unavailable devices that may be deleted now.
 function Page:unavailableDevices()
 	local rows = {}
-	for _, row in ipairs(Simulators.rows(self.stock.inventory, nil, "Unavailable")) do
+	for _, row in ipairs(Simulators.rows(self.stock.inventory, "Unavailable")) do
 		if Simulators.command("delete", row, Locations.keeps) then table.insert(rows, row) end
 	end
 	return rows

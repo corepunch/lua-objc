@@ -12,7 +12,7 @@
   <% if state == "empty" then %>
   <ContentUnavailable id="folderEmpty" descriptionAlignment="leading" title="Drop a Folder Here" systemImage="folder.badge.plus" description="Drag a folder or a disk from the Finder onto this window or onto Diskmap in the Dock, or choose File › Open Folder…, to see everything in it by size." />
   <% elseif state == "scanning" then %>
-  <VStack id="folderScanning" flexGrow="1" maxHeight="infinity" spacing="10" alignment="center">
+  <VStack id="folderScanning" flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="10" alignment="center">
     <Spacer />
     <ProgressView id="folderSpinner" />
     <Label id="folderProgress" text="<%= progress %>" size="13" color="secondary" monospacedDigit="true" lines="1" truncation="middle" />
@@ -22,7 +22,6 @@
   <ContentUnavailable id="folderFailed" title="Could Not Measure This Folder" systemImage="exclamationmark.triangle" description="<%= failure %>" />
   <% else %>
   <Breadcrumb id="folderBar">
-    <Button id="folderUp" title="Up" systemImage="arrow.up" action="up" disabled="<%= not canUp %>" help="Show the parent folder; Back and Forward visit pages" />
     <% for index, step in ipairs(trail) do %>
     <Crumb name="<%= step.name %>" action="focus_<%= index %>" current="<%= index == #trail and "true" or "false" %>" />
     <% end %>
@@ -73,8 +72,10 @@
       </StorageRings>
       </VStack>
       <% end %>
-      <% -- Guidance and long paths wrap in a narrow pane rather than lose their middle. %>
-      <Label id="folderHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="0" />
+      <% --[[ Guidance and long paths wrap in a narrow pane rather than lose
+        their middle. The caption always keeps two lines, so the chart above
+        never resizes as the text changes. ]] %>
+      <Label id="folderHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="2" reservesSpace="true" truncation="tail" />
       <% if #legend > 0 then %>
       <GroupBox id="folderLegend">
         <VStack padding="10" spacing="6" alignment="leading">

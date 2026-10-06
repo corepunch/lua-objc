@@ -208,10 +208,13 @@ is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
 and Essential to keep filters. Back, Forward, Refresh, Stop, Clean Up,
-Marked, Settings and Search live in the toolbar; search applies to the current
-page (on the Map it narrows the list beside the chart, which keeps the whole
-level so its proportions stay true). The field names its scope and clears when
-changing pages, including Back and Forward. Folder Map has no search filter.
+Marked, Settings and Search live in the toolbar. Search is one page over the
+whole store, as Spotlight is (`pages/Search.lua`): typing opens it with the
+matching pages, locations, large files, apps, leftovers, projects, simulators,
+worktrees, file types, guide and help topics and macOS folders, grouped by
+kind, and clearing the field returns to the page it opened over. A result
+opens where Diskmap shows it, and Back returns to the results. No other page
+filters by text.
 Large Files opens on All measured files; Yours narrows to documents eligible
 for review. Both maps offer Up for their parent level; Back and Forward visit
 pages. Storage Map and Largest Locations open the originating location
@@ -256,8 +259,8 @@ DISKMAP_CAPTURE_DIR=/tmp/diskmap-pages ./lua-objc --capture-plan=apps/diskmap/ca
 ```
 
 The capture plan visits every sidebar destination in light and dark at both
-supported sizes, then captures a larger map, rectangles, empty search and
-selection. Omit `--isolated` to capture the full app.
+supported sizes, then captures a larger map, rectangles, search results, a
+search without results and a selection. Omit `--isolated` to capture the full app.
 
 `controllers/Environment.lua` owns one store, checked provider, scan, Keep
 choices, basket, operations, inventories and memoized requests. It loads
@@ -422,8 +425,7 @@ shared extents and snapshots can still prevent physical-capacity parity. The
 difference from macOS storage usage is labeled Not attributed; it can include
 access gaps, snapshots and filesystem accounting differences, and is never
 presented as disposable storage. Partial resource measurements show a lower
-bound. Search in Storage matches category names, descriptions, resource names
-and paths; matching resources appear under their semantic categories.
+bound. Search matches measured locations by name, owner and path.
 Category refresh also scans the full ledger so independent batches cannot
 reassign hard-link ownership and corrupt totals.
 
@@ -475,7 +477,7 @@ one small progress window, which `controllers/ScanProgressController` renders on
 and then updates by setting the bar's value and the status text; the pages are
 drawn when it finishes. Pages mount retained templates into the content pane; the
 root disposes the previous page before mounting the next. The guide re-renders only
-when its search changes, so scan progress never collapses the topic being read.
+when a scan starts or ends, so scan progress never collapses the topic being read.
 Routes contain no native controls. Services are injected, so tests can exercise
 cancellation, preference persistence failures, action routing and fresh startup
 independently.
@@ -624,8 +626,8 @@ window presentation. Their views are etlua; controllers do not build view trees.
 ## Added for issues #36 and #37
 
 - **Applications** leftovers carry High, Medium or Low confidence in their
-  evidence. The leading action counts likely leftovers still available to mark
-  in the current search, then offers Review Marked Items. Marking stages items;
+  evidence. The leading action counts likely leftovers still available to mark,
+  then offers Review Marked Items. Marking stages items;
   removal follows the separate final review.
 - **Duplicates** compares files byte for byte, only in folders you add, and
   counts only unshared (non-clone) blocks as reclaimable.

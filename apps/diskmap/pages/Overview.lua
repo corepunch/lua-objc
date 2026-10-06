@@ -91,9 +91,9 @@ function overview:data(state)
 		hero = {summary = summary, center = self.center, chart = chart, volumeName = state.volumeName}, handlers = handlers}
 	if scanning then return data end
 	data.measured = true
-	self.categoryRows = Categories:shares(disk, state.query)
+	self.categoryRows = Categories:shares(disk)
 	if not Selection.index(self.categoryRows, self.selectedId) then self.selectedId = nil end
-	local largest = Locations:largest(disk, PREVIEW.largest, state.query)
+	local largest = Locations:largest(disk, PREVIEW.largest)
 	local cloudBytes, cloudFiles = Scans:cloud()
 	local hero = data.hero
 	hero.hiddenSpace = Figures.hidden(disk, state.capacity, state.snapshotCount, errors, cloudBytes, cloudFiles,
@@ -173,7 +173,7 @@ function routes.cleanup:details(row)
 end
 
 function routes.cleanup:present(state)
-	local data = Suggestions:presentation(state.query, self.app.cleanupSources())
+	local data = Suggestions:presentation(self.app.cleanupSources())
 	local lists, hidden = {}, {}
 	for _, section in ipairs(SECTIONS) do
 		lists["list_" .. section.id] = data[section.id]

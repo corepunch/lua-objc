@@ -10,7 +10,7 @@ local Suggestions = require("apps.diskmap.models.Suggestions")
 -- storage presented as sections of catalog rows. Developer, Music
 -- Production, Video Production and the rest differ only in their entry:
 --
---   Workflows:find("music"):presentation(query)
+--   Workflows:find("music"):presentation()
 local Workflows, Workflow = Model:extend("workflows", {source = function() return Knowledge.list end,
 	visibleBytes = Knowledge.visibleBytes})
 
@@ -57,15 +57,14 @@ end
 -- Page presentation: sections of rows, largest first, with share bars
 -- compared across the whole page so sections can be read against each other.
 -- `rebuildable` totals the cleanup suggestions among the page's rows.
-function Workflow:presentation(query)
+function Workflow:presentation()
 	local model = Model.db
-	local needle = (query or ""):lower()
 	local sections, largest, total, calculating, covered = {}, 0, 0, false, {}
 	for _, section in ipairs(self.sections) do
 		local rows = {}
 		for _, value in ipairs(sectionValues(model, section)) do
 			local row = pageRow(model, value)
-			if row and (needle == "" or (row.name .. " " .. (row.subtitle or "") .. " " .. (row.path or "")):lower():find(needle, 1, true)) then
+			if row then
 				table.insert(rows, row)
 				leaves(Locations:find(row.id), covered)
 			end

@@ -83,8 +83,8 @@ for _, row in ipairs(Files:rows("Unused for a year")) do t.expect(row.old, "the 
 for _, row in ipairs(Files:rows("Installers & archives")) do
 	t.expect(row.kindId == "installers" or row.kindId == "archives", "the installer filter lists installers and archives")
 end
-for _, row in ipairs(Files:rows("All", nil, "video")) do t.assertEqual(row.kindId, "video", "a kind narrows the list") end
-t.assertEqual(#Files:rows("All", "ubuntu"), 1, "search matches file names")
+for _, row in ipairs(Files:rows("All", "video")) do t.assertEqual(row.kindId, "video", "a kind narrows the list") end
+t.assertEqual(#require("apps.diskmap.helpers.Search").filter(Files:rows("All"), "ubuntu", {"name", "path", "owner"}), 1, "Search matches file names")
 local fileSummary = Files:summary()
 t.expect(fileSummary.reviewableOldBytes > 0 and fileSummary.reviewableOldBytes <= fileSummary.oldBytes, "reviewable old files are a subset of old files")
 
@@ -160,7 +160,7 @@ t.assertEqual(used + apfs.free, apfs.capacity, "mock volumes and free space part
 t.assertEqual(#Volumes.external(volumes.external), 1, "other mounted disks are listed")
 
 -- Clean Up uses every knowledge entry.
-local cleanup = Suggestions:presentation(nil, {apps = require("apps.diskmap.models.Inventories"):applicationsSummary()})
+local cleanup = Suggestions:presentation({apps = require("apps.diskmap.models.Inventories"):applicationsSummary()})
 t.expect(#cleanup.rebuildable > 0 and #cleanup.decisions > 0, "clean up separates rebuildable data from decisions")
 local rebuildable = {}
 for _, row in ipairs(cleanup.rebuildable) do rebuildable[row.id] = true end

@@ -73,7 +73,7 @@
     <ToolbarItem id="review" label="Marked" icon="tray.full" tooltip="Review items marked for cleanup" action="review" />
     <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Settings" action="settings" />
     <ToolbarItem id="search" label="Search">
-      <SearchField id="search" placeholder="Search this page" width="@searchWidth" accessibilityLabel="Search this page. Cleared when changing pages." onChange="search" />
+      <SearchField id="search" placeholder="Search" width="@searchWidth" accessibilityLabel="Search everything Diskmap measured and explains" onChange="search" />
     </ToolbarItem>
   </Toolbar>
 </Window>

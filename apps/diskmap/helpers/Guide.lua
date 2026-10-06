@@ -27,29 +27,36 @@ function Guide.measurement(topic, lookup)
 	return Format.atLeast(bytes, partial) .. " on this Mac"
 end
 
--- Chapters and topics matching `query`, in guide order. A chapter whose title
--- matches keeps all of its topics; otherwise only matching topics remain.
-function Guide.presentation(query, measured)
-	local needle = (query or ""):lower()
-	local chapters, count = {}, 0
+-- Every chapter and its topics, in guide order.
+function Guide.presentation(measured)
+	local chapters = {}
 	for chapterIndex, chapter in ipairs(Guide.chapters) do
-		local chapterMatches = needle == "" or chapter.title:lower():find(needle, 1, true) ~= nil
 		local topics = {}
 		for topicIndex, topic in ipairs(chapter.topics) do
+			table.insert(topics, {id = topic.id, key = chapterIndex .. "_" .. topicIndex,
+				title = topic.title, icon = topic.icon, summary = topic.summary,
+				what = topic.what, why = topic.why, action = topic.action,
+				paths = table.concat(topic.paths or {}, "\n"), open = topic.open,
+				measurement = Guide.measurement(topic, measured)})
+		end
+		table.insert(chapters, {id = chapter.id, title = chapter.title, icon = chapter.icon, topics = topics})
+	end
+	return {chapters = chapters}
+end
+
+-- The topics that mention `needle` (lowered), in guide order: those of a
+-- chapter whose title matches, and any whose text does.
+function Guide.search(needle)
+	local found = {}
+	for _, chapter in ipairs(Guide.chapters) do
+		local chapterMatches = chapter.title:lower():find(needle, 1, true) ~= nil
+		for _, topic in ipairs(chapter.topics) do
 			if chapterMatches or searchable(topic):find(needle, 1, true) then
-				table.insert(topics, {id = topic.id, key = chapterIndex .. "_" .. topicIndex,
-					title = topic.title, icon = topic.icon, summary = topic.summary,
-					what = topic.what, why = topic.why, action = topic.action,
-					paths = table.concat(topic.paths or {}, "\n"), open = topic.open,
-					measurement = Guide.measurement(topic, measured)})
+				table.insert(found, {id = topic.id, title = topic.title, icon = topic.icon, summary = topic.summary, chapter = chapter.title})
 			end
 		end
-		if #topics > 0 then
-			count = count + #topics
-			table.insert(chapters, {id = chapter.id, title = chapter.title, icon = chapter.icon, topics = topics})
-		end
 	end
-	return {chapters = chapters, count = count, empty = count == 0}
+	return found
 end
 
 function Guide.topic(id)

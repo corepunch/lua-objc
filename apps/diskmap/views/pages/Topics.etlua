@@ -3,16 +3,13 @@
 <PageFrame id="page">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = page, summary = summary}) %>
-    <% if empty then %>
-    <ContentUnavailable id="noTopics" title="No Topics Found" systemImage="magnifyingglass" description="No <%= noun %> mentions “<%= query %>”." />
-    <% end %>
     <% for _, chapter in ipairs(chapters) do %>
     <VStack spacing="8" alignment="leading">
       <%- partial("../components/SectionTitle.etlua", {icon = chapter.icon, title = chapter.title}) %>
       <GroupBox>
         <VStack spacing="0" alignment="leading">
           <% for index, item in ipairs(chapter.topics) do %>
-          <%- partial("../" .. topic .. ".etlua", {topic = item, expanded = expandAll}) %>
+          <%- partial("../" .. topic .. ".etlua", {topic = item, expanded = item.id == opened}) %>
           <% if index < #chapter.topics then %><Divider /><% end %>
           <% end %>
         </VStack>

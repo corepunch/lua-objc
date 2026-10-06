@@ -105,19 +105,15 @@ function Files:validateTrash(path)
 	return true
 end
 
-local function matches(row, needle)
-	return needle == "" or (row.name .. " " .. row.path .. " " .. row.owner):lower():find(needle, 1, true) ~= nil
-end
-
 -- Rows for Large Files. `kind` narrows to one File Types kind. Share bars
 -- compare files with the largest one shown.
-function Files:rows(filter, query, kind, now)
+function Files:rows(filter, kind, now)
 	local model = Model.db
 	local summary = model.files
 	if not summary then return {} end
 	now = now or os.time()
 	local source = filter == "Unused for a year" and summary.old or summary.large
-	local kinds, needle = FILTER_KINDS[filter], (query or ""):lower()
+	local kinds = FILTER_KINDS[filter]
 	local oldBefore = now - require("apps.diskmap.models.Scans").fileSummary.oldDays * 86400
 	local rows = {}
 	for _, file in ipairs(source) do
@@ -135,7 +131,7 @@ function Files:rows(filter, query, kind, now)
 			-- to the Trash. System and runtime images share the extension but
 			-- not the owner: they stay under All and in the File Types totals.
 			local removableOnly = filter == "Yours" or filter == "Installers & archives"
-			if matches(row, needle) and (not removableOnly or row.trashable) then table.insert(rows, row) end
+			if not removableOnly or row.trashable then table.insert(rows, row) end
 		end
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.path < b.path end)

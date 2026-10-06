@@ -802,6 +802,12 @@ static NSSize measure_view(NSView *view, LuaLayoutConstraint constraint) {
 				}
 			}
 		}
+		if ([view isKindOfClass:LuaLabel.class] && ((LuaLabel *)view).reservesSpace) {
+			NSTextField *field = (NSTextField *)view;
+			if (field.maximumNumberOfLines > 0 && field.font)
+				natural.height = ceil(field.font.ascender - field.font.descender + field.font.leading)
+					* field.maximumNumberOfLines;
+		}
 	}
 
 	CGFloat fixedWidth = view_fixed_width(view);
@@ -1401,9 +1407,14 @@ static void toolbar_size_content(NSView *view) {
 
 // A nested stack's changed intrinsic size affects its siblings. Its layout
 // owner is the nearest ancestor that is not a stack, scroll or group box,
-// stopping at the pane geometry owned by NSSplitView.
+// stopping at the pane geometry owned by NSSplitView. A stack sized in units
+// (a scalable chart) also ends the walk: its size comes from the space it is
+// offered, never from its content, so a change inside it moves nothing
+// outside. Hovering a ring rewrites the labels on its hole; without this
+// boundary each pointer move laid out the whole page.
 static NSView *layout_owner(NSView *view) {
 	while (view.superview && ![view.superview isKindOfClass:NSSplitView.class]) {
+		if (layout_axis(view) == LayoutAxisZStack && view_fit_diameter(view) > 0) break;
 		NSView *parent = view.superview;
 		if (layout_axis(parent) == LayoutAxisNone && ![parent isKindOfClass:NSClipView.class]
 			&& ![parent isKindOfClass:NSScrollView.class] && ![parent isKindOfClass:NSBox.class]) break;

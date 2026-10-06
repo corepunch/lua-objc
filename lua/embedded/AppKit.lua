@@ -978,6 +978,8 @@ end
 --- @prop color string optional. Semantic system color name.
 --- @prop alignment string optional. One of "leading", "center", "trailing".
 --- @prop lineLimit number optional. Maximum lines; 0 means unlimited.
+--- @prop underlinesOnHover boolean optional. Underlines the text while the pointer is over it, for a label that acts on click (SwiftUI `.underline(isHovered)`).
+--- @prop reservesSpace boolean optional. Always as tall as `lineLimit` lines, so shorter text never moves siblings (SwiftUI `.lineLimit(n, reservesSpace: true)`).
 --- @prop truncation string optional. One of "head", "middle", "tail".
 --- @prop wrapping string optional. "word" (default) or "character".
 --- @prop monospacedDigit boolean optional. Uses fixed-width digits so changing numbers do not shift (SwiftUI `.monospacedDigit()`); requires `size`.
@@ -1012,7 +1014,7 @@ function AppKit.Text(arg)
 			AppKit.Text({ text, size = arg.size, weight = arg.weight,
 				italic = arg.italic, color = arg.color, design = arg.design,
 				monospacedDigit = arg.monospacedDigit, fontName = arg.fontName, smallCaps = arg.smallCaps,
-				lineLimit = arg.lineLimit, truncation = arg.truncation, wrapping = arg.wrapping,
+				lineLimit = arg.lineLimit, reservesSpace = arg.reservesSpace, truncation = arg.truncation, wrapping = arg.wrapping,
 				minimumScaleFactor = arg.minimumScaleFactor }),
 		}
 		return applyLayout(AppKit.HStack(row), arg)
@@ -1050,6 +1052,8 @@ function AppKit.Text(arg)
 		v.lineLimit = arg.lineLimit
 		if arg.lineLimit > 1 then v.lineBreakMode = 0 end
 	end
+	if type(arg) == "table" and arg.reservesSpace then v.reservesSpace = true end
+	if type(arg) == "table" and arg.underlinesOnHover then v.underlinesOnHover = true end
 	if type(arg) == "table" and arg.wrapping then
 		v.lineBreakMode = arg.wrapping == "character" and 1 or 0
 	end

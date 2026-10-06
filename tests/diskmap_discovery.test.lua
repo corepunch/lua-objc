@@ -129,7 +129,8 @@ local scanner = Scan.new(model, require("apps.diskmap.services.Contract").stub({
 	start = function(paths) measuredPaths = paths; return {} end,
 	await = function(_, completion)
 		local result = {trees = {}, rootStates = {}}
-		for index = 1, #measuredPaths do result.rootStates[index] = "missing" end
+		-- Every discovered location exists; a missing one would not be listed.
+		for index = 1, #measuredPaths do result.trees[index], result.rootStates[index] = {kb = 1}, "complete" end
 		completion(result)
 	end,
 	cancel = function() end,

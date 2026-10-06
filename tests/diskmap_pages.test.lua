@@ -73,7 +73,24 @@ for _, node in ipairs(mapNodes) do
 end
 app.page.actions.chartSelect("developer", 1)
 t.assertEqual(app.env:page("map").focusId, "developer", "clicking a group focuses it")
-t.expect(page().mapSummary.text:find("Developer", 1, true) == 1 and page().mapUp.enabled, "the focused map names Developer and offers Up")
+t.expect(page().mapSummary.text:find("Developer", 1, true) == 1, "the focused map names Developer")
+-- No Up button: the path's earlier steps are the way back. Each is a
+-- label, as before, that underlines its text while the pointer is over it.
+local crumbs = {}
+for _, view in ipairs(page().mapBar.subviews) do
+	if view.className == "LuaLabel" and view.underlinesOnHover then table.insert(crumbs, view) end
+end
+t.assertEqual(#crumbs, 1, "the focused map offers one step back")
+t.assertEqual(crumbs[1].text, "All Storage", "named for the level it shows")
+t.assertEqual(#page().mapBar.subviews, 5, "the bar holds the two steps, a chevron, a spacer and the style picker, no Up button")
+t.expect(not crumbs[1].underlined, "at rest the step is plain text")
+crumbs[1].hovered = true
+t.expect(crumbs[1].underlined, "under the pointer it is underlined")
+crumbs[1].hovered = false
+t.expect(not crumbs[1].underlined, "and plain again when the pointer leaves")
+app.page.actions.focus_1()
+t.assertEqual(app.env:page("map").focusId, "", "clicking the step goes back up")
+app.page.actions.chartSelect("developer", 1)
 app.page.actions.pickStyle(1)
 t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
 t.assertEqual(page().mapList, nil, "rectangles name every item, so the list serves the rings only")

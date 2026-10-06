@@ -41,7 +41,6 @@ local trashedPath, trashedBytes, remeasured
 local keepMessage
 local cleanup = Keep({app = {service = require("apps.diskmap.services.Contract").stub({saveKeep = function() saved = saved + 1; return true end})}})
 t.assertEqual(Suggestions:presentation().decisions[1].id, "simulators", "clean up keeps resource identity")
-t.assertEqual(#Suggestions:presentation("unfindable").decisions, 0, "clean up search is independent")
 local reviewRow = Suggestions:presentation().decisions[1]
 t.assertEqual(reviewRow.statusColor, "systemOrange", "a review suggestion carries an orange status symbol")
 t.assertEqual(reviewRow.shareText, "to review", "a suggestion without proven recovery names its amount as bytes to review")

@@ -172,16 +172,16 @@ function Xcode.bulkable(section, row)
 	return false
 end
 
-function Xcode.filtered(rows, query)
-	local needle, kept = query:lower(), {}
+-- Copies of a section's rows, which the page annotates without touching the
+-- inventory.
+function Xcode.copies(rows)
+	local copies = {}
 	for _, row in ipairs(rows or {}) do
-		if needle == "" or (row.name .. " " .. (row.subtitle or "") .. " " .. row.path):lower():find(needle, 1, true) then
-			local copy = {}
-			for key, value in pairs(row) do copy[key] = value end
-			table.insert(kept, copy)
-		end
+		local copy = {}
+		for key, value in pairs(row) do copy[key] = value end
+		table.insert(copies, copy)
 	end
-	return kept
+	return copies
 end
 
 

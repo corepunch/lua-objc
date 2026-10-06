@@ -24,7 +24,6 @@ local LAYOUT = {
 		empties = {
 			{id = "filesUnavailable", title = "File Results Unavailable", systemImage = "exclamationmark.triangle", description = "Check scan access, then refresh to measure files again."},
 			{id = "filesNone", title = "No Large Files Found", systemImage = "doc", description = "No files over " .. THRESHOLD .. " were ranked. Clean Up can still find rebuildable data."},
-			{id = "filesNoResults", title = "No Results", systemImage = "magnifyingglass", description = "No large file matches the search. Try another filter or search."},
 			{id = "filesEmpty", title = "No Files Here", systemImage = "doc", description = "No large file fits this filter. Choose All to see every file Diskmap ranked."},
 		},
 		panelId = "filesPanel",
@@ -33,11 +32,10 @@ local LAYOUT = {
 }
 
 local WAITING = {title = "Files Not Measured Yet", systemImage = "doc", description = "Large files are listed when the scan finishes."}
-local LINKS = {cleanup = {page = "cleanup"}, reviewMarked = {handler = "review"}, refreshFiles = {handler = "refresh"},
-	clearSearch = {handler = "search", args = {"files", ""}}}
+local LINKS = {cleanup = {page = "cleanup"}, reviewMarked = {handler = "review"}, refreshFiles = {handler = "refresh"}}
 
 -- The lead card: what a person can mark here, or why there is nothing to.
-local function decision(page, rows, fileState, reason, query, kind, noFiles)
+local function decision(page, rows, fileState, reason, kind, noFiles)
 	local filter, actions = Files.filters[page.filterIndex], page.rowActions
 	local bytes, reviewable, marked, included = 0, 0, 0, 0
 	for _, row in ipairs(rows) do
@@ -65,8 +63,6 @@ local function decision(page, rows, fileState, reason, query, kind, noFiles)
 		say("No large files found", "No files over " .. THRESHOLD .. " were ranked. Review rebuildable data in Clean Up.", "scan finished", "Open Clean Up", "cleanup")
 	elseif fileState == "error" or fileState == "unavailable" then
 		say("File results unavailable", reason, "not measured", "Refresh Scan", "refreshFiles")
-	elseif #rows == 0 and query ~= "" then
-		say("Nothing matches this search", "No files match “" .. query .. "” in " .. filter .. (kind and (" · " .. kind.name) or "") .. ". Clear Search or change the filter.", "no matches", "Clear Search", "clearSearch")
 	end
 	return data
 end
@@ -95,22 +91,21 @@ routes.files = ListRoute.extend({layout = LAYOUT,
 			end
 		end
 		return page.rowActions:markAll(items)
-	end, present = function(page, state)
+	end, present = function(page)
 		local model = Model.db
 		-- Nothing is listed until the scan has measured the files.
 		local fileState, reason = Files:state()
 		page.visible = {}
 		if fileState == "loading" then return {waiting = WAITING} end
-		local query, kind = state.query or "", page.kind and FileKind.byId(page.kind)
+		local kind = page.kind and FileKind.byId(page.kind)
 		local files, summary = model.files, Files:summary()
-		local rows = Files:rows(Files.filters[page.filterIndex], query, page.kind)
+		local rows = Files:rows(Files.filters[page.filterIndex], page.kind)
 		page.visible = rows
 		local noLarge = files ~= nil and #files.large == 0 and #files.old == 0
 		local noFiles = fileState == "empty" or (fileState == "loaded" and noLarge)
 		local unavailable = fileState == "error" or fileState == "unavailable"
 		local listed = files ~= nil and #rows == 0 and fileState == "loaded" and not noLarge
-		local texts = {filesNoResultsDescription = "No files match “" .. query .. "” in " .. Files.filters[page.filterIndex] .. (kind and (" · " .. kind.name) or "") .. ". Clear Search or change the filter.",
-			scopeNote = Scope.text("files", Scans:coverage()), summary = not summary and "No file results are available. Refresh to try again."
+		local texts = {scopeNote = Scope.text("files", Scans:coverage()), summary = not summary and "No file results are available. Refresh to try again."
 			or "Files over " .. THRESHOLD .. " · " .. (summary.partial and "scan coverage is incomplete" or "largest first")}
 		if summary then
 			texts.largeTileValue, texts.largeTileDetail = Format.size(summary.bytes), Format.plural(Format.count(summary.count), "file") .. ", largest first"
@@ -119,10 +114,10 @@ routes.files = ListRoute.extend({layout = LAYOUT,
 			texts.movableTileDetail = Format.plural(Format.count(summary.reviewableOld), "unused document") .. " you can move to the Trash"
 		end
 		return {lists = {files = page.rowActions:annotate(rows)}, texts = texts, links = LINKS,
-			children = {lead = decision(page, rows, fileState, reason, query, kind, noFiles)}, hidden = {
+			children = {lead = decision(page, rows, fileState, reason, kind, noFiles)}, hidden = {
 				filesPanel = #rows == 0 or unavailable, fileControls = unavailable or noLarge,
 				filesUnavailable = not unavailable, filesNone = not noFiles,
-				filesEmpty = not (listed and query == ""), filesNoResults = not (listed and query ~= ""), clearKind = kind == nil}}
+				filesEmpty = not listed, clearKind = kind == nil}}
 	end})
 
 return routes

@@ -4,7 +4,8 @@
   <% if crumb.current then %>
   <Label text="<%= crumb.name %>" size="13" weight="semibold" lines="1" />
   <% else %>
-  <Button title="<%= crumb.name %>" style="link" size="13" action="<%= crumb.action %>" help="Show <%= crumb.name %>" />
+  <% -- An earlier step is a label that goes back to its level; the underline under the pointer shows it can be clicked. %>
+  <Label text="<%= crumb.name %>" size="13" color="secondary" lines="1" underlinesOnHover="true" onClick="<%= crumb.action %>" accessibilityLabel="Show <%= crumb.name %>" help="Show <%= crumb.name %>" />
   <% end %>
   <% end %>
   <ContentPresenter />

@@ -55,13 +55,13 @@ routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sec
 	markHigh = function(page)
 		return page.rowActions:bulk(page.visibleLeftovers or {}, function(row) return row.tier == "high" end, Applications.leftoverItem)
 	end,
-	init = function(page) ListRoute.init(page); page.stock = Inventories:state("applications") end,	present = function(page, state)
+	init = function(page) ListRoute.init(page); page.stock = Inventories:state("applications") end,	present = function(page)
 		local model = Model.db
 		-- Nothing is listed until the scan has measured the apps and Spotlight has told their facts.
 		page.visibleLeftovers = {}
 		if model.scan.running then return {waiting = WAITING} end
 		if (page.stock.pending or 0) > 0 then return {computing = "Reading installed applications…"} end
-		local leftovers = Applications:leftovers(state.query)
+		local leftovers = Applications:leftovers()
 		page.visibleLeftovers = leftovers or {}
 		local unmarkedHigh, markedHigh = 0, 0
 		for _, row in ipairs(leftovers or {}) do
@@ -70,7 +70,7 @@ routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sec
 			end
 		end
 		local summary = Applications.summary(Applications:rows("All"), Applications:leftovers())
-		return {lists = {apps = Applications:rows(Applications.filters[page.filterIndex], state.query),
+		return {lists = {apps = Applications:rows(Applications.filters[page.filterIndex]),
 			leftovers = page.rowActions:annotate(leftovers or {})}, links = LINKS,
 			hidden = {leftoversSection = not leftovers or #leftovers == 0},
 			children = {lead = Applications.decision(summary, unmarkedHigh, markedHigh, Model.db.applicationInfo ~= nil)}, texts = {

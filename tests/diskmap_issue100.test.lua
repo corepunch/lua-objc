@@ -60,7 +60,7 @@ t.expect(Suggestions.score({bytes = 10e9, eligibleBytes = 10e9, confidence = "Me
 -- Presentation separates review bytes from recoverable bytes and exposes the accounting.
 model.measurements.simulators = {status = "complete", bytes = 22e9}
 model.simulatorPlan = {removalBytes = 13e9, removalCount = 3, blockedBytes = 0, complete = true}
-local data = Suggestions:presentation("", {})
+local data = Suggestions:presentation({})
 local row
 for _, item in ipairs(data.decisions) do if item.id == "simulators" then row = item end end
 t.expect(row and row.page == "simulators", "the simulator suggestion opens the minimal device set")
@@ -78,7 +78,7 @@ local summary = Applications.summary({{appBytes = 1e9, dataBytes = 0, bytes = 1e
 t.assertEqual(summary.unused, 0, "an app with unknown usage is not unused")
 t.assertEqual(summary.leftoversHighBytes, 3e9, "only high-confidence leftovers are eligible")
 t.assertEqual(summary.leftoverBytes, 5e9, "all leftovers are bytes to review")
-local out = Suggestions:presentation("", {apps = summary})
+local out = Suggestions:presentation({apps = summary})
 local leftovers
 for _, item in ipairs(out.decisions) do if item.id == "leftovers" then leftovers = item end end
 t.assertEqual(leftovers and leftovers.eligibleBytes, 3e9, "Clean Up carries the eligible part")
@@ -117,7 +117,7 @@ Scan.register(pm, {
 pm.measurements.cm1 = {status = "complete", bytes = 400e6}
 pm.measurements.cm2 = {status = "complete", bytes = 300e6}
 Model.db.projectInfo = {}
-local groups = Projects:groups(nil, nil, nil)
+local groups = Projects:groups()
 local projectTotal = 0
 for _, group in ipairs(groups) do projectTotal = projectTotal + group.bytes end
 local ecosystem

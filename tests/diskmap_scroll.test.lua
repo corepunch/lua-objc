@@ -21,15 +21,10 @@ for _, size in ipairs({{700, 720}, {724, 580}, {1000, 900}}) do
 	t.assertEqual(bridge._testScrollWheel(list.documentView, -1), page,
 		"wheel over a Diskmap category reaches the page")
 end
-app.query = "no category can match this query"
 app:updateRows()
 app.content:layout(1000)
-t.assertEqual(list.rowCount, 0, "search empties the list")
-t.assertEqual(bridge._testScrollWheel(list.documentView, -1), page, "empty search does not trap wheel input")
-app.query = ""
-app:updateRows()
-app.content:layout(1000)
-t.expect(list.rowCount > 0, "clearing search restores categories")
+t.expect(list.rowCount > 0, "a refresh keeps the categories")
+t.assertEqual(bridge._testScrollWheel(list.documentView, -1), page, "a redrawn list does not trap wheel input")
 t.assertEqual(list.documentView.gridStyleMask, 2, "search updates preserve native row separators")
 t.assertEqual(bridge._testScrollWheel(list.documentView, -1), page, "restored categories keep forwarding")
 app.page:dispose()

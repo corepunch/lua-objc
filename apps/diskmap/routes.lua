@@ -15,5 +15,6 @@ return Routes.include(
 	"apps.diskmap.pages.Folder",
 	"apps.diskmap.pages.System",
 	"apps.diskmap.pages.Developer",
-	"apps.diskmap.pages.Learn"
+	"apps.diskmap.pages.Learn",
+	"apps.diskmap.pages.Search"
 )

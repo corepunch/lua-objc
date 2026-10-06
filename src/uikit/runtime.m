@@ -10,6 +10,16 @@ static int bridge_size_to_fit(lua_State *L);
 static int bridge_show(lua_State *L);
 static void layout_recursive(UIView *view, CGFloat width);
 
+/* SwiftUI `.lineLimit(n, reservesSpace: true)`: measured as `numberOfLines`
+ * lines whatever the text, so wrapping never moves the label's siblings. */
+@interface UILabel (LuaReservesSpace)
+@property(nonatomic) BOOL reservesSpace;
+@end
+@implementation UILabel (LuaReservesSpace)
+- (BOOL)reservesSpace { return [objc_getAssociatedObject(self, &kReservesSpaceKey) boolValue]; }
+- (void)setReservesSpace:(BOOL)value { objc_setAssociatedObject(self, &kReservesSpaceKey, @(value), OBJC_ASSOCIATION_RETAIN); }
+@end
+
 @interface UIView (LuaLayoutProperties)
 @property(nonatomic) CGFloat padding;
 @property(nonatomic) CGFloat paddingHorizontal;

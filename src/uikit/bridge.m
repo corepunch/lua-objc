@@ -30,6 +30,7 @@ static char kFixedWidthKey;
 static char kFixedHeightKey;
 static char kMinWidthKey;
 static char kMinHeightKey;
+static char kReservesSpaceKey;
 static char kMaxWidthKey;
 static char kMaxHeightKey;
 static char kSpacingKey;

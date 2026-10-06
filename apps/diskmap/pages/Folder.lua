@@ -16,6 +16,9 @@ local Selection = require("apps.diskmap.helpers.Selection")
 -- counts its items on the line under the spinner, the one live thing here;
 -- the rest is drawn when the scan has finished (`app.refresh()`).
 local Folder = {view = "pages/Folder"}
+-- The caption under the chart keeps two lines; this must fit them whole in
+-- the narrowest pane (tests/diskmap_issue102.test.lua).
+Folder.guidance = "Click a folder to look inside. Double-click a file to preview it."
 
 local STYLES = {"rings", "rectangles"}
 
@@ -308,13 +311,12 @@ function Folder:data()
 	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
 	self.center = {title = Format.size(total), detail = #data.trail > 1 and "Click to go up" or "Measured"}
 	data.center = self.center
-	data.canUp = #data.trail > 1
 	data.selection = self:selection()
 	data.legend = self.tree:legend(self.focusPath, self.coloring, now)
 	data.lists = self.style ~= "rectangles" and {folderList = data.rows} or nil
 	self.trail = data.trail
 	for _, row in ipairs(data.rows) do self.rowsByPath[row.id] = row end
-	self.hover = #nodes == 0 and "" or "Click a folder to look inside. Select a file, then Preview File; double-click also previews it."
+	self.hover = #nodes == 0 and "" or Folder.guidance
 	data.hover = self.hover
 	-- The breadcrumb buttons are named by position (`focus_2`).
 	data.handlers = {}

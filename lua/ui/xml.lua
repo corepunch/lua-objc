@@ -872,6 +872,8 @@ local TAG_SCHEMA = {
 			color      = "str",
 			accessibilityLabel = "str",
             lines      = { prop = "lineLimit", type = "num" },
+            reservesSpace = "bool",
+            underlinesOnHover = "bool",
             truncation = "str",
             wrapping = "str",
             monospacedDigit = "bool",

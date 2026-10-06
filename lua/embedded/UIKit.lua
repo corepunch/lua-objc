@@ -905,6 +905,7 @@ end
 --- @prop italic boolean optional. Component-specific setting passed to the native control.
 --- @prop lineLimit number optional. Maximum number of visible text lines.
 --- @prop lines number optional. Maximum number of visible text lines.
+--- @prop reservesSpace boolean optional. Always as tall as `lines` lines, so shorter text never moves siblings (SwiftUI `.lineLimit(n, reservesSpace: true)`).
 --- @prop size number optional. Component-specific setting passed to the native control.
 --- @prop spacing number optional. Component-specific setting passed to the native control.
 --- @prop systemImage string optional. Component-specific setting passed to the native control.
@@ -940,7 +941,7 @@ function UIKit.Label(arg)
 			UIKit.Label({ text, size = props.size, weight = props.weight,
 				italic = props.italic, design = props.design, color = props.color,
 				monospacedDigit = props.monospacedDigit, fontName = props.fontName, smallCaps = props.smallCaps,
-				lineLimit = props.lineLimit, truncation = props.truncation, wrapping = props.wrapping,
+				lineLimit = props.lineLimit, reservesSpace = props.reservesSpace, truncation = props.truncation, wrapping = props.wrapping,
 				minimumScaleFactor = props.minimumScaleFactor }),
 		}
 		return applyLayout(UIKit.HStack(row), props)
@@ -956,6 +957,7 @@ function UIKit.Label(arg)
 			v.numberOfLines = lines
 			if lines > 1 then v.lineBreakMode = 0 end
 		end
+		if props.reservesSpace then v.reservesSpace = true end
 		if props.wrapping then v.lineBreakMode = props.wrapping == "character" and 1 or 0 end
 		if props.truncation then
 			local modes = { head = 3, tail = 4, middle = 5 }

@@ -68,31 +68,22 @@ local function decision(self, plan)
 	return data
 end
 
-function Page:data(state)
+function Page:data()
 	if not self.stock.loaded then
 		self.lists = {}
 		return {computing = self.stock.progress or "Looking for Git worktrees…", hidden = {selectionSection = true}, disabled = {retry = true}}
 	end
-	local needle = (state.query or ""):lower()
 	local plan = Worktrees.plan(self.stock.rows)
-	local function only(rows)
-		local found = {}
-		for _, row in ipairs(rows) do
-			if needle == "" or (row.name .. " " .. row.path .. " " .. row.subtitle):lower():find(needle, 1, true) then table.insert(found, row) end
-		end
-		return found
-	end
 	-- Locked and kept worktrees are decisions already made: they join the
 	-- review list, after the ones that still need a person.
 	local review, primary, linked, stored = {table.unpack(plan.review)}, {}, 0, 0
 	for _, row in ipairs(plan.protected) do
 		if row.state == "primary" then table.insert(primary, row) else table.insert(review, row) end
 	end
-	review = only(review)
 	for _, row in ipairs(self.stock.rows) do
 		if row.state ~= "primary" then linked, stored = linked + 1, stored + row.bytes end
 	end
-	local lists = {removeList = only(plan.removal), reviewList = review, missingList = only(plan.prune), repositoryList = only(primary)}
+	local lists = {removeList = plan.removal, reviewList = review, missingList = plan.prune, repositoryList = primary}
 	self.lists = lists
 	local selected
 	for _, rows in pairs(lists) do
