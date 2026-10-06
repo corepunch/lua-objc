@@ -11,3 +11,7 @@ web/docs/
 reels/diskmap/captures/
 /.claude
 reels/promo/captures/
+# Movies are build products of the reel pipeline, never tracked.
+*.mov
+*.mp4
+*.m4v

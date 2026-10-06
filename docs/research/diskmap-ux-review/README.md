@@ -98,7 +98,7 @@ However, a person choosing Large Files to diagnose storage must notice the filte
 
 **Recommendation:** consider All as the discovery default, retaining Yours as the reviewable subset. Alternatively state Show all 84 measured files beside the initial banner and distinguish measured files from files available for cleanup. Evaluate this with a task such as “find the largest individual file,” without prompting the tester about the filter.
 
-Sources: [Files.lua](../../../apps/diskmap/pages/Files.lua), [files render](screenshots/files.png), [activation.tsv](activation.tsv).
+Sources: [Files.lua](../../../apps/diskmap/pages/Files.lua), [files render](screenshots/files.jpg), [activation.tsv](activation.tsv).
 
 ### Back tracks pages rather than exploration steps
 
@@ -195,9 +195,9 @@ No completion-time score or numerical ease-of-use rating is assigned because the
 
 - [Navigation walkthrough results](navigation.tsv). The PAGE count is the number of rows in generic `presented.lists`, not a universal count of page content.
 - [Activation and task results](activation.tsv). The 84 Finder calls and Quick Look calls use service stubs against fixture paths.
-- [Overview](screenshots/overview.png), [Largest Locations](screenshots/largest.png), [Projects](screenshots/projects.png), [Clean Up](screenshots/cleanup.png).
-- [Storage Map at minimum size](screenshots/map-min.png), [Storage Map large in dark appearance](screenshots/map-large-dark.png), [Large Files](screenshots/files.png).
-- [Developer tools](screenshots/developer.png), [Xcode](screenshots/xcode.png), [File Types](screenshots/kinds.png), [Folder Map empty state](screenshots/folder.png).
+- [Overview](screenshots/overview.jpg), [Largest Locations](screenshots/largest.jpg), [Projects](screenshots/projects.jpg), [Clean Up](screenshots/cleanup.jpg).
+- [Storage Map at minimum size](screenshots/map-min.jpg), [Storage Map large in dark appearance](screenshots/map-large-dark.jpg), [Large Files](screenshots/files.jpg).
+- [Developer tools](screenshots/developer.jpg), [Xcode](screenshots/xcode.jpg), [File Types](screenshots/kinds.jpg), [Folder Map empty state](screenshots/folder.jpg).
 
 Native render command pattern:
 

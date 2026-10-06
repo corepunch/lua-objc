@@ -11,7 +11,7 @@ import shutil
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "build" / "diskmap-website"
 OUTPUT.mkdir(parents=True, exist_ok=True)
-shutil.copyfile(ROOT / "web/diskmap/assets/icon.png", OUTPUT / "icon.png")
+shutil.copyfile(ROOT / "web/diskmap/assets/icon.jpg", OUTPUT / "icon.jpg")
 
 SHOTS = {
     "map": ("See what fills your Mac.", "Explore a visual map of your storage, one category at a time.", "#161621", "#f6f2ff", "#b3a6c9", "#6a3c8155", "#334b7955"),
@@ -20,13 +20,23 @@ SHOTS = {
 }
 
 PIECES = ("map-cutout", "map-row-1", "map-row-2", "map-row-3", "rebuildable-cutout", "review-cutout", "checked-cutout", "developer-row-1", "developer-row-2", "developer-row-3")
+
+
+def asset(piece):
+    """The piece's file name: transparent cutouts stay PNG, opaque pieces are JPEG."""
+    for extension in ("png", "jpg"):
+        if (ROOT / "web/diskmap/assets" / f"{piece}.{extension}").exists():
+            return f"{piece}.{extension}"
+    raise FileNotFoundError(piece)
+
+
 for piece in PIECES:
-    shutil.copyfile(ROOT / "web/diskmap/assets" / f"{piece}.png", OUTPUT / f"{piece}.png")
+    shutil.copyfile(ROOT / "web/diskmap/assets" / asset(piece), OUTPUT / asset(piece))
 
 COMPOSITIONS = {
-    "map": '<img class="sunburst" src="map-cutout.png" alt="Isolated storage map">' + ''.join(f'<img class="map-row row-{i}" src="map-row-{i}.png" alt="Storage category row">' for i in range(1, 4)),
-    "cleanup": '<img class="stat rebuildable" src="rebuildable-cutout.png" alt="Rebuildable storage"><img class="stat review" src="review-cutout.png" alt="Storage to review"><img class="stat checked" src="checked-cutout.png" alt="Checked locations">',
-    "developer": '<p class="group-label">XCODE &amp; SIMULATORS</p>' + ''.join(f'<img class="developer-row row-{i}" src="developer-row-{i}.png" alt="Developer storage row">' for i in range(1, 4)),
+    "map": '<img class="sunburst" src="{asset("map-cutout")}" alt="Isolated storage map">' + ''.join(f'<img class="map-row row-{i}" src="{asset(f"map-row-{i}")}" alt="Storage category row">' for i in range(1, 4)),
+    "cleanup": '<img class="stat rebuildable" src="{asset("rebuildable-cutout")}" alt="Rebuildable storage"><img class="stat review" src="{asset("review-cutout")}" alt="Storage to review"><img class="stat checked" src="{asset("checked-cutout")}" alt="Checked locations">',
+    "developer": '<p class="group-label">XCODE &amp; SIMULATORS</p>' + ''.join(f'<img class="developer-row row-{i}" src="{asset(f"developer-row-{i}")}" alt="Developer storage row">' for i in range(1, 4)),
 }
 
 for name, (title, subtitle, background, ink, muted, glow_a, glow_b) in SHOTS.items():
@@ -58,6 +68,6 @@ h1 {{ position: absolute; top: 132px; left: 80px; margin: 0; font-size: 82px; li
 .developer-row.row-2 {{ top: 680px; }}
 .developer-row.row-3 {{ top: 880px; }}
 footer {{ position: absolute; bottom: 34px; left: 80px; right: 80px; display: flex; justify-content: space-between; font-size: 13px; color: {muted}; }}
-</style></head><body><header><div class="brand"><img src="icon.png" alt="">Diskmap</div><span class="platform">NATIVE ON MACOS 26</span></header><h1>{title}</h1><p class="subtitle">{subtitle}</p>{COMPOSITIONS[name]}<footer><span>Real UI cutouts. Synthetic example data.</span><span>corepunch.github.io/lua-objc/diskmap</span></footer></body></html>'''
+</style></head><body><header><div class="brand"><img src="icon.jpg" alt="">Diskmap</div><span class="platform">NATIVE ON MACOS 26</span></header><h1>{title}</h1><p class="subtitle">{subtitle}</p>{COMPOSITIONS[name]}<footer><span>Real UI cutouts. Synthetic example data.</span><span>corepunch.github.io/lua-objc/diskmap</span></footer></body></html>'''
     (OUTPUT / f"promo-{name}.html").write_text(html, encoding="utf-8")
     print(OUTPUT / f"promo-{name}.html")
