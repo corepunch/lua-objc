@@ -832,6 +832,20 @@ local TAG_SCHEMA = {
             bindActions(props, attrs, { "onSelect", "onHover", "onBack", "dragItem" })
         end,
     },
+    Waveform = {
+        constructor = "Waveform",
+        children = "array",
+        props = { source = "str", bpm = "num", beatsPerBar = "num", division = "num", gridOffset = "num",
+            selected = "str", accessibilityLabel = "str" },
+        updateRecords = function(view, records) return require("AppKit").waveformMarkers(view, records) end,
+        transform = function(props, attrs)
+            bindActions(props, attrs, { "onAdd", "onSelect", "onMove", "onKey" })
+        end,
+    },
+    WaveformMarker = {
+        kind = "record", flag = "__waveformMarker",
+        props = { id = "str", time = "num" },
+    },
     TreemapNode = {
         kind = "record", flag = "__treemapNode",
         props = { id = "str", parent = "str", value = "num", color = "str", label = "str", detail = "str", hatched = "bool" },
@@ -2288,6 +2302,13 @@ local TAG_INNER = {
         end
     end },
     Gauge = { value = setter("doubleValue", number(0)) },
+    Waveform = {
+        bpm = setter("bpm", number(0)),
+        beatsPerBar = setter("beatsPerBar", number(4)),
+        division = setter("division", number(4)),
+        gridOffset = setter("gridOffset", number(0)),
+        selected = setter("selectedId", function(v) return v or "" end),
+    },
     Slider = { value = setter("value", number(0)) },
     Picker = { value = function(view, v)
         for _, name in ipairs({ "selectedSegment", "selectedSegmentIndex" }) do

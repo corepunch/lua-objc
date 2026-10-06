@@ -1,7 +1,7 @@
 CC = clang
 CFLAGS = -fobjc-arc -Wall -O2 $(shell pkg-config --cflags lua 2>/dev/null || echo "-I/opt/homebrew/include/lua")
 HOST_CFLAGS = -Wall -O2
-LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework Metal -framework MetalKit -framework SceneKit -framework GameController -framework Symbols -framework UserNotifications -framework QuickLookUI
+LDFLAGS = $(shell pkg-config --libs lua 2>/dev/null || echo "-L/opt/homebrew/lib -llua -lm") -framework Cocoa -framework WebKit -framework QuartzCore -framework Metal -framework MetalKit -framework SceneKit -framework GameController -framework Symbols -framework UserNotifications -framework QuickLookUI -framework AVFAudio -framework UniformTypeIdentifiers
 MODULE_LDFLAGS = -dynamiclib -undefined dynamic_lookup
 IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 # UIKit.dylib gets Lua API definitions from its host; keep only those imports
@@ -33,7 +33,7 @@ UIKIT_RUNTIME_SRC = src/uikit_module.m
 UIKIT_RUNTIME_DIRS = src/uikit src/shared
 UIKIT_RUNTIME_FRAGMENTS = $(shell find $(UIKIT_RUNTIME_DIRS) -type f -name '*.m')
 FRAMEWORK_MODULES = build/AppKit.dylib
-NATIVE_PLUGINS = build/StorageScan.dylib build/AudioStream.dylib build/ReelNative.dylib build/Git.dylib
+NATIVE_PLUGINS = build/StorageScan.dylib build/AudioStream.dylib build/AudioFile.dylib build/ReelNative.dylib build/Git.dylib
 IOS_FRAMEWORK_MODULE = $(if $(strip $(IOS_SIM_SDK)),build/UIKit.dylib)
 EMBEDDED_LUA_DIR = lua/embedded
 GENERATED_DIR = build/generated
@@ -79,6 +79,10 @@ build/StorageScan.dylib: src/plugins/storage/StorageScan.m src/plugins/storage/D
 build/AudioStream.dylib: src/plugins/audio/AudioStream.m Makefile
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -framework AVFAudio -framework Accelerate -o $@ $<
+
+build/AudioFile.dylib: src/plugins/audio/AudioFile.m Makefile
+	mkdir -p build
+	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -framework AVFAudio -o $@ $<
 
 # The Reel motion package's native half (modules/reel): offscreen drawing,
 # images and H.264. Standalone like StorageScan; the runtime never loads it.

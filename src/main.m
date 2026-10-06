@@ -173,6 +173,28 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kTreemapSelectionWidth           2
 #define kTreemapLabelFontSize           11
 #define kTreemapHeaderDetailSpacing      6
+/* ----- Waveform ----- */
+/* The band above the samples that holds bar numbers. */
+#define kWaveformRulerHeight            18
+#define kWaveformMinHeight             120
+#define kWaveformVerticalInset           8
+#define kWaveformLabelFontSize          10
+#define kWaveformLabelInset              3
+/* Beat and step lines are drawn only when this far apart; bar numbers need
+ * room for their digits. */
+#define kWaveformMinGridSpacing          6
+#define kWaveformMinBarLabelSpacing     24
+#define kWaveformBarLineAlpha         0.32
+#define kWaveformBeatLineAlpha        0.14
+#define kWaveformStepLineAlpha        0.06
+#define kWaveformSampleAlpha          0.6
+#define kWaveformMinLineHeight           1
+#define kWaveformSliceShadeAlpha      0.04
+#define kWaveformMarkerWidth             1
+#define kWaveformSelectedMarkerWidth     2
+#define kWaveformHandleSize             10
+/* How close, in points, a press must land to grab a marker. */
+#define kWaveformMarkerHitWidth          5
 #define kTableCellLoadingGap             4
 #define kTableCellLineSpacing            2
 #define kTableCellLevelGap               8
@@ -352,6 +374,7 @@ static void bridge_set_optional_callback(
 #include "appkit/workspace.m"
 #include "appkit/constructors.m"
 #include "appkit/charts.m"
+#include "appkit/waveform.m"
 #include "shared/mesh_gradient.m"
 #include "appkit/shader_view.m"
 /* Imported here, after the AppKit fragments: SceneKit declares `target`
@@ -426,6 +449,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_pointerSend", bridge_pointer_send},
 	{"_treemap", bridge_treemap},
 	{"_treemapRefresh", bridge_treemap_refresh},
+	{"_waveform", bridge_waveform},
+	{"_waveformMarkers", bridge_waveform_markers},
+	{"_waveformSend", bridge_waveform_send},
 	{"_tableDragPath", bridge_table_drag_path},
 	{"_setDropHandler", bridge_set_drop_handler},
 	{"_dropFiles", bridge_drop_files},

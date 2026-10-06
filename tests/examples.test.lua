@@ -41,6 +41,7 @@ local examples = {
 	"demo/ledger/init.lua",
 	"demo/storage/init.lua",
 	"apps/translator/init.lua",
+	"apps/slicer/init.lua",
 }
 
 for _, path in ipairs(examples) do
