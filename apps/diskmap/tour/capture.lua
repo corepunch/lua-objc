@@ -37,7 +37,7 @@ local SHOTS = {
 	{name = "cleanup", ids = {"lead", "section_rebuildable"}, maxHeight = 421, show = page("cleanup")},
 	{name = "developer", ids = {"section_xcode"}, show = page("developer")},
 	{name = "disks", ids = {"stats", "volumesSection"}, maxHeight = 380, show = page("disks")},
-	{name = "guide", ids = {"topic_assets"}, show = function(app) app:search("guide", "Siri") end},
+	{name = "guide", ids = {"topic_assets"}, show = function(app) app:show("guide", {topic = "assets"}) end},
 }
 
 local function quote(value) return "'" .. value:gsub("'", "'\\''") .. "'" end
@@ -137,6 +137,5 @@ return function(capture, app)
 			assert(drift < SEARCH.tolerance, string.format("%s %s: %.1f%% from the box's proportions", shot.name, appearance, drift * 100))
 			crop(prefix, rect, scale)
 		end
-		app:search("guide", "")
 	end
 end

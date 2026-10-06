@@ -31,7 +31,7 @@ local inventory = {runtimes = {}, devices = {
 	},
 }}
 
-local runtimes = Simulators.runtimeRows(list, inventory, nil, os.time({year = 2026, month = 9, day = 25, hour = 12}))
+local runtimes = Simulators.runtimeRows(list, inventory, os.time({year = 2026, month = 9, day = 25, hour = 12}))
 t.assertEqual(#runtimes, 2, "malformed runtime entries are skipped")
 t.assertEqual(runtimes[1].name, "iOS 26.0", "runtime names come from platform and version")
 t.assertEqual(runtimes[1].subtitle, "Build 23A339 · Disk Image · Ready", "runtime details name build, kind and state")
@@ -41,7 +41,6 @@ t.assertEqual(runtimes[2].name, "watchOS 26.0", "watch runtimes are named for th
 t.assertEqual(runtimes[2].size, "Not measured", "a runtime without a size is not zero")
 t.assertEqual(runtimes[2].lastUse, "Last use unknown", "unknown last use is never invented")
 t.assertEqual(#Simulators.runtimeRows(nil, inventory), 0, "no runtime list shows no runtimes")
-t.assertEqual(#Simulators.runtimeRows(list, inventory, "watch"), 1, "runtime search matches platform names")
 
 t.assertEqual(Simulators.runtimeCommand(runtimes[1])[5], ios, "runtime deletion uses the exact image UUID")
 t.assertEqual(table.concat(Simulators.runtimeCommand(runtimes[1]), " ", 1, 4), "/usr/bin/xcrun simctl runtime delete",
@@ -60,11 +59,11 @@ t.expect(Simulators.runtimeImpact(runtimes[1]):find("3 devices using it will bec
 t.assertEqual(Simulators.age("2026-09-20T16:20:00Z", now), 6, "device age counts whole days")
 t.assertEqual(Simulators.age(nil, now), nil, "missing dates have no age")
 t.assertEqual(Simulators.age("yesterday", now), nil, "unreadable dates have no age")
-local stale = Simulators.rows(inventory, nil, Simulators.filters[3], now)
+local stale = Simulators.rows(inventory, Simulators.filters[3], now)
 t.assertEqual(#stale, 1, "only devices with a recorded, old last use are unused")
 t.assertEqual(stale[1].name, "iPhone 12", "the stale filter finds the old device")
-t.assertEqual(#Simulators.rows(inventory, nil, "Unavailable", now), 1, "the unavailable filter still works")
-t.assertEqual(#Simulators.rows(inventory, nil, "All", now), 4, "all devices are listed")
+t.assertEqual(#Simulators.rows(inventory, "Unavailable", now), 1, "the unavailable filter still works")
+t.assertEqual(#Simulators.rows(inventory, "All", now), 4, "all devices are listed")
 
 local summary = Simulators.summary(inventory, runtimes, now)
 t.assertEqual(summary.devices, 4, "summary counts every device")

@@ -2,6 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local bridge = require("AppKitNative")
+local xml = require("ui.xml")
 local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
 local Mock = require("apps.diskmap.services.Mock")
@@ -52,7 +53,7 @@ visible("updates", "Updates")
 app:show("cleanup")
 local cleanup = app.page
 t.expect(cleanup.refs.selectionDetails.hidden, "Clean Up has no empty inspector")
-local data = Suggestions:presentation("", app.env:sources())
+local data = Suggestions:presentation(app.env:sources())
 local top = data.lead
 for _, row in ipairs(data.rebuildable) do t.expect(row.score <= top.score, "the lead outranks every rebuildable row: " .. row.id) end
 for _, row in ipairs(data.decisions) do t.expect(row.score <= top.score, "and every decision: " .. row.id) end
@@ -75,11 +76,11 @@ local probe = Store.new("/Users/test")
 probe.measurements.simulators = {status = "complete", bytes = 22e9}
 probe.simulatorPlan = plan
 local simulatorRow
-for _, row in ipairs(Suggestions:presentation("", {}).decisions) do if row.id == "simulators" then simulatorRow = row end end
+for _, row in ipairs(Suggestions:presentation({}).decisions) do if row.id == "simulators" then simulatorRow = row end end
 t.assertEqual(simulatorRow and simulatorRow.size, "13.0 GB", "the simulator suggestion shows what the minimal set could recover")
 t.assertEqual(simulatorRow.shareText, "could recover", "and names it")
 t.expect(simulatorRow.subtitle:find("22.0 GB is stored", 1, true), "the whole inventory is stated as stored, apart: " .. simulatorRow.subtitle)
-t.expect(require("apps.diskmap.routes").cleanup.lead(Suggestions:presentation("", {})).title:find("Keep one iPhone and one iPad", 1, true),
+t.expect(require("apps.diskmap.routes").cleanup.lead(Suggestions:presentation({})).title:find("Keep one iPhone and one iPad", 1, true),
 	"the lead names the concrete decision")
 local empty = require("apps.diskmap.routes").cleanup.lead({count = 0})
 t.assertEqual(empty.action, "leadFiles", "with nothing to suggest the lead routes to where a person can still look")
@@ -151,7 +152,27 @@ end
 t.expect(wraps("apps/diskmap/views/sections/Decision.etlua", "<%= id %>Title"), "a decision's title wraps")
 t.expect(wraps("apps/diskmap/views/sections/Decision.etlua", "<%= id %>Detail"), "a decision's detail wraps")
 t.expect(wraps("apps/diskmap/views/sections/SimulatorPlan.etlua", "planSummary"), "the plan's qualifications wrap")
-t.expect(wraps("apps/diskmap/views/pages/Folder.etlua", "folderHover"), "the Folder Map's guidance wraps in a narrow pane")
+-- The map captions keep two lines so the chart above never resizes, and
+-- their guidance is short enough to wrap into them whole in the narrowest
+-- pane (the Folder Map's minimum) rather than lose its end to an ellipsis.
+local function reserves(path, id)
+	local text = source(path)
+	local start = text:find('id="' .. id .. '"', 1, true)
+	local tag = start and text:sub(start, text:find("/>", start, true))
+	return tag ~= nil and tag:find('lines="2"', 1, true) ~= nil and tag:find('reservesSpace="true"', 1, true) ~= nil
+end
+t.expect(reserves("apps/diskmap/views/pages/Folder.etlua", "folderHover"), "the Folder Map's caption reserves two lines")
+t.expect(reserves("apps/diskmap/views/pages/Map.etlua", "mapHover"), "the Map's caption reserves two lines")
+local narrowest = 320
+for page, guidance in pairs({map = require("apps.diskmap.pages.Explore").map.guidance,
+		folder = require("apps.diskmap.pages.Folder").folder.guidance}) do
+	local root, probe = xml.render(([[<VStack><Label id="text" text="%s" size="12" monospacedDigit="true" maxWidth="%d" alignment="center" lines="0" /></VStack>]]):format(guidance, narrowest), {}, ns)
+	root:layout(narrowest)
+	local font = probe.text.font
+	local lineHeight = math.ceil(font.ascender - font.descender + font.leading)
+	t.expect(guidance ~= "" and probe.text.frame.size.height <= lineHeight * 2,
+		page .. " guidance fits its two lines at " .. narrowest .. " points")
+end
 window:close()
 
 -- #100 P1: Simulators. The root reads the inventory when a scan finishes,

@@ -35,33 +35,40 @@ local function steps(topic, shortcuts)
 	return lines
 end
 
--- Chapters and topics matching `query`, in help order. `links` maps a
--- topic's `show` page or `command` to the title of its button.
-function Help.presentation(query, shortcuts, links)
-	local needle = (query or ""):lower()
-	local chapters, count = {}, 0
+-- Every chapter and its topics, in help order. `links` maps a topic's
+-- `show` page or `command` to the title of its button.
+function Help.presentation(shortcuts, links)
+	local chapters = {}
 	for _, chapter in ipairs(Help.chapters) do
-		local chapterMatches = needle == "" or chapter.title:lower():find(needle, 1, true) ~= nil
 		local topics = {}
 		for _, topic in ipairs(chapter.topics) do
-			local lines = steps(topic, shortcuts)
-			if chapterMatches or searchable(topic):find(needle, 1, true) or table.concat(lines, " "):lower():find(needle, 1, true) then
-				local numbered = {}
-				for index, line in ipairs(lines) do
-					table.insert(numbered, topic.id == "shortcuts" and line or (index .. ". " .. line))
-				end
-				local target = topic.show or topic.command
-				table.insert(topics, {id = topic.id, title = topic.title, icon = topic.icon, summary = topic.summary,
-					steps = table.concat(numbered, "\n"), note = topic.note,
-					target = target, link = target and links and links[target]})
+			local numbered = {}
+			for index, line in ipairs(steps(topic, shortcuts)) do
+				table.insert(numbered, topic.id == "shortcuts" and line or (index .. ". " .. line))
+			end
+			local target = topic.show or topic.command
+			table.insert(topics, {id = topic.id, title = topic.title, icon = topic.icon, summary = topic.summary,
+				steps = table.concat(numbered, "\n"), note = topic.note,
+				target = target, link = target and links and links[target]})
+		end
+		table.insert(chapters, {id = chapter.id, title = chapter.title, icon = chapter.icon, topics = topics})
+	end
+	return {chapters = chapters}
+end
+
+-- The topics that mention `needle` (lowered), in help order: those of a
+-- chapter whose title matches, and any whose text or keywords do.
+function Help.search(needle)
+	local found = {}
+	for _, chapter in ipairs(Help.chapters) do
+		local chapterMatches = chapter.title:lower():find(needle, 1, true) ~= nil
+		for _, topic in ipairs(chapter.topics) do
+			if chapterMatches or searchable(topic):find(needle, 1, true) then
+				table.insert(found, {id = topic.id, title = topic.title, icon = topic.icon, summary = topic.summary, chapter = chapter.title})
 			end
 		end
-		if #topics > 0 then
-			count = count + #topics
-			table.insert(chapters, {id = chapter.id, title = chapter.title, icon = chapter.icon, topics = topics})
-		end
 	end
-	return {chapters = chapters, count = count, empty = count == 0}
+	return found
 end
 
 -- Every topic as a Help-menu search entry: `{id, title, keywords}`.

@@ -145,10 +145,12 @@ t.expect(not pendingSet[visual.path], "a protected location is never measured")
 local sizes = {["/Users/Shared"] = {bytes = 5e8, state = "measured"},
 	["/System/Volumes/Data/.PreviousSystemInformation"] = {bytes = 0, state = "missing"},
 	["/Library/Trial"] = {bytes = 0, state = "unreadable"}}
-local presentation = Filesystem.presentation(sizes, false, nil, Categories:facts())
+local presentation = Filesystem.presentation(sizes, false, Categories:facts())
 local rows = {}
 for _, area in ipairs(presentation.areas) do for _, row in ipairs(area.rows) do rows[row.id] = row end end
-t.assertEqual(presentation.count, count, "the page lists every location")
+local listed = 0
+for _ in pairs(rows) do listed = listed + 1 end
+t.assertEqual(listed, count, "the page lists every location")
 t.assertEqual(rows["/System/Volumes/Preboot"].size, "21.0 GB", "a volume shows its APFS size")
 t.assertEqual(rows["/Users/Shared"].size, "500.0 MB", "a measured location shows its size")
 t.assertEqual(rows[visual.path].size, "Not readable", "a protected location says it cannot be read")
@@ -156,16 +158,16 @@ t.assertEqual(rows[visual.path].guardTitle, Map.guards.sip.title, "and why")
 t.assertEqual(rows["/System/Volumes/Data/.PreviousSystemInformation"].size, "Not on this Mac", "a missing location says so")
 t.assertEqual(rows["/Library/Trial"].size, "No access", "a refused location asks for access while it is off")
 local grantedRows = {}
-for _, area in ipairs(Filesystem.presentation(sizes, true, nil, Categories:facts()).areas) do for _, row in ipairs(area.rows) do grantedRows[row.id] = row end end
+for _, area in ipairs(Filesystem.presentation(sizes, true, Categories:facts()).areas) do for _, row in ipairs(area.rows) do grantedRows[row.id] = row end end
 t.assertEqual(grantedRows["/Library/Trial"].size, "Not readable", "and is protected once access is on")
 t.assertEqual(rows["/System/Volumes/Data/MobileSoftwareUpdate"].size, "Not measured", "a leftover still measuring says so: a scan shows no row-level progress")
-t.assertEqual(Filesystem.presentation(sizes, false, "rosetta", Categories:facts()).count, 1, "search finds a location by what it holds")
-t.expect(Filesystem.presentation(sizes, false, "no such folder", Categories:facts()).empty, "a search with no match is empty")
+t.assertEqual(#Filesystem.search("rosetta"), 1, "Search finds a location by what it holds")
+t.assertEqual(#Filesystem.search("no such folder"), 0, "a search with no match finds nothing")
 
 -- A volume APFS has not sized reads Not measured, never a spinner.
 local volumeless = Store.new(home)
 local function rowOf(m, id)
-	for _, area in ipairs(Filesystem.presentation({}, false, nil, Categories:facts()).areas) do
+	for _, area in ipairs(Filesystem.presentation({}, false, Categories:facts()).areas) do
 		for _, row in ipairs(area.rows) do if row.id == id then return row end end
 	end
 end

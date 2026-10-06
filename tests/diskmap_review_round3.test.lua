@@ -49,7 +49,10 @@ local liveFolder=app.env.model.home..'/Downloads/review-folder'
 local liveChild=liveFolder..'/cleanup-fixture-nested-archive.zip'
 table.insert(app.env.model.files.large,{path=liveChild,bytes=90000000,used=os.time()})
 app.env.basket:toggle({path=liveFolder,name='Review folder',bytes=90000000,consequence='Moves this folder and every file inside it.'})
-app:show('files');app.query='cleanup-fixture-nested-archive.zip';app:updateRows()
+-- Large Files lists only the file inside the marked folder.
+local fullLarge=app.env.model.files.large
+app.env.model.files.large={fullLarge[#fullLarge]}
+app:show('files');app:updateRows()
 local page=app.page.request
 local decision=app.page.refs
 t.assertEqual(decision.decisionAction.title,'Review Marked Items…','covered visible file routes to review')
@@ -97,17 +100,18 @@ app.env.review:draw();app.env.review.refs.items:selectRow(0)
 ns._invokeAction(app.env.review.refs.clear)
 t.expect(app.env.review.refs.selectedDetails.hidden and not app.env.review.refs.trash.enabled,'clear all hides details and disables removal')
 app.env.review:close()
+app.env.model.files.large=fullLarge
 local savedFiles=app.env.model.files
 app.env.model.files=nil;app.env.model.scan={running=true}
 app:show('files')
-app.query='';app:updateRows()
+app:updateRows()
 t.expect(app.page.refs.waiting~=nil,'while the scan runs Large Files says it is not measured yet')
 t.expect(app.page.refs.decisionAction==nil and app.page.refs.files==nil,'a running scan makes no marking offer and lists no partial rows')
 app:show('kinds')
 t.expect(app.page.refs.waiting~=nil and app.page.refs.kinds==nil and app.page.refs.extensions==nil,'File Types waits for the scan too, with no table')
 app.env.model.files={large={},old={},extensions={},oldBytes=0,oldCount=0};app.env.model.scan={running=false}
 app:show('files')
-app.query='';app:updateRows()
+app:updateRows()
 t.expect(not app.page.refs.filesNone.hidden and app.page.refs.filesPanel.hidden,'completed empty files replace inventory scaffolding')
 t.assertEqual(app.page.refs.decisionAction.title,'Open Clean Up','empty files route to another cleanup opportunity')
 app:show('kinds')
@@ -115,13 +119,13 @@ t.expect(not app.page.refs.summary.text:find('Measuring',1,true),'completed empt
 t.expect(app.page.refs.kinds==nil and app.page.refs.extensions==nil and app.page.refs.kindsChart==nil,'empty types suppress empty tables and chart')
 t.assertEqual(app.page.refs.decisionAction.title,'Open Clean Up','empty types give another cleanup route')
 app.env.model.files={large={},old={},extensions={{extension='txt',bytes=100000,count=2}},oldBytes=0,oldCount=0}
-app:show('files');page=app.page.request;app.query='';app:updateRows()
+app:show('files');page=app.page.request;app:updateRows()
 t.expect(not app.page.refs.filesNone.hidden and app.page.refs.filesEmpty.hidden,'small files are not presented as a filter mismatch')
 t.expect(app.page.refs.decisionDetail.text:find('over 50',1,true),'no large-file result explains the threshold')
 app:show('kinds')
 t.expect(app.page.refs.kinds~=nil,'under-threshold files still contribute to types')
 app.env.model.scan={failure='Scan could not read its roots'}
-app:show('files');page=app.page.request;app.query='';app:updateRows()
+app:show('files');page=app.page.request;app:updateRows()
 t.expect(app.page.refs.decisionDetail.text:find('could not read',1,true),'scan failure is explicit')
 t.assertEqual(app.page.refs.decisionAction.title,'Refresh Scan','unavailable files offer refresh')
 app:show('kinds')
@@ -129,11 +133,6 @@ t.assertEqual(app.page.refs.decisionAction.title,'Refresh Scan','failed types of
 app.env.model.files=nil;app.env.model.scan={running=false}
 t.assertEqual(Files.state(app.env.model),'unavailable','no results after scan is unavailable, never empty')
 app.env.model.files=savedFiles;app.env.model.scan={running=false}
-app:show('files');page=app.page.request;app.query='no-match-for-review';app:updateRows()
-t.assertEqual(app.page.refs.decisionAction.title,'Clear Search','no-match files provide a useful next step')
-app:show('kinds');app.query='no-match-for-review';app:updateRows()
-t.assertEqual(app.page.refs.decisionAction.title,'Clear Search','no-match file types offer clear search')
-t.expect(app.page.refs.kinds==nil and app.page.refs.extensions==nil,'no-match types suppress inventory scaffolding')
 local project=app.env:page('projects')
 local group={path=liveFolder,name='Review project',artifacts={{path=liveFolder..'/node_modules',name='Node modules',bytes=9000,size='9 KB'}}}
 app.env.basket:toggle(item(liveFolder))
@@ -143,7 +142,7 @@ for _, entry in ipairs(covered) do t.expect(not (entry.title or ''):find('Build 
 app.env.basket:toggle(item(liveFolder));project:menu(group)[1].action()
 t.assertEqual(project:menu(group)[1].title,'Unmark Build Data','direct artifact marks keep their own unmark action')
 Marks:clear();app:basketChanged()
-app.query='';app:show('worktrees');local worktrees=app.page
+app:show('worktrees');local worktrees=app.page
 worktrees.refs.reviewList:selectRow(0)
 local selected=app.env:page("worktrees").selected
 selected.reasons={string.rep('Review unpublished work with the owning session before deleting. ',25)}
@@ -154,7 +153,7 @@ local document=worktrees.refs.selectedSummary.superview
 local visibleTop=document.size.height-worktrees.refs.selectedSummary.frame.origin.y-worktrees.refs.selectedSummary.size.height
 t.expect(visibleTop<worktrees.refs.selectionEvidence.contentView.bounds.size.height,'selected evidence starts within visible viewport')
 t.expect(worktrees.refs.openOwner.enabled and worktrees.refs.openOwner.size.height>=24,'action remains accessible')
-app:show('files');page=app.page.request;page:focus({kind='installers',filter='Installers & archives'});app.query='';app:updateRows();bridge._flushLayout()
+app:show('files');page=app.page.request;page:focus({kind='installers',filter='Installers & archives'});app:updateRows();bridge._flushLayout()
 t.expect(not app.page.refs.clearKind.hidden,'real kind focus reveals Show All Kinds')
 local parent=app.page.refs.clearKind.superview
 local button=app.page.refs.clearKind.frame

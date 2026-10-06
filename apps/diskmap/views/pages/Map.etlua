@@ -1,21 +1,26 @@
 <%
-  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, meter = 130 }
+  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, meter = 130, worthColumn = 16 }
 %>
 <% --[[ "Worth a look" sits under the list beside the rings, so the rings
-  keep the pane's height, and under the rectangles when there is no list. ]]
+  keep the pane's height, and under the rectangles when there is no list.
+  Marking is a checkbox, as it is a yes/no state: no word changes width
+  between states, and the header's symbol shares the checkboxes' column. ]]
   local function worthBox()
     if #worth == 0 then return end
 %>
       <GroupBox maxWidth="infinity">
         <VStack padding="10" spacing="6" alignment="leading">
-          <Label text="Worth a look" systemImage="sparkle.magnifyingglass" size="12" weight="semibold" color="secondary" />
+          <HStack spacing="8" alignment="center">
+            <SystemImage name="sparkle.magnifyingglass" size="12" color="secondary" width="<%= MAP.worthColumn %>" />
+            <Label text="Worth a look" size="12" weight="semibold" color="secondary" />
+          </HStack>
           <% for index, item in ipairs(worth) do %>
           <HStack spacing="8" alignment="center">
+            <VStack width="<%= MAP.worthColumn %>" alignment="center">
+              <Toggle id="worthMark_<%= index %>" value="<%= item.checked and "true" or "false" %>" onChange="worth_<%= index %>" accessibilityLabel="<%= item.markLabel %>" help="<%= item.markHelp %>" disabled="<%= item.markable and "false" or "true" %>" />
+            </VStack>
             <Label text="<%= item.name %>" size="12" flexGrow="1" flexShrink="1" lines="1" />
             <Label text="<%= item.size %>" size="12" color="secondary" monospacedDigit="true" />
-            <Button id="worthMark_<%= index %>" style="plain" action="worth_<%= index %>" accessibilityLabel="<%= item.markTitle %>" help="<%= item.markHelp %>" disabled="<%= item.markable and "false" or "true" %>">
-              <Label text="<%= item.markTitle %>" systemImage="<%= item.markIcon %>" size="12" color="secondary" />
-            </Button>
           </HStack>
           <% end %>
         </VStack>
@@ -25,7 +30,6 @@
 <VStack flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" alignment="leading">
   <%- partial("../components/PageHeader.etlua", {header = page, summary = subtitle, summaryId = "mapSummary"}) %>
   <Breadcrumb id="mapBar">
-    <Button id="mapUp" title="Up" systemImage="arrow.up" action="up" disabled="<%= not canUp %>" help="Show the parent map level; Back and Forward visit pages" />
     <% for index, step in ipairs(trail) do %>
     <Crumb name="<%= step.name %>" action="focus_<%= index %>" current="<%= index == #trail and "true" or "false" %>" />
     <% end %>
@@ -35,7 +39,7 @@
       <Option title="Rectangles" />
     </Picker>
   </Breadcrumb>
-  <Label id="mapSearchScope" text="<%= query ~= "" and ("Map list filtered by “" .. query .. "”. The chart shows the full level. Switch to Rings to see matches. Search clears when changing pages.") or "Storage Map groups measured locations by category. Folder Map inspects everything inside one folder." %>" size="12" color="secondary" maxWidth="infinity" lines="0" />
+  <Label id="mapScope" text="Storage Map groups measured locations by category. Folder Map inspects everything inside one folder." size="12" color="secondary" maxWidth="infinity" lines="0" />
   <HStack id="mapBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
     <% --[[ Rectangles already name every item, so the list serves the rings
       only. Equal flexible panes give long names the spare width instead of
@@ -44,10 +48,7 @@
     <VStack id="mapListPane" minWidth="<%= MAP.minPane %>" maxWidth="infinity" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" spacing="12">
     <GroupBox maxWidth="infinity" maxHeight="infinity">
       <VStack maxHeight="infinity" spacing="0">
-        <% if #rows == 0 and query ~= "" then %>
-        <ContentUnavailable id="mapNoResults" title="No Results" systemImage="magnifyingglass" description="Nothing at this level of the map matches “<%= query %>”." />
-        <% end %>
-        <List id="mapList" hidden="<%= #rows == 0 and query ~= "" and "true" or "false" %>" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxHeight="infinity">
+        <List id="mapList" onSelect="selectRow" onActivate="drillRow" rowMenu="rowMenu" dragKey="path" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="40" drawsBackground="false" maxHeight="infinity">
           <Column id="name" title="Item" imageKey="icon" badgeColorKey="color" imageSize="22" minWidth="140" />
           <Column id="shareText" title="Size" width="<%= MAP.meter %>" minWidth="<%= MAP.meter %>" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />
         </List>
@@ -78,7 +79,9 @@
       </StorageRings>
       </VStack>
       <% end %>
-      <Label id="mapHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="0" />
+      <% --[[ Guidance and hovered paths take one line or two; the caption
+        always keeps two so the chart above never resizes as the text changes. ]] %>
+      <Label id="mapHover" text="<%= hover %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="2" reservesSpace="true" truncation="tail" />
       <% if style == "rectangles" then worthBox() end %>
     </VStack>
   </HStack>

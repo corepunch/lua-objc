@@ -79,25 +79,32 @@ function Filesystem.row(location, sizes, fullDiskAccess, facts)
 	return row
 end
 
--- Areas matching `query` with their rows, in map order.
-function Filesystem.presentation(sizes, fullDiskAccess, query, facts)
-	local needle = (query or ""):lower()
-	local areas, count = {}, 0
+-- Every area with its rows, in map order.
+function Filesystem.presentation(sizes, fullDiskAccess, facts)
+	local areas = {}
 	for _, area in ipairs(Map.areas) do
 		local rows = {}
-		local areaMatches = needle == "" or area.title:lower():find(needle, 1, true) ~= nil
 		for _, location in ipairs(area.locations) do
-			local text = (location.name .. " " .. location.path .. " " .. location.what):lower()
-			if areaMatches or text:find(needle, 1, true) then
-				table.insert(rows, Filesystem.row(location, sizes, fullDiskAccess, facts))
+			table.insert(rows, Filesystem.row(location, sizes, fullDiskAccess, facts))
+		end
+		table.insert(areas, {id = area.id, title = area.title, icon = area.icon, summary = area.summary, rows = rows})
+	end
+	return {areas = areas}
+end
+
+-- The locations that mention `needle` (lowered), in map order: those of an
+-- area whose title matches, and any whose name, path or explanation does.
+function Filesystem.search(needle)
+	local found = {}
+	for _, area in ipairs(Map.areas) do
+		local areaMatches = area.title:lower():find(needle, 1, true) ~= nil
+		for _, location in ipairs(area.locations) do
+			if areaMatches or (location.name .. " " .. location.path .. " " .. location.what):lower():find(needle, 1, true) then
+				table.insert(found, {id = location.id or location.path, name = location.name, path = location.path, what = location.what, area = area.title, icon = area.icon})
 			end
 		end
-		if #rows > 0 then
-			count = count + #rows
-			table.insert(areas, {id = area.id, title = area.title, icon = area.icon, summary = area.summary, rows = rows})
-		end
 	end
-	return {areas = areas, count = count, empty = count == 0}
+	return found
 end
 
 return Filesystem

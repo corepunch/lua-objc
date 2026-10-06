@@ -42,18 +42,9 @@ t.expect(not Locations:find("archives"):validateTrash(), "personal history never
 model.kept.xcode = true
 t.expect(not Locations:find("derived"):validateTrash(), "kept parent protects descendants")
 model.kept.xcode = nil
-local filtered = Categories:rows(nil, "DerivedData")
-t.assertEqual(#filtered, 1, "search preserves one semantic ancestor")
-t.assertEqual(filtered[1].id, "developer", "search retains category")
-t.assertEqual(filtered[1].bytes, 307200, "filter does not change category total")
-t.assertEqual(#Categories:rows(nil, "["), 0, "search is literal")
-local downloadSearch = Categories:rows(nil, "Downloads")
-local documents
-for _, row in ipairs(downloadSearch) do if row.id == "documents" then documents = row end end
-t.expect(documents and documents.forceExpanded, "resource search expands its semantic category")
-local downloadFound = false
-for _, child in ipairs(documents and documents.children or {}) do if child.id == "downloads" then downloadFound = true end end
-t.expect(downloadFound, "storage search returns the matching resource, not only its category")
+local developer
+for _, row in ipairs(Categories:rows()) do if row.id == "developer" then developer = row end end
+t.assertEqual(developer.bytes, 307200, "a category totals its locations")
 t.expect(Locations:details("applications").text:find("Review its measured resources", 1, true) ~= nil,
 	"category guidance points to resources in the management sheet")
 Scans:apply({"derived"}, {failure = "cancelled"})
@@ -161,8 +152,7 @@ t.expect(ui.page.refs.list_rebuildable.scrollDisabled and ui.page.refs.page ~= n
 window.subtitle = "stale"
 ui:updateRows()
 t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "scan updates continue while clean up is shown")
-t.assertEqual(#Suggestions:presentation("DerivedData").rebuildable, 1, "clean up search finds a matching measured candidate")
-t.assertEqual(#Suggestions:presentation("no match").rebuildable, 0, "clean up search can empty a section")
+t.assertEqual(#Suggestions:presentation().rebuildable, 1, "clean up finds the measured candidate")
 t.expect(#bridge._tableRowMenu(ui.page.refs.list_rebuildable, 1) > 0, "each suggestion has a row menu")
 ui:show("overview")
 t.assertEqual(ui.page.refs.results.rowCount, categoryRows, "category rows remain after returning from clean up")
@@ -209,8 +199,7 @@ window:layout()
 t.expect(ui.page.refs.page.documentView.frame.size.height > ui.page.refs.page.contentView.bounds.size.height, "the overview scrolls past the category list")
 t.expect(dofile("tests/fixtures/meter.lua")(bridge._tableCell(ui.page.refs.results, 1, 0)).spinner.hidden, "a finished scan leaves no category spinner")
 ui.query = "no match"; ui:updateRows()
-t.assertEqual(ui.page.refs.results.rowCount, 0, "empty category search")
-t.expect(ui.page.refs.largestSection.hidden, "largest items hide when nothing matches")
+t.assertEqual(ui.page.refs.results.rowCount, 23, "the Overview never filters by text; Search does")
 ui.query = ""; ui:updateRows()
 ui.env.model.measurements.derived = {status = "complete", bytes = 4900000}
 -- Rows are found by destination: the order is the sidebar's hierarchy,

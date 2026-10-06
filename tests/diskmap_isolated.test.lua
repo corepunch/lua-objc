@@ -28,10 +28,10 @@ t.assertEqual(isolated.destination, "cleanup", "isolated launch selects its page
 t.expect(isolated.navigation.refs == nil, "isolated launch has no sidebar")
 t.expect(isolated.env.onboarding.sheet == nil and isolated.env.tour.sheet == nil, "isolated launch skips onboarding and tour")
 t.assertEqual(#effects, 0, "isolated launch registers no process hooks and writes no history")
-local total = Suggestions:presentation("", isolated.env:sources()).eligibleBytes
+local total = Suggestions:presentation(isolated.env:sources()).eligibleBytes
 local full = Controller.new(Mock.new({showcase = true}), {})
 full:createWindow()
-t.assertEqual(Suggestions:presentation("", full.env:sources()).eligibleBytes, total, "Clean Up totals are independent of launch mode")
+t.assertEqual(Suggestions:presentation(full.env:sources()).eligibleBytes, total, "Clean Up totals are independent of launch mode")
 t.assertEqual(#isolated.shortcuts, #full.shortcuts, "both modes offer the same keyboard shortcuts")
 for index, shortcut in ipairs(full.shortcuts) do
 	t.assertEqual(isolated.shortcuts[index].title, shortcut.title, "shortcut title " .. index)

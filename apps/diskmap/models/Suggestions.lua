@@ -157,10 +157,6 @@ function Suggestions:ranked(rules)
 	end)
 	return result
 end
-local function matches(row, needle)
-	return needle == "" or ((row.name or "") .. " " .. (row.subtitle or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) ~= nil
-end
-
 local function relative(rows)
 	local largest = 0
 	for _, row in ipairs(rows) do largest = math.max(largest, row.shownBytes or row.bytes or 0) end
@@ -187,7 +183,7 @@ end
 -- catalog review thresholds. Measured ones below their threshold, kept ones
 -- and ones absent from this Mac are reported as checked, so the page shows
 -- the whole checklist and not only what crossed a line.
-function Suggestions:checked(suggested, needle)
+function Suggestions:checked(suggested)
 	local model = Model.db
 	local rows, absent, total = {}, 0, 0
 	for _, row in ipairs(Locations:leaves()) do
@@ -208,7 +204,7 @@ function Suggestions:checked(suggested, needle)
 					shareText = ""}
 				Format.sizeLabel(value, m.status, m.bytes)
 				Status.apply(value, (value.detail == "Kept" or value.detail == "Essential") and value.detail or "Within")
-				if matches(value, needle) then table.insert(rows, value) end
+				table.insert(rows, value)
 			end
 		end
 	end
@@ -243,9 +239,8 @@ end
 -- reader's own files, apps and devices, and system-managed context that
 -- offers no cleanup here. `sources` carries what other pages measured:
 -- `apps` is the Applications summary once it is known.
-function Suggestions:presentation(query, sources)
+function Suggestions:presentation(sources)
 	local model = Model.db
-	local needle = (query or ""):lower()
 	sources = sources or {}
 	local apps = sources.apps
 	local rebuildable, decisions, suggested = {}, {}, {}
@@ -263,12 +258,10 @@ function Suggestions:presentation(query, sources)
 			row.page, row.pageName, row.detail = "simulators", "Simulators", "Opens Simulators"
 		end
 		Status.apply(row, row.kind == "rebuildable" and "Rebuildable" or "Review")
-		if matches(row, needle) then
-			if row.kind == "rebuildable" then
-				table.insert(rebuildable, row); rebuildableBytes = rebuildableBytes + row.bytes
-			else
-				table.insert(decisions, row)
-			end
+		if row.kind == "rebuildable" then
+			table.insert(rebuildable, row); rebuildableBytes = rebuildableBytes + row.bytes
+		else
+			table.insert(decisions, row)
 		end
 	end
 	local files = Files:summary()
@@ -319,7 +312,7 @@ function Suggestions:presentation(query, sources)
 		row.pageName = row.detail
 		row.detail = "Opens " .. row.detail
 		Status.apply(row, "Page")
-		if matches(row, needle) then table.insert(decisions, row) end
+		table.insert(decisions, row)
 	end
 	table.sort(decisions, function(a, b)
 		if a.score ~= b.score then return a.score > b.score end
@@ -343,8 +336,8 @@ function Suggestions:presentation(query, sources)
 	for _, row in pairs({rebuildable = rebuildable[1], decisions = decisions[1]}) do
 		if not lead or row.score > lead.score or (row.score == lead.score and row.kind == "rebuildable") then lead = row end
 	end
-	local checked, absent, known = Suggestions:checked(suggested, needle)
-	local context = Suggestions:context(needle)
+	local checked, absent, known = Suggestions:checked(suggested)
+	local context = Suggestions:context()
 	local empty = #rebuildable + #decisions == 0
 	return {rebuildable = relative(rebuildable), decisions = relative(decisions), context = relative(context), checked = checked, lead = lead,
 		count = #rebuildable + #decisions,
@@ -355,7 +348,7 @@ end
 
 -- System-managed locations: what they hold and where macOS manages them.
 -- Context only; Diskmap offers no removal here.
-function Suggestions:context(needle)
+function Suggestions:context()
 	local model = Model.db
 	local rows = {}
 	for _, row in ipairs(Locations:leaves()) do
@@ -365,7 +358,7 @@ function Suggestions:context(needle)
 				bytes = m.bytes, subtitle = row.consequence or row.subtitle, detail = "System managed", shareText = ""}
 			Format.sizeLabel(value, m.status, m.bytes)
 			Status.apply(value, "System managed")
-			if matches(value, needle) then table.insert(rows, value) end
+			table.insert(rows, value)
 		end
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.id < b.id end)
@@ -379,7 +372,7 @@ Suggestions.contextMinimum = 1e9
 -- only a person can judge follow as bytes to review, never added to it.
 -- `sources` is what other pages measured (the Applications summary).
 function Suggestions:reclaim(sources)
-	local data = require("apps.diskmap.models.Suggestions"):presentation("", sources or {})
+	local data = require("apps.diskmap.models.Suggestions"):presentation(sources or {})
 	local result = {count = data.count, eligible = data.eligibleBytes, review = data.reviewBytes, top = data.lead and data.lead.name or nil}
 	if data.count == 0 then
 		result.title = "No cleanup suggestions yet"

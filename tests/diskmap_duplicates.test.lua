@@ -44,9 +44,8 @@ local sample = {bytes = 100, reclaimable = 200, files = {
 local items, keep = Duplicates.copies(sample)
 t.assertEqual(keep.path, "/Users/me/Documents/Work/a.pdf", "the copy outside Downloads and Desktop is kept")
 t.assertEqual(#items, 2, "every other copy is offered for cleanup")
-local rows = Duplicates.rows({sample}, "", "/Users/me")
+local rows = Duplicates.rows({sample}, "/Users/me")
 t.expect(rows[1].detail == "3 copies" and rows[1].subtitle:find("~/Documents/Work", 1, true), "rows say how many copies and which stays")
-t.assertEqual(#Duplicates.rows({sample}, "nothing"), 0, "search filters by name")
 local summary = Duplicates.summary({sample})
 t.expect(summary.copies == 2 and summary.bytes == 200, "the summary totals what could be freed")
 
@@ -71,13 +70,12 @@ t.assertEqual(searched, 1, "Find Duplicates searches the added folders")
 t.expect(service.loadFolders("duplicates")[1] == service.home .. "/Library", "added folders are remembered")
 
 -- Empty states are told apart: nothing chosen, not searched yet, searched
--- with no duplicates, filtered away, failed. A running search is not one: the
+-- with no duplicates, failed. A running search is not one: the
 -- page computes, with a single spinner, until the result arrives.
-t.assertEqual(Duplicates.state({}, nil, 0), "choose", "no folder chosen invites a choice")
-t.assertEqual(Duplicates.state({"/a"}, nil, 0), "ready", "a chosen folder that was never searched is ready, not empty")
-t.assertEqual(Duplicates.state({"/a"}, {groups = {}}, 0), "none", "a finished search with no groups found none")
-t.assertEqual(Duplicates.state({"/a"}, {groups = {{}}}, 0, "zzz"), "nomatch", "a filter that hides every group is no match, not no duplicates")
-t.assertEqual(Duplicates.state({"/a"}, {groups = {{}}}, 2), "list", "groups are listed")
-t.assertEqual(Duplicates.state({"/a"}, {failure = "denied"}, 0), "failed", "a failed search is a failure, not an empty result")
-t.assertEqual(Duplicates.state({"/a"}, {}, 0), "failed", "a result without groups is a failure")
+t.assertEqual(Duplicates.state({}, nil), "choose", "no folder chosen invites a choice")
+t.assertEqual(Duplicates.state({"/a"}, nil), "ready", "a chosen folder that was never searched is ready, not empty")
+t.assertEqual(Duplicates.state({"/a"}, {groups = {}}), "none", "a finished search with no groups found none")
+t.assertEqual(Duplicates.state({"/a"}, {groups = {{}}}), "list", "groups are listed")
+t.assertEqual(Duplicates.state({"/a"}, {failure = "denied"}), "failed", "a failed search is a failure, not an empty result")
+t.assertEqual(Duplicates.state({"/a"}, {}), "failed", "a result without groups is a failure")
 os.exit(t.summary() and 0 or 1)

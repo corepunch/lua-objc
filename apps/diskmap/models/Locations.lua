@@ -279,29 +279,26 @@ end
 -- The largest individually measured resources across every category: the
 -- quickest answer to "what is eating my storage?". A row opens by its own id,
 -- wherever its location sends it.
-function Locations:largest(disk, limit, query)
+function Locations:largest(disk, limit)
 	local model = Model.db
-	local rows, needle = {}, (query or ""):lower()
+	local rows = {}
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	for _, row in ipairs(Locations:leaves()) do
 		local m = model.measurements[row.id]
 		if m and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) > 0 then
-			local owner = ancestry(row)
-			if needle == "" or (row.name .. " " .. owner .. " " .. (row.path or "")):lower():find(needle, 1, true) then
-				local root = row
-				while root:parent() do root = root:parent() end
-				table.insert(rows, {id = row.id, rootId = root.id,
-					name = row.name, subtitle = owner,
-					bytes = m.bytes,
-					share = used and m.bytes / used or 0, shareText = Format.percent(m.bytes, used),
-					icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
-					impact = row.policy == "Essential" and "Keep" or row.policy == "Rebuildable" and "Rebuildable"
-						or row.policy == "System managed" and "System managed" or "Review",
-					kept = row:isKept()})
-				rows[#rows].detail = rows[#rows].kept and "Kept" or rows[#rows].impact
-				Format.sizeLabel(rows[#rows], m.status, m.bytes)
-				Status.apply(rows[#rows])
-			end
+			local root = row
+			while root:parent() do root = root:parent() end
+			table.insert(rows, {id = row.id, rootId = root.id,
+				name = row.name, subtitle = ancestry(row),
+				bytes = m.bytes,
+				share = used and m.bytes / used or 0, shareText = Format.percent(m.bytes, used),
+				icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
+				impact = row.policy == "Essential" and "Keep" or row.policy == "Rebuildable" and "Rebuildable"
+					or row.policy == "System managed" and "System managed" or "Review",
+				kept = row:isKept()})
+			rows[#rows].detail = rows[#rows].kept and "Kept" or rows[#rows].impact
+			Format.sizeLabel(rows[#rows], m.status, m.bytes)
+			Status.apply(rows[#rows])
 		end
 	end
 	table.sort(rows, function(a, b)

@@ -59,7 +59,7 @@ t.assertEqual(app.destination, "projects", "Developer projects open the Projects
 t.expect(app.env.management.sheet == nil, "and no category sheet")
 local sizes = {}
 Model.db.projectInfo = {}
-for _, project in ipairs(Projects:groups(nil, nil, nil)) do table.insert(sizes, project.bytes) end
+for _, project in ipairs(Projects:groups()) do table.insert(sizes, project.bytes) end
 for index = 2, #sizes do t.expect(sizes[index - 1] >= sizes[index], "projects are listed largest first") end
 app:show("largest")
 app.page.refs.largest:activateRow(rowOf("simulators"))

@@ -19,7 +19,7 @@ static BOOL lua_objc_key_affects_layout(const char *key) {
 			@"placeholder", @"placeholderString", @"font", @"image",
 			@"hidden", @"maximumNumberOfLines", @"numberOfLines", @"lineBreakMode",
 			@"controlSize", @"bezeled", @"bordered", @"imagePosition",
-			@"lineSpacing", @"figureView", @"figureLines",
+			@"lineSpacing", @"figureView", @"figureLines", @"reservesSpace",
 			/* declarative layout attributes */
 			@"padding", @"paddingHorizontal", @"paddingVertical", @"paddingLeading",
 			@"paddingTrailing", @"paddingTop", @"paddingBottom", @"spacing",

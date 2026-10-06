@@ -21,10 +21,6 @@ local LAYOUT = {
 
 local WAITING = {title = "Projects Not Found Yet", systemImage = "folder.badge.gearshape", description = "Build folders are listed when the scan finishes."}
 
-local function groups(page, filter, query)
-	return Projects:groups(filter, query)
-end
-
 -- A project is marked when all of its generated folders are.
 local function isMarked(page, group)
 	for _, artifact in ipairs(group.artifacts) do
@@ -52,9 +48,9 @@ local function mark(page, group)
 end
 
 -- Old build data of a project whose git tree is clean.
-local function stale(page, query)
+local function stale(page)
 	local found = {}
-	for _, group in ipairs(groups(page, Projects.filters[2], query)) do
+	for _, group in ipairs(Projects:groups(Projects.filters[2])) do
 		if type(group.git) == "table" and group.git.clean and not included(page, group) then table.insert(found, group) end
 	end
 	return found
@@ -93,7 +89,7 @@ routes.projects = ListRoute.extend({layout = LAYOUT,
 		return items
 	end,
 	markStale = function(page)
-		return page.rowActions:bulk(stale(page, page.query), function() return true end, Projects.items)
+		return page.rowActions:bulk(stale(page), function() return true end, Projects.items)
 	end,
 	addFolder = function(page)
 		local storage, service = Model.db, page.app.service
@@ -105,20 +101,18 @@ routes.projects = ListRoute.extend({layout = LAYOUT,
 		if not service.saveFolders("projects", storage.projectRoots) then service.showError("Could not save project folders", "Try again.") end
 		page.app.rescan()
 	end,
-	present = function(page, state)
+	present = function(page)
 		local model = Model.db
 		Model.db.projectInfo = Model.db.projectInfo or {}
-		local query = state.query or ""
-		page.query = query
 		-- Nothing is listed until the scan has found the projects and git has
 		-- told their state, one project at a time.
 		if model.scan.running then return {waiting = WAITING} end
-		for _, group in ipairs(groups(page, Projects.filters[1])) do
+		for _, group in ipairs(Projects:groups(Projects.filters[1])) do
 			if not Model.db.projectInfo[group.path] then return {computing = "Reading the state of your projects…"} end
 		end
 		-- Rows are the groups themselves, so menus receive a project's
 		-- artifacts. A project is marked when all its build folders are.
-		local rows = groups(page, Projects.filters[page.filterIndex], query)
+		local rows = Projects:groups(Projects.filters[page.filterIndex])
 		for _, group in ipairs(rows) do
 			group.id, group.detail = group.path, group.gitText
 			group.subtitle = Format.tilde(group.path, model.home) .. " · " .. group.artifactText .. " · " .. group.ageText
@@ -129,10 +123,10 @@ routes.projects = ListRoute.extend({layout = LAYOUT,
 				group.included = true
 			end
 		end
-		local all, bytes = groups(page, Projects.filters[1], query), 0
+		local all, bytes = Projects:groups(Projects.filters[1]), 0
 		for _, group in ipairs(all) do bytes = bytes + group.bytes end
 		return {lists = {projects = page.rowActions:annotate(rows)}, hidden = {projectsEmpty = #all > 0, projectsList = #all == 0},
-			disabled = {markStale = #stale(page, query) == 0}, texts = {projectRoots = "Project folders: " .. rootsText(page) .. ".",
+			disabled = {markStale = #stale(page) == 0}, texts = {projectRoots = "Project folders: " .. rootsText(page) .. ".",
 			projectsSummary = #all == 0 and "No project build folders found yet. Add the folders where you keep code."
 				or (Format.size(bytes) .. " of build data in " .. Format.plural(#all, "project"))}}
 	end})

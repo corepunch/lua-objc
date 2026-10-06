@@ -145,6 +145,24 @@ run-ide: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
 run-diskmap: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(LUA_OBJC_BIN) apps/diskmap/init.lua $(or $(DIR),$(CURDIR))
 
+# Diskmap against a saved snapshot of a disk (apps/diskmap/README.md, "Mock HDD").
+# Usage: make diskmap-mock-export   # snapshot this Mac; keep the window open
+#                                   # until it says "Saved N file names…"
+#        make diskmap-mock          # open Diskmap on that snapshot
+#        make diskmap-mock MOCK=/path/to/other.bin
+#        make diskmap-showcase      # the bundled synthetic disk, for captures
+DISKMAP_MOCK ?= $(HOME)/Library/Application Support/Diskmap/mock-hdd.bin
+MOCK ?= $(DISKMAP_MOCK)
+diskmap-mock-export: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	./$(LUA_OBJC_BIN) --export-mock="$(MOCK)" apps/diskmap/init.lua
+
+diskmap-mock: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	@test -f "$(MOCK)" || { echo "No snapshot at $(MOCK); run make diskmap-mock-export first" >&2; exit 1; }
+	./$(LUA_OBJC_BIN) --mock-file="$(MOCK)" apps/diskmap/init.lua
+
+diskmap-showcase: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
+	./$(LUA_OBJC_BIN) apps/diskmap/init.lua --showcase
+
 TEST_FILES = $(wildcard tests/*.test.lua)
 
 test: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF)
@@ -321,7 +339,7 @@ ipad-deploy:
 list-devices:
 	xcrun devicectl list devices
 
-.PHONY: diskmap-app
+.PHONY: diskmap-app diskmap-mock diskmap-mock-export diskmap-showcase
 diskmap-app: diskmap-xcode-build
 
 DISKMAP_XCODE_PROJECT = apps/diskmap/Diskmap.xcodeproj

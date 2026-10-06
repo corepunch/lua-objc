@@ -113,25 +113,11 @@ t.expect(#yours > 0 and #yours < #all, "Yours is a part of All")
 for _, file in ipairs(yours) do t.expect(file.trashable, file.name .. " can be moved to the Trash") end
 app:show("files")
 t.assertEqual(app.page.refs.files.rowCount, #all, "the page opens on All measured files")
-t.expect(app.page.refs.filesNoResults.hidden and app.page.refs.filesEmpty.hidden, "a list with files shows no empty state")
-app:search("files", "no such file anywhere")
-t.assertEqual(app.page.refs.files.rowCount, 0, "a search can match nothing")
-t.expect(not app.page.refs.filesNoResults.hidden, "and then says No Results")
-t.expect(app.page.refs.filesPanel.hidden, "instead of an empty list")
-app:search("files", "")
-t.expect(app.page.refs.filesNoResults.hidden and not app.page.refs.filesPanel.hidden, "clearing the search brings the list back")
+t.expect(app.page.refs.filesEmpty.hidden, "a list with files shows no empty state")
 
--- Search narrows the Map's list; the chart keeps the level.
+-- The Map lists every category of its level, one per sector.
 app:show("map")
-local everything = app.page.refs.mapList.rowCount
-local marks = #app.env:page("map"):data(app:state()).nodes
-app:search("map", "developer")
-t.expect(app.page.refs.mapList.rowCount > 0 and app.page.refs.mapList.rowCount < everything, "search narrows the map's list")
-t.assertEqual(#app.env:page("map"):data(app:state()).nodes, marks, "the chart keeps every sector")
-app:search("map", "no such category")
-t.expect(app.page.refs.mapNoResults ~= nil, "a map search without matches says No Results")
-app:search("map", "")
-t.assertEqual(app.page.refs.mapList.rowCount, everything, "clearing the search restores the list")
+t.assertEqual(app.page.refs.mapList.rowCount, #app.env:page("map"):data(app:state()).rows, "the map's list has every row of its level")
 t.expect(app.page.refs.mapSummary.text:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
 
 -- The sidebar badge and the Developer page name one total.

@@ -25,7 +25,7 @@ local function open(id, service, model)
 	-- The app draws the page again when asked to.
 	local services = {model = model, service = service or {}, actions = actions,
 		refresh = function() refreshed = refreshed + 1; if page and page.template then page:update(page.state) end end,
-		rescan = function() end, show = function() end, show = function() end, search = function() end}
+		rescan = function() end, show = function() end}
 	services.service = require("apps.diskmap.services.Contract").stub(services.service)
 	services.inventories = require("apps.diskmap.services.Inventories").new(services.service, services.refresh, function() return 0 end)
 	Model.bind(model)
@@ -136,7 +136,5 @@ t.assertEqual(xcode.refs.list_support.rowCount, 2, "the answer draws device supp
 t.expect(xcode.refs.derivedSection.hidden and xcode.refs.archivesSection.hidden, "empty sections hide")
 t.assertEqual(xcode.refs.xcodeSummary.text, "3.0 GB in device support, build data and archives", "the summary totals the sections")
 t.assertEqual(require("apps.diskmap.models.Inventories"):xcodeBadge(), "3.0 GB", "and so does the badge")
-xcode:update({query = "18.0"})
-t.assertEqual(xcode.refs.list_support.rowCount, 1, "search narrows the rows")
 
 os.exit(t.summary() and 0 or 1)

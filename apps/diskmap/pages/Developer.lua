@@ -17,14 +17,14 @@ routes.workflow = ListRoute.extend({
 	layout = function(_, presented) return presented.layout end,
 })
 
-function routes.workflow:present(state)
+function routes.workflow:present()
 	local workflow = self.workflow
 	local links, buttons = {}, {}
 	for index, link in ipairs(workflow.links or {}) do
 		links["link_" .. index] = link.page and {page = link.page} or {open = link.open}
 		table.insert(buttons, {id = "link_" .. index, title = link.title, action = "link_" .. index})
 	end
-	local data = workflow:presentation(state.query)
+	local data = workflow:presentation()
 	local structure, lists, texts = {}, {}, {}
 	for _, section in ipairs(data.sections) do
 		table.insert(structure, {id = "section_" .. section.id, title = section.title, detail = section.detail, sizeId = "size_" .. section.id,
@@ -73,11 +73,11 @@ routes.xcode = ListRoute.extend({layout = LAYOUT, statuses = STATUS,
 			if section.id == row.section then return page.rowActions:folder(row, nil, Xcode.item(section, row)) end
 		end
 	end,
-	present = function(page, state)
+	present = function(page)
 		if not page.stock.loaded then return {computing = "Reading Xcode's device support, build data and archives…"} end
 		local lists, hidden, disabled, total = {}, {}, {}, 0
 		for _, section in ipairs(SECTIONS) do
-			local rows = Xcode.filtered(page.stock.rows[section.id], state.query or "")
+			local rows = Xcode.copies(page.stock.rows[section.id])
 			for _, row in ipairs(rows) do
 				row.section = section.id
 				if section.status then

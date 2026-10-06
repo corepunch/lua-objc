@@ -244,6 +244,15 @@ LUA_NUMBER_ACCESSORS(fitDiameter, setFitDiameter, kFitDiameterKey, 0, MAX(0, val
 /* Multiplies the declared size, for a label laid out in a container's units
  * (`fitDiameter`); `minimumScaleFactor` then shrinks from the scaled size. */
 @property(nonatomic) CGFloat fontScale;
+/* SwiftUI `.lineLimit(n, reservesSpace: true)`: the label is always as tall
+ * as `lineLimit` lines, so text that wraps or not never moves its siblings. */
+@property(nonatomic) BOOL reservesSpace;
+/* SwiftUI `.underline(isHovered)` with `.onHover`: a clickable label, such
+ * as a path step, underlines its text while the pointer is over it. */
+@property(nonatomic) BOOL underlinesOnHover;
+/* Whether the pointer is over the label; tracking sets it, tests may too. */
+@property(nonatomic) BOOL hovered;
+@property(nonatomic, readonly) BOOL underlined;
 - (void)fitFontToWidth:(CGFloat)width;
 @end
 
@@ -251,6 +260,36 @@ LUA_NUMBER_ACCESSORS(fitDiameter, setFitDiameter, kFitDiameterKey, 0, MAX(0, val
 	NSLineBreakMode _paragraphBreakMode;
 	NSFont *_declaredFont;
 	BOOL _scalingFont;
+	NSTrackingArea *_hoverArea;
+}
+- (void)setHovered:(BOOL)value {
+	if (value == _hovered) return;
+	_hovered = value;
+	[self updateParagraphMetrics];
+}
+- (BOOL)underlined { return _underlinesOnHover && _hovered; }
+- (void)setUnderlinesOnHover:(BOOL)value {
+	_underlinesOnHover = value;
+	[self updateTrackingAreas];
+	[self updateParagraphMetrics];
+}
+- (void)updateTrackingAreas {
+	[super updateTrackingAreas];
+	if (_hoverArea) [self removeTrackingArea:_hoverArea];
+	_hoverArea = nil;
+	if (!_underlinesOnHover) return;
+	_hoverArea = [[NSTrackingArea alloc] initWithRect:NSZeroRect
+		options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingInVisibleRect
+		owner:self userInfo:nil];
+	[self addTrackingArea:_hoverArea];
+}
+- (void)mouseEntered:(NSEvent *)event {
+	[super mouseEntered:event];
+	self.hovered = YES;
+}
+- (void)mouseExited:(NSEvent *)event {
+	[super mouseExited:event];
+	self.hovered = NO;
 }
 + (Class)cellClass { return LuaLabelCell.class; }
 - (instancetype)initWithFrame:(NSRect)frame {
@@ -318,11 +357,13 @@ LUA_NUMBER_ACCESSORS(fitDiameter, setFitDiameter, kFitDiameterKey, 0, MAX(0, val
 	CGFloat lineHeight = ceil(self.font.ascender - self.font.descender + self.font.leading);
 	paragraph.minimumLineHeight = lineHeight;
 	paragraph.maximumLineHeight = lineHeight;
-	self.attributedStringValue = [[NSAttributedString alloc] initWithString:self.stringValue attributes:@{
+	NSMutableDictionary *attributes = [@{
 		NSFontAttributeName: self.font,
 		NSForegroundColorAttributeName: self.textColor ?: NSColor.labelColor,
 		NSParagraphStyleAttributeName: paragraph,
-	}];
+	} mutableCopy];
+	if (self.underlined) attributes[NSUnderlineStyleAttributeName] = @(NSUnderlineStyleSingle);
+	self.attributedStringValue = [[NSAttributedString alloc] initWithString:self.stringValue attributes:attributes];
 }
 - (void)setStringValue:(NSString *)value { [super setStringValue:value]; [self updateParagraphMetrics]; }
 - (void)setFont:(NSFont *)font {
@@ -624,6 +665,11 @@ static int nsview_newindex(lua_State *L) {
 
 	NSString *kvcKey = [NSString stringWithUTF8String:key];
 	id value = lua_to_kvc_value(L, 3);
+	/* A frame written from Lua lands on the settled layout, as a read does.
+	 * Layout still pending above the view (a page just rendered into its
+	 * window) would otherwise run on the next read and give the view its
+	 * container's size again, discarding the write. */
+	if (lua_objc_key_reads_geometry(key)) flush_pending_layout();
 	@try {
 		[obj setValue:value forKey:kvcKey];
 		if ([obj isKindOfClass:NSView.class] && lua_objc_key_affects_layout(key))

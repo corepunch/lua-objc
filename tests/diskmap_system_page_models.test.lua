@@ -61,12 +61,13 @@ t.expect(not duplicates.refs.addFolder.enabled, "and nothing else starts meanwhi
 duplicates.actions.search()
 t.expect(cancelled and duplicates.refs.search.title == "Find Duplicates", "stopping returns the page to ready")
 
--- The Guide and Help are asked again only when the search or a scan changes.
+-- The Guide and Help are asked again only when a scan starts or ends.
 app:show("guide")
 local guide = app.env:page("guide")
 local before = guide:data({}).chapters
-t.expect(guide:data({}).chapters == before, "the same search is the same answer")
-t.expect(guide:data({query = "swap"}).chapters ~= before, "another search is asked again")
+t.expect(guide:data({}).chapters == before, "a redraw is the same answer")
+guide:focus({topic = "swap"})
+t.expect(guide:data({}).chapters ~= before, "opening a topic asks again")
 t.expect(app.page.actions["open_preboot"] ~= nil, "a topic that opens something has an action")
 app:show("help")
 t.expect(app.page.refs.help_welcome ~= nil, "Help is the same class under its own id")

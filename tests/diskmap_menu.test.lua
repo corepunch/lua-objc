@@ -80,9 +80,9 @@ t.expect(#results >= 1 and results[1] == "Find data left by deleted apps", "help
 t.expect(#bridge._searchHelp("preboot") >= 1, "help search includes Storage Guide topics")
 bridge._searchHelp("leftovers", 1)
 t.assertEqual(app.destination, "help", "a help result opens Diskmap Help")
-t.assertEqual(app.query, "Find data left by deleted apps", "the result filters help to its topic")
-t.assertEqual(app.searchField.stringValue, app.query, "the toolbar search shows the filter")
-t.expect(app.page.refs.help_leftovers ~= nil and app.page.refs.help_trash == nil, "only the chosen topic remains")
+t.assertEqual(app.env:page("help").opened, "leftovers", "on its topic, open")
+t.assertEqual(app.query, "", "without searching for it")
+t.expect(app.page.refs.help_leftovers ~= nil and app.page.refs.help_trash ~= nil, "the topic is shown among all the others")
 
 -- The shortcut topic is generated from the installed menu bar.
 bridge._performMainMenuItem("Help", "Keyboard Shortcuts")
@@ -111,7 +111,7 @@ for _, chapter in ipairs(Help.chapters) do
 end
 
 -- Find focuses the toolbar search field.
-app:search("overview", "")
+app:search("")
 t.expect(pcall(bridge._performMainMenuItem, "Edit", "Find", "Find…"), "Edit › Find › Find… reaches the search field")
 
 os.exit(t.summary() and 0 or 1)

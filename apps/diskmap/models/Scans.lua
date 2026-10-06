@@ -89,6 +89,9 @@ local function measurement(node, state)
 	return {bytes = type(node) == "table" and node.kb * 1024 or state == "missing" and 0 or nil,
 		logicalBytes = tree.logicalKb and math.floor(tree.logicalKb * 1024 + 0.5) or nil,
 		cloudBytes = tree.cloudKb and math.floor(tree.cloudKb * 1024 + 0.5) or nil, cloudFiles = tree.cloudFiles,
+		-- A location that is not on this Mac (an editor never installed) is
+		-- measured as nothing, but it is no place to list or to open.
+		missing = state == "missing" or nil,
 		status = state == "skipped" and "skipped" or state == "missing" and "complete" or type(node) == "table" and (node.partial and "partial" or "complete") or "denied"}
 end
 -- Files evicted to iCloud across every measured resource: they use no space

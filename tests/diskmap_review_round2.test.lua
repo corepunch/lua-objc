@@ -54,9 +54,9 @@ t.expect(button.enabled,'review remains available')
 local item = Marks:rows()[1]
 app.env.basket:toggle(item)
 t.assertEqual(app.page.refs.decisionAction.title,'Mark 1 File','individual unmark refreshes count')
-app.query='Old macOS Installer'; app:updateRows()
-t.assertEqual(#files.visible,1,'search narrows displayed files')
-local row = files.visible[1]
+local row
+for _, visible in ipairs(files.visible) do if visible.name:find('Old macOS Installer',1,true) then row = visible end end
+t.expect(row ~= nil,'the installer is listed')
 if app.env.basket:isMarked(row.path) then app.env.basket:toggle(row) end
 files:markFiles()
 t.assertEqual(app.page.refs.decisionAction.title,'Review Marked Items…','filtered staging stays current')
@@ -68,7 +68,7 @@ app:show('applications'); Marks:clear(); app:basketChanged()
 app:show('files')
 t.expect(app.page.refs.decisionAction.title:find('Mark ',1,true),'cross-page clearing is reflected on return')
 files.filterIndex = require('apps.diskmap.models.Files').filters:index('Installers & archives')
-app.query=''; app:updateRows(); bridge._flushLayout()
+app:updateRows(); bridge._flushLayout()
 local refs = app.page.refs
 t.expect(refs.scopeNote.superview ~= refs.pageContent,'accounting is disclosed separately')
 local function yFromTop(view)

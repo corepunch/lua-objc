@@ -18,8 +18,6 @@ local EMPTIES = {
 		description = "Choose Find Duplicates to compare the files in the folders above. Nothing has been read yet."},
 	{state = "none", id = "dupNone", title = "No Duplicates Found", systemImage = "checkmark.circle",
 		description = "The search finished: no two files in the chosen folders are identical. Files under 1 MB are not compared."},
-	{state = "nomatch", id = "dupNoMatch", title = "No Match", systemImage = "magnifyingglass",
-		description = "No group of duplicates matches the search. Clear the search to see them all."},
 	{state = "failed", id = "dupFailed", title = "The Search Did Not Finish", systemImage = "exclamationmark.triangle",
 		description = "Diskmap could not read these folders. Check that it may access them, then choose Find Duplicates again."},
 }
@@ -87,7 +85,7 @@ end
 
 routes.duplicates = ListRoute.extend({layout = LAYOUT,
 	addFolder = addFolder,
-	search = function(page) if page.job then page.job.cancel(); page.job, page.progress = nil, nil else search(page) end end, menu = menu, present = function(page, state)
+	search = function(page) if page.job then page.job.cancel(); page.job, page.progress = nil, nil else search(page) end end, menu = menu, present = function(page)
 		local storage = Model.db
 		if not page.roots then
 			local load = service(page).loadFolders
@@ -100,8 +98,8 @@ routes.duplicates = ListRoute.extend({layout = LAYOUT,
 		end
 		local result = page.result
 		local groups = result and not result.failure and result.groups or {}
-		local rows = page.rowActions:annotate(Duplicates.rows(groups, state.query, storage.home))
-		local current = Duplicates.state(page.roots, result, #rows, state.query)
+		local rows = page.rowActions:annotate(Duplicates.rows(groups, storage.home))
+		local current = Duplicates.state(page.roots, result)
 		local names = {}
 		for _, root in ipairs(page.roots) do table.insert(names, Format.tilde(root, storage.home)) end
 		local hidden = {duplicatesList = current ~= "list"}

@@ -106,8 +106,9 @@ function Controller:select(id, fromHistory)
 		table.insert(self.history, id)
 		self.position = #self.history
 	end
+	-- A page without a row (Search) leaves no row selected.
 	local index = self:index(id)
-	if self.refs and index and self.refs.sidebar.documentView.selectedRow ~= index then
+	if self.refs and self.refs.sidebar.documentView.selectedRow ~= (index or -1) then
 		self.selecting = true
 		self.refs.sidebar:selectRow(index)
 		self.selecting = false
@@ -150,7 +151,7 @@ function Controller:reload()
 	self.selecting = true
 	self.refs.sidebar:replaceRows(self:rows())
 	local index = self.current and self:index(self.current)
-	if index and self.refs.sidebar.documentView.selectedRow ~= index then self.refs.sidebar:selectRow(index) end
+	if self.refs.sidebar.documentView.selectedRow ~= (index or -1) then self.refs.sidebar:selectRow(index) end
 	self.selecting = false
 end
 

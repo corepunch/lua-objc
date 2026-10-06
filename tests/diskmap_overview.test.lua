@@ -50,7 +50,7 @@ t.assertEqual(#Categories:chart({totalKb = 1, freeKb = 0}).marks, 0, "an overcou
 
 -- Cleanup headline keeps rebuildable and review-first bytes apart.
 local reclaim = Suggestions:reclaim()
-local cleanup = require("apps.diskmap.models.Suggestions"):presentation("", {})
+local cleanup = require("apps.diskmap.models.Suggestions"):presentation({})
 t.assertEqual(reclaim.title, Format.size(cleanup.eligibleBytes) .. " could recover", "the headline states Clean Up's own recoverable estimate")
 t.expect(reclaim.detail:find("more to review", 1, true) ~= nil, "review candidates are counted separately")
 t.expect(reclaim.top ~= nil and reclaim.detail:find("start with " .. reclaim.top, 1, true), "the headline names where to start, the top-ranked suggestion")
@@ -66,9 +66,9 @@ t.assertEqual(largest[1].relative, 1, "bars compare items with the largest")
 t.assertEqual(largest[2].id, "downloads", "ranking is by measured bytes")
 t.assertEqual(largest[1].subtitle, "Applications › Installed applications", "each item names its owner")
 t.assertEqual(require("apps.diskmap.models.Locations"):destination(largest[1].id).page, "applications", "items open where their resource lives")
-t.assertEqual(#Locations:largest(disk, nil, "derived"), 1, "search filters by name, owner and path")
-t.assertEqual(#Locations:largest(disk, nil, "no such thing"), 0, "search can empty the ranking")
-t.assertEqual(Locations:largest(disk, nil, "derived")[1].impact, "Rebuildable", "impact follows cleanup policy")
+local derived
+for _, row in ipairs(Locations:largest(disk)) do if row.id == "derived" then derived = row end end
+t.assertEqual(derived.impact, "Rebuildable", "impact follows cleanup policy")
 model.measurements.archives = {status = "denied"}
 for _, row in ipairs(Locations:largest(disk)) do
 	t.expect(row.id ~= "archives", "unmeasured resources are never ranked")
@@ -102,7 +102,6 @@ t.assertEqual(developer.total, "25.9 GB", "developer total includes AI coding to
 for _, section in ipairs(developerWorkflow.sections) do
 	for _, id in ipairs(section.groups) do t.expect(Locations:find(id) ~= nil, "developer section cites a registered group: " .. id) end
 end
-t.assertEqual(#developerWorkflow:presentation("deriveddata").sections, 1, "search narrows developer sections")
 model.measurements["runtime-images"] = {status = "complete", bytes = 1e9}
 local rolled
 for _, row in ipairs(developerWorkflow:presentation().sections[1].rows) do if row.id == "runtimes" then rolled = row end end
@@ -123,20 +122,19 @@ for _, chapter in ipairs(Guide.chapters) do
 		end
 	end
 end
-local guide = Guide.presentation("", Categories.measured)
-t.assertEqual(guide.count, topics, "an empty search shows every topic")
+local guide, shown = Guide.presentation(Categories.measured), 0
+for _, chapter in ipairs(guide.chapters) do shown = shown + #chapter.topics end
+t.assertEqual(shown, topics, "the guide shows every topic")
 for _, id in ipairs({"preboot", "updates", "vm", "snapshots", "free-space", "what-is-system-data"}) do
 	t.expect(Guide.topic(id) ~= nil, "the guide explains " .. id)
 end
 t.assertEqual(Guide.measurement(Guide.topic("derived-data"), Categories.measured), "4.9 GB on this Mac", "topics show live sizes")
 t.assertEqual(Guide.measurement(Guide.topic("container"), Categories.measured), nil, "topics without resources show no size")
 t.assertEqual(Guide.measurement(Guide.topic("preboot"), Categories.measured), nil, "unmeasured topics never show zero")
-local swap = Guide.presentation("SWAP", Categories.measured)
-t.expect(swap.count >= 1 and swap.count < topics, "guide search is case-insensitive and narrows topics")
-t.expect(Guide.presentation("no topic mentions this", Categories.measured).empty, "guide search can be empty")
-local chapter = Guide.presentation("recovery and updates", Categories.measured).chapters
-t.assertEqual(#chapter, 1, "a chapter title match keeps its chapter")
-t.assertEqual(#chapter[1].topics, #Guide.chapters[2].topics, "a matching chapter keeps all of its topics")
+local swap = Guide.search("swap")
+t.expect(#swap >= 1 and #swap < topics, "Search finds the topics that mention a word")
+t.assertEqual(#Guide.search("no topic mentions this"), 0, "a guide search can find nothing")
+t.assertEqual(#Guide.search("recovery and updates"), #Guide.chapters[2].topics, "a matching chapter finds all of its topics")
 model.measurements.preboot = {status = "calculating"}
 t.assertEqual(Guide.measurement(Guide.topic("preboot"), Categories.measured), nil, "a topic still being measured shows no size, not a row-level spinner")
 

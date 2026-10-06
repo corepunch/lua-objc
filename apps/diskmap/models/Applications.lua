@@ -60,11 +60,11 @@ function Applications:data(bundleId, name)
 end
 
 -- Rows for the Applications page.
-function Applications:rows(filter, query, now)
+function Applications:rows(filter, now)
 	local model = Model.db
 	local info = model.applicationInfo
 	now = now or os.time()
-	local needle, rows = (query or ""):lower(), {}
+	local rows = {}
 	for _, bundle in ipairs(Applications:all()) do
 		local m = model.measurements[bundle.id] or {}
 		local details = info and info[bundle.path] or {}
@@ -91,10 +91,7 @@ function Applications:rows(filter, query, now)
 		row.size = Format.size(row.bytes)
 		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Format.size(appBytes)
 			.. (dataBytes > 0 and (" · Data " .. Format.size(dataBytes)) or "")
-		local visible = filter ~= "Unused for 6 months" or row.unused
-		if visible and (needle == "" or (name .. " " .. (details.bundleId or "")):lower():find(needle, 1, true)) then
-			table.insert(rows, row)
-		end
+		if filter ~= "Unused for 6 months" or row.unused then table.insert(rows, row) end
 	end
 	table.sort(rows, function(a, b)
 		local left, right = a.bytes, b.bytes
@@ -118,7 +115,7 @@ end
 -- their names, so "Google" or "Code" in Application Support stay claimed.
 -- Each row carries a confidence tier (see helpers/Leftovers.lua): only High
 -- means no app from that vendor is installed. Apple's own data is never listed.
-function Applications:leftovers(query)
+function Applications:leftovers()
 	local model = Model.db
 	local installed = model.installedBundleIds
 	if not installed then return nil end
@@ -126,13 +123,13 @@ function Applications:leftovers(query)
 	for _, id in ipairs(installed) do table.insert(apps, {bundleId = id}) end
 	for _, bundle in ipairs(Applications:all()) do table.insert(apps, {name = bundle.name}) end
 	local index = Leftovers.index(apps)
-	local needle, rows = (query or ""):lower(), {}
+	local rows = {}
 	for _, source in ipairs(Applications.dataSources) do
 		local root = Locations:find(source.id)
 		for _, child in ipairs(root and model.breakdowns[source.id] or {}) do
 			local bytes = math.floor((child.kb or 0) * 1024 + 0.5)
 			local tier = child.directory and bytes >= Applications.leftoverMinimum and Leftovers.classify(child.name, source.byName, index)
-			if tier and (needle == "" or child.name:lower():find(needle, 1, true)) then
+			if tier then
 				local info = Leftovers.tiers[tier]
 				table.insert(rows, {id = root.path .. "/" .. child.name, path = root.path .. "/" .. child.name, name = child.name,
 					subtitle = source.label .. " · " .. info.label, bytes = bytes, size = Format.size(bytes),

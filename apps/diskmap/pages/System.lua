@@ -159,7 +159,7 @@ end
 
 -- The space an update needs comes from Clean Up, with the amount it estimates.
 function UpdatesPage:decision(data)
-	local cleanup = Suggestions:presentation("", self.app.cleanupSources())
+	local cleanup = Suggestions:presentation(self.app.cleanupSources())
 	local waiting = data.softwareUpdate.known and #data.softwareUpdate.updates > 0
 	return {id = "decision", icon = "sparkles", color = "systemIndigo",
 		title = waiting and ("Make room for " .. data.softwareUpdate.updates[1].name .. " in Clean Up") or "Free space for the next update in Clean Up",

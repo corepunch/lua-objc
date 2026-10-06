@@ -49,6 +49,15 @@ for _, page in ipairs({"map", "folder", "kinds"}) do
 		else
 			local parent = chart.superview
 			t.assertSize(chart, parent.frame.size.width, parent.frame.size.height, page .. " fills its chart host")
+			-- The caption under the ring reserves two lines, so guidance,
+			-- a short hover and a long one leave the ring one size.
+			local caption = refs.mapHover or refs.folderHover
+			local width, height = chart.frame.size.width, chart.frame.size.height
+			for _, text in ipairs({"Docs · 4 KB", string.rep("A very long folder name ", 12)}) do
+				caption.text = text
+				refs = layout(size[1], size[2])
+				t.assertSize(chart, width, height, page .. " keeps its ring size for “" .. text:sub(1, 20) .. "”")
+			end
 		end
 	end
 end

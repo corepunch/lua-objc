@@ -85,7 +85,7 @@ function ListRoute:filter(index) self.filterIndex = (index or 0) + 1 end
 
 function ListRoute:follow(link)
 	if link.handler then
-		local handlers = {review = self.app.openReview, refresh = self.app.rescan, search = self.app.search}
+		local handlers = {review = self.app.openReview, refresh = self.app.rescan}
 		handlers[link.handler](table.unpack(link.args or {}))
 	elseif link.open then self.app.open(link.open)
 	elseif link.page then self.app.show(link.page, {filter = link.filter})

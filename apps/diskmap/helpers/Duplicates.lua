@@ -51,18 +51,16 @@ local function folder(path, home)
 	return directory
 end
 
-function Duplicates.rows(groups, query, home)
-	local rows, needle = {}, (query or ""):lower()
+function Duplicates.rows(groups, home)
+	local rows = {}
 	for _, group in ipairs(groups or {}) do
 		local first = group.files[1].path
 		local name = first:match("([^/]+)$") or first
 		local _, keep = Duplicates.copies(group)
-		if needle == "" or name:lower():find(needle, 1, true) then
-			table.insert(rows, {id = first, path = keep.path, name = name, group = group, bytes = group.reclaimable or 0,
-				size = Format.size(group.reclaimable or 0), detail = #group.files .. " copies",
-				subtitle = Format.size(group.bytes) .. " each · keeps " .. folder(keep.path, home),
-				icon = "doc.on.doc.fill", color = "systemTeal"})
-		end
+		table.insert(rows, {id = first, path = keep.path, name = name, group = group, bytes = group.reclaimable or 0,
+			size = Format.size(group.reclaimable or 0), detail = #group.files .. " copies",
+			subtitle = Format.size(group.bytes) .. " each · keeps " .. folder(keep.path, home),
+			icon = "doc.on.doc.fill", color = "systemTeal"})
 	end
 	table.sort(rows, function(a, b)
 		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
@@ -73,16 +71,13 @@ end
 
 -- Which empty state the page is in, so "nothing chosen yet" is never read as
 -- "nothing found": choose (no folder), ready (folders chosen, not searched),
--- failed, none (searched, no duplicates), nomatch (the filter hides every
--- group) or list. A running search is not a state of its own: the page is
--- computing.
-function Duplicates.state(roots, result, shown, query)
+-- failed, none (searched, no duplicates) or list. A running search is not a
+-- state of its own: the page is computing.
+function Duplicates.state(roots, result)
 	if result and (result.failure or result.groups == nil) then return "failed" end
 	if #(roots or {}) == 0 then return "choose" end
 	if not result then return "ready" end
-	if shown > 0 then return "list" end
-	if #result.groups == 0 then return "none" end
-	return (query or "") ~= "" and "nomatch" or "none"
+	return #result.groups > 0 and "list" or "none"
 end
 
 function Duplicates.summary(groups)

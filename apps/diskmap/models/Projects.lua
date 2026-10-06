@@ -75,12 +75,12 @@ function Projects.lastWorked(output, budget)
 	return newest
 end
 
--- The projects a filter and a search leave, largest first.
-function Projects:groups(filter, query, now)
+-- The projects a filter leaves, largest first.
+function Projects:groups(filter, now)
 	local model = Model.db
 	local info = model.projectInfo or {}
 	now = now or os.time()
-	local byProject, order, needle = {}, {}, (query or ""):lower()
+	local byProject, order = {}, {}
 	for _, row in ipairs(Locations:leaves()) do
 		if row.project then
 			if not byProject[row.project] then
@@ -111,11 +111,10 @@ function Projects:groups(filter, query, now)
 		for _, artifact in ipairs(group.artifacts) do table.insert(names, artifact.name) end
 		group.artifactText = table.concat(names, ", ")
 		group.size = Format.size(group.bytes)
-		local matches = needle == "" or (group.name .. " " .. group.path .. " " .. group.artifactText):lower():find(needle, 1, true)
 		local passes = filter == nil or filter == Projects.filters[1]
 			or (filter == Projects.filters[2] and group.age ~= nil and group.age >= Projects.staleDays)
 			or (filter == Projects.filters[3] and type(group.git) == "table" and group.git.clean)
-		if matches and passes then table.insert(rows, group) end
+		if passes then table.insert(rows, group) end
 	end
 	table.sort(rows, function(a, b)
 		if a.bytes ~= b.bytes then return a.bytes > b.bytes end

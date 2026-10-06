@@ -12,9 +12,6 @@
     <% if computing then %>
     <%- partial("../components/Computing.etlua", {status = computing}) %>
     <% else %>
-    <% if empty then %>
-    <ContentUnavailable id="noLocations" title="No Folders Found" systemImage="magnifyingglass" description="No folder mentions “<%= query %>”." />
-    <% end %>
     <% for _, area in ipairs(areas) do %>
     <VStack id="area_<%= area.id %>" spacing="8" alignment="leading">
       <%- partial("../components/SectionHeader.etlua", {title = area.title, detail = area.summary}) %>

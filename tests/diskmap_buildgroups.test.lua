@@ -76,7 +76,7 @@ t.assertEqual(projects.shop.bytes, 450e6, "a project totals its own folders")
 
 -- The Developer page shows one row per ecosystem.
 local rows = {}
-for _, section in ipairs(developerWorkflow:presentation("").sections) do
+for _, section in ipairs(developerWorkflow:presentation().sections) do
 	for _, value in ipairs(section.rows) do rows[value.id] = value end
 end
 t.expect(rows["build-node-modules"] and rows["build-node-modules"].group, "the Developer page rolls folders into their ecosystem")

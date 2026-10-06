@@ -54,8 +54,5 @@ for _, section in ipairs(page.sections) do
 	for _, row in ipairs(section.rows) do t.expect(row.id ~= "spotify-downloads", "an empty location is not listed") end
 end
 t.expect(everyday:present(nil), "measured app data shows the page")
-local search = everyday:presentation("telegram")
-t.assertEqual(#search.sections, 1, "search narrows the page")
-t.assertEqual(search.sections[1].rows[1].id, "telegram", "to the matching app")
 
 os.exit(t.summary() and 0 or 1)

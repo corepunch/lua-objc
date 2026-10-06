@@ -77,7 +77,6 @@ t.assertEqual(page.sections[1].rows[1].id, "logic-sound-library", "rows name cat
 t.assertEqual(page.total, "84.0 GB", "the page totals what it shows")
 t.assertEqual(page.sections[1].rows[1].relative, 1, "the largest row has a full bar")
 t.assertEqual(music:badge(), "84.0 GB", "the sidebar badge is the page's total")
-t.assertEqual(#music:presentation("ableton").sections, 1, "search narrows the page")
 -- A location can matter to two kinds of work.
 model.measurements["adobe-caches"] = {status = "complete", bytes = 3e9}
 local function lists(workflow, id)

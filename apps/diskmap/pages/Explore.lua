@@ -24,7 +24,9 @@ local map = {view = "pages/Map"}
 routes.map = map
 
 local STYLES = {"rings", "rectangles"}
-local DEFAULT_HOVER = "Click a group to look inside. Select a location, then use its action below; double-click opens it."
+-- The caption under the chart keeps two lines; this must fit them whole in
+-- the narrowest pane (tests/diskmap_issue102.test.lua).
+map.guidance = "Click a group to look inside. Double-click opens it; actions are below."
 
 function map:focus(params)
 	if params.focus ~= nil then self:setFocus(params.focus) end
@@ -134,7 +136,6 @@ function map:dragPath(id)
 end
 
 function map:toggleWorth(item)
-	if item.included then self.app.openReview(item.enclosingPath); return end
 	local resource = Locations:find(item.id)
 	self.app.basket:toggle({path = item.path, name = item.name, bytes = item.bytes, resourceId = item.id,
 		source = "Map", consequence = resource and resource.consequence})
@@ -148,10 +149,7 @@ function map:data(state)
 	local nodes, total = {}, 0
 	if not scanning then nodes, total = Categories:mapNodes(self.focusId) end
 	local trail = Categories:path(self.focusId)
-	local query = state.query or ""
-	-- Search narrows the list beside the chart, as on every other page; the
-	-- chart keeps the whole level so its proportions stay true.
-	local rows = scanning and {} or Categories:rows(self.focusId ~= "" and self.focusId or nil, query)
+	local rows = scanning and {} or Categories:rows(self.focusId ~= "" and self.focusId or nil)
 	table.sort(rows, function(a, b) return (a.bytes or -1) > (b.bytes or -1) end)
 	local largest = rows[1] and rows[1].bytes or 0
 	-- A row has the color of its sector, which may not be its catalog color
@@ -170,10 +168,12 @@ function map:data(state)
 		item.marked = self.rowActions:isMarked(item.path)
 		local parent, exact = self.rowActions:covering(item.path)
 		item.included = parent ~= nil and not exact
-		item.enclosingPath = item.included and parent.path or nil
-		item.markTitle = item.included and "Included · Review…" or item.marked and "Marked" or "Mark"
-		item.markIcon = item.included and "folder.badge.checkmark" or item.marked and "checkmark.circle.fill" or "plus.circle"
-		item.markHelp = item.included and "Included through a marked folder; review its cleanup plan" or "Mark " .. item.name .. " for cleanup"
+		-- A location inside a marked folder is already in the plan: its box
+		-- shows checked and cannot be cleared on its own.
+		item.checked = item.marked or item.included
+		item.markable = item.markable and not item.included
+		item.markLabel = "Mark " .. item.name .. " for cleanup"
+		item.markHelp = item.included and "Included through a marked folder; review it under Marked" or item.markLabel
 	end
 	self.trail, self.worth, self.rows, self.total = trail, worth, rows, total
 	self.nodeById = {}
@@ -184,7 +184,7 @@ function map:data(state)
 	local handlers = {}
 	for index, step in ipairs(trail) do handlers["focus_" .. index] = function() self:setFocus(step.id) end end
 	for index, item in ipairs(worth) do handlers["worth_" .. index] = function() self:toggleWorth(item) end end
-	self.hover = #nodes == 0 and "" or DEFAULT_HOVER
+	self.hover = #nodes == 0 and "" or map.guidance
 	if not Selection.index(rows, self.selectedId) and not self.nodeById[self.selectedId] then self.selectedId = nil end
 	local focusRow = self.focusId ~= "" and Categories:row(self.focusId) or nil
 	-- The Overview counts what the disk reports as used; the Map counts
@@ -192,7 +192,7 @@ function map:data(state)
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	return {nodes = nodes, rows = rows, trail = trail, worth = worth, style = self.style, hover = self.hover,
-		center = self.center, query = query, canUp = self.focusId ~= "",
+		center = self.center,
 		selection = self.rowActions:locationAction(self.selectedId), selected = self.selectedId ~= nil,
 		-- Rectangles have no list beside them.
 		lists = self.style ~= "rectangles" and {mapList = rows} or nil,
@@ -235,12 +235,12 @@ function routes.largest:inspectSelection()
 end
 
 function routes.largest:present(state)
-	local rows = Locations:largest(state.disk, LARGEST.limit, state.query)
+	local rows = Locations:largest(state.disk, LARGEST.limit)
 	local bytes = 0
 	for _, row in ipairs(rows) do bytes = bytes + row.bytes end
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
-	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest", Scans:coverage()), largestSummary = #rows == 0 and ((state.query or "") ~= "" and ("No locations match “" .. state.query .. "” in Largest Locations.") or "No measured items match yet.")
+	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest", Scans:coverage()), largestSummary = #rows == 0 and "No measured items yet."
 		or string.format("The %d largest measured locations use %s%s.", #rows, Format.size(bytes),
 			used and used >= bytes and (" of " .. Format.size(used) .. " used") or "")}}
 end
@@ -254,7 +254,7 @@ local kinds = {view = "pages/Kinds"}
 routes.kinds = kinds
 -- Hovering, menus and the lead card's buttons only read or navigate.
 kinds.queries = {selectKind = true, chartHover = true, kindMenu = true, openKind = true, showHeadline = true, showInstallers = true, showOld = true,
-	cleanup = true, refresh = true, clearSearch = true}
+	cleanup = true, refresh = true}
 
 -- Large Files, narrowed to one kind.
 function kinds:showFiles(kind) self.app.show("files", {filter = "All", kind = kind}) end
@@ -262,7 +262,6 @@ function kinds:showInstallers() self.app.show("files", {filter = "Installers & a
 function kinds:showOld() self.app.show("files", {filter = "Unused for a year"}) end
 function kinds:cleanup() self.app.show("cleanup") end
 function kinds:refresh() self.app.rescan() end
-function kinds:clearSearch() self.app.search("kinds", "") end
 function kinds:showHeadline() if self.headlineId then self:showFiles(self.headlineId) end end
 function kinds:openKind(_, _, row) if row then self:showFiles(row.kindId or row.id) end end
 
@@ -304,22 +303,7 @@ function kinds:chartHover(id)
 	end
 end
 
--- The kinds and extensions the search leaves.
-local function search(kinds, extensions, query)
-	local matches, matchedKinds = {}, {}
-	for _, extension in ipairs(extensions) do
-		if (extension.name .. " " .. extension.subtitle):lower():find(query, 1, true) then
-			table.insert(matches, extension); matchedKinds[extension.kindId] = true
-		end
-	end
-	local found = {}
-	for _, kind in ipairs(kinds) do
-		if kind.name:lower():find(query, 1, true) or matchedKinds[kind.id] then table.insert(found, kind) end
-	end
-	return found, matches
-end
-
-function kinds:data(state)
+function kinds:data()
 	local model = Model.db
 	local fileState = Files:state()
 	self.kinds, self.headlineId = {}, nil
@@ -327,8 +311,6 @@ function kinds:data(state)
 	if fileState == "loading" then return {waiting = WAITING, summary = ""} end
 	local kinds, extensions = Files:kinds()
 	if fileState == "error" or fileState == "unavailable" then kinds, extensions = {}, {} end
-	local query = (state.query or ""):lower()
-	if query ~= "" then kinds, extensions = search(kinds, extensions, query) end
 	self.kinds = kinds
 	if not Selection.index(kinds, self.selectedId) then self.selectedId = nil end
 	local all, marks, labels = 0, {}, {}
@@ -358,10 +340,6 @@ function kinds:data(state)
 	local summary = Format.size(all) .. " in files across " .. #kinds .. " kinds"
 	if #kinds == 0 then
 		if fileState == "empty" then summary = "Scan complete · No files found"
-		elseif fileState == "loaded" and query ~= "" then
-			summary = "No matching file types"
-			decision.title, decision.detail = "Nothing matches this search", "Clear the search to see the measured file types."
-			decision.amountCaption, decision.actionTitle, decision.action = "no matches", "Clear Search", "clearSearch"
 		else summary = "File type results unavailable" end
 	elseif model.files and model.files.partial then summary = summary .. " · scan coverage is incomplete" end
 	local lists = {extensions = #extensions > 0 and Selection.extensions(extensions, self.selectedId) or nil}
