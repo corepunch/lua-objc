@@ -1,6 +1,7 @@
 _G.__headless = true
 local ns = require("AppKit")
 local xml = require("ui.xml")
+local bridge = require("AppKitNative")
 local t = require("TestKit")
 
 local function height(view) return view.frame.size.height end
@@ -43,6 +44,56 @@ window:hide()
 t.expect(not window.visible, "hide orders a window out without closing it")
 window:close()
 t.assertEqual(closed, 1, "onClose runs when the window closes")
+
+-- SwiftUI's `.disabled(!canGoBack)` on a toolbar Button, the AppKit way:
+-- `validate` names an action AppKit asks on each window update, as the Go
+-- menu's Back does, so Back dims at the start of history without the
+-- controller telling the toolbar.
+local history = {position = 1, count = 1}
+local navConfig = xml.render([[
+<Window title="History" width="400" height="300">
+	<Toolbar>
+		<ToolbarItem id="back" label="Back" icon="chevron.left" action="back" validate="canGoBack" />
+		<ToolbarItem id="forward" label="Forward" icon="chevron.right" action="forward" validate="canGoForward" />
+		<ToolbarItem id="go" label="Go" icon="play.fill" action="back" />
+	</Toolbar>
+	<VStack maxWidth="infinity" maxHeight="infinity" />
+</Window>]], {actions = {
+	back = function() history.position = history.position - 1 end,
+	forward = function() history.position = history.position + 1 end,
+	canGoBack = function() return history.position > 1 end,
+	canGoForward = function() return history.position < history.count end,
+}}, ns)
+t.expect(type(navConfig.toolbar[1].validate) == "function", "validate binds to a controller action")
+local nav = ns.Window(navConfig)
+local back, forward, go = ns.ToolbarItem(nav, "back"), ns.ToolbarItem(nav, "forward"), ns.ToolbarItem(nav, "go")
+t.expect(not back.enabled and not forward.enabled, "with one page both ends of history are disabled")
+t.expect(go.enabled, "an item without validate stays enabled")
+history.position, history.count = 2, 3
+bridge._validateToolbar(nav)
+t.expect(back.enabled and forward.enabled, "in the middle of history both are enabled")
+history.position = 3
+bridge._validateToolbar(nav)
+t.expect(back.enabled and not forward.enabled, "at the newest page Forward is disabled")
+history.position = 1
+bridge._validateToolbar(nav)
+t.expect(not back.enabled and forward.enabled, "at the oldest page Back is disabled")
+t.expect(go.enabled, "validation leaves other items alone")
+local renamed = xml.render([[
+<Window title="History" width="400" height="300">
+	<Toolbar>
+		<ToolbarItem id="back" label="Back" icon="chevron.left" action="back" />
+		<ToolbarItem id="forward" label="Forward" icon="chevron.right" action="forward" validate="canGoForward" />
+		<ToolbarItem id="go" label="Go" icon="play.fill" action="back" />
+	</Toolbar>
+</Window>]], {actions = {back = function() end, forward = function() end, canGoForward = function() return false end}}, ns)
+nav:updateToolbar(renamed.toolbar)
+t.expect(back.enabled and not back.autovalidates, "a description without validate enables the item again")
+t.expect(not forward.enabled, "a new validate answers at once")
+t.assertThrows(function()
+	xml.render([[<Window title="x"><Toolbar><ToolbarItem id="b" label="B" validate="missing" /></Toolbar></Window>]], {actions = {}}, ns)
+end, "validate must name a controller action")
+nav:close()
 
 -- An ordinary window keeps its whole content view.
 local plainConfig, plainRefs = xml.render([[

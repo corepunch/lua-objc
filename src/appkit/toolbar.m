@@ -2,11 +2,25 @@
 
 static const char kToolbarFieldDelegateKey;
 static const char kToolbarContentKey;
+static const char kToolbarValidateKey;
 static void toolbar_size_content(NSView *view);
 
+/* A button item whose description names `validate` autovalidates: NSToolbar
+ * calls -validate on window updates (events, not a timer), and the Lua
+ * function answers whether the item is enabled, as NSToolbarItemValidation
+ * does in an AppKit app and as MenuItem's `validate` does for the menu bar.
+ * Back is dimmed on the first page without anyone telling the toolbar. */
 @interface LuaToolbarItem : NSToolbarItem
 @end
 @implementation LuaToolbarItem
+- (void)validate {
+	LuaReg *reg = objc_getAssociatedObject(self, &kToolbarValidateKey);
+	lua_State *L = lua_reg_live_state(reg);
+	if (!L || !lua_reg_push(reg)) return;
+	if (lua_objc_pcall(L, 0, 1, "toolbar validation") != LUA_OK) { self.enabled = NO; return; }
+	self.enabled = lua_isnil(L, -1) || lua_toboolean(L, -1);
+	lua_pop(L, 1);
+}
 - (void)setView:(NSView *)view {
 	if (self.view) objc_setAssociatedObject(self.view, &kToolbarContentKey, nil, OBJC_ASSOCIATION_RETAIN);
 	if (view) {
@@ -68,6 +82,12 @@ static void toolbar_button_apply(NSToolbarItem *ti, NSDictionary *item) {
 	LuaReg *actionReg = item[@"actionReg"];
 	if (actionReg && objc_getAssociatedObject(ti, &kKeys[kCallbackKey]) != actionReg)
 		lua_reg_store(ti, &kKeys[kCallbackKey], actionReg);
+	LuaReg *validateReg = item[@"validateReg"];
+	if (objc_getAssociatedObject(ti, &kToolbarValidateKey) != validateReg)
+		lua_reg_store(ti, &kToolbarValidateKey, validateReg);
+	ti.autovalidates = validateReg != nil;
+	if (!validateReg) ti.enabled = YES;
+	else [ti validate];
 	if ([ti.view isKindOfClass:NSButton.class]) {
 		NSButton *btn = (NSButton *)ti.view;
 		btn.image = img;
@@ -209,6 +229,12 @@ static BOOL page_item_is_leading(NSDictionary *item) {
 				}
 				return ti;
 			}
+			LuaReg *validateReg = item[@"validateReg"];
+			if (validateReg) {
+				lua_reg_store(ti, &kToolbarValidateKey, validateReg);
+				ti.autovalidates = YES;
+				[ti validate];
+			}
 			LuaReg *actionReg = item[@"actionReg"];
 			if (actionReg) {
 				lua_reg_store(ti, &kKeys[kCallbackKey], actionReg);
@@ -343,6 +369,9 @@ static NSMutableArray<NSDictionary *> *toolbar_items_from_lua(lua_State *L, int 
 		lua_pop(L, 1);
 		lua_getfield(L, item, "action");
 		if (lua_isfunction(L, -1)) dict[@"actionReg"] = lua_reg_create(L, -1, YES);
+		lua_pop(L, 1);
+		lua_getfield(L, item, "validate");
+		if (lua_isfunction(L, -1)) dict[@"validateReg"] = lua_reg_create(L, -1, YES);
 		lua_pop(L, 1);
 		lua_getfield(L, item, "onSubmit");
 		if (lua_isfunction(L, -1)) dict[@"submitReg"] = lua_reg_create(L, -1, YES);

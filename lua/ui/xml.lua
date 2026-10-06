@@ -381,6 +381,17 @@ local function bindActions(props, attrs, names)
     end
 end
 
+-- A toolbar item's `action`, and its `validate`, which names an action
+-- returning whether the item is enabled whenever AppKit validates the
+-- toolbar (as MenuItem's `validate` does for the menu bar).
+local function bindToolbarActions(item)
+    local names = {}
+    for _, name in ipairs({ "action", "validate" }) do
+        if type(item[name]) == "string" then names[name] = item[name] end
+    end
+    bindActions(item, names, { "action", "validate" })
+end
+
 -- SwiftUI `.fixedSize(horizontal:vertical:)`: the axes that keep their
 -- content size instead of taking the proposal.
 local FIXED_SIZES = { horizontal = true, vertical = true, both = true }
@@ -1539,6 +1550,7 @@ local TAG_SCHEMA = {
             icon    = { default = "", type = "str" },
             tooltip = { default = "", type = "str" },
             action  = "str",
+            validate = "str",
             placement = "str",
             bordered = "bool",
             visibilityPriority = "num",
@@ -1588,16 +1600,7 @@ local TAG_SCHEMA = {
         end,
         transform = function(props, attrs)
             bindActions(props, attrs, { "onDisappear" })
-            local actions = renderData and renderData.actions
-            for _, item in ipairs(props.toolbar or {}) do
-                if type(item.action) == "string" and actions then
-                    local action = actions[item.action]
-                    if type(action) ~= "function" then
-                        error("xml: ToolbarItem action=\"" .. item.action .. "\" requires a controller action")
-                    end
-                    item.action = action
-                end
-            end
+            for _, item in ipairs(props.toolbar or {}) do bindToolbarActions(item) end
         end,
     },
     Sheet = {
@@ -1666,13 +1669,7 @@ local TAG_SCHEMA = {
             -- Mouse back/forward buttons and horizontal swipes.
             cfg.onBack, cfg.onForward, cfg.onClose = nil, nil, nil
             bindActions(cfg, attrs, { "onBack", "onForward", "onClose" })
-            if renderData and renderData.actions then
-                for _, item in ipairs(cfg.toolbar or {}) do
-                    if type(item.action) == "string" then
-                        bindActions(item, { action = item.action }, { "action" })
-                    end
-                end
-            end
+            for _, item in ipairs(cfg.toolbar or {}) do bindToolbarActions(item) end
         end,
     },
 
@@ -2673,7 +2670,7 @@ function M.toolbarFile(path, data)
     local ok, items = pcall(function()
         local records = compile(nodes, {}, registry, {})
         for _, item in ipairs(records) do
-            if type(item.action) == "string" then bindActions(item, {action = item.action}, {"action"}) end
+            bindToolbarActions(item)
         end
         return records
     end)

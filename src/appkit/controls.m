@@ -351,6 +351,15 @@ static int bridge_toolbar_item(lua_State *L) {
 	return 1;
 }
 
+/* What a window update does to the toolbar: each autovalidating item asks
+ * its validator whether it is enabled. Tests run without an event loop. */
+static int bridge_validate_toolbar(lua_State *L) {
+	NSWindow *window = lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	for (NSToolbarItem *item in window.toolbar.items)
+		if (item.autovalidates) [item validate];
+	return 0;
+}
+
 static int bridge_tableview_add(lua_State *L) {
 	id obj = check_objc(L, 1);
 	id src = objc_getAssociatedObject(obj, &kKeys[kTableSourceKey]);
