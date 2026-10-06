@@ -2250,6 +2250,9 @@ end
 --- @prop division number optional. Snap steps per beat (default 4, sixteenths in 4/4).
 --- @prop gridOffset number optional. Seconds where bar 1 starts.
 --- @prop selected string optional. Id of the selected marker.
+--- @prop playFrom number optional. Start of the span being played, in seconds.
+--- @prop playTo number optional. End of the span being played.
+--- @prop playState string optional. "stopped" (default), "playing" or "paused": a playhead moves from `playFrom` to `playTo` in real time with Core Animation and stops where it is when paused.
 --- @prop onAdd function optional. `onAdd(seconds)`.
 --- @prop onSelect function optional. `onSelect(id)`.
 --- @prop onMove function optional. `onMove(id, seconds)` when a dragged marker is dropped.
@@ -2267,6 +2270,9 @@ function AppKit.Waveform(props)
 	view.gridOffset = props.gridOffset or 0
 	if props.source then view.source = props.source end
 	if props.selected then view.selectedId = props.selected end
+	view.playFrom = props.playFrom or 0
+	view.playTo = props.playTo or 0
+	view.playState = props.playState or "stopped"
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(view, props)
 end

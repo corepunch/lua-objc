@@ -47,10 +47,14 @@ Slicer app (`apps/slicer`) is the client.
 local file = App.loadNativePlugin(assert(package.searchpath("AudioFile", package.cpath)), "AudioFile")
 file.info(path)                     -- {duration, frames, sampleRate, channels}, or nil, message
 file.export(path, from, to, out)    -- seconds -> frames written to a 24-bit WAV, or nil, message
-file.play(path, from, to)           -- auditions a span; replaces what is playing
-file.stop()
+file.play(path, from, to, onEnd)    -- auditions a span; replaces what is playing
+file.pause()                        -- keeps the position
+file.resume()
+file.stop()                         -- onEnd does not run
 ```
 
-Slices keep the source's sample rate and channels. Audition uses one shared
+Slices keep the source's sample rate and channels. `onEnd()` runs on the
+main thread once the span has been heard; a stopped or replaced audition
+never reports an end. Audition uses one shared
 AVAudioEngine that is stopped, not left idling, by `stop` and before each
 new `play`.

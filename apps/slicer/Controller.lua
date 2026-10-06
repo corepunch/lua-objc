@@ -36,7 +36,7 @@ function Controller:actions()
 		openDropped = function(paths) return paths and paths[1] ~= nil and self:open(paths[1]) end,
 		export = function() self:export() end,
 		play = function() self:play() end,
-		stop = function() self.audio:stop() end,
+		stop = function() self:stop() end,
 		addCut = edit(function(time) model:addCut(time) end),
 		selectCut = edit(function(id) model:select(id) end),
 		moveCut = edit(function(id, time) model:moveCut(id, time) end),
@@ -81,17 +81,42 @@ function Controller:open(path)
 		self.alert("The file could not be opened.", err or path)
 		return false
 	end
-	self.audio:stop()
+	self:stop()
 	self.model:open(path, info)
 	self:render()
 	return true
 end
 
+-- Play and Pause are one button: it pauses what is playing, resumes what
+-- is paused, and otherwise plays the selected slice.
 function Controller:play()
-	local slice = self.model.path and self.model:currentSlice()
-	if not slice then return end
-	local ok, err = self.audio:play(self.model.path, slice.start, slice.finish)
-	if not ok then self.alert("The slice could not be played.", err or "") end
+	local model = self.model
+	local playback = model.playback
+	if playback and playback.state == "playing" then
+		self.audio:pause()
+		model:setPlaybackState("paused")
+	elseif playback then
+		self.audio:resume()
+		model:setPlaybackState("playing")
+	else
+		local slice = model.path and model:currentSlice()
+		if not slice then return end
+		local ok, err = self.audio:play(model.path, slice.start, slice.finish, function()
+			model:stopPlayback()
+			self:render()
+		end)
+		if not ok then self.alert("The slice could not be played.", err or ""); return end
+		model:startPlayback(slice)
+	end
+	self:render()
+end
+
+function Controller:stop()
+	self.audio:stop()
+	if self.model.playback then
+		self.model:stopPlayback()
+		if self.content then self:render() end
+	end
 end
 
 -- Writes every slice into a folder the person chooses. Returns the paths.
@@ -115,10 +140,15 @@ function Controller:export()
 	return written
 end
 
+-- The toolbar is rendered again only when Play turns into Pause or back.
 function Controller:render()
 	local data = self.model:presentation()
 	data.actions = self:actions()
 	self.content:update(data)
+	if self.window and self.shownPlaying ~= data.playing then
+		self.shownPlaying = data.playing
+		self.window:updateToolbar(xml.toolbarFile(VIEWS .. "layouts/Window.etlua", data))
+	end
 end
 
 -- A sound file named on the command line (`./lua-objc apps/slicer loop.wav`).
@@ -146,6 +176,7 @@ function Controller:createWindow()
 	self.content = Template.new(refs.content, VIEWS .. "pages/Editor.etlua", ns)
 	self:render()
 	self.window = ns.Window(config)
+	self.shownPlaying = data.playing
 	return self.window
 end
 

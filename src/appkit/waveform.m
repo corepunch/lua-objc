@@ -25,12 +25,22 @@
 @property (nonatomic, copy) NSString *draggingId;
 @property (nonatomic) double dragTime;
 @property (nonatomic) BOOL dragMoved;
+/* Playback: the span being heard and "stopped", "playing" or "paused". */
+@property (nonatomic) double playFrom;
+@property (nonatomic) double playTo;
+@property (nonatomic, copy) NSString *playState;
+@property (nonatomic, strong) CALayer *playhead;
+@property (nonatomic) double shownFrom;
+@property (nonatomic) double shownTo;
+@property (nonatomic, copy) NSString *shownState;
+@property (nonatomic) double playElapsed;
+@property (nonatomic) CFTimeInterval playResumedAt;
 @end
 
 @implementation LuaWaveformView
 - (instancetype)initWithFrame:(NSRect)frame {
 	self = [super initWithFrame:frame];
-	if (self) { _markers = @[]; _beatsPerBar = 4; _division = 4; _selectedId = @""; }
+	if (self) { _markers = @[]; _beatsPerBar = 4; _division = 4; _selectedId = @""; _playState = @"stopped"; _shownState = @"stopped"; }
 	return self;
 }
 - (double)duration {
@@ -90,6 +100,78 @@
 - (void)viewDidChangeEffectiveAppearance {
 	[super viewDidChangeEffectiveAppearance];
 	[self setNeedsDisplay:YES];
+	if (self.playhead) [self placePlayhead];
+}
+
+#pragma mark Playhead
+
+/* The playhead is a layer that Core Animation moves from where playback is
+ * to the span's end over the time left, so playing costs no timer and no
+ * Lua. Each change of state, span or width places it again from the time
+ * accumulated so far; pausing stops it where it is. */
+- (void)setPlayFrom:(double)value { _playFrom = value; self.needsLayout = YES; }
+- (void)setPlayTo:(double)value { _playTo = value; self.needsLayout = YES; }
+- (void)setPlayState:(NSString *)value { _playState = value.length ? [value copy] : @"stopped"; self.needsLayout = YES; }
+- (void)layout {
+	[super layout];
+	[self syncPlayhead];
+}
+- (double)playheadTime {
+	double running = self.playResumedAt > 0 ? CACurrentMediaTime() - self.playResumedAt : 0;
+	return self.playFrom + MIN(self.playElapsed + running, MAX(0, self.playTo - self.playFrom));
+}
+- (void)syncPlayhead {
+	BOOL playing = [self.playState isEqualToString:@"playing"];
+	BOOL paused = [self.playState isEqualToString:@"paused"];
+	if ((!playing && !paused) || self.duration <= 0 || self.playTo <= self.playFrom) {
+		[self.playhead removeFromSuperlayer];
+		self.playhead = nil;
+		self.shownState = @"stopped";
+		self.playElapsed = 0;
+		self.playResumedAt = 0;
+		return;
+	}
+	BOOL sameRun = ![self.shownState isEqualToString:@"stopped"]
+		&& self.shownFrom == self.playFrom && self.shownTo == self.playTo;
+	if (sameRun) {
+		self.playElapsed = [self playheadTime] - self.playFrom;
+	} else {
+		self.playElapsed = 0;
+	}
+	self.playResumedAt = playing ? CACurrentMediaTime() : 0;
+	self.shownFrom = self.playFrom;
+	self.shownTo = self.playTo;
+	self.shownState = self.playState;
+	[self placePlayhead];
+}
+- (void)placePlayhead {
+	if (!self.playhead) {
+		self.wantsLayer = YES;
+		self.playhead = [CALayer layer];
+		self.playhead.zPosition = 1;
+		[self.layer addSublayer:self.playhead];
+	}
+	CGFloat height = self.bounds.size.height;
+	CGFloat x = [self xAtTime:[self playheadTime]], end = [self xAtTime:self.playTo];
+	[CATransaction begin];
+	[CATransaction setDisableActions:YES];
+	[self.playhead removeAllAnimations];
+	[self.effectiveAppearance performAsCurrentDrawingAppearance:^{
+		self.playhead.backgroundColor = NSColor.labelColor.CGColor;
+	}];
+	self.playhead.bounds = CGRectMake(0, 0, kWaveformPlayheadWidth, height);
+	self.playhead.position = CGPointMake(x, height / 2);
+	double remaining = self.playTo - [self playheadTime];
+	if (self.playResumedAt > 0 && remaining > 0) {
+		CABasicAnimation *move = [CABasicAnimation animationWithKeyPath:@"position.x"];
+		move.fromValue = @(x);
+		move.toValue = @(end);
+		move.duration = remaining;
+		move.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+		self.playhead.position = CGPointMake(end, height / 2);
+		[self.playhead addAnimation:move forKey:@"play"];
+	}
+	[CATransaction commit];
 }
 
 #pragma mark Geometry
@@ -331,6 +413,13 @@ static int bridge_waveform_send(lua_State *L) {
 	LuaWaveformView *view = lua_objc_check_object(L, 1, [LuaWaveformView class], "waveform");
 	const char *kind = luaL_checkstring(L, 2);
 	if (strcmp(kind, "duration") == 0) { lua_pushnumber(L, view.duration); return 1; }
+	// "playhead" -> seconds where the playhead is (nil when hidden), moving
+	if (strcmp(kind, "playhead") == 0) {
+		[view syncPlayhead];
+		if (view.playhead) lua_pushnumber(L, [view playheadTime]); else lua_pushnil(L);
+		lua_pushboolean(L, view.playResumedAt > 0);
+		return 2;
+	}
 	CGFloat x = luaL_checknumber(L, 3);
 	if (strcmp(kind, "press") == 0) [view pressAt:x];
 	else if (strcmp(kind, "drag") == 0) [view dragTo:x];

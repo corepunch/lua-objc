@@ -10,7 +10,7 @@
 <VStack spacing="0" maxWidth="infinity" maxHeight="infinity" onDrop="openDropped" dropExternalOnly="true">
   <% if path then %>
   <ScrollView id="scroll" horizontal="true" vertical="false" maxWidth="infinity" maxHeight="infinity">
-    <Waveform id="waveform" source="<%= path %>" bpm="<%= bpm %>" beatsPerBar="<%= beatsPerBar %>" division="<%= division %>" selected="<%= selected %>" <% if width then %>width="<%= width %>"<% else %>maxWidth="infinity"<% end %> maxHeight="infinity" onAdd="addCut" onSelect="selectCut" onMove="moveCut" onKey="key" accessibilityLabel="Waveform of <%= name %>">
+    <Waveform id="waveform" source="<%= path %>" bpm="<%= bpm %>" beatsPerBar="<%= beatsPerBar %>" division="<%= division %>" selected="<%= selected %>" playState="<%= playState %>" playFrom="<%= string.format("%.9f", playFrom) %>" playTo="<%= string.format("%.9f", playTo) %>" <% if width then %>width="<%= width %>"<% else %>maxWidth="infinity"<% end %> maxHeight="infinity" onAdd="addCut" onSelect="selectCut" onMove="moveCut" onKey="key" accessibilityLabel="Waveform of <%= name %>">
       <% for _, cut in ipairs(cuts) do %>
       <WaveformMarker id="<%= cut.id %>" time="<%= string.format("%.9f", cut.time) %>" />
       <% end %>

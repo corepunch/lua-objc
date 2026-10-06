@@ -110,5 +110,52 @@ t.expect(math.abs(info1.duration - 18 * sixteenth) < 1e-4, "the first slice ends
 t.expect(math.abs(info1.duration + info2.duration - 2 * bar) < 1e-4, "the slices add up to the file")
 t.assertEqual(info1.channels, 2, "slices keep the source's channels")
 
+-- Playback: one button plays, pauses and resumes; the playhead follows.
+local calls, onEnd = {}, nil
+local fake = setmetatable({
+	play = function(_, _, from, to, done) table.insert(calls, "play " .. from .. " " .. to); onEnd = done; return true end,
+	pause = function() table.insert(calls, "pause") end,
+	resume = function() table.insert(calls, "resume") end,
+	stop = function() table.insert(calls, "stop") end,
+}, {__index = audio})
+local player = Controller.new({audio = fake})
+local playerWindow = player:createWindow()
+player:open(source)
+player:actions().addCut(bar)
+local function playItem()
+	for _, item in ipairs(playerWindow.toolbar.items) do
+		if item.itemIdentifier == "play" then return item end
+	end
+end
+t.assertEqual(playItem().label, "Play Slice", "the toolbar starts with Play")
+local view = player.content.refs.waveform
+t.assertEqual(bridge._waveformSend(view, "playhead"), nil, "no playhead while silent")
+
+player:actions().play()
+t.assertEqual(calls[#calls], "play " .. bar .. " " .. 2 * bar, "Play plays the selected cut's slice")
+t.assertEqual(playItem().label, "Pause", "while playing the button is Pause")
+t.assertEqual(view.playState, "playing", "the waveform shows playback")
+local at, moving = bridge._waveformSend(view, "playhead")
+t.expect(at and math.abs(at - bar) < 0.05 and moving, "the playhead starts at the slice and moves")
+
+player:key(" ")
+t.assertEqual(calls[#calls], "pause", "Space pauses")
+t.assertEqual(playItem().label, "Play Slice", "a paused audition shows Play")
+local pausedAt, stillMoving = bridge._waveformSend(view, "playhead")
+t.expect(pausedAt and not stillMoving, "a paused playhead stays where it is")
+player:actions().play()
+t.assertEqual(calls[#calls], "resume", "Play resumes a paused slice")
+t.assertEqual(player.content.refs.waveform, view, "playback updates the waveform in place")
+
+onEnd()
+t.assertEqual(player.model.playback, nil, "the end of the slice stops playback")
+t.assertEqual(playItem().label, "Play Slice", "the button returns to Play at the end")
+t.assertEqual(bridge._waveformSend(view, "playhead"), nil, "the playhead goes when playback ends")
+
+player:actions().play()
+player:actions().stop()
+t.assertEqual(calls[#calls], "stop", "Stop silences the audition")
+t.expect(player.model.playback == nil and playItem().label == "Play Slice", "Stop returns to Play")
+
 os.execute("rm -rf '" .. dir .. "'")
 os.exit(t.summary() and 0 or 1)

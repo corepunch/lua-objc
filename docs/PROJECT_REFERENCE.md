@@ -1149,7 +1149,10 @@ between markers is shaded and numbered from the file's start, skipping
 empty slices. Pressing empty space calls `onAdd(seconds)` snapped to the
 grid; pressing a marker selects it (`onSelect(id)`) and dragging moves it,
 snapped live, calling `onMove(id, seconds)` on release. `onKey(key)` gets
-keys while it has focus. `selected` and the grid attributes patch in place
+keys while it has focus. `playFrom`, `playTo` and `playState`
+(`stopped`, `playing`, `paused`) show a playhead that Core Animation moves
+across the span in real time (no timer, no Lua per frame); pausing stops it
+where it is. `selected`, the grid and playback attributes patch in place
 and marker records update in place. It has no natural width: give it
 `maxWidth="infinity"` to fit or a `width` to zoom inside a horizontal
 `ScrollView`. `apps/slicer` uses it with the `AudioFile` plugin
