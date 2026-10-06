@@ -71,3 +71,46 @@ static int bridge_text_field_test_focus(lua_State *L) {
 	[field sendActionsForControlEvents:UIControlEventEditingDidBegin];
 	return 0;
 }
+
+#pragma mark - Editable text view events
+
+/* UITextView is not a UIControl: its edits arrive through the delegate.
+ * Setting `text` from Lua does not call textViewDidChange:, so a page that
+ * draws the text again is not told about its own write. */
+@interface LuaTextEditorDelegate : NSObject <UITextViewDelegate>
+@property(nonatomic, strong) LuaReg *changeReg;
+@end
+@implementation LuaTextEditorDelegate
+- (void)dealloc {
+	[_changeReg dispose];
+}
+- (void)textViewDidChange:(UITextView *)textView {
+	lua_State *L = lua_reg_live_state(_changeReg);
+	if (!L || !lua_reg_push(_changeReg)) return;
+	lua_pushstring(L, (textView.text ?: @"").UTF8String);
+	push_objc(L, textView, "uiview");
+	lua_objc_pcall(L, 2, 0, "text editor change");
+}
+@end
+
+static int bridge_text_editor_callbacks(lua_State *L) {
+	UITextView *view = lua_objc_check_object(L, 1, UITextView.class, "TextEditor");
+	LuaTextEditorDelegate *delegate = [[LuaTextEditorDelegate alloc] init];
+	delegate.changeReg = lua_reg_opt(L, 2);
+	view.delegate = delegate;
+	objc_setAssociatedObject(view, &kTextEditorDelegateKey, delegate, OBJC_ASSOCIATION_RETAIN);
+	return 0;
+}
+static int bridge_text_editor_test_input(lua_State *L) {
+	UITextView *view = lua_objc_check_object(L, 1, UITextView.class, "TextEditor");
+	view.text = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+	[view.delegate textViewDidChange:view];
+	return 0;
+}
+
+#pragma mark - Pasteboard
+
+static int bridge_clipboard_copy(lua_State *L) {
+	UIPasteboard.generalPasteboard.string = [NSString stringWithUTF8String:luaL_checkstring(L, 1)];
+	return 0;
+}

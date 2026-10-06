@@ -1,0 +1,22 @@
+<% --[[
+  English in, Russian out as the person types. The editor hands every
+  keystroke to `edit`. Clear hides rather than leaves the tree; the result
+  card comes and goes after the editor, which is never rebuilt.
+  The shell titles the page. ]] %>
+<ScrollView id="scroll">
+  <VStack spacing="@pageSpacing" padding="@pagePadding" alignment="leading" maxWidth="infinity">
+    <GroupBox>
+      <VStack spacing="@cardSpacing" alignment="leading" maxWidth="infinity">
+        <HStack alignment="center" maxWidth="infinity">
+          <Label text="@sourceLanguage" size="@captionSize" weight="semibold" color="secondary" />
+          <Spacer />
+          <Button id="clear" systemImage="xmark.circle.fill" style="plain" foregroundStyle="secondary" accessibilityLabel="Clear" action="clear" hidden="<%= text == "" %>" />
+        </HStack>
+        <TextEditor id="english" text="<%= text %>" onChange="edit" height="@editorHeight" maxWidth="infinity" drawsBackground="false" accessibilityLabel="English text" />
+      </VStack>
+    </GroupBox>
+    <% if russian ~= "" or failure then %>
+    <%- partial("../components/Result.etlua", { russian = russian, failure = failure }) %>
+    <% end %>
+  </VStack>
+</ScrollView>

@@ -947,7 +947,13 @@ local TAG_SCHEMA = {
             selectable      = "bool",
             wrapMode        = "bool",
             drawsBackground = "bool",
+            accessibilityLabel = "str",
         },
+        transform = function(props, attrs)
+            if attrs.onChange and renderData and renderData.actions then
+                props.onChange = renderData.actions[attrs.onChange]
+            end
+        end,
     },
     CodeView = {
         constructor = "CodeView",
@@ -2252,6 +2258,14 @@ local OUTER = {
 
 -- Attributes applied to the view the tag produced.
 local TEXT = setter("text", function(v) return v or "" end)
+-- An editable control already shows what the person typed when the page is
+-- drawn again with it, as a SwiftUI binding does; writing the same string
+-- back would move the caret to the end.
+local EDITED_TEXT = function(view, v)
+    if not hasProperty(view, "text") then return nil end
+    local text = v or ""
+    return function() if view.text ~= text then view.text = text end end
+end
 local INNER = {
     disabled = function(view, v)
         if not hasProperty(view, "enabled") then return nil end
@@ -2265,7 +2279,8 @@ local TAG_INNER = {
     Label = { text = TEXT, value = TEXT },
     Paragraph = { text = TEXT, value = TEXT,
         revealedCharacters = setter("revealedCharacters", number(-1)) },
-    TextField = { text = TEXT, value = TEXT },
+    TextField = { text = EDITED_TEXT, value = EDITED_TEXT },
+    TextEditor = { text = EDITED_TEXT, value = EDITED_TEXT },
     Button = { title = setter("title", function(v) return v or "" end), label = setter("title", function(v) return v or "" end) },
     ProgressView = { value = function(view, v)
         for _, name in ipairs({ "doubleValue", "progress" }) do

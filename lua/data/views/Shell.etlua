@@ -2,9 +2,12 @@
   The window every manifest app gets: a Go menu with one item per page (the
   keys come from the manifest), a sidebar toggle and the content area the
   generic page controller mounts pages into. `--isolated` leaves only the
-  content. The sidebar itself is Sidebar.etlua. ]] %>
+  content. The sidebar itself is Sidebar.etlua. On iPhone there is no
+  sidebar or menu: the page sits in a navigation stack titled by it, as a
+  SwiftUI page sits in NavigationStack, and a page view never makes its own
+  (a navigation controller cannot be placed inside a stack). ]] %>
 <Window title="<%= app.name %>" width="1100" height="720" minWidth="700" minHeight="440" sidebarWidth="226">
-  <% if not isolated then %>
+  <% if not isolated and platform ~= "UIKit" then %>
   <Commands appName="<%= app.name %>">
     <CommandMenu title="Go">
       <% for index, section in ipairs(app.sections) do %>
@@ -19,5 +22,11 @@
     <ToolbarItem id="toggleSidebar" />
   </Toolbar>
   <% end %>
+  <% if platform == "UIKit" then %>
+  <NavigationStack title="<%= title %>" largeTitle="true">
+    <VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+  </NavigationStack>
+  <% else %>
   <VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+  <% end %>
 </Window>

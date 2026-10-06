@@ -26,4 +26,14 @@ t.expect(constructors:find("UITextSmartQuotesTypeNo", 1, true)
 	and constructors:find("UITextAutocorrectionTypeNo", 1, true),
 	"verbatim editing configures forwarded UIKit traits through their native API")
 
+local textField = assert(io.open("src/uikit/text_field.m", "r")):read("*a")
+t.expect(src:find("bridge._textEditorCallbacks(v, props.onChange)", 1, true) ~= nil,
+	"UIKit TextEditor hands edits to onChange")
+t.expect(textField:find("textViewDidChange:", 1, true) ~= nil
+		and bridge:find('{"_textEditorCallbacks", bridge_text_editor_callbacks}', 1, true) ~= nil,
+	"UIKit TextEditor edits arrive through the UITextView delegate")
+t.expect(src:find("function UIKit.copyToClipboard", 1, true) ~= nil
+		and textField:find("UIPasteboard.generalPasteboard.string", 1, true) ~= nil,
+	"UIKit copies to the general pasteboard as AppKit does")
+
 os.exit(t.summary() and 0 or 1)

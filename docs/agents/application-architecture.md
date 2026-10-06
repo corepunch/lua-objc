@@ -56,6 +56,7 @@ apps/<app>/
   app.xml           the manifest: sections and pages, each naming its route
   resources.xml     constants (numbers, strings, colors), referenced as @name
   Store.lua         the store's seed: the tables the models read
+  Services.lua      the services pages see as self.app (an app without a root controller)
   routes.lua        gathers pages/*.lua into the app's routes
   Controller.lua    the root controller: window, menu, sheets (only if needed)
 

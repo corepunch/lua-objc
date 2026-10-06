@@ -1,0 +1,3 @@
+<App name="Translator" startup="translate">
+	<Page id="translate" title="Translate" icon="character.bubble" color="systemBlue" key="1" />
+</App>

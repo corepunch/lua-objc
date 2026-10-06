@@ -1229,6 +1229,7 @@ end
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop drawsBackground boolean optional. Draws the control’s background when true.
 --- @prop editable boolean optional. Allows text editing when true.
+--- @prop onChange function optional. Receives the text after each edit.
 --- @prop language string optional. Component-specific setting passed to the native control.
 --- @prop selectable boolean optional. Allows text or rows to be selected when true.
 --- @prop size number optional. Component-specific setting passed to the native control.
@@ -1259,6 +1260,9 @@ function AppKit.TextEditor(props)
 	if props.wrapMode ~= nil then
 		view.hasHorizontalScroller = not props.wrapMode
 	end
+	-- SwiftUI `TextEditor(text:)`: each edit hands the new text to the page.
+	if props.onChange then view:onChange(props.onChange) end
+	if props.accessibilityLabel then textView.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(view, props)
 end
 
