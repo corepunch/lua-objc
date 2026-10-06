@@ -73,7 +73,7 @@ model = Store.new(home)
 model.scan = {running = false}
 model.files = {large = {}, old = {}, extensions = {}, oldBytes = 0, oldCount = 0}
 local infoDone, idsDone
-local service = require("apps.diskmap.services.Contract").stub({applicationInfo = function(_, done) infoDone = done end, installedBundleIds = function(done) idsDone = done end})
+local service = require("apps.diskmap.services.Contract").stub({applicationInfo = function(_, done) infoDone = done end, installedApplications = function(done) idsDone = done end})
 local apps
 apps = open("applications", service, model)
 t.expect(apps.refs.computing ~= nil and apps.refs.apps == nil, "unanswered requests draw one page-level spinner and no rows")

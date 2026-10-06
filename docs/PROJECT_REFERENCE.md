@@ -2501,6 +2501,9 @@ the main thread, across disks too, never replacing an existing one.
 `ns.relaunch(onFailure)` (start a new instance, quit once it runs; it ends
 attached sheets first, as AppKit will not quit while one shows) support
 checks before destructive actions and permission changes.
+`ns.codeSignatures(paths, completion)` reads each bundle's team identifier and
+app groups from its code signature off the main thread and completes with
+`{[path] = {team, groups}}`; unsigned bundles are left out.
 `ns.homeDirectory()` is the person's home folder from the user database:
 inside the App Sandbox `HOME` names the app's container.
 `ns.pickFolder(title, {directory, message, prompt})` is the folder open

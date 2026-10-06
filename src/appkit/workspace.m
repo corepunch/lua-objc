@@ -453,6 +453,66 @@ static int bridge_application_path(lua_State *L) {
 	return 1;
 }
 
+// _codeSignatures(paths, completion(signatures)): each signed bundle's
+// team identifier and app groups, keyed by path, read from its signature
+// without validating it. A Group Container is named by an app group, so
+// this is how a folder such as "UBF8T346G9.Office" finds its apps. Reading
+// every app on a Mac takes seconds, so it runs off the main thread; an
+// unsigned or unreadable bundle is left out.
+static int bridge_code_signatures(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
+	NSMutableArray<NSString *> *paths = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, 1);
+	for (lua_Integer i = 1; i <= count; i++) {
+		lua_rawgeti(L, 1, i);
+		if (lua_type(L, -1) == LUA_TSTRING) [paths addObject:[NSString stringWithUTF8String:lua_tostring(L, -1)]];
+		lua_pop(L, 1);
+	}
+	LuaReg *completion = lua_reg_create(L, 2, NO);
+	dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+		NSMutableDictionary<NSString *, NSDictionary *> *signatures = [NSMutableDictionary dictionary];
+		for (NSString *path in paths) {
+			SecStaticCodeRef code = NULL;
+			if (SecStaticCodeCreateWithPath((__bridge CFURLRef)[NSURL fileURLWithPath:path], kSecCSDefaultFlags, &code) != errSecSuccess || !code) continue;
+			CFDictionaryRef copied = NULL;
+			OSStatus status = SecCodeCopySigningInformation(code, kSecCSSigningInformation, &copied);
+			CFRelease(code);
+			if (status != errSecSuccess || !copied) continue;
+			NSDictionary *information = (__bridge_transfer NSDictionary *)copied;
+			NSString *team = information[(__bridge NSString *)kSecCodeInfoTeamIdentifier];
+			id groups = [information[(__bridge NSString *)kSecCodeInfoEntitlementsDict] objectForKey:@"com.apple.security.application-groups"];
+			NSMutableDictionary *signature = [NSMutableDictionary dictionary];
+			if ([team isKindOfClass:NSString.class] && team.length) signature[@"team"] = team;
+			if ([groups isKindOfClass:NSArray.class]) {
+				NSMutableArray *names = [NSMutableArray array];
+				for (id group in groups) if ([group isKindOfClass:NSString.class]) [names addObject:group];
+				if (names.count) signature[@"groups"] = names;
+			}
+			if (signature.count) signatures[path] = signature;
+		}
+		dispatch_async(dispatch_get_main_queue(), ^{
+			lua_State *state = lua_reg_live_state(completion);
+			if (state && lua_reg_push(completion)) {
+				lua_createtable(state, 0, (int)signatures.count);
+				[signatures enumerateKeysAndObjectsUsingBlock:^(NSString *path, NSDictionary *signature, BOOL *stop) {
+					lua_createtable(state, 0, 2);
+					if (signature[@"team"]) { lua_pushstring(state, [signature[@"team"] UTF8String]); lua_setfield(state, -2, "team"); }
+					NSArray<NSString *> *groups = signature[@"groups"];
+					if (groups) {
+						lua_createtable(state, (int)groups.count, 0);
+						for (NSUInteger i = 0; i < groups.count; i++) { lua_pushstring(state, groups[i].UTF8String); lua_rawseti(state, -2, (lua_Integer)i + 1); }
+						lua_setfield(state, -2, "groups");
+					}
+					lua_setfield(state, -2, path.UTF8String);
+				}];
+				lua_objc_pcall(state, 1, 0, "code signatures");
+			}
+			[completion dispose];
+		});
+	});
+	return 0;
+}
+
 // _fileIdentity(path) -> {inode, device, symlink} from lstat, or nil when
 // the path is gone. A different inode at the same path is a different item.
 static int bridge_file_identity(lua_State *L) {

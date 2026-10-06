@@ -121,21 +121,21 @@ t.expect(byName["Xcode & bundled SDKs"] == nil, "missing bundles are not listed 
 Model.db.applicationInfo = info
 local unused = Applications:rows("Unused for 6 months")
 t.assertEqual(#unused, 1, "the unused filter lists only unused apps")
-Model.db.installedBundleIds = nil
+Model.db.installedApplications = nil
 t.assertEqual(Applications:leftovers(), nil, "without installed identifiers nothing is called a leftover")
 local installed
-app.env.service.installedBundleIds(function(ids) installed = ids end)
-Model.db.installedBundleIds = installed
+app.env.service.installedApplications(function(apps) installed = apps end)
+Model.db.installedApplications = installed
 local leftovers = Applications:leftovers()
 local leftoverNames = {}
 for _, row in ipairs(leftovers) do leftoverNames[row.name] = row end
 t.expect(leftoverNames["com.mock.RemovedEditor"] and leftoverNames["com.mock.OldGame"], "unclaimed identifier folders are leftovers")
 t.expect(leftoverNames["com.mock.VideoStudio"] == nil, "installed apps' data is never a leftover")
-table.insert(installed, "com.mock.RemovedEditor.helper")
-Model.db.installedBundleIds = installed
+table.insert(installed, {bundleId = "com.mock.RemovedEditor.helper"})
+Model.db.installedApplications = installed
 t.expect(not Applications:validateLeftover(home .. "/Library/Containers/com.mock.RemovedEditor"), "a helper identifier claims its host's data")
 table.remove(installed)
-Model.db.installedBundleIds = installed
+Model.db.installedApplications = installed
 t.expect(Applications:validateLeftover(home .. "/Library/Containers/com.mock.RemovedEditor"), "an unclaimed folder can be reviewed")
 local parsed = Applications.parseLastUsed("2026-09-20 16:20:00 +0000\0(null)\0" .. "2026-01-01 00:00:00 -0500", {"/A.app", "/B.app", "/C.app"})
 t.assertEqual(parsed["/A.app"], 1789921200, "Spotlight dates parse as UTC")

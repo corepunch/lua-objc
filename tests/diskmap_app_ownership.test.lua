@@ -27,7 +27,7 @@ t.assertEqual(app.dataBytes,(100000+50000+20000+45000)*1024,'renamed app include
 t.assertEqual(app.bytes,100000000+app.dataBytes,'app and data totals include canonical storage ownership')
 t.assertEqual(#app.folders,4,'unrelated similar folders are not claimed')
 local unclaimed={}
-model.installedBundleIds={'com.openai.codex'}
+model.installedApplications={{bundleId='com.openai.codex'}}
 for _, row in ipairs(Applications:leftovers()) do unclaimed[row.name]=row end
 t.expect(unclaimed.Codex==nil,'installed renamed bundle claims Codex support data')
 t.expect(unclaimed['Codex old']~=nil and unclaimed.UnrelatedCodex~=nil,'similar folder names remain review candidates')

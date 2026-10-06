@@ -6,8 +6,8 @@ local Leftovers = require("apps.diskmap.helpers.Leftovers")
 -- apps such as Xcode when they exist; a bundle the scan found missing is not
 -- installed. What the service tells about them lives in the store beside
 -- them: `applicationInfo` maps a bundle path to {bundleId, displayName,
--- version, lastUsed, running}, and `installedBundleIds` lists every bundle
--- identifier Spotlight knows. Missing info leaves an app listed with its
+-- version, lastUsed, running}, and `installedApplications` lists every app
+-- Spotlight knows as {bundleId, name, team, groups}. Missing info leaves an app listed with its
 -- bundle size only.
 local Applications = Model:extend("applications", {primaryKey = "path", source = function(db)
 	local rows = {}
@@ -21,12 +21,17 @@ end})
 
 -- An app's data lives outside its bundle, in folders named by its bundle
 -- identifier (or, for Application Support, sometimes its name). These are
--- the catalog locations whose immediate children the scan already measured.
+-- the catalog locations whose immediate children the scan already measured;
+-- `files` sources hold a file per app ("com.x.App.plist") rather than a folder.
 Applications.dataSources = {
 	{id = "app-containers", label = "Container", byId = true},
 	{id = "group-containers", label = "Group container", contains = true},
 	{id = "support", label = "Application Support", byId = true, byName = true},
 	{id = "user-caches", label = "Caches", byId = true},
+	{id = "preferences", label = "Preferences", byId = true, files = true},
+	{id = "saved-state", label = "Saved windows", byId = true},
+	{id = "http-storages", label = "Network storage", byId = true, files = true},
+	{id = "webkit-data", label = "Web data", byId = true},
 }
 Applications.filters = Model.enum({"All", "Unused for 6 months", "Most data"})
 Applications.unusedDays = 180
@@ -48,7 +53,7 @@ function Applications:data(bundleId, name)
 			local owned = (source.byId and lowerId and (candidate == lowerId or candidate:sub(1, #lowerId + 1) == lowerId .. "."))
 				or (source.contains and lowerId and candidate:find(lowerId, 1, true) ~= nil)
 				or (source.byName and ((lowerName and candidate == lowerName) or supportNames[candidate]))
-			if owned and child.directory then
+			if owned and (child.directory or source.files) then
 				local childBytes = math.floor((child.kb or 0) * 1024 + 0.5)
 				bytes = bytes + childBytes
 				table.insert(folders, {name = child.name, label = source.label, path = root.path .. "/" .. child.name, bytes = childBytes})
@@ -108,21 +113,29 @@ function Applications:rows(filter, now)
 	return rows
 end
 
+-- Who installed apps are, for telling which of them a Library folder
+-- belongs to (helpers/Leftovers.lua), or nil until Spotlight has answered.
+-- Installed bundles found by the scan add their names.
+function Applications.index()
+	local installed = Model.db.installedApplications
+	if not installed then return nil end
+	local apps = {}
+	for _, app in ipairs(installed) do table.insert(apps, app) end
+	for _, bundle in ipairs(Applications:all()) do table.insert(apps, {name = bundle.name}) end
+	return Leftovers.index(apps)
+end
+
 -- Data folders that no installed app claims: what AppCleaner and CleanMyMac
 -- call leftovers. Without the bundle identifiers Spotlight knows
--- (`installedBundleIds`) nothing is reported, since an unknown app is not
+-- (`installedApplications`) nothing is reported, since an unknown app is not
 -- evidence of an uninstalled one. Installed bundles found by the scan add
 -- their names, so "Google" or "Code" in Application Support stay claimed.
 -- Each row carries a confidence tier (see helpers/Leftovers.lua): only High
 -- means no app from that vendor is installed. Apple's own data is never listed.
 function Applications:leftovers()
 	local model = Model.db
-	local installed = model.installedBundleIds
-	if not installed then return nil end
-	local apps = {}
-	for _, id in ipairs(installed) do table.insert(apps, {bundleId = id}) end
-	for _, bundle in ipairs(Applications:all()) do table.insert(apps, {name = bundle.name}) end
-	local index = Leftovers.index(apps)
+	local index = Applications.index()
+	if not index then return nil end
 	local rows = {}
 	for _, source in ipairs(Applications.dataSources) do
 		local root = Locations:find(source.id)

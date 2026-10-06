@@ -874,10 +874,23 @@ function Mock:applicationInfo(paths, completion)
 	completion(info)
 end
 
-function Mock:installedBundleIds(completion)
-	local ids = {"com.apple.Safari", "com.apple.mail"}
-	for _, value in pairs(self.fixture.applications or {}) do table.insert(ids, value.bundleId) end
-	completion(ids)
+-- Fixture containers named by UUID name their app in `containers`.
+function Mock:containerIdentifier(path)
+	return (self.fixture.containers or {})[path:gsub("^" .. self.home:gsub("%p", "%%%0"), "~")]
+end
+
+function Mock:packageOwner(path, completion)
+	completion((self.fixture.packages or {})[path] or {})
+end
+
+function Mock:installedApplications(completion)
+	local apps = {{bundleId = "com.apple.Safari", name = "Safari"}, {bundleId = "com.apple.mail", name = "Mail"}}
+	for path, value in pairs(self.fixture.applications or {}) do
+		table.insert(apps, {path = absolute(path, self.home), bundleId = value.bundleId, name = (path:match("([^/]+)%.app$")),
+			team = value.team, groups = value.groups})
+	end
+	table.sort(apps, function(a, b) return a.bundleId < b.bundleId end)
+	completion(apps)
 end
 
 -- A fixture volume's top level, or any other folder's immediate children
