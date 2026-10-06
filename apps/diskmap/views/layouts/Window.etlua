@@ -64,8 +64,8 @@
   </Commands>
   <Toolbar>
     <% if navigation then %><ToolbarItem id="toggleSidebar" /><% end %>
-    <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" />
-    <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" />
+    <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" validate="canGoBack" />
+    <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" validate="canGoForward" />
     <ToolbarSpacer />
     <% if scanning then %>
     <ToolbarItem id="measure" label="Stop" icon="stop.circle" tooltip="Stop measuring" action="cancel" />

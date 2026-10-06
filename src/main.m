@@ -476,6 +476,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_tableSeparatorRows", bridge_table_separator_rows},
 	{"_tableSpinnerFrame", bridge_table_spinner_frame},
 	{"_toolbar_item", bridge_toolbar_item},
+	{"_validateToolbar", bridge_validate_toolbar},
 	{"_window", bridge_window},
 	{"_setWindowWorkspace", bridge_set_window_workspace},
 	{"_image", bridge_image},

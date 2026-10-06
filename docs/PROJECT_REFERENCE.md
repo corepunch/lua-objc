@@ -2059,6 +2059,16 @@ window:updateToolbar(xml.toolbarFile("app/views/layouts/Window.etlua", data))
 `xml.toolbarFile` makes no views: an item's view child (a search field) is
 left out and the window keeps its own.
 
+Whether a button is enabled is asked, not told. `validate` names an action
+returning whether the item is enabled; AppKit calls it on each window update
+(after events, never on a timer), as `NSToolbarItemValidation` does and as a
+`<MenuItem validate>` does for the menu bar. This is SwiftUI's
+`.disabled(!canGoBack)` without the controller having to redescribe the toolbar:
+
+```xml
+<ToolbarItem id="back" label="Back" icon="chevron.left" action="back" validate="canGoBack" />
+```
+
 Toolbar `action` strings are resolved to Controller methods via an ACTIONS table:
 
 ```lua
