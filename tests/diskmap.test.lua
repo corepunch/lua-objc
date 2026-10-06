@@ -129,7 +129,7 @@ t.assertEqual(config.subtitle, "1 TB free", "the subtitle is part of the window 
 local toolbarIds = {}
 for _, item in ipairs(config.toolbar) do toolbarIds[item.id] = true end
 t.expect(toolbarIds.toggleSidebar, "the sidebar can be collapsed from the toolbar")
-t.expect(toolbarIds.settings and toolbarIds.reclaim and toolbarIds.refresh and toolbarIds.search, "window-wide actions live in the toolbar")
+t.expect(toolbarIds.settings and toolbarIds.reclaim and toolbarIds.measure and toolbarIds.search, "window-wide actions live in the toolbar")
 t.expect(toolbarIds.back and toolbarIds.forward and toolbarIds.review, "history and the cleanup review live in the toolbar")
 t.assertEqual(ui.destination, "overview", "the overview is the first destination")
 local sidebar = ui.navigation.refs.sidebar
@@ -147,13 +147,13 @@ t.expect(ui.page.refs.results.frame.size.height >= categoryRows * 44, "category 
 -- Clean Up is a sidebar page; the toolbar button and the hero both open it.
 ui:show("cleanup")
 t.assertEqual(ui.destination, "cleanup", "suggested cleanups open as a page")
-t.expect(ui.page.refs.list_rebuildable ~= nil and ui.page.refs.list_checked ~= nil and ui.page.refs.tips ~= nil, "clean up lists suggestions, the checked list and tips")
-t.expect(ui.page.refs.list_rebuildable.scrollDisabled and ui.page.refs.page ~= nil, "clean up scrolls as one page")
+t.expect(ui.page.refs.list_now ~= nil and ui.page.refs.list_checked ~= nil and ui.page.refs.tips ~= nil, "clean up lists suggestions, the checked list and tips")
+t.expect(ui.page.refs.list_now.scrollDisabled and ui.page.refs.page ~= nil, "clean up scrolls as one page")
 window.subtitle = "stale"
 ui:updateRows()
 t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "scan updates continue while clean up is shown")
-t.assertEqual(#Suggestions:presentation().rebuildable, 1, "clean up finds the measured candidate")
-t.expect(#bridge._tableRowMenu(ui.page.refs.list_rebuildable, 1) > 0, "each suggestion has a row menu")
+t.assertEqual(#Suggestions:presentation().now, 1, "clean up finds the measured candidate")
+t.expect(#bridge._tableRowMenu(ui.page.refs.list_now, 1) > 0, "each suggestion has a row menu")
 ui:show("overview")
 t.assertEqual(ui.page.refs.results.rowCount, categoryRows, "category rows remain after returning from clean up")
 ui:openSettings()

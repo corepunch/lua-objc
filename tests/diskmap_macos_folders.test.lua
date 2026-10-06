@@ -36,7 +36,8 @@ for _, area in ipairs(Map.areas) do
 			seenLeftovers[location.leftover.id] = true
 			local resource = Locations:find(location.leftover.id)
 			t.expect(resource ~= nil and resource.path == location.path, "a leftover becomes a catalog resource at its path: " .. location.leftover.id)
-			t.expect(resource.reviewThreshold == location.leftover.threshold and resource.consequence == location.leftover.advice,
+			t.expect(resource.threshold == location.leftover.threshold and resource.advice == location.leftover.advice
+				and resource.remover == location.leftover.remover and resource.nature == "leftover",
 				"and Clean Up reviews it past its threshold with the map's advice")
 		end
 	end

@@ -28,10 +28,12 @@ local STYLES = {"rings", "rectangles"}
 -- the narrowest pane (tests/diskmap_issue102.test.lua).
 map.guidance = "Click a group to look inside. Double-click opens it; actions are below."
 
+-- `/map` is the whole disk and `/map/developer` one group inside it.
 function map:focus(params)
-	if params.focus ~= nil then self:setFocus(params.focus) end
+	self:setFocus(params.focus or "")
 	if params.style then self:setStyle(params.style) end
 end
+function map:location() return {focus = self.focusId ~= "" and self.focusId or nil} end
 
 function map:init()
 	local style = self.app.mapStyle
@@ -138,7 +140,7 @@ end
 function map:toggleWorth(item)
 	local resource = Locations:find(item.id)
 	self.app.basket:toggle({path = item.path, name = item.name, bytes = item.bytes, resourceId = item.id,
-		source = "Map", consequence = resource and resource.consequence})
+		source = "Map", consequence = resource and resource.advice})
 end
 
 function map:data(state)
@@ -220,19 +222,10 @@ function map:deactivate() self.refs = nil end
 local LARGEST = {limit = 100}
 
 routes.largest = ListRoute.extend({layout = {summaryId = "largestSummary", scopeNote = Scope.pages.largest,
-	details = true,
 	sections = {{list = {id = "largest", menu = "rowMenu", activate = "open", selectAction = "select", status = true}}},
 	footnote = {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."},
 }, limit = LARGEST.limit})
 
-function routes.largest:details(row)
-	local action = self.rowActions:locationAction(row.id)
-	return {title = row.name, detail = action.detail, actionTitle = action.title,
-		inspectPath = action.path}
-end
-function routes.largest:inspectSelection()
-	if self.selectedRow and self.selectedRow.path then self.app.show("folder", {path = self.selectedRow.path}) end
-end
 
 function routes.largest:present(state)
 	local rows = Locations:largest(state.disk, LARGEST.limit)

@@ -2605,6 +2605,44 @@ function M.describeFile(path, data)
     return M.describe(readFile(path), context, path)
 end
 
+-- The toolbar items a window template describes for `data`, made without
+-- any view: SwiftUI evaluates a toolbar's content again when state changes
+-- (Refresh becomes Stop while work runs), and `window:updateToolbar(items)`
+-- applies the answer in place. An item's view child (a search field) is left
+-- out; the window keeps the one it was made with.
+function M.toolbarFile(path, data)
+    local description = M.describeFile(path, data)
+    local toolbar
+    local function find(nodes)
+        for _, node in ipairs(nodes) do
+            if node.kind == "element" then
+                if node.tag == "Toolbar" then toolbar = node; return end
+                find(node.children)
+            end
+        end
+    end
+    find(expandComponents(parseXML(description.source), description))
+    if not toolbar then error("xml.toolbarFile [" .. path .. "]: no <Toolbar>", 0) end
+    local nodes = {}
+    for _, node in ipairs(toolbar.children) do
+        if node.kind == "element" then
+            table.insert(nodes, {kind = "element", tag = node.tag, attrs = node.attrs, children = {}})
+        end
+    end
+    local previous = renderData
+    renderData = description.data
+    local ok, items = pcall(function()
+        local records = compile(nodes, {}, registry, {})
+        for _, item in ipairs(records) do
+            if type(item.action) == "string" then bindActions(item, {action = item.action}, {"action"}) end
+        end
+        return records
+    end)
+    renderData = previous
+    if not ok then error("xml.toolbarFile [" .. path .. "]: " .. tostring(items), 0) end
+    return items
+end
+
 -- Render an XML file.  Path is relative to the process working directory.
 function M.renderFile(path, data, ns)
     local ok, result, refs = pcall(function()

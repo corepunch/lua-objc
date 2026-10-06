@@ -16,7 +16,7 @@ for _, id in ipairs({"whatsapp", "telegram", "telegram-desktop", "signal", "wech
 	local row = Locations:find(id)
 	t.expect(row ~= nil and row:isLeaf(), id .. " is a catalog location")
 	t.expect(row and row.path:sub(1, #"/Users/test/") == "/Users/test/", id .. " lives in the home folder")
-	t.expect(row and type(row.consequence) == "string" and row.consequence ~= "", id .. " says what to do with it")
+	t.expect(row and type(row.advice) == "string" and row.advice ~= "", id .. " says what to do with it")
 	t.assertEqual(row and row.policy, "Review", id .. " is reviewed, never cleared as a cache")
 end
 t.assertEqual(Locations:find("whatsapp").path, "/Users/test/Library/Group Containers/group.net.whatsapp.WhatsApp.shared", "paths resolve against home")

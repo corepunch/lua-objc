@@ -19,7 +19,8 @@
 --   expected  present on every Mac of this macOS version
 --   resource  catalog id that measures it
 --   feature   what several locations serve together, named once
---   leftover  {id, threshold, advice}: where interrupted or stale data stays
+--   leftover  {id, remover, threshold, advice}: where interrupted or stale
+--             data stays, and who clears it (restart, update, finder)
 --
 -- Guards, sizes and presence were verified with `ls -ldO`, `stat -f %Xf`
 -- and `diskutil apfs list` on macOS 27. A location missing from a Mac is
@@ -80,10 +81,10 @@ Filesystem.areas = {
 				what = "Where /etc, /tmp and /var really live. macOS keeps its working data, logs and databases here."},
 			{path = "/cores", name = "Core dumps", expected = true,
 				what = "Memory images written when a process crashes with core dumps enabled. Normally empty; a single dump can take gigabytes.",
-				leftover = {id = "core-dumps", threshold = 100e6, advice = "Core dumps are only useful to the developer debugging the crash. Move them to the Trash once no one needs them."}},
+				leftover = {id = "core-dumps", remover = "finder", threshold = 100e6, advice = "Core dumps are only useful to the developer debugging the crash. Move them to the Trash once no one needs them."}},
 			{path = "/macOS Install Data", name = "macOS Install Data",
 				what = "Staging for a macOS installation started from an Install macOS app. It is removed when the installation finishes; one left behind is an interrupted install.",
-				leftover = {id = "install-data", threshold = 500e6, advice = "Finish or cancel the macOS installation. If no installation is pending, restart; macOS removes an abandoned staging folder, and the Install macOS app can be downloaded again."}},
+				leftover = {id = "install-data", remover = "update", threshold = 500e6, advice = "Finish or cancel the macOS installation. If no installation is pending, restart; macOS removes an abandoned staging folder, and the Install macOS app can be downloaded again."}},
 		}},
 	{id = "data-hidden", title = "Hidden at the top of the Data volume", icon = "eye.slash",
 		summary = "Volume-wide databases macOS keeps out of sight. Most are readable only by macOS itself.",
@@ -98,7 +99,7 @@ Filesystem.areas = {
 				what = "Details of the macOS version before the last update, kept for Migration and diagnostics."},
 			{path = "/System/Volumes/Data/MobileSoftwareUpdate", name = "Update staging (Data)",
 				what = "Where macOS unpacks parts of an update on the Data volume. Normally a few megabytes; gigabytes mean an update is prepared or was interrupted.",
-				leftover = {id = "data-update-staging", threshold = 1e9, advice = "Open System Settings › General › Software Update and install or retry the pending update. macOS removes the staging when the update completes; do not delete it by hand."}},
+				leftover = {id = "data-update-staging", remover = "update", threshold = 1e9, advice = "Open System Settings › General › Software Update and install or retry the pending update. macOS removes the staging when the update completes; do not delete it by hand."}},
 		}},
 	{id = "system", title = "Inside /System", icon = "gearshape.2",
 		summary = "The operating system. Only the asset store changes between updates.",
@@ -141,7 +142,7 @@ Filesystem.areas = {
 				what = "Command Line Tools and simulator runtimes shared by every account."},
 			{path = "/Library/Updates", name = "Legacy updates", expected = true,
 				what = "Where macOS put updates before Big Sur. Today it holds only a small index; anything large here is a leftover from an old update.",
-				leftover = {id = "legacy-updates", threshold = 500e6, advice = "Current macOS no longer installs from here. Review the contents in Finder; files left from an old update can be moved to the Trash."}},
+				leftover = {id = "legacy-updates", remover = "finder", threshold = 500e6, advice = "Current macOS no longer installs from here. Review the contents in Finder; files left from an old update can be moved to the Trash."}},
 			{path = "/Library/Trial", name = "Trial experiments", expected = true, guard = "privacy",
 				what = "Settings and small models macOS downloads for features being tuned by Apple."},
 			{path = "/Library/Audio", name = "Audio", expected = true,
@@ -157,11 +158,11 @@ Filesystem.areas = {
 			{path = "/private/var/folders", name = "Per-user temporary files", expected = true, resource = "temporary",
 				what = "Each account's $TMPDIR and system caches such as Quick Look thumbnails and App Store downloads. Restarting clears stale temporary files."},
 			{path = "/private/tmp", name = "tmp", expected = true,
-				what = "Temporary files of command-line tools and installers. macOS empties it at every restart.",
-				leftover = {id = "tmp", threshold = 1e9, advice = "Restart your Mac: macOS empties /tmp at startup. Apps still running may be using these files."}},
+				what = "Temporary files of command-line tools and installers; /tmp is a link to it. macOS empties it at every restart.",
+				leftover = {id = "tmp", remover = "restart", threshold = 1e9, advice = "Restart your Mac: macOS empties /tmp at startup. Files no running app uses can also go to the Trash in Finder now; an app still writing here would lose its working files."}},
 			{path = "/private/var/tmp", name = "var/tmp", expected = true,
 				what = "Temporary files meant to survive a restart. macOS removes old ones periodically.",
-				leftover = {id = "var-tmp", threshold = 1e9, advice = "Review the files in Finder. Files older than a few days that no app is using can be moved to the Trash."}},
+				leftover = {id = "var-tmp", remover = "finder", threshold = 1e9, advice = "Review the files in Finder. Files older than a few days that no app is using can be moved to the Trash."}},
 			{path = "/private/var/log", name = "System logs", expected = true, resource = "private-logs",
 				what = "Text logs of Unix services and installs. macOS rotates them."},
 			{path = "/private/var/db/diagnostics", name = "Unified log", expected = true, resource = "unified-log",
@@ -180,7 +181,7 @@ Filesystem.areas = {
 				what = "Staging for a macOS installation in progress. macOS removes it when the installation completes or is abandoned."},
 			{path = "/private/var/MobileSoftwareUpdate", name = "Update brain", expected = true,
 				what = "The Software Update engine macOS downloads for each update.",
-				leftover = {id = "update-brain", threshold = 1e9, advice = "Install or retry the pending update in System Settings › General › Software Update. macOS replaces this with every update."}},
+				leftover = {id = "update-brain", remover = "update", threshold = 1e9, advice = "Install or retry the pending update in System Settings › General › Software Update. macOS replaces this with every update."}},
 			{path = "/private/var/db/oah", name = "Rosetta translations", guard = "sip",
 				what = "Intel apps translated for Apple silicon by Rosetta. Grows with every Intel app you run; macOS rebuilds it."},
 			{path = "/private/var/db/KernelExtensionManagement/Staging", name = "Staged system extensions", guard = "sip",

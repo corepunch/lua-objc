@@ -46,7 +46,7 @@ function Collector:dropToMark(paths)
 		if resource and self.rows:markableResource(resource) then
 			local measured = resource:measurement()
 			item = {path = path, name = resource.name, bytes = measured and measured.bytes, resourceId = resource.id,
-				source = "Dropped", consequence = resource.consequence}
+				source = "Dropped", consequence = resource.advice}
 		else
 			item = {path = path, name = path:match("([^/]+)$") or path, source = "Dropped"}
 			table.insert(pending, item)

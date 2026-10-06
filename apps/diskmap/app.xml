@@ -2,16 +2,16 @@
 	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" />
 	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" />
 	<Section title="Free Up Space">
-		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" />
-		<Page id="files" title="Large Files" icon="doc.fill" color="systemTeal" key="4" />
+		<Page id="applications" arg="filter" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" />
+		<Page id="files" arg="filter" title="Large Files" icon="doc.fill" color="systemTeal" key="4" />
 		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" />
 		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" workflow="developer" />
 		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" workflow="developer" />
 		<Page id="projects" title="Projects" icon="folder.fill.badge.gearshape" color="systemOrange" workflow="developer" />
 	</Section>
 	<Section title="Explore">
-		<Page id="map" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" />
-		<Page id="folder" title="Folder Map" icon="folder.fill" color="systemBlue" />
+		<Page id="map" arg="focus" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" />
+		<Page id="folder" arg="path" title="Folder Map" icon="folder.fill" color="systemBlue" />
 		<Page id="largest" title="Largest Locations" icon="chart.bar.fill" color="systemOrange" key="6" />
 		<Page id="kinds" title="File Types" icon="square.grid.2x2.fill" color="systemPink" key="7" />
 	</Section>
@@ -35,9 +35,9 @@
 		<Page id="games" route="workflow" title="Games" icon="gamecontroller.fill" color="systemGreen" workflow="games" />
 	</Section>
 	<Section title="Learn">
-		<Page id="guide" route="topics" title="Storage Guide" icon="book.fill" color="systemTeal" source="Guide" />
+		<Page id="guide" route="topics" arg="topic" title="Storage Guide" icon="book.fill" color="systemTeal" source="Guide" />
 		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" />
-		<Page id="help" route="topics" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
+		<Page id="help" route="topics" arg="topic" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
 	</Section>
 	<Page id="search" title="Search" icon="magnifyingglass" color="systemGray" listed="false" />
 

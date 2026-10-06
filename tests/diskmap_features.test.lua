@@ -7,16 +7,14 @@ local Keep = require("apps.diskmap.flows.Keep")
 local Manage = require("apps.diskmap.flows.Manage")
 local SheetController = require("apps.diskmap.controllers.SheetController")
 local Sheets = require("apps.diskmap.pages.Sheets")
-local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local Scans = require("apps.diskmap.models.Scans")
 local Suggestions = require("apps.diskmap.models.Suggestions")
 local model = Store.new("/Users/test")
-for id, rule in pairs(Rules) do
-	t.expect(Locations:find(id) ~= nil, "rule has a known resource: " .. id)
-	model.measurements[id] = {bytes = rule.threshold - 1, status = "complete"}
+for _, row in ipairs(Locations:leaves()) do
+	if row.threshold then model.measurements[row.id] = {bytes = row.threshold - 1, status = "complete"} end
 end
 t.assertEqual(#Suggestions:ranked(), 0, "below-threshold resources produce no suggestions")
-model.measurements.simulators.bytes = Rules.simulators.threshold
+model.measurements.simulators.bytes = Locations:find("simulators").threshold
 local suggestions = Suggestions:ranked()
 t.assertEqual(#suggestions, 1, "threshold boundary includes one recognized resource")
 t.assertEqual(suggestions[1].id, "simulators", "simulator knowledge is selected")

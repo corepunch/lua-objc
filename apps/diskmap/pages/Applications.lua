@@ -51,6 +51,7 @@ routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sec
 	end,
 	-- File Types and Clean Up open the page on one filter.
 	focus = function(page, params) page.filterIndex = params.filter and assert(Applications.filters:index(params.filter), "Unknown application filter") or 1 end,
+	location = function(page) return {filter = page.filterIndex ~= 1 and Applications.filters[page.filterIndex] or nil} end,
 	unusedFilter = function(page) page.filterIndex = 2 end,
 	markHigh = function(page)
 		return page.rowActions:bulk(page.visibleLeftovers or {}, function(row) return row.tier == "high" end, Applications.leftoverItem)

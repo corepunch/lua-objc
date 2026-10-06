@@ -28,9 +28,11 @@ t.assertEqual(xcode[1].bytes, 8.5e9 + 4096, "runtime total includes MobileAsset 
 t.assertEqual(#Suggestions:ranked(), 0, "installed runtimes never become cleanup suggestions")
 for _, id in ipairs({"simulators", "documentation-assets", "siri-assets-6", "dictation-1", "voices-1", "codex-plugins", "opencode-other"}) do model.measurements[id] = {bytes = 11e9, status = "complete"} end
 local candidates = {}; for _, row in ipairs(Suggestions:ranked()) do candidates[row.id] = row end
-t.expect(candidates.simulators and candidates["documentation-assets"] and candidates["siri-assets-6"], "devices, offline documentation and Siri are actionable review candidates")
-t.assertEqual(candidates["siri-assets-6"].impact, "Needs review", "protected assets only suggest review")
-t.expect(candidates["codex-plugins"] and candidates["opencode-other"], "opaque agent storage surfaces for review")
+t.expect(candidates.simulators and candidates["documentation-assets"] and candidates["voices-1"], "devices, offline documentation and downloaded voices are actionable review candidates")
+t.expect(not candidates["siri-assets-6"] and not candidates["dictation-1"], "Siri and Dictation assets are never suggested: turning the feature off promises nothing")
+local context = {}; for _, row in ipairs(Suggestions:context()) do context[row.id] = row end
+t.expect(context["siri-assets-6"] and context["dictation-1"], "Siri and Dictation assets are system-managed context instead")
+t.expect(not candidates["codex-plugins"] and not candidates["opencode-other"], "opaque agent storage has no threshold and is never suggested")
 model.kept["system-data"] = true
 t.expect(not Locations:find("siri-assets-6"):validateTrash(), "system asset has no trash path")
 local fixture = {{agent = "codex", name = "state_99.sqlite", path = "/Users/test/.codex/state_99.sqlite"}, {agent = "opencode", name = "opencode.db-wal", path = "/Users/test/.local/share/opencode/opencode.db-wal"}}
@@ -92,10 +94,8 @@ t.expect(not controller.stock.busy and controller.stock.loaded, "and leaves the 
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
-local categoryRefreshes = 0
 local function management(open)
 	return require("tests.diskmap_sheet").new("management", {model = model, service = service, scanning = function() return false end,
-		rescan = function() categoryRefreshes = categoryRefreshes + 1 end,
 		keep = function(id) model.kept[id] = not model.kept[id] end, open = open or function() end})
 end
 local manager = management()
@@ -110,15 +110,10 @@ t.assertEqual(manager.sheet.className, "LuaPanel", "management uses a native she
 t.assertEqual(manager.refs.tabs.className, "LuaTabView", "impact tabs are native")
 t.assertEqual(manager.refs.categoryName.text, "Developer", "sheet identifies the managed category")
 t.assertEqual(manager.refs.categoryText, nil, "the sheet uses its rows instead of an explanation")
-t.assertEqual(manager.refs.categoryKeep.title, "Keep this resource", "sheet offers category Keep")
-t.expect(manager.refs.categoryRefresh.enabled, "category can be remeasured from its sheet")
-ns._invokeAction(manager.refs.categoryRefresh)
-t.assertEqual(categoryRefreshes, 1, "category sheet refresh invokes a new measurement")
-ns._invokeAction(manager.refs.categoryKeep)
-t.expect(model.kept.developer, "category sheet Keep applies to the category")
-t.assertEqual(manager.refs.categoryKeep.title, "Stop keeping this resource", "category Keep label updates in place")
-ns._invokeAction(manager.refs.categoryKeep)
-t.expect(not model.kept.developer, "category sheet can stop keeping the category")
+-- The header is the title alone: the toolbar refreshes, the category's own
+-- row menu keeps it, and a second "Keep" there read as the row's.
+t.expect(manager.refs.categoryKeep == nil and manager.refs.categoryRefresh == nil, "the sheet header has no buttons")
+t.expect(manager.refs.manage.hidden, "with no selection the footer offers no row action")
 local function resourceAt(index)
 	return bridge._tableCell(manager.refs.rows1, 0, index).textField.stringValue
 end
@@ -139,7 +134,16 @@ for index = 0, manager.refs.rows1.rowCount - 1 do
 	previousImpact = impact
 end
 manager.selectedId = "runtime-assets"; manager:draw()
-t.expect(manager.refs.manage.enabled, "runtime can be revealed for inspection")
+t.expect(manager.refs.reveal.enabled, "runtime can be revealed for inspection")
+-- The selected row's own action is a text button beside Show in Finder,
+-- never a bare symbol between labelled buttons.
+manager.selectedId = "devices"; manager:draw()
+t.expect(not manager.refs.manage.hidden and manager.refs.manage.title == "Open Xcode", "a row with its own action names it in the footer")
+t.expect(manager.refs.manage.image == nil, "the footer action is text, not a symbol")
+local manageX, revealX, keepX = manager.refs.manage.frame.origin.x, manager.refs.reveal.frame.origin.x, manager.refs.keep.frame.origin.x
+t.expect(manageX < revealX and revealX < keepX, "row actions read left to right before Done")
+t.assertEqual(manager.refs.keep.title, "Keep", "Keep is one title-case word")
+manager.selectedId = "runtime-assets"; manager:draw()
 t.expect(manager.refs.status.text:find("iOSSimulatorRuntime", 1, true) ~= nil, "selected resource shows its location")
 for _, size in ipairs({{800, 560}, {1100, 780}}) do
 	manager.sheet:resize(size[1], size[2]); manager.sheet:layout()

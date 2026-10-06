@@ -22,7 +22,7 @@ return {
 			steps = {
 				"Open Diskmap. Measuring starts at once, and each page shows its progress.",
 				"To measure again after freeing space, choose Storage › Refresh or click Refresh in the toolbar.",
-				"To stop a measurement, choose Storage › Stop Measuring.",
+				"To stop a measurement, choose Storage › Stop Measuring or click Stop, which takes Refresh’s place in the toolbar while Diskmap measures.",
 				"To keep sizes current, choose Diskmap › Settings and turn on “Refresh while Diskmap is open”.",
 			},
 			note = "Photos, Music and TV libraries are skipped unless you turn on “Include media libraries” in Settings."},
@@ -94,12 +94,14 @@ return {
 	{id = "clean", title = "Free up space safely", icon = "sparkles", topics = {
 		{id = "labels", title = "What cleanup labels mean", icon = "checkmark.shield",
 			show = "cleanup", keywords = "rebuildable review essential system managed safe delete policy",
-			summary = "Each location says how safe it is to remove, and Diskmap never adds different kinds together.",
+			summary = "Each location says what it is and who removes it, and Diskmap never adds different kinds together.",
 			steps = {
-				"Rebuildable: caches and build products the owner recreates when needed.",
-				"Needs review: data only you can judge, such as backups, downloads or old simulators.",
-				"Essential: data an app needs to work, such as its Application Support folder.",
-				"System managed: storage macOS controls, such as snapshots and swap.",
+				"Rebuildable: caches and build products Diskmap moves to the Trash or asks their owner to clear; the owner recreates them.",
+				"Clear in its app: caches and downloads an app or System Settings removes; the row says where.",
+				"Restart: temporary files, swap and update staging macOS clears itself at the next restart or once a pending update completes.",
+				"Needs review: data only you can judge, such as backups, downloads, chat media or old simulators.",
+				"Essential: data an app needs to work, such as installed simulator runtimes.",
+				"System managed: storage macOS controls, such as snapshots and downloaded system assets; context only.",
 			},
 			note = "Diskmap never sums rebuildable and reviewable storage into one “safe” number."},
 		{id = "recommendations", title = "Review cleanup suggestions", icon = "sparkles",
@@ -107,7 +109,7 @@ return {
 			summary = "Clean Up lists what you can remove and everything it checked and found fine.",
 			steps = {
 				"Choose Go › Clean Up or click Clean Up in the toolbar.",
-				"Start with the rebuildable suggestions, then work through your decisions from the top: they are ranked by what they could recover.",
+				"Start with Clear now, then what each app clears, then what a restart clears; your decisions come last, ranked by what they could recover.",
 				"Open a suggestion to see its locations, the consequence of removing it and how to do it.",
 			},
 			note = "The checklist at the end shows known space hogs that were measured and are within their limits, so no suggestion also tells you something."},

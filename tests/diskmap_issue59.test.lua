@@ -125,7 +125,7 @@ t.assertEqual(app:badges().developer, developerWorkflow:presentation().total, "t
 
 -- Clean Up lists read by recovery score: eligible bytes x confidence / effort.
 local cleanup = Suggestions:presentation()
-for _, list in ipairs({cleanup.rebuildable, cleanup.decisions}) do
+for _, list in ipairs({cleanup.now, cleanup.app, cleanup.restart, cleanup.decisions}) do
 	for index = 2, #list do t.expect(list[index - 1].score >= list[index].score, "cleanup suggestions are ranked by recovery score") end
 end
 t.expect(#cleanup.decisions > 1, "the mock has suggestions to order")

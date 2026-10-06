@@ -2003,6 +2003,27 @@ etlua, never assembled in controller code:
 </ToolbarItem>
 ```
 
+A toolbar's content follows state the SwiftUI way: the template says which
+button an item is, and the controller describes the window again when that
+state changes. The item keeps its place; only its label, tooltip, symbol and
+action change. Which items the toolbar has is fixed when the window is made.
+
+```xml
+<% if scanning then %>
+<ToolbarItem id="measure" label="Stop" icon="stop.circle" action="cancel" />
+<% else %>
+<ToolbarItem id="measure" label="Refresh" icon="arrow.clockwise" action="refresh" />
+<% end %>
+```
+
+```lua
+-- On scan start and finish, not per progress tick:
+window:updateToolbar(xml.toolbarFile("app/views/layouts/Window.etlua", data))
+```
+
+`xml.toolbarFile` makes no views: an item's view child (a search field) is
+left out and the window keeps its own.
+
 Toolbar `action` strings are resolved to Controller methods via an ACTIONS table:
 
 ```lua

@@ -223,7 +223,7 @@ function Rows:resource(id)
 		table.insert(items, {title = "Open " .. row.name .. "…", systemImage = "list.bullet", action = function() self.app.open(id) end})
 	else
 		local detail = Locations:details(id)
-		if row.action ~= "finder" and detail and row:destination().page ~= "projects" then
+		if detail and detail.manageTitle and row:destination().page ~= "projects" then
 			table.insert(items, {title = detail.manageTitle, disabled = not detail.canManage,
 				action = function()
 					if Locations:opensElsewhere(id) then self.app.open(id); return end
@@ -233,7 +233,7 @@ function Rows:resource(id)
 		if self:markableResource(row) then
 			local measured = Model.db.measurements[id]
 			table.insert(items, self:mark({path = row.path, name = row.name, bytes = measured and measured.bytes, resourceId = id,
-				source = (row:parent() or row).name, consequence = row.consequence}))
+				source = (row:parent() or row).name, consequence = row.advice}))
 		end
 		if row.path then
 			table.insert(items, self:quickLookItem(row.path))

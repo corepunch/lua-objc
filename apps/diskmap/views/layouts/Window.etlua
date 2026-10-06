@@ -67,8 +67,11 @@
     <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" />
     <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" />
     <ToolbarSpacer />
-    <ToolbarItem id="refresh" label="Refresh" icon="arrow.clockwise" tooltip="Measure all storage again" action="refresh" />
-    <ToolbarItem id="cancel" label="Stop" icon="stop.circle" tooltip="Stop measuring" action="cancel" />
+    <% if scanning then %>
+    <ToolbarItem id="measure" label="Stop" icon="stop.circle" tooltip="Stop measuring" action="cancel" />
+    <% else %>
+    <ToolbarItem id="measure" label="Refresh" icon="arrow.clockwise" tooltip="Measure all storage again" action="refresh" />
+    <% end %>
     <ToolbarItem id="reclaim" label="Clean Up" icon="sparkles" tooltip="Suggested cleanups" action="reclaim" />
     <ToolbarItem id="review" label="Marked" icon="tray.full" tooltip="Review items marked for cleanup" action="review" />
     <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Settings" action="settings" />

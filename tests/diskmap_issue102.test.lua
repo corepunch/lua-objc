@@ -52,16 +52,17 @@ visible("updates", "Updates")
 -- suggestion; amounts say whether they could be recovered or are to review.
 app:show("cleanup")
 local cleanup = app.page
-t.expect(cleanup.refs.selectionDetails.hidden, "Clean Up has no empty inspector")
+t.expect(cleanup.refs.selectionDetails == nil, "Clean Up has no selection panel")
 local data = Suggestions:presentation(app.env:sources())
 local top = data.lead
-for _, row in ipairs(data.rebuildable) do t.expect(row.score <= top.score, "the lead outranks every rebuildable row: " .. row.id) end
-for _, row in ipairs(data.decisions) do t.expect(row.score <= top.score, "and every decision: " .. row.id) end
+for _, section in ipairs(Suggestions.sections) do
+	for _, row in ipairs(data[section]) do t.expect(row.score <= top.score, "the lead outranks every " .. section .. " row: " .. row.id) end
+end
 local lead = cleanup.refs
 t.expect(lead.decisionAction ~= nil and lead.decisionAction.enabled, "the lead has its action")
 t.assertEqual(lead.decisionAmount.stringValue, top.size, "and its amount")
-for _, list in ipairs({data.rebuildable, data.decisions}) do
-	for _, row in ipairs(list) do
+for _, section in ipairs(Suggestions.sections) do
+	for _, row in ipairs(data[section]) do
 		if row.eligibleBytes and row.eligibleBytes > 0 then
 			t.assertEqual(row.shareText, "could recover", row.id .. ": a proven amount says could recover")
 			t.assertEqual(row.shownBytes, row.eligibleBytes, row.id .. ": and shows the recoverable bytes")

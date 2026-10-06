@@ -1,5 +1,5 @@
 local D = require("apps.diskmap.catalog.Definitions")
-local item, group, cache, xcode, system, assets, tool = D.item, D.group, D.cache, D.xcode, D.system, D.assets, D.tool
+local item, group = D.item, D.group
 return function()
 	return group("other", "Other files", "Measured files outside recognized locations", "folder.fill", "systemBrown", {
 	item("home-other", "Other home files", "Files and folders outside the named home categories", "~"),

@@ -53,6 +53,34 @@ static NSToolbarItemIdentifier toolbar_item_identifier(NSString *identifier) {
 	return identifier;
 }
 
+/* The parts of a button item that its description can change: label, tooltip,
+ * symbol and action. Applied when the item is made and again when the window
+ * template describes it anew (bridge_NSWindow_updateToolbar). */
+static void toolbar_button_apply(NSToolbarItem *ti, NSDictionary *item) {
+	ti.label = item[@"label"] ?: ti.itemIdentifier;
+	ti.paletteLabel = ti.label;
+	ti.toolTip = item[@"tooltip"];
+	NSImage *img = item[@"icon"]
+		? [NSImage imageWithSystemSymbolName:item[@"icon"] accessibilityDescription:ti.label]
+		: nil;
+	/* The item and its button share one registration; storing it where it
+	 * already is would dispose it. */
+	LuaReg *actionReg = item[@"actionReg"];
+	if (actionReg && objc_getAssociatedObject(ti, &kKeys[kCallbackKey]) != actionReg)
+		lua_reg_store(ti, &kKeys[kCallbackKey], actionReg);
+	if ([ti.view isKindOfClass:NSButton.class]) {
+		NSButton *btn = (NSButton *)ti.view;
+		btn.image = img;
+		btn.imagePosition = img ? NSImageOnly : NSNoImage;
+		btn.toolTip = ti.toolTip;
+		[btn sizeToFit];
+		if (actionReg && objc_getAssociatedObject(btn, &kKeys[kCallbackKey]) != actionReg)
+			lua_reg_store(btn, &kKeys[kCallbackKey], actionReg);
+	} else if (img) {
+		ti.image = img;
+	}
+}
+
 @interface LuaToolbarDelegate : NSObject <NSToolbarDelegate>
 @property (nonatomic, strong) NSArray *items;
 /* Items contributed by the visible navigation page, and the toolbar items
@@ -226,27 +254,14 @@ static BOOL page_item_is_leading(NSDictionary *item) {
 			}
 
 			// ── Button / image item ───────────────────────────────────────
-			NSImage *img = nil;
-			if (item[@"icon"]) {
-				img = [NSImage imageWithSystemSymbolName:item[@"icon"]
-										accessibilityDescription:ti.label];
-			}
-
 			if (actionReg) {
 				NSButton *btn = [[NSButton alloc] initWithFrame:NSZeroRect];
 				btn.bezelStyle = NSBezelStyleToolbar;
-				btn.image = img;
-				btn.imagePosition = img ? NSImageOnly : NSNoImage;
-				btn.toolTip = ti.toolTip;
-				[btn sizeToFit];
 				btn.target = [LuaButtonTarget shared];
 				btn.action = @selector(onAction:);
-				lua_reg_store(btn, &kKeys[kCallbackKey], actionReg);
 				ti.view = btn;
-			} else if (img) {
-				ti.image = img;
 			}
-
+			toolbar_button_apply(ti, item);
 			return ti;
 		}
 	}
@@ -351,6 +366,35 @@ static LuaToolbarDelegate *window_install_toolbar(NSWindow *window, NSArray *ite
 	window.toolbarStyle = NSWindowToolbarStyleUnified;
 	objc_setAssociatedObject(window, &kKeys[kToolbarDelegateKey], delegate, OBJC_ASSOCIATION_RETAIN);
 	return delegate;
+}
+
+/* SwiftUI evaluates a toolbar's content again when state changes: Refresh
+ * becomes Stop while a measurement runs. The window template is described
+ * again (xml.toolbarFile) and each button item takes its new label, tooltip,
+ * symbol and action in place, keeping its position and AppKit's glass group.
+ * Which items the toolbar has is fixed when the window is made; an item with
+ * a view of its own (a search field) keeps that view. */
+static int bridge_NSWindow_updateToolbar(lua_State *L) {
+	NSWindow *window = lua_objc_check_object(L, 1, [NSWindow class], "Window");
+	LuaToolbarDelegate *delegate = objc_getAssociatedObject(window, &kKeys[kToolbarDelegateKey]);
+	if (!delegate) return luaL_error(L, "updateToolbar: the window has no toolbar");
+	NSArray<NSDictionary *> *described = toolbar_items_from_lua(L, 2);
+	NSMutableArray *items = [delegate.items mutableCopy];
+	if (described.count != items.count)
+		return luaL_error(L, "updateToolbar: a toolbar keeps its items; only their content changes");
+	for (NSUInteger index = 0; index < items.count; index++) {
+		NSDictionary *item = described[index];
+		if (![item[@"id"] isEqualToString:items[index][@"id"]])
+			return luaL_error(L, "updateToolbar: a toolbar keeps its items; only their content changes");
+		if (items[index][@"view"]) continue;
+		items[index] = item;
+		NSToolbarItemIdentifier identifier = toolbar_item_identifier(item[@"id"]);
+		for (NSToolbarItem *ti in window.toolbar.items)
+			if ([ti isKindOfClass:LuaToolbarItem.class] && [ti.itemIdentifier isEqualToString:identifier])
+				toolbar_button_apply(ti, item);
+	}
+	delegate.items = items;
+	return 0;
 }
 
 /* SwiftUI on macOS puts a navigation destination's toolbar items, and the

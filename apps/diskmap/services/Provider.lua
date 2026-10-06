@@ -70,11 +70,15 @@ function Provider.launch(arguments, service)
 	end
 	local manifest = require("data.manifest").load("apps/diskmap/app.xml")
 	if launch.isolated and not launch.page then error("--isolated requires --page=<id>", 0) end
-	if launch.page and not manifest.pages[launch.page] then
+	-- `--page` is a location (lua/data/location.lua): `--page=files`,
+	-- `--page=/help/shortcuts`, `--page=/folder//Users/me/Downloads`.
+	if launch.page and launch.page:sub(1, 1) ~= "/" then launch.page = "/" .. launch.page end
+	if launch.page and not manifest.pages[launch.page:match("^/([^/?]*)")] then
 		local ids = {}
 		for _, page in ipairs(manifest.order) do table.insert(ids, page.id) end
 		error("Unknown Diskmap page: " .. launch.page .. ". Valid pages: " .. table.concat(ids, ", "), 0)
 	end
+	if launch.page then require("data.location").parse(launch.page, manifest.pages) end
 	launch.service = service or Provider.select(arguments)
 	return launch
 end

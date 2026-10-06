@@ -1,4 +1,5 @@
 local Categories = require("apps.diskmap.models.Categories")
+local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local Filesystem = require("apps.diskmap.helpers.Filesystem")
 local Guide = require("apps.diskmap.helpers.Guide")
@@ -13,7 +14,7 @@ local routes = {}
 local SOURCES = {
 	Guide = {topic = "topics/GuideTopic", anchor = "topic_",
 		summary = "Where macOS keeps things, why they grow and what is safe to do about them. Sizes are measured on this Mac.",
-		present = function() return Guide.presentation(Categories.measured) end,
+		present = function() return Guide.presentation(Categories.measured, Locations.advice) end,
 		follow = function(self, topic) return topic.open and function() self.app.open(topic.open) end end},
 	Help = {topic = "topics/HelpTopic", anchor = "help_",
 		summary = "How to find what uses your storage and free up space safely. To search help from anywhere, use the Help menu.",
@@ -34,6 +35,7 @@ function routes.topics:before() self.book = SOURCES[self.params.source] end
 -- Search and the Help menu open the page on one topic: its disclosure open,
 -- scrolled to the top of the page once it is drawn.
 function routes.topics:focus(params) self.opened, self.reveal, self.answer = params.topic, params.topic, nil end
+function routes.topics:location() return {topic = self.opened} end
 
 function routes.topics:rendered(refs)
 	if not self.reveal then return end

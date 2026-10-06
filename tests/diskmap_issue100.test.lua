@@ -13,10 +13,10 @@ local Suggestions = require("apps.diskmap.models.Suggestions")
 t.expect(page.layout.tiles == nil, "Clean Up has no summary tiles ahead of its lists")
 local order = {}
 for _, section in ipairs(page.layout.sections) do table.insert(order, section.id) end
-t.assertEqual(table.concat(order, ","), "section_rebuildable,section_decisions,section_context,section_checked",
-	"rebuildable, then decisions, then collapsed context and checked inventory")
-t.expect(page.layout.sections[3].collapsed and page.layout.sections[4].collapsed, "context and the checked inventory are collapsed by default")
-t.assertEqual(page:details(nil).detail, "", "an empty inspector stays compact")
+t.assertEqual(table.concat(order, ","), "section_now,section_app,section_restart,section_decisions,section_context,section_checked",
+	"clear now, in its app, restart, then decisions, then collapsed context and checked inventory")
+t.expect(page.layout.sections[5].collapsed and page.layout.sections[6].collapsed, "context and the checked inventory are collapsed by default")
+t.expect(page.details == nil and page.layout.details == nil, "Clean Up has no selection panel")
 
 -- Group recommendations agree with their children's eligibility.
 local model = Store.new("/Users/test")
@@ -110,9 +110,9 @@ local Scan = require("apps.diskmap.services.Scan")
 local pm = Store.new("/Users/test")
 Scan.register(pm, {
 	{id = "cm1", name = "CMake build output · engine", path = "/Users/test/Developer/engine/build", policy = "Rebuildable", action = "trash",
-		artifact = "CMake build output", project = "/Users/test/Developer/engine", projectName = "engine", reviewThreshold = 500e6},
+		artifact = "CMake build output", project = "/Users/test/Developer/engine", projectName = "engine", threshold = 500e6},
 	{id = "cm2", name = "CMake build output · tools", path = "/Users/test/Developer/tools/build", policy = "Rebuildable", action = "trash",
-		artifact = "CMake build output", project = "/Users/test/Developer/tools", projectName = "tools", reviewThreshold = 500e6},
+		artifact = "CMake build output", project = "/Users/test/Developer/tools", projectName = "tools", threshold = 500e6},
 })
 pm.measurements.cm1 = {status = "complete", bytes = 400e6}
 pm.measurements.cm2 = {status = "complete", bytes = 300e6}

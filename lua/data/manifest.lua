@@ -14,7 +14,8 @@
 -- is kept in `page.attrs`, the route's `self.params` (`workflow="music"`).
 -- `sidebar="Dev tools"` is a shorter name for the sidebar row;
 -- `listed="false"` keeps a page out of the sidebar and the Go menu (a page
--- opened from elsewhere).
+-- opened from elsewhere). `arg="topic"` names the param a page's location
+-- carries in its path, `/help/shortcuts` (lua/data/location.lua).
 --
 -- `<App routes="pages">` names the module of the app's routes, a module path
 -- inside the app; it is `routes` when omitted. `<App controller="Controller">`

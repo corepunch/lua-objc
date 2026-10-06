@@ -3,8 +3,8 @@ local Filesystem = require("apps.diskmap.knowledge.Filesystem")
 -- Where interrupted updates, installs and crashes leave data behind, taken
 -- from the locations knowledge/Filesystem marks `leftover`. Each becomes a
 -- resource with the map's explanation, so a half-finished update shows up
--- in Clean Up once it passes its threshold, and the advice names the owner's
--- way to finish or discard it.
+-- in Clean Up once it passes its threshold, under the remover the map names
+-- (a restart, the pending update, or Finder), with the map's advice.
 return function()
 	local children = {}
 	for _, area in ipairs(Filesystem.areas) do
@@ -12,7 +12,7 @@ return function()
 			local leftover = location.leftover
 			if leftover then
 				table.insert(children, (D.item(leftover.id, location.name, location.what, location.path,
-					{reviewThreshold = leftover.threshold, consequence = leftover.advice})))
+					{nature = "leftover", remover = leftover.remover, threshold = leftover.threshold, advice = leftover.advice})))
 			end
 		end
 	end

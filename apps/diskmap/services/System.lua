@@ -111,13 +111,13 @@ function System.openOwner(owner)
 	end)
 end
 function System.confirmTrash(row, parent)
-	return ns.Alert {parent = parent, title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.consequence, buttons = {"Cancel", "Move to Trash"}} == 2
+	return ns.Alert {parent = parent, title = "Move " .. row.name .. " to Trash?", message = row.path .. "\n\n" .. row.advice, buttons = {"Cancel", "Move to Trash"}} == 2
 end
 function System.confirmEmptyTrash(row, size, parent)
 	return ns.Alert {parent = parent, title = "Permanently empty Trash?", message = "This permanently removes " .. size .. " of files in Trash on all mounted volumes. This cannot be undone.", buttons = {"Cancel", "Empty Trash"}} == 2
 end
 function System.confirmOwnerCleanup(row, size, parent)
-	return ns.Alert {parent = parent, title = "Clear " .. row.name .. "?", message = "Measured location: " .. row.path .. "\nMeasured allocation: " .. size .. "\n\n" .. (row.consequence or "The owning tool will clear its cache."), buttons = {"Cancel", "Clear Cache"}} == 2
+	return ns.Alert {parent = parent, title = "Clear " .. row.name .. "?", message = "Measured location: " .. row.path .. "\nMeasured allocation: " .. size .. "\n\n" .. (row.advice or "The owning tool will clear its cache."), buttons = {"Cancel", "Clear Cache"}} == 2
 end
 function System.runOwnerCleanup(commandId, home, completion)
 	local commands = {
@@ -321,20 +321,20 @@ function System.discoverEntries(home, completion, projectRoots)
 								end
 								local project = Projects.displayName(parent, repositoryRoot(parent, root))
 								local rebuildable = proven and rule.rebuildable == true
-								table.insert(discovered, {id = hexId(path), name = rule.name .. " · " .. project, subtitle = rule.subtitle, path = path,
-									policy = rebuildable and "Rebuildable" or "Review", action = rebuildable and "trash" or "finder",
-									consequence = rebuildable and rule.consequence or nil, proof = proven and "marker and contents" or "marker",
-									marker = marked, reviewThreshold = 500e6, icon = "shippingbox", color = "systemOrange",
-									project = parent, projectName = project, artifact = rule.name})
+								table.insert(discovered, Locations.classify({id = hexId(path), name = rule.name .. " · " .. project, subtitle = rule.subtitle, path = path,
+									nature = "build", remover = rebuildable and "trash" or "finder",
+									advice = rebuildable and rule.advice or nil, proof = proven and "marker and contents" or "marker",
+									marker = marked, threshold = 500e6, icon = "shippingbox", color = "systemOrange",
+									project = parent, projectName = project, artifact = rule.name}))
 								break
 							end
 						end
 					elseif not location.rules and name:match("%.app$") then
 						local installer = name:match("^Install macOS .+%.app$")
-						table.insert(discovered, {id = hexId(path), name = name, subtitle = installer and "Full macOS installer app" or "Installed application",
-							parentId = location.parentId, path = path, fileIcon = path, policy = "Review", action = "finder", reviewThreshold = installer and 5e9 or 1e9,
-							consequence = installer and "Each installer is usually large. Keep it if you still need the installer; macOS Software Update can download it again later."
-								or "Review this application in Finder or its own uninstaller. Diskmap will not remove installed applications.", icon = "app.fill", color = "systemBlue"})
+						table.insert(discovered, Locations.classify({id = hexId(path), name = name, subtitle = installer and "Full macOS installer app" or "Installed application",
+							parentId = location.parentId, path = path, fileIcon = path, nature = installer and "download" or "appData", remover = "finder", threshold = installer and 5e9 or 1e9,
+							advice = installer and "Each installer is usually large. Keep it if you still need the installer; macOS Software Update can download it again later."
+								or "Review this application in Finder or its own uninstaller. Diskmap will not remove installed applications.", icon = "app.fill", color = "systemBlue"}))
 					end
 				end
 			end

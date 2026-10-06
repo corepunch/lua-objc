@@ -36,9 +36,11 @@ function Controller.page(id)
 end
 
 -- `show(id)` mounts the destination; the root controller owns page lifetime.
--- Back and forward follow destinations the way a browser follows pages.
-function Controller.new(show)
-	return setmetatable({show = show, history = {}, position = 0, badges = {}, workflows = {}}, Controller)
+-- Back and forward follow locations the way a browser follows URLs
+-- (lua/data/location.lua): `/folder//Users/me` and `/folder//Users/me/Music`
+-- are two visits, and `go(location)` shows one again.
+function Controller.new(show, go)
+	return setmetatable({show = show, go = go, history = {}, position = 0, badges = {}, workflows = {}}, Controller)
 end
 
 function Controller:list()
@@ -97,15 +99,21 @@ function Controller:index(id)
 	end
 end
 
+-- Records where the window is. A new location is a visit, and drops the
+-- visits Forward would have returned to, as in a browser; a location reached
+-- by Back or Forward (`restoring`) takes its entry's place.
+function Controller:visit(location, restoring)
+	if self.history[self.position] == location then return end
+	if restoring and self.position > 0 then self.history[self.position] = location; return end
+	for index = #self.history, self.position + 1, -1 do table.remove(self.history, index) end
+	table.insert(self.history, location)
+	self.position = #self.history
+end
+
 -- Keeps the sidebar selection in step with navigation that starts elsewhere,
--- such as "Show All" on the overview, and records the visit.
-function Controller:select(id, fromHistory)
+-- such as "Show All" on the overview.
+function Controller:select(id)
 	self.current = id
-	if not fromHistory and self.history[self.position] ~= id then
-		for index = #self.history, self.position + 1, -1 do table.remove(self.history, index) end
-		table.insert(self.history, id)
-		self.position = #self.history
-	end
 	-- A page without a row (Search) leaves no row selected.
 	local index = self:index(id)
 	if self.refs and self.refs.sidebar.documentView.selectedRow ~= (index or -1) then
@@ -121,14 +129,14 @@ function Controller:canGoForward() return self.position < #self.history end
 function Controller:back()
 	if not self:canGoBack() then return false end
 	self.position = self.position - 1
-	self.show(self.history[self.position], true)
+	self.go(self.history[self.position], true)
 	return true
 end
 
 function Controller:forward()
 	if not self:canGoForward() then return false end
 	self.position = self.position + 1
-	self.show(self.history[self.position], true)
+	self.go(self.history[self.position], true)
 	return true
 end
 

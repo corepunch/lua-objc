@@ -113,7 +113,7 @@ local topics = 0
 for _, chapter in ipairs(Guide.chapters) do
 	for _, topic in ipairs(chapter.topics) do
 		topics = topics + 1
-		t.expect(topic.what and topic.why and topic.action and topic.summary, "guide topic is complete: " .. topic.id)
+		t.expect(topic.what and topic.why and Guide.action(topic, Locations.advice) and topic.summary, "guide topic is complete: " .. topic.id)
 		for _, id in ipairs(topic.resources or {}) do
 			t.expect(Locations:find(id) ~= nil, "guide topic " .. topic.id .. " cites registered resource " .. id)
 		end
