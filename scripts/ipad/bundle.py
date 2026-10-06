@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 import plistlib
 import shutil
+import subprocess
+import tempfile
 
 
 def copy_tree(source, workspace, lua_only=False, runtime_only=False):
@@ -35,6 +37,25 @@ def resolve_app_and_entry(app, entry):
     if not Path(entry).is_file():
         raise ValueError(f'app entry does not exist: {entry}')
     return source.as_posix(), entry
+
+
+def bundle_icon(app, bundle, sdk, minimum, device_family):
+    """Let Apple's asset compiler supply icon sizes and bundle metadata."""
+    assets = Path(app) / 'Assets.xcassets'
+    if not assets.is_dir():
+        shutil.copy2('ios/LuaRuntime/AppIcon.png', bundle / 'AppIcon.png')
+        return {}
+    # A reused bundle must not retain the runtime's generic icon.
+    (bundle / 'AppIcon.png').unlink(missing_ok=True)
+    targets = ['iphone' if family == '1' else 'ipad' for family in device_family.split(',')]
+    devices = [argument for target in targets for argument in ('--target-device', target)]
+    with tempfile.TemporaryDirectory(dir=bundle.parent) as directory:
+        partial = Path(directory) / 'asset-info.plist'
+        subprocess.run(['xcrun', '--sdk', sdk, 'actool', str(assets), '--compile', str(bundle),
+                        '--platform', sdk, '--minimum-deployment-target', minimum,
+                        '--app-icon', 'AppIcon', '--output-partial-info-plist', str(partial),
+                        *devices], check=True)
+        return plistlib.loads(partial.read_bytes())
 
 
 def main():
@@ -71,8 +92,11 @@ def main():
     else:
         info.pop('UIFileSharingEnabled', None)
         info.pop('LSSupportsOpeningDocumentsInPlace', None)
+    if (Path(args.app) / 'Assets.xcassets').is_dir():
+        info.pop('CFBundleIcons', None)
+        info.pop('CFBundleIcons~ipad', None)
+    info.update(bundle_icon(args.app, bundle, args.sdk, args.minimum, args.device_family))
     (bundle / 'Info.plist').write_bytes(plistlib.dumps(info))
-    shutil.copy2('ios/LuaRuntime/AppIcon.png', bundle / 'AppIcon.png')
     workspace = bundle / 'Workspace'
     if workspace.exists():
         shutil.rmtree(workspace)

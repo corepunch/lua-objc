@@ -123,8 +123,59 @@ class ReleaseTests(unittest.TestCase):
                     'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight'})
                 self.assertEqual(info['CFBundleSupportedPlatforms'], ['iPhoneOS'])
                 self.assertEqual(Path('Test.app/Workspace/apps/test/init.lua').read_text(), 'return App')
+                self.assertEqual(Path('Test.app/AppIcon.png').read_bytes(), b'icon')
             finally:
                 os.chdir(previous)
+
+    def test_app_icon_catalog_replaces_host_icon_for_device_and_simulator(self):
+        previous = Path.cwd()
+        for sdk, families, targets in (('iphoneos', '1', ['iphone']),
+                                       ('iphonesimulator', '1,2', ['iphone', 'ipad'])):
+            with self.subTest(sdk=sdk), tempfile.TemporaryDirectory() as directory:
+                try:
+                    os.chdir(directory)
+                    Path('apps/test/Assets.xcassets/AppIcon.appiconset').mkdir(parents=True)
+                    Path('apps/test/init.lua').write_text('return App')
+                    Path('ios/LuaRuntime').mkdir(parents=True)
+                    host_info = {'CFBundleIcons': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['HostIcon']}},
+                                 'CFBundleIcons~ipad': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['HostIcon']}}}
+                    Path('ios/LuaRuntime/Info.plist').write_bytes(plistlib.dumps(host_info))
+                    Path('ios/LuaRuntime/AppIcon.png').write_bytes(b'host-icon')
+                    Path('runtime').write_bytes(b'compiled-binary')
+                    Path('Test.app').mkdir()
+                    Path('Test.app/AppIcon.png').write_bytes(b'old-host-icon')
+                    icon_info = {'CFBundleIcons': {'CFBundlePrimaryIcon': {
+                        'CFBundleIconName': 'AppIcon', 'CFBundleIconFiles': ['AppIcon60x60']}}}
+                    def compile_icon(command, check):
+                        self.assertTrue(check)
+                        self.assertEqual(command[:4], ['xcrun', '--sdk', sdk, 'actool'])
+                        self.assertEqual(command[4], 'apps/test/Assets.xcassets')
+                        self.assertEqual(command[command.index('--platform') + 1], sdk)
+                        self.assertEqual(command[command.index('--minimum-deployment-target') + 1], '26.5')
+                        self.assertEqual(command[command.index('--app-icon') + 1], 'AppIcon')
+                        self.assertEqual([command[i + 1] for i, value in enumerate(command)
+                                          if value == '--target-device'], targets)
+                        Path(command[command.index('--output-partial-info-plist') + 1]).write_bytes(plistlib.dumps(icon_info))
+                        (Path(command[command.index('--compile') + 1]) / 'Assets.car').write_bytes(b'compiled-icons')
+                    arguments = ['bundle.py', '--binary', 'runtime', '--bundle', 'Test.app',
+                                 '--sdk', sdk, '--identifier', 'org.luaobjc.test', '--minimum', '26.5',
+                                 '--app', 'test', '--entry', 'test/init.lua',
+                                 '--display-name', 'Test', '--device-family', families]
+                    with patch('sys.argv', arguments), patch('bundle.subprocess.run', side_effect=compile_icon) as compiler:
+                        bundle_app()
+                    compiler.assert_called_once()
+                    info = plistlib.loads(Path('Test.app/Info.plist').read_bytes())
+                    self.assertEqual(info['CFBundleIcons'], icon_info['CFBundleIcons'])
+                    self.assertNotIn('CFBundleIcons~ipad', info)
+                    self.assertEqual(info['CFBundleIdentifier'], 'org.luaobjc.test')
+                    self.assertEqual(info['UIDeviceFamily'], [int(family) for family in families.split(',')])
+                    self.assertEqual(info['LRTLocalEntry'], 'apps/test/init.lua')
+                    self.assertEqual(Path('Test.app/Assets.car').read_bytes(), b'compiled-icons')
+                    self.assertFalse(Path('Test.app/AppIcon.png').exists())
+                    self.assertFalse(Path('Test.app/Workspace/apps/test/Assets.xcassets').exists())
+                    self.assertEqual(Path('ios/LuaRuntime/AppIcon.png').read_bytes(), b'host-icon')
+                finally:
+                    os.chdir(previous)
 
     def test_runtime_assets_are_preserved_and_build_material_is_excluded(self):
         previous = Path.cwd()
