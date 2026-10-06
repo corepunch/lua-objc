@@ -119,15 +119,17 @@ function overview:deactivate() self.refs = nil end
 -- tip's action leads.
 local TIP_LINKS = {settings = {settings = "privacy"}, system = {page = "guide"}, storage = {page = "overview"}}
 
--- Every section is always present; empty ones are hidden.
+-- Every section is always present; empty ones are hidden. The first four
+-- are Suggestions.sections, by who clears a suggestion.
 local SECTIONS = {
-	{id = "rebuildable", title = "Rebuildable", detail = "Caches and build data their owners regenerate. Review, then clear."},
+	{id = "now", title = "Clear now", detail = "Caches and build data Diskmap moves to the Trash or asks their owner to clear. Review, then clear."},
+	{id = "app", title = "Clear in its app", detail = "Caches, downloads and generated data an app or System Settings removes. Each row says where."},
+	{id = "restart", title = "Restart or finish an update", detail = "Temporary files, swap and update staging that macOS clears itself at the next restart or once the pending update completes."},
 	{id = "decisions", title = "Your decisions", detail = "Files, apps and devices only you can judge, ranked by what they could recover. Size alone never makes data disposable."},
 	{id = "context", title = "System-managed", detail = "macOS manages these; no cleanup is offered here.", collapsed = "Show system-managed storage"},
 	{id = "checked", title = "Checked and within limits", detail = "Known space hogs below their review threshold, or kept. " .. "Locations absent from this Mac are not listed.", collapsed = "Show checked locations"},
 }
 local LAYOUT = {
-	details = true,
 	leads = {"lead"},
 	scopeNote = Scope.pages.cleanup,
 	sections = {},
@@ -137,6 +139,9 @@ for _, section in ipairs(SECTIONS) do
 	table.insert(LAYOUT.sections, {id = "section_" .. section.id, title = section.title, detail = section.detail, collapsed = section.collapsed,
 		list = {id = "list_" .. section.id, menu = "rowMenu", activate = "open", selectAction = "select", status = true}})
 end
+
+-- How the lead names its action: by what clears the suggestion.
+local LEAD_VERBS = {restart = "Restart to clear ", update = "Finish the update to clear ", now = "Clear ", app = "Clear ", decisions = "Review "}
 
 -- The leading decision: the top-ranked suggestion as one sentence, its
 -- amount and the button that starts it. With nothing to suggest it says so
@@ -148,7 +153,7 @@ local function lead(data)
 			detail = "Large Files and Applications list what only you can judge.", amount = Format.size(0), amountCaption = "could recover",
 			actionTitle = "Open Large Files", action = "leadFiles"}
 	end
-	local verb = row.kind == "rebuildable" and "Clear " or "Review "
+	local verb = LEAD_VERBS[row.remover] or LEAD_VERBS[row.section] or "Review "
 	return {id = "decision", icon = row.icon or "sparkles", color = row.color or "systemIndigo",
 		title = row.decisionTitle or (verb .. row.name),
 		detail = row.id == "simulators" and "Choose the devices to keep, then confirm the extras. Shared runtimes stay." or (row.subtitle or ""),
@@ -156,21 +161,7 @@ local function lead(data)
 		actionTitle = row.page and ("Open " .. (row.pageName or "Page") .. "…") or "Review…", action = "leadOpen"}
 end
 
-local PAGE_NAMES = {simulators = "Simulators", projects = "Projects", xcode = "Xcode", files = "Large Files", applications = "Applications", worktrees = "Worktrees"}
-
 routes.cleanup = ListRoute.extend({layout = LAYOUT, children = {lead = "sections/Decision", tips = "sections/Tips"}, lead = lead})
-
--- The selection panel: what removing the selected suggestion does.
-function routes.cleanup:details(row)
-	if not row then
-		return {title = "Select a suggestion to see what removing it does", detail = ""}
-	end
-	local destination = row.page and {page = row.page} or Locations:destination(row.id)
-	local target = row.pageName or destination and destination.page
-	return {title = row.name, detail = row.subtitle or "", status = row.detail,
-		size = row.size, evidence = row.kind and ((row.evidence and (row.evidence .. "\n") or "") .. Suggestions.recovery(row)) or row.evidence, consequence = row.consequence ~= row.subtitle and row.consequence or nil,
-		actionTitle = "Open " .. (PAGE_NAMES[target] or target or "Details") .. "…"}
-end
 
 function routes.cleanup:present(state)
 	local data = Suggestions:presentation(self.app.cleanupSources())

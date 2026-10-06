@@ -25,10 +25,16 @@ local STYLES = {"rings", "rectangles"}
 -- Pointing, row menus and drags only read; a move redraws through `changed`.
 Folder.queries = {chartHover = true, selectRow = true, rowMenu = true, dragPath = true}
 
+-- `/folder//Users/me?focus=/Users/me/Music`: the folder measured, and the
+-- one looked inside. Returning to the folder measured already looks inside
+-- again without measuring it again.
 function Folder:focus(params)
-	if params.path then self:open(params.path, params.focus)
-	elseif params.focus then self:setFocus(params.focus) end
+	if params.path and (params.path ~= self.path or not self.tree) then self:open(params.path, params.focus)
+	elseif params.path or params.focus then self:setFocus(params.focus or self.path) end
 	if params.style then self.style = params.style end
+end
+function Folder:location()
+	return {path = self.path, focus = self.focusPath ~= self.path and self.focusPath or nil}
 end
 
 function Folder:init()

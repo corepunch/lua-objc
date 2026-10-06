@@ -33,7 +33,6 @@
     contextDisclosure    optional collapsed title for that accounting context
     scopeNote            initial text of the note stating what the totals cover (helpers/Scope.lua)
     footnote             {text, icon} ]] %>
-<% if layout.details then %><VStack spacing="0" flexGrow="1" flexBasis="0" flexShrink="1"><% end %>
 <PageFrame id="page">
   <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
     <%- partial("../components/PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
@@ -108,9 +107,3 @@
     <% end %>
   </VStack>
 </PageFrame>
-<% if layout.details then %>
-  <VStack id="selectionDetails" spacing="0" padding="14"<% if not details then %> hidden="true"<% end %>>
-    <% if details then %><%- partial("../sections/SelectionDetails.etlua", details) %><% end %>
-  </VStack>
-</VStack>
-<% end %>

@@ -22,6 +22,7 @@ static int bridge_NSWindow_addTabbedWindow(lua_State *L);
 static int bridge_NSWindow_toggleSidebar(lua_State *L);
 static int bridge_NSWindow_toggleDetail(lua_State *L);
 static int bridge_NSWindow_focus(lua_State *L);
+static int bridge_NSWindow_updateToolbar(lua_State *L);
 static int bridge_NSWindow_isFirstResponder(lua_State *L);
 static int bridge_NSWindow_workspaceState(lua_State *L);
 static int bridge_NSWindow_show(lua_State *L);
@@ -355,6 +356,7 @@ static MethodEntry WindowMethods[] = {
 	{"dismiss",	bridge_NSWindow_dismiss},
 	{"resize",	bridge_object_set_content_size},
 	{"focus",	bridge_NSWindow_focus},
+	{"updateToolbar",	bridge_NSWindow_updateToolbar},
 	{"isFirstResponder",	bridge_NSWindow_isFirstResponder},
 	{"selectTab",	bridge_NSWindow_selectTab},
 	{"workspaceState",	bridge_NSWindow_workspaceState},

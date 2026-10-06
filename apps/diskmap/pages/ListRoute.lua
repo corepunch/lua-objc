@@ -10,7 +10,6 @@ local Selection = require("apps.diskmap.helpers.Selection")
 --             (the fields are listed in the template), or a function
 --             `layout(self, presented)` when the structure depends on the data
 --   children  {slot = template}: partials drawn into the slots Page.etlua names
---   details   function(self, row) -> data for the selection panel, if any
 --   menu      function(self, row) -> a row's menu items, when it is not its
 --             resource's menu
 --   load      function(self): work to start when the page appears (a service
@@ -39,7 +38,7 @@ local Selection = require("apps.diskmap.helpers.Selection")
 local ListRoute = {view = "pages/Page", filterIndex = 1}
 
 -- Row menus, activation and links only read or navigate.
-ListRoute.queries = {rowMenu = true, open = true, openSelection = true, reveal = true}
+ListRoute.queries = {rowMenu = true, open = true, reveal = true}
 
 -- A list route: `route` over this one, its queries beside the shared ones.
 function ListRoute.extend(route)
@@ -68,9 +67,6 @@ function ListRoute:activateRow(row)
 end
 
 function ListRoute:open(_, _, row) self:activateRow(row) end
-
--- The selection panel's button opens what the selected row stands for.
-function ListRoute:openSelection() self:activateRow(self.selectedRow) end
 
 function ListRoute:select(_, _, row)
 	self.selectedRow, self.selectedId = row, row and row.id
@@ -106,32 +102,25 @@ function ListRoute:data(state)
 	local layout = self.layout
 	if type(layout) == "function" then layout = layout(self, presented) end
 	self.presented = presented
-	-- The row the selection token names, and the panel that explains it.
+	-- One row stays selected across the page's lists, named by its id.
 	self.selectedRow = nil
-	if self.details then
-		for _, rows in pairs(presented.lists or {}) do
-			local index = Selection.index(rows, self.selectedId)
-			if index then self.selectedRow = rows[index + 1] end
-		end
+	for _, rows in pairs(presented.lists or {}) do
+		local index = Selection.index(rows, self.selectedId)
+		if index then self.selectedRow = rows[index + 1] end
 	end
 	if not self.selectedRow then self.selectedId = nil end
-	local details
-	if self.details and self.selectedRow then
-		details = self:details(self.selectedRow)
-		details.actions = nil
-	end
 	-- A link named by `present` is an action of the view that follows it.
 	local handlers = {}
 	for name, link in pairs(presented.links or {}) do handlers[name] = function() self:follow(link) end end
 	return {layout = layout, header = self.header, lists = presented.lists, loading = presented.loading,
 		filterIndex = self.filterIndex, waiting = presented.waiting, computing = presented.computing, texts = presented.texts,
 		hidden = presented.hidden, disabled = presented.disabled, children = presented.children, childViews = self.children,
-		details = details, handlers = handlers}
+		handlers = handlers}
 end
 
--- After a draw the native selection follows the selected row.
+-- After a draw the native selection follows the selected row, so selecting
+-- in one list clears the others.
 function ListRoute:rendered(refs)
-	if not self.details then return end
 	for id, rows in pairs(self.presented.lists or {}) do Selection.show(refs[id], rows, self.selectedId) end
 end
 

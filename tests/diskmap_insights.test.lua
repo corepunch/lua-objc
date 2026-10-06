@@ -161,14 +161,14 @@ t.assertEqual(#Volumes.external(volumes.external), 1, "other mounted disks are l
 
 -- Clean Up uses every knowledge entry.
 local cleanup = Suggestions:presentation({apps = require("apps.diskmap.models.Inventories"):applicationsSummary()})
-t.expect(#cleanup.rebuildable > 0 and #cleanup.decisions > 0, "clean up separates rebuildable data from decisions")
+t.expect(#cleanup.now > 0 and #cleanup.app > 0 and #cleanup.decisions > 0, "clean up separates what it clears now, what apps clear and decisions")
 local rebuildable = {}
-for _, row in ipairs(cleanup.rebuildable) do rebuildable[row.id] = true end
+for _, row in ipairs(cleanup.now) do rebuildable[row.id] = true end
 t.expect(rebuildable["iphone-updates"] and rebuildable["sim-caches"] and rebuildable.playwright, "new knowledge entries become suggestions")
 local elsewhere = {}
 for _, row in ipairs(cleanup.decisions) do elsewhere[row.id] = row end
 t.expect(elsewhere["old-files"] and elsewhere.installers, "clean up points to files worth reviewing")
-t.expect(cleanup.known > #cleanup.rebuildable + #cleanup.decisions, "every rule and threshold is on the checklist")
+t.expect(cleanup.known > cleanup.count, "every threshold is on the checklist")
 t.expect(cleanup.absent > 0, "knowledge entries absent from this Mac are counted")
 
 -- Row menus: resources, files and folders share one vocabulary.

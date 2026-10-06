@@ -62,10 +62,12 @@ Containers are not, and the owning app should do the cleanup. Suggested
 safe targets: DerivedData, old iOS DeviceSupport versions, offline
 documentation, old device backups in MobileSync.
 
-→ Diskmap: every catalog entry states its policy (Rebuildable, Review,
-Essential, System managed) and consequence. Only verified rebuildable caches
-can be moved to the Trash, and only after confirmation. Clean Up separates
-**Rebuildable** from **Needs review** and never sums them into one "safe"
+→ Diskmap: every catalog entry states what its data is (`nature`), who
+removes it (`remover`), when it is worth a suggestion (`threshold`) and the
+one `advice` that says how. Only entries whose remover is Diskmap itself
+can be moved to the Trash, and only after confirmation. Clean Up groups
+suggestions by remover (**Clear now**, **Clear in its app**, **Restart or
+finish an update**, **Your decisions**) and never sums them into one "safe"
 number.
 
 ### 3. Developers: "Xcode is using 90 GB"

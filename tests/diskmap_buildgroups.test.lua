@@ -14,7 +14,7 @@ local home = "/Users/test"
 local function entry(id, project, artifact, dirName, policy)
 	return {id = id, name = artifact .. " · " .. project, path = home .. "/Documents/" .. project .. "/" .. dirName,
 		project = home .. "/Documents/" .. project, projectName = project, artifact = artifact,
-		policy = policy or "Review", action = policy == "Rebuildable" and "trash" or "finder", reviewThreshold = 500e6}
+		policy = policy or "Review", action = policy == "Rebuildable" and "trash" or "finder", threshold = 500e6}
 end
 
 -- Nothing found: no ecosystem group.

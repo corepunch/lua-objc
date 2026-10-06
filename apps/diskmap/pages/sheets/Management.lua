@@ -79,12 +79,13 @@ function ManagementSheet:data()
 	local detail = row and Locations:details(selected)
 	local root = Locations:find(self.rootId)
 	return {
-		title = root and root.name or "Safe reclaim potential", category = Locations:details(self.rootId),
-		filters = self.filters, manageTitle = detail and detail.manageTitle or "Review",
+		title = root and root.name or "Safe reclaim potential",
+		filters = self.filters, manageTitle = detail and detail.manageTitle or "",
 		lists = lists, loading = loading,
 		texts = {status = detail and detail.location or (self.snapshotNote and self.snapshotNote .. " · " .. summary or summary),
 			keep = detail and detail.keepTitle or "Keep"},
-		hidden = {manage = row and row.action == "finder" or false},
+		-- Show in Finder already covers a location that has no other action.
+		hidden = {manage = not (detail and detail.manageTitle)},
 		disabled = {manage = not (detail and detail.canManage), reveal = not (row and row.path), keep = detail == nil},
 	}
 end
@@ -137,8 +138,6 @@ function ManagementSheet:tabChanged()
 	self.tab, self.selectedId = self.refs.tabs.selectedTabViewItem.label, nil
 end
 
-function ManagementSheet:categoryRefresh() self.app.rescan() end
-function ManagementSheet:categoryKeep() self.app.keep(self.rootId) end
 function ManagementSheet:keep() if self.selectedId then self.app.keep(self.selectedId) end end
 
 function ManagementSheet:reveal()

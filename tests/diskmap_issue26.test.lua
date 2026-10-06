@@ -2,7 +2,6 @@ _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
 local Store = require("apps.diskmap.Store")
-local Rules = require("apps.diskmap.knowledge.CleanupRules")
 local Scans = require("apps.diskmap.models.Scans")
 
 local home = "/Users/test"
@@ -18,7 +17,7 @@ local adobe = resource("adobe-media-cache")
 t.assertEqual(adobe.path, home .. "/Library/Application Support/Adobe/Common/Media Cache Files", "shared Adobe media cache uses its documented default path")
 t.assertEqual(adobe.action, "finder", "Adobe cache remains owner reviewed")
 t.assertEqual(adobe.policy, "Review", "Adobe cache stays review only")
-t.expect(adobe.consequence:find("customized", 1, true) ~= nil, "Adobe guidance discloses custom cache locations")
+t.expect(adobe.advice:find("customized", 1, true) ~= nil, "Adobe guidance discloses custom cache locations")
 local afterEffects = resource("adobe-caches")
 t.assertEqual(afterEffects.path, home .. "/Library/Caches/Adobe", "Adobe application cache uses the documented default root")
 t.assertEqual(afterEffects.action, "finder", "Adobe application caches are not deleted by Diskmap")
@@ -26,7 +25,7 @@ t.assertEqual(afterEffects.action, "finder", "Adobe application caches are not d
 local mailLogs = resource("mail-logs")
 t.assertEqual(mailLogs.path, home .. "/Library/Containers/com.apple.mail/Data/Library/Logs/Mail", "Mail diagnostic logs have their own exact path")
 t.assertEqual(mailLogs.action, "finder", "Mail logs remain owner reviewed")
-t.expect(mailLogs.consequence:find("turn off", 1, true) ~= nil, "Mail guidance stops logging before review")
+t.expect(mailLogs.advice:find("turn off", 1, true) ~= nil, "Mail guidance stops logging before review")
 t.expect(resource("mail").path ~= mailLogs.path, "Mail logs stay separate from saved messages")
 
 -- No dependable signal or owner flow supports separate recording, Docker-log,
@@ -54,9 +53,9 @@ local docker = resource("docker")
 t.assertEqual(docker.path, home .. "/Library/Containers/com.docker.docker", "Docker keeps one measured default aggregate")
 t.assertEqual(docker.action, "docker", "Docker review opens the owner app")
 t.assertEqual(docker.policy, "Review", "Docker data remains review only")
-t.expect(docker.consequence:find("custom location", 1, true) ~= nil, "Docker guidance warns that a moved disk may be outside the measured path")
-t.expect(docker.consequence:find("not separately measured", 1, true) ~= nil, "Docker guidance does not promise per-container log sizes")
-t.expect(Rules.docker.advice:find("per-container allocation", 1, true) ~= nil, "Docker cleanup advice explains the log measurement boundary")
+t.expect(docker.advice:find("custom location", 1, true) ~= nil, "Docker guidance warns that a moved disk may be outside the measured path")
+t.expect(docker.advice:find("not separately measured", 1, true) ~= nil, "Docker guidance does not promise per-container log sizes")
+t.expect(docker.threshold == 10e9 and docker.remover == "owner" and docker.nature == "appData", "Docker is reviewed in Docker Desktop once it passes its threshold")
 
 for _, id in ipairs({"movies", "downloads", "device-backups", "docker", "mail-logs", "adobe-media-cache", "adobe-caches"}) do
 	local row = resource(id)

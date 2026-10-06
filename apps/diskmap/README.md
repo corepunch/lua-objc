@@ -48,11 +48,15 @@ the height of AppKit's capacity cell.
   with advice for the largest actionable kind and the top twelve extensions.
   Opening a kind shows its largest files.
 - **Clean Up** — candidates from every screen ranked by one rule (eligible
-  bytes × confidence ÷ effort, `models/Suggestions.lua`): rebuildable data first,
-  then *your decisions* (unused documents, user-owned installers, unused apps
-  with a known last use, high-confidence leftovers, the minimal simulator set,
-  leftover worktrees), then system-managed context and the checklist of known
-  space hogs within their limits, both collapsed. The headline keeps estimated
+  bytes × confidence ÷ effort, `models/Suggestions.lua`), in sections by who
+  clears them (the catalog entry's `remover`): *Clear now* (Diskmap trashes
+  it or runs the owner's command), *Clear in its app* (the owning app or
+  System Settings), *Restart or finish an update* (temporary files, swap,
+  update staging), then *your decisions* (personal files and chosen content:
+  unused documents, user-owned installers, unused apps with a known last use,
+  high-confidence leftovers, the minimal simulator set, leftover worktrees,
+  games, models and sound libraries), then system-managed context and the
+  checklist of known space hogs within their limits, both collapsed. The headline keeps estimated
   recoverable bytes apart from bytes to review; a group agrees with its
   children (device support holding only the newest version is not a
   suggestion). Every page's totals state their scope and coverage
@@ -207,8 +211,8 @@ Trash and reports how much more free space macOS actually sees. Every action
 is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 
 Categories open their resources in a sheet with Safe/rebuildable, Needs review
-and Essential to keep filters. Back, Forward, Refresh, Stop, Clean Up,
-Marked, Settings and Search live in the toolbar. Search is one page over the
+and Essential to keep filters. Back, Forward, Refresh (Stop while
+measuring), Clean Up, Marked, Settings and Search live in the toolbar. Search is one page over the
 whole store, as Spotlight is (`pages/Search.lua`): typing opens it with the
 matching pages, locations, large files, apps, leftovers, projects, simulators,
 worktrees, file types, guide and help topics and macOS folders, grouped by
@@ -228,8 +232,12 @@ intrinsic height instead of taking vertical flexible space.
 Inspect Folder Contents opens a location's exact path in Folder Map; Review
 Build Data opens Projects. Their amounts distinguish measured folder contents
 from generated build data. Exploration destinations live in the sidebar.
-`--page=<id>` (for example `--page=files`) opens a destination at launch for
-screenshots and walkthroughs. The window subtitle shows free and available space (available includes
+Every page has a location, written like a URL (`lua/data/location.lua`):
+`/overview`, `/help/shortcuts`, `/map/developer`, `/files/Media?kind=video`,
+`/folder//Users/me/Downloads`. Back and Forward follow locations as a browser
+follows URLs, so looking inside a folder, a group of the map or a filter is a
+visit Back returns to. `--page=<location>` (for example `--page=files` or
+`--page=/help/shortcuts`) opens one at launch for screenshots and walkthroughs. The window subtitle shows free and available space (available includes
 purgeable storage) and how many items are marked. Sidebar rows show sizes as
 badges. The overview explains space no scan can attribute: purgeable storage,
 local snapshots and unreadable locations. With **Keep storage history** on in
@@ -496,7 +504,7 @@ independently.
 | `models/Categories.lua` | The location tree with measurements rolled up: category rows, the overview's chart and shares, the map's nodes, history of totals |
 | `models/Suggestions.lua` | Cleanup suggestions ranked by eligible bytes, confidence and effort; the Clean Up page's presentation |
 | `helpers/Simulators.lua`, `helpers/Worktrees.lua`, `services/Simulators.lua` | Device, runtime and worktree inventories: filters, summaries and validated commands over an inventory a service read |
-| `catalog/` | Independent category definitions, paths, ownership and consequences |
+| `catalog/` | The dictionary: one entry per location with its path, nature, remover, review threshold and advice; `knowledge/Filesystem.lua` adds the leftovers |
 | `routes.lua`, `pages/` | Every page by route name, one route file per page or small group; `pages/ListRoute.lua` is the base route of the list pages. `pages/Sheets.lua` gathers the sheets in `pages/sheets/`, which extend `pages/SheetRoute.lua` |
 | `flows/Rows.lua`, `flows/Keep.lua`, `flows/Manage.lua` | Row menus and marks, Keep, and acting on one location: action code every page shares |
 | `helpers/` | Pure computation and formatting over rows given as arguments: file kinds, path guards, the folder tree, the simulator plan, parsers of service output. No helper reads the store, a model or a file (`tests/diskmap_layers.test.lua`) |

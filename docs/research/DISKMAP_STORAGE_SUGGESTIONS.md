@@ -86,7 +86,7 @@ the general measured inventory under its actual containing location; do not
 recommend deleting a guessed hidden file.
 
 The code changes from this review are in `apps/diskmap/catalog/SystemData.lua`
-and `apps/diskmap/knowledge/CleanupRules.lua`: Adobe application caches,
+as catalog entries with a `threshold` and `advice`: Adobe application caches,
 shared Adobe media cache, and Mail connection logs have separate measured
 locations and owner-specific guidance; backup, Xcode build-data, and Docker
 advice now reflects these reports. The three follow-up investigations above

@@ -53,6 +53,27 @@ local function inherited(definition, parent, key, fallback)
 	return definition[key] or parent and parent[key] or fallback
 end
 
+-- The words a location may use to say what it is and who removes it
+-- (catalog/Definitions.lua explains each).
+Locations.natures = {cache = true, build = true, download = true, library = true, log = true, leftover = true, appData = true, personal = true, system = true}
+Locations.removers = {trash = true, ownerCommand = true, owner = true, setting = true, restart = true, update = true, finder = true, none = true}
+local ACTIONS = {trash = "trash", ownerCommand = "ownerCleanup", setting = "settings"}
+
+-- Fills a leaf's `policy` (the label lists show) and `action` (what its
+-- button does) from its nature and remover, when the entry names neither:
+-- Diskmap may only trash or command what says so, a system location is
+-- system managed, and everything else is reviewed where its advice says.
+function Locations.classify(row)
+	row.nature = row.nature or "appData"
+	row.remover = row.remover or "finder"
+	assert(Locations.natures[row.nature], "Unknown nature for " .. tostring(row.id) .. ": " .. tostring(row.nature))
+	assert(Locations.removers[row.remover], "Unknown remover for " .. tostring(row.id) .. ": " .. tostring(row.remover))
+	row.policy = row.policy or ((row.remover == "trash" or row.remover == "ownerCommand") and "Rebuildable"
+		or row.nature == "system" and "System managed" or "Review")
+	row.action = row.action or ACTIONS[row.remover] or "finder"
+	return row
+end
+
 -- Stores the row of `node` and its descendants under `parentRow`.
 local function store(db, node, parentRow)
 	local state = db.locationIndex
@@ -63,6 +84,7 @@ local function store(db, node, parentRow)
 	row.icon = inherited(definition, parentRow, "icon", "doc")
 	row.color = inherited(definition, parentRow, "color", "systemGray")
 	row.appIcon = inherited(definition, parentRow, "appIcon", nil)
+	if definition.children == nil then Locations.classify(row) end
 	Locations:load(row)
 	table.insert(db.locations, row)
 	state.byId[row.id] = row
@@ -92,6 +114,12 @@ function Locations.seed(db, definitions)
 		if not node.parent then store(db, node, nil) end
 	end
 	return db.locations
+end
+
+-- The catalog advice of location `id`, or nil (the Storage Guide reads it).
+function Locations.advice(id)
+	local row = Locations:find(id)
+	return row and row.advice
 end
 
 function Locations:findPath(path)
@@ -435,7 +463,7 @@ function Locations:details(id)
 	local row = Locations:find(id); if not row then return nil end
 	local m = model.measurements[id]
 	local ownerCleanupReady = row.action ~= "ownerCleanup" or (m and m.status == "complete" and (m.bytes or 0) > 0)
-	local text = row.consequence or row.subtitle .. ". " .. (row:isLeaf() and "Review this data in its owning app. Size alone does not establish that it is disposable." or "Review its measured resources by impact below.")
+	local text = row.advice or row.subtitle .. ". " .. (row:isLeaf() and "Review this data in its owning app. Size alone does not establish that it is disposable." or "Review its measured resources by impact below.")
 	for _, candidate in ipairs(Suggestions:ranked()) do
 		if candidate.id == id then text = candidate.evidence .. "\n\n" .. candidate.subtitle .. "\n\n" .. text; break end
 	end
@@ -459,9 +487,9 @@ function Locations:details(id)
 		end
 	end
 	return {name = row.name, text = text, location = (row.path or "Multiple known locations") .. measurement,
-		manageTitle = row.action == "simulators" and "Show simulators" or row.action == "sdks" and "Show SDKs" or row.action == "trash" and "Review Move to Trash…" or row.action == "empty" and "Empty Trash…" or row.action == "ownerCleanup" and "Clear Cache…" or row.action == "settings" and (({siri = "Open Siri Settings", dictation = "Open Dictation Settings", voices = "Open Accessibility Settings", wallpaper = "Open Wallpaper Settings"})[row.settingsSection] or "Open System Settings") or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or "Reveal in Finder",
+		manageTitle = row.action == "simulators" and "Show Simulators" or row.action == "sdks" and "Show SDKs" or row.action == "trash" and "Review Move to Trash…" or row.action == "empty" and "Empty Trash…" or row.action == "ownerCleanup" and "Clear Cache…" or row.action == "settings" and (({siri = "Open Siri Settings", dictation = "Open Dictation Settings", voices = "Open Accessibility Settings", wallpaper = "Open Wallpaper Settings"})[row.settingsSection] or "Open System Settings") or row.action == "xcode" and "Open Xcode" or row.action == "docker" and "Open Docker" or nil,
 		canManage = row:isLeaf() and ownerCleanupReady and (row.action ~= "trash" or row:validateTrash()) and (row.action ~= "empty" or row:validateEmpty()) and (row.path ~= nil or row.action == "settings"),
-		keepTitle = model.kept[id] and "Stop keeping this resource" or "Keep this resource"}
+		keepTitle = model.kept[id] and "Stop Keeping" or "Keep"}
 end
 
 return Locations

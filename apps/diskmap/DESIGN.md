@@ -410,8 +410,7 @@ services, feature controllers, template refs, navigation and the window.
 | `Store.lua` | The store: locations, measurements, Keep, scan state; each window binds its own. |
 | `models/` | Lapis models over the store, one per kind of row: locations, files, applications, projects, marks, the kinds of work, simulators and worktrees. No native widgets. |
 | `helpers/` | Inventory transitions, categories, cleanup eligibility, tips, inspector data and the parsers of service output. |
-| `catalog/` | Category definitions, explanations, paths, ownership and policies. |
-| `knowledge/CleanupRules.lua` | Resource-specific review thresholds and advice with consequences. |
+| `catalog/` | The dictionary: one entry per location with its path, nature (what the data is), remover (who clears it), review threshold and the one advice text. Policy and action follow from nature and remover (`Locations.classify`). |
 | `routes.lua`, `pages/` | A page or sheet is a route with `data(state)` and a method per action, drawn by the framework page controller. List pages share one template (`views/pages/Page.etlua`) laid out from a table. |
 | `flows/` | Row menus and marks, Keep and acting on one location, shared by every page. |
 | `knowledge/Workflows.lua` | One entry per kind of work (Developer, Music Production, …): its page and the catalog groups it lists. |

@@ -144,31 +144,20 @@ app:show("cleanup")
 local page = app.page
 local data = Suggestions:presentation()
 local expected = data.decisions[1]
--- #102: with nothing selected the inspector takes no space.
-t.expect(page.refs.selectionDetails.hidden, "an empty inspector is hidden until a suggestion is selected")
-page.refs.list_rebuildable:selectRow(0)
-t.expect(not page.refs.selectionDetails.hidden, "selecting a suggestion shows the inspector")
+-- Rows explain themselves: Clean Up has no selection panel below its lists.
+t.expect(page.refs.selectionDetails == nil, "Clean Up has no selection panel")
+page.refs.list_now:selectRow(0)
 page.refs.list_decisions:selectRow(0)
 t.assertEqual(page.request.selectedRow.id, expected.id, "single selection chooses its suggestion")
-t.assertEqual(page.refs.list_rebuildable.documentView.selectedRow, -1, "selecting a different section clears the previous highlight")
-t.assertEqual(page.refs.selectionAdvice.text, expected.subtitle, "full advice is shown without truncation")
-t.expect(page.refs.openSelection.title:find("Open", 1, true) == 1, "selected suggestion has a visible detail action")
+t.assertEqual(page.refs.list_now.documentView.selectedRow, -1, "selecting a different section clears the previous highlight")
 page:update(app:state())
 t.assertEqual(page.request.selectedRow.id, expected.id, "live measurements preserve the selection by id")
-t.assertEqual(page.refs.selectionAdvice.text, expected.subtitle, "refresh keeps the matching explanation")
 page.request.selectedId = "no-such-suggestion"
 page:update({disk = disk})
-t.assertEqual(page.request.selectedRow, nil, "a selection no row matches removes the stale detail")
-t.expect(page.refs.selectionDetails.hidden, "an empty selection hides the inspector, so no stale item can be opened")
+t.assertEqual(page.request.selectedRow, nil, "a selection no row matches is dropped")
 local opened
 page.request.app.show = function(id, params) opened = {id, params.filter} end
-page.request.selectedRow = {id = "unused-apps", page = "applications", filter = "Unused for 6 months"}
-page.actions.openSelection()
-t.assertEqual(opened[1], "applications", "visible action navigates to the suggested page")
-t.assertEqual(opened[2], "Unused for 6 months", "visible action preserves its review filter")
-local long = string.rep("Keep personal documents. Review installed test apps and their data. ", 12)
-local detail, refs = xml.renderFile("apps/diskmap/views/sections/SelectionDetails.etlua", {title = "A very long suggestion name", detail = long, actionTitle = "Open Simulators…", size = "25.7 GB"}, ns)
-detail.size = ns.Size(540, 700); detail:layout(540)
-t.expect(refs.selectionAdvice.frame.size.height > 40, "long consequences wrap over multiple lines")
-t.expect(refs.openSelection.frame.size.width >= refs.openSelection.fittingSize.width, "explicit action fits at narrow width")
+page.actions.open(nil, nil, {id = "unused-apps", page = "applications", filter = "Unused for 6 months"})
+t.assertEqual(opened[1], "applications", "opening a row navigates to the suggested page")
+t.assertEqual(opened[2], "Unused for 6 months", "and preserves its review filter")
 os.exit(t.summary() and 0 or 1)

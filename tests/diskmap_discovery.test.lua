@@ -112,8 +112,8 @@ t.expect(appEntries["/Applications/Editor.app"] and appEntries["/Users/test/Appl
 t.assertEqual(appEntries["/Applications/Editor.app"].parentId, "apps-system", "shared app paths belong to shared Applications")
 t.assertEqual(appEntries["/Applications/Editor.app"].fileIcon, "/Applications/Editor.app", "discovered apps use their bundle paths for native artwork")
 t.assertEqual(appEntries["/Users/test/Applications/Personal Editor.app"].parentId, "apps-user", "personal app paths belong to personal Applications")
-t.assertEqual(appEntries["/Applications/Editor.app"].reviewThreshold, 1e9, "regular app review uses its threshold")
-t.assertEqual(appEntries["/Applications/Install macOS Tahoe.app"].reviewThreshold, 5e9, "installer receives installer-specific review threshold")
+t.assertEqual(appEntries["/Applications/Editor.app"].threshold, 1e9, "regular app review uses its threshold")
+t.assertEqual(appEntries["/Applications/Install macOS Tahoe.app"].threshold, 5e9, "installer receives installer-specific review threshold")
 
 local model = Store.new("/Users/test")
 local measuredPaths
@@ -121,9 +121,9 @@ local scanner = Scan.new(model, require("apps.diskmap.services.Contract").stub({
 	discoverEntries = function(_, done)
 		done({
 			{id = "discovered-node-modules", parentId = "developer", name = "Node modules · demo", subtitle = "Project dependencies", path = "/Users/test/Developer/demo/node_modules", action = "finder", policy = "Review"},
-			{id = "discovered-installer", parentId = "apps-system", name = "Install macOS Tahoe.app", subtitle = "Full installer", path = "/Applications/Install macOS Tahoe.app", action = "finder", policy = "Review", reviewThreshold = 5e9},
-			{id = "discovered-editor", parentId = "apps-system", name = "Visual Studio Code.app", subtitle = "Installed application", path = "/Applications/Visual Studio Code.app", fileIcon = "/Applications/Visual Studio Code.app", action = "finder", policy = "Review", reviewThreshold = 1e9},
-			{id = "discovered-personal-app", parentId = "apps-user", name = "Editor.app", subtitle = "Installed application", path = "/Users/test/Applications/Editor.app", action = "finder", policy = "Review", reviewThreshold = 1e9},
+			{id = "discovered-installer", parentId = "apps-system", name = "Install macOS Tahoe.app", subtitle = "Full installer", path = "/Applications/Install macOS Tahoe.app", action = "finder", policy = "Review", threshold = 5e9},
+			{id = "discovered-editor", parentId = "apps-system", name = "Visual Studio Code.app", subtitle = "Installed application", path = "/Applications/Visual Studio Code.app", fileIcon = "/Applications/Visual Studio Code.app", action = "finder", policy = "Review", threshold = 1e9},
+			{id = "discovered-personal-app", parentId = "apps-user", name = "Editor.app", subtitle = "Installed application", path = "/Users/test/Applications/Editor.app", action = "finder", policy = "Review", threshold = 1e9},
 		})
 	end,
 	start = function(paths) measuredPaths = paths; return {} end,
@@ -141,7 +141,7 @@ t.assertEqual(Locations:find("discovered-node-modules"):parent().id, "developer"
 t.assertEqual(Locations:find("discovered-installer"):parent().id, "apps-system", "installer belongs to shared Applications")
 t.assertEqual(Locations:find("discovered-editor"):parent().id, "apps-system", "regular apps belong to shared Applications")
 t.assertEqual(Locations:find("discovered-personal-app"):parent().id, "apps-user", "personal apps belong to the personal Applications category")
-t.assertEqual(Locations:find("discovered-editor").reviewThreshold, 1e9, "large installed apps become review suggestions without cleanup eligibility")
+t.assertEqual(Locations:find("discovered-editor").threshold, 1e9, "large installed apps become review suggestions without cleanup eligibility")
 t.assertEqual(Locations:find("discovered-editor").action, "finder", "installed apps remain review-only")
 local categoryApp
 for _, row in ipairs(Categories:rows("apps-system")) do if row.id == "discovered-editor" then categoryApp = row end end

@@ -4,12 +4,18 @@ local Files = require("apps.diskmap.models.Files")
 local Format = require("apps.diskmap.helpers.Format")
 local Status = require("apps.diskmap.helpers.Status")
 local Xcode = require("apps.diskmap.helpers.Xcode")
-local Rules = require("apps.diskmap.knowledge.CleanupRules")
 
--- Cleanup suggestions: the measured locations that crossed a review
+-- Cleanup suggestions: the measured locations that crossed their review
 -- threshold, ranked by what they could recover, how sure that is and how
 -- much work it takes. A view of the store: nothing is stored, the rows are
 -- computed from `locations` and `measurements` each time they are asked for.
+--
+-- The knowledge is the catalog entry itself (catalog/Definitions.lua): its
+-- `threshold` says when a location is worth a suggestion, its `nature` what
+-- the data is, its `remover` who clears it and its `advice` how. Clean Up
+-- groups suggestions by remover: what Diskmap clears now, what an app or
+-- System Settings clears, what a restart or the pending update clears, and
+-- what only the reader can judge.
 local Suggestions
 Suggestions = Model:extend("suggestions", {source = function() return Suggestions:ranked() end})
 
@@ -17,17 +23,40 @@ Suggestions = Model:extend("suggestions", {source = function() return Suggestion
 -- of the location (what there is to review); `eligibleBytes` is what the
 -- suggestion could actually recover once every child is checked (nil when
 -- that cannot be known); the score ranks by eligible bytes, how sure we are
--- and how much work the owner's flow takes.
+-- and how much work the remover takes.
 Suggestions.confidence = {High = 1, Medium = 0.6, Low = 0.3}
 Suggestions.effort = {Low = 1, Medium = 1.5, High = 2.5}
 -- Bytes to review with no eligibility proof count for this much of their size.
 Suggestions.reviewFraction = 0.2
 local SUPPORT_PLATFORMS = {devices = "iOS", ["watch-devices"] = "watchOS"}
 
+-- The Clean Up sections, in page order, and the status each row shows.
+Suggestions.sections = {"now", "app", "restart", "decisions"}
+local SECTION_STATUS = {now = "Rebuildable", app = "Owner", restart = "Restart", decisions = "Review"}
+local SECTION_DETAIL = {now = "Rebuildable", app = "Clear in its app", restart = "Restart", decisions = "Review"}
+-- Data its owner makes again: fully recoverable once its remover acts.
+local REGENERABLE = {cache = true, build = true, download = true, leftover = true}
+local DISKMAP_CLEARS = {trash = true, ownerCommand = true}
+local SYSTEM_CLEARS = {restart = true, update = true}
+
+-- Which section a suggestion belongs to: what clears it decides, except
+-- that the reader's own data and the content they chose are decisions
+-- whoever removes them.
+local CHOSEN = {personal = true, library = true}
+function Suggestions.section(row)
+	if SYSTEM_CLEARS[row.remover] then return "restart" end
+	if DISKMAP_CLEARS[row.remover] then return "now" end
+	if CHOSEN[row.nature] then return "decisions" end
+	if row.remover == "owner" or row.remover == "setting" then return "app" end
+	return "decisions"
+end
+
 -- {eligibleBytes | nil, confidence, reason | nil} for a measured resource.
 -- A group agrees with its children: device support that holds only the newest
 -- kept version offers nothing, and simulators offer only what the minimal
--- device set (published by the Simulators page) would remove.
+-- device set (published by the Simulators page) would remove. Otherwise what
+-- the owner regenerates is fully eligible, surely when Diskmap clears it and
+-- probably when its app, a restart or the pending update does.
 function Suggestions:eligibility(row, measurement)
 	local model = Model.db
 	local platform = SUPPORT_PLATFORMS[row.id]
@@ -51,20 +80,30 @@ function Suggestions:eligibility(row, measurement)
 		local plan = model.simulatorPlan
 		return plan.removalBytes, "Medium", plan.removalBytes == 0 and "The minimal device set has nothing eligible to remove." or nil
 	end
-	if row.policy == "Rebuildable" then return measurement.bytes, "High" end
+	if REGENERABLE[row.nature] and DISKMAP_CLEARS[row.remover] then return measurement.bytes, "High" end
+	if REGENERABLE[row.nature] or SYSTEM_CLEARS[row.remover] then return measurement.bytes, "Medium" end
 	return nil, "Low"
 end
 
-local function effortOf(row, rule)
-	if rule and rule.effort then return rule.effort end
-	if row.action == "trash" or row.action == "ownerCleanup" then return "Low" end
+-- How much work the remover asks of the reader.
+local EFFORT = {trash = "Low", ownerCommand = "Low", restart = "Low", owner = "Medium", setting = "Medium", update = "Medium", finder = "High"}
+local function effortOf(row)
+	if DISKMAP_CLEARS[row.remover] then return "Low" end
 	if row.page then return "Medium" end
-	return "High"
+	return EFFORT[row.remover] or "High"
 end
 
 function Suggestions.score(value)
 	local base = value.eligibleBytes or (value.bytes * Suggestions.reviewFraction)
 	return base * Suggestions.confidence[value.confidence] / Suggestions.effort[value.effort]
+end
+local function measured(m)
+	return m and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) > 0
+end
+local function byScore(a, b)
+	if a.score ~= b.score then return a.score > b.score end
+	if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+	return a.id < b.id
 end
 -- Build folders are judged per ecosystem, not per folder: sixty 200 MB
 -- node_modules folders are 12 GB that no single folder's threshold would
@@ -76,7 +115,7 @@ local function buildGroups(model)
 	for _, row in ipairs(Locations:leaves()) do
 		local parent = row.artifact and row:parent()
 		local m = model.measurements[row.id]
-		if parent and parent.id:match("^build%-") and not row:isKept() and m and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) > 0 then
+		if parent and parent.id:match("^build%-") and not row:isKept() and measured(m) then
 			local group = groups[parent.id]
 			if not group then
 				group = {row = parent, bytes = 0, projects = {}, count = 0, partial = false, rebuildable = true}
@@ -97,46 +136,43 @@ Suggestions.buildGroups = buildGroups
 
 -- Why a measured location is not a suggestion, by id; rebuilt on every call.
 Suggestions.ineligible = {}
-function Suggestions:ranked(rules)
+function Suggestions:ranked()
 	local model = Model.db
 	local result = {}
 	Suggestions.ineligible = {}
 	for _, group in ipairs(buildGroups(model)) do
 		local row = group.row
 		if group.bytes >= Suggestions.buildGroupThreshold and not row:isKept() then
+			local proven = group.rebuildable and not group.partial
 			local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, group = true, projects = group.count,
-				bytes = group.bytes,
+				bytes = group.bytes, nature = "build", remover = proven and "trash" or "finder",
 				policy = group.rebuildable and "Rebuildable" or "Review"}
 			Format.sizeLabel(value, group.partial and "partial" or "complete", group.bytes)
-			value.impact = group.rebuildable and not group.partial and "Safe/rebuildable" or "Needs review"
-			value.priority, value.threshold = 2, Suggestions.buildGroupThreshold
-			value.eligibleBytes, value.confidence, value.effort = group.rebuildable and not group.partial and group.bytes or nil,
-				group.rebuildable and "High" or "Low", "Low"
-			value.kind = group.rebuildable and not group.partial and "rebuildable" or "decision"
+			value.impact = proven and "Safe/rebuildable" or "Needs review"
+			value.threshold = Suggestions.buildGroupThreshold
+			value.eligibleBytes, value.confidence, value.effort = proven and group.bytes or nil, group.rebuildable and "High" or "Low", "Low"
+			value.section = Suggestions.section(value)
 			value.subtitle = (row.subtitle or "") .. " In " .. Format.plural(group.count, "project") .. "."
 			value.evidence = "Measured " .. value.size .. " in " .. Format.plural(group.count, "project")
 			table.insert(result, value)
 		end
 	end
 	for _, row in ipairs(Locations:leaves()) do
-		local m, rule = model.measurements[row.id], (rules or Rules)[row.id]
+		local m = model.measurements[row.id]
 		if row.artifact then m = nil end
-		if not rule and (row.reviewThreshold or row.agent or row.id == "opencode-downloads" or row.id == "grok-support") then
-			rule = {threshold = row.reviewThreshold or 100e6, priority = 3, advice = row.consequence or row.subtitle}
-		end
-		if rule and m and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) >= rule.threshold
+		if row.threshold and row.remover ~= "none" and measured(m) and m.bytes >= row.threshold
 			and not row:isKept() and row.policy ~= "Essential" then
 			local value = {id = row.id, name = row.name, path = row.path, policy = row.policy, action = row.action,
-				subtitle = row.subtitle, consequence = row.consequence, icon = row.icon, color = row.color, appIcon = row.appIcon}
+				nature = row.nature, remover = row.remover, page = row.page,
+				subtitle = row.advice or row.subtitle, icon = row.icon, color = row.color, appIcon = row.appIcon}
 			value.bytes = m.bytes
 			Format.sizeLabel(value, m.status, m.bytes)
 			value.impact = row.policy == "Rebuildable" and not value.partial and "Safe/rebuildable" or "Needs review"
-			value.priority, value.threshold = rule.priority, rule.threshold
-			value.subtitle = rule.advice
-			value.evidence = "Measured " .. value.size .. " · Review threshold " .. Format.size(rule.threshold)
+			value.threshold = row.threshold
+			value.evidence = "Measured " .. value.size .. " · Review threshold " .. Format.size(row.threshold)
 			local eligible, confidence, reason = Suggestions:eligibility(row, m)
-			value.eligibleBytes, value.confidence, value.effort = eligible, confidence, effortOf(row, rule)
-			value.kind = value.impact == "Safe/rebuildable" and "rebuildable" or "decision"
+			value.eligibleBytes, value.confidence, value.effort = eligible, confidence, effortOf(row)
+			value.section = value.partial and value.remover == "trash" and "decisions" or Suggestions.section(value)
 			if eligible and eligible ~= m.bytes then
 				value.evidence = value.evidence .. " · " .. Format.size(eligible) .. " eligible after keeping what is current"
 			end
@@ -150,11 +186,7 @@ function Suggestions:ranked(rules)
 		end
 	end
 	for _, value in ipairs(result) do value.score = Suggestions.score(value) end
-	table.sort(result, function(a, b)
-		if a.score ~= b.score then return a.score > b.score end
-		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
-		return a.id < b.id
-	end)
+	table.sort(result, byScore)
 	return result
 end
 local function relative(rows)
@@ -179,16 +211,15 @@ function Suggestions.amount(row)
 	return row
 end
 
--- Every location the knowledge base has an opinion about: cleanup rules and
--- catalog review thresholds. Measured ones below their threshold, kept ones
+-- Every location the knowledge base has an opinion about: the catalog
+-- entries with a threshold. Measured ones below their threshold, kept ones
 -- and ones absent from this Mac are reported as checked, so the page shows
 -- the whole checklist and not only what crossed a line.
 function Suggestions:checked(suggested)
 	local model = Model.db
 	local rows, absent, total = {}, 0, 0
 	for _, row in ipairs(Locations:leaves()) do
-		local rule = Rules[row.id]
-		local threshold = rule and rule.threshold or row.reviewThreshold
+		local threshold = row.threshold
 		-- Build folders are checked as their ecosystem's group.
 		if row.artifact then threshold = nil end
 		if threshold and not suggested[row.id] then
@@ -199,7 +230,7 @@ function Suggestions:checked(suggested)
 			elseif m.bytes and m.bytes > 0 then
 				local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
 					bytes = m.bytes,
-					subtitle = rule and rule.advice or row.consequence or row.subtitle,
+					subtitle = row.advice or row.subtitle,
 					detail = row:isKept() and "Kept" or row.policy == "Essential" and "Essential" or ("Under " .. Format.size(threshold)),
 					shareText = ""}
 				Format.sizeLabel(value, m.status, m.bytes)
@@ -219,6 +250,7 @@ local function candidate(row, fields)
 	for key, value in pairs(fields) do row[key] = value end
 	row.shareText = row.shareText or ""
 	row.size = row.size or Format.size(row.bytes)
+	row.section = "decisions"
 	row.score = Suggestions.score(row)
 	return row
 end
@@ -234,22 +266,24 @@ function Suggestions.recovery(row)
 end
 
 -- The Clean Up page: candidates from every screen, ranked together by one
--- rule (eligible bytes × confidence ÷ effort) and split by what they ask of
--- the reader: rebuildable data its owner regenerates, decisions about the
--- reader's own files, apps and devices, and system-managed context that
--- offers no cleanup here. `sources` carries what other pages measured:
--- `apps` is the Applications summary once it is known.
+-- rule (eligible bytes × confidence ÷ effort) and split by who clears them:
+-- `now` is what Diskmap moves to the Trash or asks an owner command to
+-- clear, `app` what the owning app or System Settings clears, `restart`
+-- what a restart or the pending update clears, `decisions` the reader's own
+-- files, apps and devices; `context` is system-managed storage that offers
+-- no cleanup. `sources` carries what other pages measured: `apps` is the
+-- Applications summary once it is known.
 function Suggestions:presentation(sources)
 	local model = Model.db
 	sources = sources or {}
 	local apps = sources.apps
-	local rebuildable, decisions, suggested = {}, {}, {}
-	local rebuildableBytes, eligibleBytes, reviewBytes = 0, 0, 0
+	local lists, suggested = {}, {}
+	for _, section in ipairs(Suggestions.sections) do lists[section] = {} end
 	local plan = model.simulatorPlan
 	for _, row in ipairs(Suggestions:ranked()) do
 		suggested[row.id] = true
 		-- A partial measurement already reads "≥" in the size column.
-		row.detail = row.kind == "rebuildable" and "Rebuildable" or "Review"
+		row.detail = SECTION_DETAIL[row.section]
 		row.shareText = ""
 		if row.id == "simulators" and plan and plan.removalCount > 0 then
 			row.subtitle = "Shared runtimes stay. "
@@ -257,12 +291,8 @@ function Suggestions:presentation(sources)
 			row.decisionTitle = "Keep one iPhone and one iPad; review " .. Format.plural(plan.removalCount, "extra simulator")
 			row.page, row.pageName, row.detail = "simulators", "Simulators", "Opens Simulators"
 		end
-		Status.apply(row, row.kind == "rebuildable" and "Rebuildable" or "Review")
-		if row.kind == "rebuildable" then
-			table.insert(rebuildable, row); rebuildableBytes = rebuildableBytes + row.bytes
-		else
-			table.insert(decisions, row)
-		end
+		Status.apply(row, SECTION_STATUS[row.section])
+		table.insert(lists[row.section], row)
 	end
 	local files = Files:summary()
 	local elsewhere = {}
@@ -271,7 +301,7 @@ function Suggestions:presentation(sources)
 			subtitle = Format.count(files.reviewableOld) .. " of your own files over " .. Format.size(require("apps.diskmap.models.Scans").fileSummary.minimumFileBytes)
 				.. " were not opened or changed in a year. Review them; they may be your only copy.",
 			icon = "clock.fill", color = "systemOrange", bytes = files.reviewableOldBytes, detail = "Large Files"},
-			{confidence = "Low", effort = "High", kind = "decision"}))
+			{confidence = "Low", effort = "High"}))
 	end
 	-- Installers are the user-owned ones only: file-kind totals also count
 	-- system and runtime images that this list never offers to remove.
@@ -283,7 +313,7 @@ function Suggestions:presentation(sources)
 		table.insert(elsewhere, candidate({id = "installers", name = "Installers & archives", page = "files", filter = "Installers & archives",
 			subtitle = installers .. " disk images, installers and archives in your folders. Once installed or expanded they are rarely needed.",
 			icon = "opticaldiscdrive.fill", color = "systemTeal", bytes = installerBytes, detail = "Large Files"},
-			{eligibleBytes = installerBytes, confidence = "Medium", effort = "Low", kind = "decision"}))
+			{eligibleBytes = installerBytes, confidence = "Medium", effort = "Low"}))
 	end
 	local worktrees = model.worktreePlan
 	if worktrees and (worktrees.removalCount > 0 or worktrees.reviewCount > 0) then
@@ -293,57 +323,51 @@ function Suggestions:presentation(sources)
 		table.insert(elsewhere, candidate({id = "worktrees", name = "Leftover Git worktrees", page = "worktrees",
 			subtitle = table.concat(parts, "; ") .. ". Source, generated output and Git storage are counted once.",
 			icon = "arrow.triangle.branch", color = "systemPurple", bytes = worktrees.removalBytes + worktrees.reviewBytes, detail = "Worktrees"},
-			{eligibleBytes = worktrees.removalBytes > 0 and worktrees.removalBytes or nil, confidence = "Medium", effort = "Medium", kind = "decision"}))
+			{eligibleBytes = worktrees.removalBytes > 0 and worktrees.removalBytes or nil, confidence = "Medium", effort = "Medium"}))
 	end
 	if apps and apps.leftovers and apps.leftovers > 0 then
 		table.insert(elsewhere, candidate({id = "leftovers", name = "Possible app leftovers", page = "applications",
 			subtitle = apps.leftovers .. " data folders belong to no installed app; " .. apps.leftoversHigh .. " are high confidence.",
 			icon = "questionmark.folder.fill", color = "systemGray", bytes = apps.leftoverBytes, detail = "Applications"},
 			{eligibleBytes = apps.leftoversHighBytes > 0 and apps.leftoversHighBytes or nil, confidence = apps.leftoversHighBytes > 0 and "Medium" or "Low",
-				effort = "Medium", kind = "decision"}))
+				effort = "Medium"}))
 	end
 	if apps and apps.unused and apps.unused > 0 then
 		table.insert(elsewhere, candidate({id = "unused-apps", name = "Apps unused for 6 months", page = "applications", filter = "Unused for 6 months",
 			subtitle = Format.plural(apps.unused, "app") .. " with a known last-use date over six months ago, and their data. Apps with an unknown last use are not counted.",
 			icon = "hourglass", color = "systemBlue", bytes = apps.unusedBytes, detail = "Applications"},
-			{confidence = "Low", effort = "Medium", kind = "decision"}))
+			{confidence = "Low", effort = "Medium"}))
 	end
 	for _, row in ipairs(elsewhere) do
 		row.pageName = row.detail
 		row.detail = "Opens " .. row.detail
 		Status.apply(row, "Page")
-		table.insert(decisions, row)
+		table.insert(lists.decisions, row)
 	end
-	table.sort(decisions, function(a, b)
-		if a.score ~= b.score then return a.score > b.score end
-		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
-		return a.id < b.id
-	end)
-	table.sort(rebuildable, function(a, b)
-		if a.score ~= b.score then return a.score > b.score end
-		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
-		return a.id < b.id
-	end)
-	for _, row in ipairs(decisions) do
-		reviewBytes = reviewBytes + row.bytes
-		eligibleBytes = eligibleBytes + (row.eligibleBytes or 0)
-	end
-	for _, row in ipairs(rebuildable) do eligibleBytes = eligibleBytes + (row.eligibleBytes or row.bytes) end
-	for _, row in ipairs(rebuildable) do Suggestions.amount(row) end
-	for _, row in ipairs(decisions) do Suggestions.amount(row) end
-	-- The first decision on the page: the highest-ranked suggestion of either kind.
-	local lead
-	for _, row in pairs({rebuildable = rebuildable[1], decisions = decisions[1]}) do
-		if not lead or row.score > lead.score or (row.score == lead.score and row.kind == "rebuildable") then lead = row end
+	local eligibleBytes, reviewBytes, count, lead = 0, 0, 0, nil
+	for _, section in ipairs(Suggestions.sections) do
+		local rows = lists[section]
+		table.sort(rows, byScore)
+		for _, row in ipairs(rows) do
+			count = count + 1
+			eligibleBytes = eligibleBytes + (row.eligibleBytes or 0)
+			-- Decisions are whole-location sizes to review, whatever part a
+			-- check already proved recoverable (helpers/Scope.lua says so).
+			if section == "decisions" then reviewBytes = reviewBytes + row.bytes end
+			Suggestions.amount(row)
+		end
+		-- The first decision on the page: the highest-ranked suggestion of any section.
+		local first = rows[1]
+		if first and (not lead or first.score > lead.score) then lead = first end
+		relative(rows)
 	end
 	local checked, absent, known = Suggestions:checked(suggested)
-	local context = Suggestions:context()
-	local empty = #rebuildable + #decisions == 0
-	return {rebuildable = relative(rebuildable), decisions = relative(decisions), context = relative(context), checked = checked, lead = lead,
-		count = #rebuildable + #decisions,
-		rebuildableBytes = rebuildableBytes, reviewBytes = reviewBytes, eligibleBytes = eligibleBytes, absent = absent, known = known,
-		summary = empty and "No location has crossed its review threshold."
-			or (Format.size(eligibleBytes) .. " estimated recoverable · " .. Format.size(reviewBytes) .. " in locations to review")}
+	lists.context = relative(Suggestions:context())
+	lists.checked, lists.lead, lists.count = checked, lead, count
+	lists.reviewBytes, lists.eligibleBytes, lists.absent, lists.known = reviewBytes, eligibleBytes, absent, known
+	lists.summary = count == 0 and "No location has crossed its review threshold."
+		or (Format.size(eligibleBytes) .. " estimated recoverable · " .. Format.size(reviewBytes) .. " in locations to review")
+	return lists
 end
 
 -- System-managed locations: what they hold and where macOS manages them.
@@ -353,9 +377,9 @@ function Suggestions:context()
 	local rows = {}
 	for _, row in ipairs(Locations:leaves()) do
 		local m = model.measurements[row.id] or {}
-		if row.policy == "System managed" and (m.status == "complete" or m.status == "partial") and (m.bytes or 0) >= Suggestions.contextMinimum then
+		if row.nature == "system" and row.remover == "none" and measured(m) and m.bytes >= Suggestions.contextMinimum then
 			local value = {id = row.id, name = row.name, icon = row.icon, color = row.color, appIcon = row.appIcon, path = row.path,
-				bytes = m.bytes, subtitle = row.consequence or row.subtitle, detail = "System managed", shareText = ""}
+				bytes = m.bytes, subtitle = row.advice or row.subtitle, detail = "System managed", shareText = ""}
 			Format.sizeLabel(value, m.status, m.bytes)
 			Status.apply(value, "System managed")
 			table.insert(rows, value)
@@ -372,7 +396,7 @@ Suggestions.contextMinimum = 1e9
 -- only a person can judge follow as bytes to review, never added to it.
 -- `sources` is what other pages measured (the Applications summary).
 function Suggestions:reclaim(sources)
-	local data = require("apps.diskmap.models.Suggestions"):presentation(sources or {})
+	local data = Suggestions:presentation(sources or {})
 	local result = {count = data.count, eligible = data.eligibleBytes, review = data.reviewBytes, top = data.lead and data.lead.name or nil}
 	if data.count == 0 then
 		result.title = "No cleanup suggestions yet"

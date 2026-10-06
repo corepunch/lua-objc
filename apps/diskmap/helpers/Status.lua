@@ -1,6 +1,7 @@
 -- The Status column shows each row's cleanup status as one colour-coded
--- symbol: green when its owner rebuilds it or it is within limits, orange
--- when it needs review, red when it must stay. The status word stays in
+-- symbol: green when its owner rebuilds it or it is within limits, teal
+-- when its app clears it, blue when a restart does, orange when it needs
+-- review, red when it must stay. The status word stays in
 -- `detail` for the tooltip and VoiceOver; distinct symbols keep the
 -- statuses apart without relying on colour alone.
 local Status = {}
@@ -8,6 +9,8 @@ local Status = {}
 local STYLES = {
 	Rebuildable = {icon = "arrow.triangle.2.circlepath.circle.fill", color = "systemGreen"},
 	Review = {icon = "eye.circle.fill", color = "systemOrange"},
+	Owner = {icon = "arrow.up.forward.app.fill", color = "systemTeal"},
+	Restart = {icon = "power.circle.fill", color = "systemBlue"},
 	Keep = {icon = "lock.circle.fill", color = "systemRed"},
 	Essential = {icon = "lock.circle.fill", color = "systemRed"},
 	["System managed"] = {icon = "gearshape.circle.fill", color = "systemGray"},

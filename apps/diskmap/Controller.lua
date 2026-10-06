@@ -15,11 +15,13 @@ local CommandsController = require("apps.diskmap.controllers.CommandsController"
 local Model = require("data.model")
 local SheetController = require("apps.diskmap.controllers.SheetController")
 local PageController = require("data.pagecontroller")
+local Location = require("data.location")
 local Scans = require("apps.diskmap.models.Scans")
 local Categories = require("apps.diskmap.models.Categories")
 local Suggestions = require("apps.diskmap.models.Suggestions")
 local Controller = {}; Controller.__index = Controller
-local function render(name, data) return xml.renderFile("apps/diskmap/views/layouts/" .. name .. ".etlua", data or {}, ns) end
+local function layout(name) return "apps/diskmap/views/layouts/" .. name .. ".etlua" end
+local function render(name, data) return xml.renderFile(layout(name), data or {}, ns) end
 function Controller.new(service, launch)
 	launch = launch or Provider.launch(App.args(), service)
 	local self = setmetatable({launch = launch, query = ""}, Controller)
@@ -52,9 +54,8 @@ function Controller.new(service, launch)
 	}
 	self.env = Environment.new(service or launch.service, launch, router)
 	for _, sheet in pairs(self.env.context.sheets) do SheetController.attach(sheet, self.env.model) end
-	self.navigation = NavigationController.new(function(id, fromHistory)
-		self:show(id, {}, fromHistory)
-	end)
+	self.navigation = NavigationController.new(function(id) self:show(id) end,
+		function(location, restoring) self:go(location, restoring) end)
 	self.collectorController = CollectorController.new(self.env.context)
 	self.progress = ScanProgress.new(self.env.scan)
 	self.commands = CommandsController.new(self.env.model, self.env.service, {
@@ -214,6 +215,7 @@ end
 -- A running scan shows in its progress window and nowhere else; the pages
 -- are drawn when it is over.
 function Controller:scanChanged()
+	self:updateToolbar()
 	local sheetOpen = false
 	for _, sheet in pairs(self.env.context.sheets) do if sheet.sheet then sheetOpen = true end end
 	if self.env.model.scan.running and self.window and not sheetOpen then
@@ -227,25 +229,48 @@ end
 -- and record category totals when history is on.
 
 
-function Controller:show(id, params, fromHistory)
+-- Shows page `id` focused on `params`, the way a browser opens a URL
+-- (lua/data/location.lua): the page says where it then is, and that is the
+-- visit Back returns to. The page showing already is focused again in place.
+-- `restoring` is a visit Back or Forward returns to, not a new one.
+function Controller:show(id, params, restoring)
 	params = params or {}
-	local remount = next(params) ~= nil
 	local entry = self.env.manifest.pages[id]
 	if not entry then error("Unknown Diskmap page: " .. tostring(id), 0) end
 	if not self.content then return end
-	if self.destination == id and self.page and not remount then return end
 	local request = self.env:page(entry.id)
-	if self.searchField then self.searchField.stringValue = id == "search" and self.query or "" end
-	-- The page that goes is deactivated before the one shown is focused: the
-	-- two may be one route, reopened on other params.
-	if self.page then self.page:dispose() end
-	if request.focus and type(request.focus) == "function" then request:focus(params) end
-	local page = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/",
-		store = self.env.model, request = request})
-	self.destination, self.page = id, page
-	page:mount(self.content, self:state())
-	self.navigation:select(id, fromHistory)
-	self:updateRows()
+	self.restoring = restoring
+	if self.destination == id and self.page then
+		if request.focus then request:focus(params) end
+		self:updateRows()
+	else
+		if self.searchField then self.searchField.stringValue = id == "search" and self.query or "" end
+		-- The page that goes is deactivated before the one shown is focused:
+		-- the two may be one route, reopened on other params.
+		if self.page then self.page:dispose() end
+		if request.focus then request:focus(params) end
+		local page = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/",
+			store = self.env.model, request = request, located = function(where) self:located(entry, where) end})
+		self.destination, self.page = id, page
+		page:mount(self.content, self:state())
+		self.navigation:select(id)
+		self:updateRows()
+	end
+	self.restoring = nil
+end
+-- Shows a location: `/help/shortcuts`, `/folder//Users/me`.
+function Controller:go(location, restoring)
+	local id, params = Location.parse(location, self.env.manifest.pages)
+	self:show(id, params, restoring)
+end
+-- Where the window is now, as `/page/argument?name=value`.
+function Controller:location()
+	return self.page and Location.format(self.env.manifest.pages[self.destination], self.page:location())
+end
+-- Every draw of a page says where it is; a move is a visit.
+function Controller:located(entry, where)
+	if self.destination ~= entry.id then return end
+	self.navigation:visit(Location.format(entry, where), self.restoring)
 end
 
 -- Keep or stop keeping location `id`; a save that failed is said in the status.
@@ -291,7 +316,7 @@ function Controller:compareScan(path)
 	if not path then return end
 	self.env.snapshots = self.env:snapshotComparison(path, false)
 	self.env.snapshots:compare()
-	self:show("overview", {remount = true})
+	self:show("overview")
 end
 function Controller:openSettings()
 	self.env.review:close()
@@ -301,17 +326,32 @@ function Controller:openReview(path)
 	self.env.settings:close()
 	self.env.review:open(self.window, path)
 end
-function Controller:createWindow()
-	self.env:prepare()
-	local actions = setmetatable({
-		search = function(value) self:search(value) end,
-		reclaim = function() self:show("cleanup") end,
-	}, {__index = self.commandActions})
+-- Window.etlua's data. Its toolbar follows the scan as a SwiftUI toolbar
+-- follows state: Refresh while idle, Stop in its place while measuring.
+function Controller:windowData()
 	local data = self.commands:data()
 	data.windowTitle = self.env.service.badge and ("Diskmap — " .. self.env.service.badge) or "Diskmap"
 	data.subtitle = self:subtitle()
-	data.actions = actions
+	data.actions = setmetatable({
+		search = function(value) self:search(value) end,
+		reclaim = function() self:show("cleanup") end,
+	}, {__index = self.commandActions})
 	data.navigation = not self.launch.isolated
+	data.scanning = self.env.scan.job ~= nil
+	return data
+end
+-- The window template is described again only when the scan starts or
+-- stops, and only its toolbar is applied.
+function Controller:updateToolbar()
+	local scanning = self.env.scan.job ~= nil
+	if not self.window or self.scanning == scanning then return end
+	self.scanning = scanning
+	self.window:updateToolbar(xml.toolbarFile(layout("Window"), self:windowData()))
+end
+function Controller:createWindow()
+	self.env:prepare()
+	local data = self:windowData()
+	self.scanning = data.scanning
 	local cfg, windowRefs = render("Window", data)
 	self.searchField = windowRefs and windowRefs.search
 	self.shortcuts = self.commands:shortcuts(cfg.commands)
@@ -329,7 +369,7 @@ function Controller:createWindow()
 	self.collectorController.refs = contentRefs
 	self:basketChanged()
 	self.window = ns.Window(cfg)
-	self:show(self.launch.page or "overview")
+	if self.launch.page then self:go(self.launch.page) else self:show("overview") end
 	-- Folders dropped on the Dock icon, including the one that launched
 	-- Diskmap, open like a folder dropped on the window.
 	local onOpen = self.env.service.onOpenFiles

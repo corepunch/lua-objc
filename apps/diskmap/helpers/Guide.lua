@@ -4,7 +4,7 @@ local Guide = {}
 Guide.chapters = require("apps.diskmap.knowledge.Guide")
 
 local function searchable(topic)
-	return table.concat({topic.title, topic.summary, topic.what, topic.why, topic.action,
+	return table.concat({topic.title, topic.summary, topic.what, topic.why, topic.action or "",
 		table.concat(topic.paths or {}, " ")}, " "):lower()
 end
 
@@ -27,15 +27,27 @@ function Guide.measurement(topic, lookup)
 	return Format.atLeast(bytes, partial) .. " on this Mac"
 end
 
--- Every chapter and its topics, in guide order.
-function Guide.presentation(measured)
+-- The advice a topic shows: its own `action`, or the catalog advice of the
+-- first of its resources that has one (`advice(id)`), so a topic about one
+-- location never restates what the catalog entry already says.
+function Guide.action(topic, advice)
+	if topic.action then return topic.action end
+	for _, id in ipairs(topic.resources or {}) do
+		local text = advice and advice(id)
+		if text then return text end
+	end
+end
+
+-- Every chapter and its topics, in guide order. `measured(id)` answers a
+-- location's rolled-up row, `advice(id)` its catalog advice.
+function Guide.presentation(measured, advice)
 	local chapters = {}
 	for chapterIndex, chapter in ipairs(Guide.chapters) do
 		local topics = {}
 		for topicIndex, topic in ipairs(chapter.topics) do
 			table.insert(topics, {id = topic.id, key = chapterIndex .. "_" .. topicIndex,
 				title = topic.title, icon = topic.icon, summary = topic.summary,
-				what = topic.what, why = topic.why, action = topic.action,
+				what = topic.what, why = topic.why, action = Guide.action(topic, advice),
 				paths = table.concat(topic.paths or {}, "\n"), open = topic.open,
 				measurement = Guide.measurement(topic, measured)})
 		end

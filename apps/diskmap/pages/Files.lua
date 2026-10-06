@@ -16,7 +16,6 @@ local LAYOUT = {
 		{id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year", value = "—", detail = "Not opened or changed since"},
 		{id = "movableTile", icon = "trash.fill", color = "systemRed", title = "Yours to review", value = "—", detail = "Unused documents you can move to the Trash"},
 	},
-	details = true,
 	sections = {{
 		controlsId = "fileControls",
 		links = {{id = "clearKind", title = "Show All Kinds", style = "link", action = "clearKind"}},
@@ -72,12 +71,14 @@ end
 -- kind (`focus`).
 routes.files = ListRoute.extend({layout = LAYOUT,
 	init = function(page) ListRoute.init(page); page.filterIndex = Files.filters:index("All") end, children = {lead = "sections/Decision"},
-	details = function(_, row) return {title = row.name, detail = row.path, size = row.size, actionTitle = "Show in Finder"} end,
-	openSelection = function(page) if page.selectedRow then page.app.service.reveal(page.selectedRow.path) end end,
 	menu = function(page, row) return page.rowActions:file(row) end,
 	-- Opens the page narrowed to one File Types kind and one filter.
 	focus = function(page, params)
 		page.kind, page.filterIndex = params.kind, params.filter and assert(Files.filters:index(params.filter), "Unknown file filter") or Files.filters:index("All")
+	end,
+	location = function(page)
+		local filter = Files.filters[page.filterIndex]
+		return {filter = filter ~= "All" and filter or nil, kind = page.kind}
 	end,
 	clearKind = function(page) page.kind = nil end,
 	-- Mark only the visible, user-owned subset. This stages the files; the

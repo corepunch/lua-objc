@@ -14,8 +14,8 @@ Categories = Model:extend("categories", {source = function() return Categories:r
 
 local function projection(source)
 	return {id = source.id, name = source.name, subtitle = source.subtitle, path = source.path, policy = source.policy,
-		action = source.action, consequence = source.consequence, settingsSection = source.settingsSection,
-		reviewThreshold = source.reviewThreshold, agent = source.agent, icon = source.icon, color = source.color, appIcon = source.appIcon, fileIcon = source.fileIcon}
+		action = source.action, advice = source.advice, settingsSection = source.settingsSection,
+		nature = source.nature, remover = source.remover, threshold = source.threshold, agent = source.agent, icon = source.icon, color = source.color, appIcon = source.appIcon, fileIcon = source.fileIcon}
 end
 -- The ring color of each of `rows` (id -> color), claimed largest first so
 -- the biggest sectors keep their catalog color and no two sectors of one

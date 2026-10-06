@@ -35,9 +35,12 @@ t.expect(app.page.refs.sunburst ~= previousChart, "returning creates new native 
 t.assertEqual(app.pages, nil, "the root has no page-controller cache")
 local mounted = app.page
 local mountedChart = mounted.refs.sunburst
+-- A new argument for the page showing focuses it in place, as a browser
+-- follows a link within one document; the chart draws the new level.
 app:show("map", {focus = "developer"})
-t.expect(app.page ~= mounted and app.page.refs.sunburst ~= mountedChart, "a new route argument mounts fresh page elements")
-t.assertEqual(mounted.refs, nil, "a replaced route argument disposes the prior page")
+t.expect(app.page == mounted, "a new route argument keeps the page showing")
+t.expect(app.page.refs.sunburst ~= mountedChart and mountedChart.superview == nil, "and draws fresh chart elements for it")
+t.assertEqual(app:location(), "/map/developer", "the location names the argument")
 app:show("overview")
 local beforeBack = app.page.refs.chart
 t.expect(app.navigation:back(), "Back navigates to the previous destination")

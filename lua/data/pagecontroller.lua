@@ -25,7 +25,10 @@
 -- defines `activate()`, and `deactivate()` for work to cancel when it goes;
 -- work that finishes later says so by calling the app's `refresh()`. An
 -- action that refuses (`Routes.fail`) draws the page again with
--- `errors = {message}` in its data; `before` runs before every request.
+-- `errors = {message}` in its data; `before` runs before every request. A
+-- page that can be shown in more than one state says which with
+-- `location()`, the params its `focus(params)` takes back: Back and Forward
+-- return to them, as a browser returns to a URL.
 local Template = require("ui.template")
 local Model = require("data.model")
 local Routes = require("data.routes")
@@ -113,6 +116,16 @@ function PageController:update(state)
 	end
 	if request.rendered then request:rendered(refs) end
 	self.drawing = false
+	if self.context.located then self.context.located(self:location()) end
+end
+
+-- Where the page is, as a browser's address bar says it: the params that
+-- show it again as it is now (`location()` of the route; lua/data/location.lua).
+-- An action that moves within the page (into a folder, onto a topic) moves
+-- the location, and `context.located(params)` hears it after every draw.
+function PageController:location()
+	local request = self.request
+	return request.location and request:location() or {}
 end
 
 -- A mark changed what the page shows.
