@@ -194,6 +194,10 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kWaveformSelectedMarkerWidth     2
 #define kWaveformHandleSize             10
 #define kWaveformPlayheadWidth           2
+/* Wheel zoom: the factor per point of vertical scroll (a trackpad reports
+ * points), and points per notch of a line-based mouse wheel. */
+#define kWaveformZoomPerPoint         1.01
+#define kWaveformZoomPointsPerLine      10
 /* How close, in points, a press must land to grab a marker. */
 #define kWaveformMarkerHitWidth          5
 #define kTableCellLoadingGap             4

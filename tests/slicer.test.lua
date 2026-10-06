@@ -54,6 +54,39 @@ t.expect(model:width() == nil and not model:canZoomOut(), "zooming back out fits
 for _ = 1, 20 do model:zoomBy(2, 400) end
 t.expect(model.zoom == Model.maxZoom and not model:canZoomIn(), "zoom stops at the closest level")
 
+
+-- Undo and redo: edits of the cuts, not selection.
+local edits = Model.new()
+edits:open(source, {duration = 2 * bar})
+t.expect(not edits:canUndo() and not edits:canRedo(), "a new file has no history")
+local a = edits:addCut(bar)
+edits:addCut(bar)
+t.assertEqual(#edits.undos, 1, "a click on an existing cut is not an edit")
+edits:moveCut(a, bar / 2)
+edits:moveCut(a, bar / 2)
+t.assertEqual(#edits.undos, 2, "a drag that lands where it started is not an edit")
+edits:select(nil)
+t.assertEqual(#edits.undos, 2, "selecting is not an edit")
+t.expect(edits:undo() and edits.cuts[1].time == bar, "undo puts a moved cut back")
+t.expect(edits:undo() and #edits.cuts == 0, "undo removes an added cut")
+t.expect(not edits:undo(), "undo stops at the start of the history")
+t.expect(edits:redo() and edits:redo() and edits.cuts[1].time == bar / 2, "redo replays both edits")
+t.expect(not edits:redo(), "redo stops at the newest edit")
+edits:undo()
+edits:removeSelected()
+t.expect(#edits.cuts == 0 and not edits:canRedo(), "a new edit clears redo")
+edits:undo()
+t.assertEqual(edits.selected, a, "undo restores the selection with the cut")
+local b = edits:addCut(bar * 1.5)
+t.expect(b ~= a and edits.nextId == 3, "ids keep counting across undo")
+edits:clear()
+edits:clear()
+t.expect(edits:undo() and #edits.cuts == 2, "Remove All Cuts undoes in one step")
+for i = 1, Model.undoLimit + 10 do edits:addCut(i / 1000) end
+t.assertEqual(#edits.undos, Model.undoLimit, "history keeps the newest edits")
+edits:open(source, {duration = 2 * bar})
+t.expect(not edits:canUndo(), "opening a file starts a new history")
+
 -- The app: open, cut on the grid, drag, export.
 local alerts = {}
 local controller = Controller.new({
@@ -94,6 +127,20 @@ t.expect(math.abs(controller.model.cuts[2].time - 100 / width * 2 * bar) < 1e-6,
 t.expect(controller:key("delete") and #controller.model.cuts == 1, "Delete in the waveform removes the cut")
 t.expect(not controller:key("q"), "other keys pass through")
 
+
+-- Wheel zoom keeps the time under the pointer where it was.
+local fitted = waveform.size.width
+local pointer = fitted * 0.25
+bridge._waveformSend(waveform, "zoom", pointer, 2)
+t.assertEqual(waveform.size.width, fitted * 2, "a wheel zoom doubles the width")
+t.assertEqual(bridge._waveformSend(waveform, "scrolled"), pointer, "the time under the pointer stays under it")
+bridge._waveformSend(waveform, "zoom", pointer * 2 + 100, 0.5)
+t.assertEqual(waveform.size.width, fitted, "zooming out fits the window again")
+t.assertEqual(bridge._waveformSend(waveform, "scrolled"), 0, "a fitted waveform is not scrolled")
+controller:actions().undo()
+t.assertEqual(#controller.model.cuts, 2, "Undo in the app brings the deleted cut back")
+controller:actions().redo()
+t.assertEqual(#controller.model.cuts, 1, "Redo deletes it again")
 controller:actions().zoomIn()
 t.assertEqual(controller.content.refs.waveform, waveform, "zooming resizes the waveform in place")
 t.expect(waveform.size.width > width, "zooming in widens the waveform past the window")

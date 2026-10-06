@@ -11,6 +11,10 @@
       <Separator />
       <MenuItem title="Export Samples…" keyEquivalent="e" action="export" validate="canExport" />
     </CommandGroup>
+    <CommandGroup replacing="undoRedo">
+      <MenuItem title="Undo" keyEquivalent="z" action="undo" validate="canUndo" />
+      <MenuItem title="Redo" keyEquivalent="z" modifiers="command,shift" action="redo" validate="canRedo" />
+    </CommandGroup>
     <CommandMenu title="Slice">
       <MenuItem title="Play/Pause" systemImage="playpause.fill" keyEquivalent="p" modifiers="command,shift" action="play" validate="canExport" />
       <MenuItem title="Stop" systemImage="stop.fill" keyEquivalent="." action="stop" />
