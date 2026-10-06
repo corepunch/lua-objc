@@ -2614,6 +2614,11 @@ function AppKit.applicationPath(bundleIdentifier)
 	return bridge._applicationPath(bundleIdentifier)
 end
 
+-- Each signed bundle's {team, groups} by path, read off the main thread.
+function AppKit.codeSignatures(paths, completion)
+	bridge._codeSignatures(paths, completion)
+end
+
 -- Starts a new instance of this app and quits once it runs;
 -- `onFailure(message)` runs if it could not start.
 function AppKit.relaunch(onFailure)

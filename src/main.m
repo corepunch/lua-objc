@@ -1,6 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
 #import <QuickLookUI/QuickLookUI.h>
+#import <Security/Security.h>
 #import <objc/runtime.h>
 
 #include <dlfcn.h>
@@ -566,6 +567,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_openFiles", bridge_open_files},
 	{"_runningApplications", bridge_running_applications},
 	{"_applicationPath", bridge_application_path},
+	{"_codeSignatures", bridge_code_signatures},
 	{"_fileIdentity", bridge_file_identity},
 	{"_relaunch", bridge_relaunch},
 	{"_clipboardCopy", bridge_clipboard_copy},

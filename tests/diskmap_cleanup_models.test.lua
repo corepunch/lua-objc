@@ -56,6 +56,8 @@ local apps = {{name = "Visual Studio Code.app", bundleId = "com.microsoft.VSCode
 t.assertEqual(Leftovers.identifier("group.com.x.shared"), "com.x.shared", "group containers name their bundle")
 t.assertEqual(Leftovers.identifier("ABCDE12345.com.x.shared"), "com.x.shared", "team-prefixed containers name their bundle")
 t.assertEqual(Leftovers.identifier("com.x.app.savedState"), "com.x.app", "saved state names its bundle")
+t.assertEqual(Leftovers.identifier("6N38VWS5BX.ru.keepcoder.Telegram"), "ru.keepcoder.Telegram", "team IDs may start with a digit")
+t.assertEqual(Leftovers.identifier("243LU875E5.groups.com.apple.podcasts"), "com.apple.podcasts", "a team-prefixed groups. container names its bundle")
 t.assertEqual(Leftovers.identifier("Code"), nil, "plain names are not identifiers")
 local installed = Leftovers.index(apps)
 local function tier(name, byName) return Leftovers.classify(name, byName, installed) end
@@ -67,6 +69,9 @@ for _, case in ipairs({{"com.microsoft.VSCode"}, {"com.microsoft.VSCode.helper"}
 	{"Google", true}, {"MobileSync", true}, {"SomeCache"}, {".hidden", true}}) do
 	t.assertEqual(tier(case[1], case[2]), nil, "never a leftover: " .. case[1])
 end
+t.assertEqual(Leftovers.classify("6N38VWS5BX.ru.keepcoder.Telegram", false, Leftovers.index({{bundleId = "ru.keepcoder.Telegram"}})), nil,
+	"an installed app claims its digit-led team container")
+t.assertEqual(tier("243LU875E5.groups.com.apple.podcasts"), nil, "Apple's team-prefixed containers are never leftovers")
 local helperInstalled = Leftovers.index({{bundleId = "com.x.editor.helper"}})
 t.assertEqual(Leftovers.classify("com.x.editor", false, helperInstalled), nil, "an installed helper claims its host's folder")
 

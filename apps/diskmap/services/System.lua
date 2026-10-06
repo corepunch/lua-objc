@@ -424,24 +424,43 @@ function System.applicationInfo(paths, completion)
 		completion(info)
 	end)
 end
--- Every application bundle Spotlight has indexed, anywhere on the Mac, so a
--- data folder is only called a leftover when no installed app claims it.
+-- Every application bundle Spotlight has indexed, anywhere on the Mac, as
+-- {path, bundleId, name, team, groups}: what claims a Library folder. The
+-- identifier and name come from one mdls call; the team and app groups from
+-- each bundle's code signature, read off the main thread, so a Group
+-- Container such as "UBF8T346G9.Office" names the apps that share it.
 -- Completes with nil when Spotlight is unavailable.
-function System.installedBundleIds(completion)
+function System.installedApplications(completion)
 	System.command({"/usr/bin/mdfind", "kMDItemContentType == 'com.apple.application-bundle'"}, function(ok, output)
 		if not ok then completion(nil); return end
 		local paths = lines(output)
 		if #paths == 0 then completion(nil); return end
-		local argv = {"/usr/bin/mdls", "-raw", "-name", "kMDItemCFBundleIdentifier"}
+		local argv = {"/usr/bin/mdls", "-raw", "-name", "kMDItemCFBundleIdentifier", "-name", "kMDItemDisplayName"}
 		for _, path in ipairs(paths) do table.insert(argv, path) end
 		System.command(argv, function(listed, values)
 			if not listed then completion(nil); return end
-			local ids = {}
-			for value in ((values or "") .. "\0"):gmatch("([^%z]*)%z") do
-				if value ~= "" and value ~= "(null)" then table.insert(ids, value) end
-			end
-			completion(ids)
+			local apps = require("apps.diskmap.helpers.Leftovers").parseApplications(values, paths)
+			ns.codeSignatures(paths, function(signatures)
+				for _, app in ipairs(apps) do
+					local signature = signatures[app.path]
+					if signature then app.team, app.groups = signature.team, signature.groups end
+				end
+				completion(apps)
+			end)
 		end)
+	end)
+end
+-- The bundle identifier containermanagerd recorded for a container named by
+-- a random UUID, or nil. The metadata is readable only with Full Disk Access.
+function System.containerIdentifier(path)
+	local metadata = ns.readPropertyList(path .. "/.com.apple.containermanagerd.metadata.plist")
+	local id = type(metadata) == "table" and metadata.MCMMetadataIdentifier
+	return type(id) == "string" and id ~= "" and id or nil
+end
+-- The packages whose installer receipts list `path`, as identifiers.
+function System.packageOwner(path, completion)
+	System.command({"/usr/sbin/pkgutil", "--file-info", path}, function(ok, output)
+		completion(ok and require("apps.diskmap.helpers.Explain").packages(output) or {})
 	end)
 end
 -- `diskutil apfs list -plist` and the startup volume's container: each

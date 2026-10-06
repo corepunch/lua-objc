@@ -43,9 +43,9 @@ function Service:applications(stock, current, done)
 		if not current() then return end
 		Model.db.applicationInfo = info; finish()
 	end)
-	self.service.installedBundleIds(function(ids)
+	self.service.installedApplications(function(apps)
 		if not current() then return end
-		Model.db.installedBundleIds = ids; finish()
+		Model.db.installedApplications = apps; finish()
 	end)
 end
 

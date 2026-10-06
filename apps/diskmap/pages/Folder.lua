@@ -1,3 +1,5 @@
+local Applications = require("apps.diskmap.models.Applications")
+local Explain = require("apps.diskmap.helpers.Explain")
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local FolderTree = require("apps.diskmap.helpers.FolderTree")
@@ -12,6 +14,9 @@ local Selection = require("apps.diskmap.helpers.Selection")
 -- looks inside it, the center or the breadcrumb goes back up, and the map can
 -- be colored by folder, by kind of file or by last use. Rows offer Quick Look,
 -- Move to… and Move to Trash; a move or Trash updates the map at once.
+-- Every row says whose it is, and the line under the map what the selected
+-- or open folder is and whether it may go (helpers/Explain), so browsing
+-- ~/Library answers "what is this?" in place.
 -- Folders below the first scan's depth are measured when opened. The scan
 -- counts its items on the line under the spinner, the one live thing here;
 -- the rest is drawn when the scan has finished (`app.refresh()`).
@@ -64,6 +69,8 @@ function Folder:open(path, focus)
 	local generation = self.generation
 	self.path, self.tree, self.focusPath, self.failure, self.stats = path, nil, path, nil, nil
 	self.loading = {path = path, items = 0}
+	-- Which installed app owns a Library folder needs the apps Spotlight knows.
+	if self.app.inventories then self.app.inventories:load("applications") end
 	self.app.refresh()
 	local job = self.service.scanFolder(path, FolderTree.scanOptions, function(folder, failure, stats)
 		if generation ~= self.generation then return end
@@ -174,9 +181,78 @@ function Folder:openSelection() if self.selected then self:drill(self.selected) 
 
 function Folder:selection()
 	local node = self.tree and self.tree:find(self.selected)
+	local detail
+	if node then
+		detail = node.name .. " · " .. Format.size(node.bytes)
+		local about = self:about(node.path)
+		if about then detail = detail .. "\n" .. about end
+	else
+		-- Nothing selected: what the open folder is, when Diskmap knows.
+		local about = self.focusPath and self:about(self.focusPath)
+		detail = about and (self:displayName(self.focusPath) .. ": " .. about) or "Select an item to inspect its contents or preview it."
+	end
 	return {title = node and (node.directory and "Inspect Folder Contents" or "Preview File") or "Open Selection",
-		detail = node and (node.name .. " · " .. Format.size(node.bytes)) or "Select an item to inspect its contents or preview it.",
-		enabled = node ~= nil}
+		detail = detail, enabled = node ~= nil}
+end
+
+-- What `path` is and whose, remembered until the installed apps change: a
+-- folder named by a random identifier reads its container's metadata once.
+function Folder:explain(path)
+	local installed = Model.db.installedApplications
+	if self.explainedFor ~= installed or not self.explained then
+		self.explainedFor, self.explained = installed, {}
+		self.installedIndex = Applications.index()
+	end
+	local cached = self.explained[path]
+	if cached == nil then
+		cached = Explain.path(path, {home = Model.db.home, apps = self.installedIndex,
+			container = function(folder) return self.service.containerIdentifier(folder) end}) or false
+		self.explained[path] = cached
+	end
+	return cached or nil
+end
+
+-- A row's owner: the catalog's name for the location, or whose it is.
+function Folder:owner(path)
+	local named = self:catalogName(path)
+	if named then return named end
+	local answer = self:explain(path)
+	if not answer then return nil end
+	if answer.owner then return answer.owner end
+	return answer.unclaimed and "No installed app" or nil
+end
+
+-- The sentences under the map: what the item is, from the catalog's advice
+-- or the knowledge of macOS, and the package that installed it when an
+-- installer's receipt says so.
+function Folder:about(path)
+	local parts = {}
+	local owner = Locations:owner(path)
+	local answer = self:explain(path)
+	if owner and owner.path == path and (owner.advice or owner.subtitle) and not (answer and answer.what) then
+		table.insert(parts, owner.advice or owner.subtitle)
+	elseif answer and answer.what then
+		table.insert(parts, answer.what)
+	end
+	local package = self.packages and self.packages[path]
+	if package then table.insert(parts, package) end
+	return #parts > 0 and table.concat(parts, " ") or nil
+end
+
+-- An unexplained item in a shared folder may have come from an installer;
+-- its receipt names the package. Asked once per item, when it is selected.
+function Folder:askPackage(path)
+	if not path or not (path:match("^/Library/") or path:match("^/usr/local/") or path:match("^/opt/")) then return end
+	local answer = self:explain(path)
+	if answer and answer.owner then return end
+	self.packages = self.packages or {}
+	if self.packages[path] ~= nil then return end
+	self.packages[path] = false
+	self.service.packageOwner(path, function(packages)
+		if not self.packages then return end
+		self.packages[path] = Explain.package(packages) or false
+		if self.selected == path then self:showSelection() end
+	end)
 end
 
 function Folder:showSelection()
@@ -190,7 +266,7 @@ function Folder:chartHover(id) self:describe(id) end
 
 function Folder:selectRow(_, _, row)
 	if not row then return end
-	if not row.other then self.selected = row.path end
+	if not row.other then self.selected = row.path; self:askPackage(row.path) end
 	self:describe(row.id)
 	self:showSelection()
 	if self.refs.folderSunburst then Sectors.highlight(self.refs.folderSunburst, row.id) end
@@ -310,7 +386,7 @@ function Folder:data()
 	local now = os.time()
 	local nodes, total = self.tree:nodes(self.focusPath, self.coloring, now)
 	data.nodes = nodes
-	data.rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:catalogName(path) end)
+	data.rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:owner(path) end)
 	self.rows = data.rows
 	data.trail = self.tree:trail(self.focusPath)
 	self.nodeById = {}

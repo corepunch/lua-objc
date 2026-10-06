@@ -32,13 +32,41 @@ function Leftovers.supportNames(bundleId)
 	return type(bundleId) == 'string' and SUPPORT_NAMES[bundleId:lower()] or nil
 end
 
--- Installed apps as {bundleId, name}. Returns lookup sets for identifiers,
--- vendors and display names.
+-- `mdls -raw -name kMDItemCFBundleIdentifier -name kMDItemDisplayName a b …`
+-- prints both values for each bundle in turn, separated by NUL, "(null)"
+-- for a missing one. Bundles without an identifier are left out.
+function Leftovers.parseApplications(output, paths)
+	local values = {}
+	for value in ((output or "") .. "\0"):gmatch("([^%z]*)%z") do table.insert(values, value) end
+	local apps = {}
+	for index, path in ipairs(paths) do
+		local id, name = values[index * 2 - 1], values[index * 2]
+		if id and id ~= "" and id ~= "(null)" then
+			name = (name and name ~= "(null)" and name ~= "") and name:gsub("%.app$", "") or path:match("([^/]+)%.app$")
+			table.insert(apps, {path = path, bundleId = id, name = name})
+		end
+	end
+	return apps
+end
+
+local function append(map, key, name)
+	map[key] = map[key] or {}
+	for _, existing in ipairs(map[key]) do if existing == name then return end end
+	table.insert(map[key], name)
+end
+
+-- Installed apps as {bundleId, name, team, groups}. Returns lookup sets for
+-- identifiers, vendors and display names, and who each identifier, app
+-- group and team belongs to: `owners[id]`, `groups[group]` and
+-- `teams[team]` list app names.
 function Leftovers.index(apps)
-	local ids, vendors, names = {}, {}, {}
+	local ids, vendors, names, owners, groups, teams = {}, {}, {}, {}, {}, {}
 	for _, app in ipairs(apps or {}) do
+		local title = type(app.name) == "string" and app.name:gsub("%.app$", "") or nil
 		if type(app.bundleId) == "string" then
-			ids[app.bundleId:lower()] = true
+			local id = app.bundleId:lower()
+			ids[id] = true
+			if title then append(owners, id, title) end
 			for name in pairs(Leftovers.supportNames(app.bundleId) or {}) do names[name] = true end
 			local v = vendor(app.bundleId)
 			if v then
@@ -47,23 +75,29 @@ function Leftovers.index(apps)
 				names[v:match("%.(.+)$")] = true
 			end
 		end
-		if type(app.name) == "string" then
-			local name = app.name:lower():gsub("%.app$", "")
+		if title then
+			local name = title:lower()
 			names[name] = true
 			-- "Code" belongs to "Visual Studio Code"; match a trailing word too.
 			local last = name:match("(%w+)$")
 			if last then names[last] = true end
+			for _, group in ipairs(app.groups or {}) do append(groups, group:lower(), title) end
+			if type(app.team) == "string" then append(teams, app.team, title) end
 		end
 	end
-	return {ids = ids, vendors = vendors, names = names}
+	return {ids = ids, vendors = vendors, names = names, owners = owners, groups = groups, teams = teams}
 end
 
 -- The bundle identifier a Library folder name refers to, if it names one.
 -- Handles "com.x.app", "com.x.app.savedState", "group.com.x.app" and team
--- prefixed group containers such as "ABCDE12345.com.x.shared".
+-- prefixed group containers such as "ABCDE12345.com.x.shared". A team ID
+-- is ten capital letters and digits and may start with a digit, as Apple's
+-- own "243LU875E5.groups.com.apple.podcasts" does.
+local TEAM = "^" .. ("[%u%d]"):rep(10) .. "%."
+local TEAM_ID = "^(" .. ("[%u%d]"):rep(10) .. ")%."
 function Leftovers.identifier(name)
 	local id = name:gsub("%.savedState$", ""):gsub("%.binarycookies$", "")
-	id = id:gsub("^group%.", ""):gsub("^%u%w%w%w%w%w%w%w%w%w%.", "")
+	id = id:gsub("^group%.", ""):gsub(TEAM, ""):gsub("^groups%.", "")
 	if id:match("^[%w%-]+%.[%w%-]+%.[%w%-%.]+$") then return id end
 end
 
@@ -72,6 +106,8 @@ end
 -- rather than an identifier, as in Application Support.
 function Leftovers.classify(name, byName, installed)
 	if Leftovers.system[name] or name:sub(1, 1) == "." then return nil end
+	-- An installed app that declares the folder as its app group claims it.
+	if installed.groups and installed.groups[name:lower()] then return nil end
 	local id = Leftovers.identifier(name)
 	if id then
 		local lower = id:lower()
@@ -85,12 +121,42 @@ function Leftovers.classify(name, byName, installed)
 		end
 		local v = vendor(id)
 		if v and installed.vendors[v] then return "medium" end
+		-- A developer whose other apps are installed: not proof of either.
+		local team = name:match(TEAM_ID)
+		if team and installed.teams and installed.teams[team] then return "medium" end
 		return "high"
 	end
 	if byName then
 		if installed.names[name:lower()] then return nil end
 		return "low"
 	end
+	return nil
+end
+
+-- The installed apps a Library folder or file belongs to, as a list of
+-- names, or nil: an app group an app declares, the bundle identifier
+-- (helpers and extensions share their app's prefix), then the apps of the
+-- developer whose team ID prefixes the name. `byName` also accepts a folder
+-- named after an app, as in Application Support. `how` says which matched:
+-- "group", "identifier", "team" or "name".
+function Leftovers.owner(name, installed, byName)
+	if not installed or type(name) ~= "string" then return nil end
+	local lower = name:lower():gsub("%.plist$", "")
+	if installed.groups and installed.groups[lower] then return installed.groups[lower], "group" end
+	local id = Leftovers.identifier((name:gsub("%.plist$", "")))
+	if id and installed.owners then
+		id = id:lower()
+		local best
+		for installedId, names in pairs(installed.owners) do
+			if id == installedId or id:sub(1, #installedId + 1) == installedId .. "." then
+				if not best or #installedId > #best then best = installedId end
+			end
+		end
+		if best then return installed.owners[best], "identifier" end
+	end
+	local team = name:match(TEAM_ID)
+	if team and installed.teams and installed.teams[team] then return installed.teams[team], "team" end
+	if byName and installed.names and installed.names[lower] then return {name}, "name" end
 	return nil
 end
 

@@ -80,6 +80,12 @@ return function()
 	item("support", "Application support", "Other app databases, documents and settings", "~/Library/Application Support"),
 	item("app-containers", "Sandboxed application data", "Documents and settings belonging to sandboxed apps", "~/Library/Containers"),
 	item("group-containers", "Shared application data", "Data shared by related apps", "~/Library/Group Containers"),
+	-- Small per-app folders the Applications page adds to each app's data.
+	item("preferences", "Preferences", "Every app's settings, one property list per app", "~/Library/Preferences", essential),
+	item("saved-state", "Saved window state", "Windows apps reopen when they launch", "~/Library/Saved Application State",
+		{nature = "cache", remover = "owner", advice = "Apps rewrite their saved windows as they quit. To stop it for every app, turn off “Close windows when quitting an application” in System Settings › Desktop & Dock."}),
+	item("http-storages", "Network storage", "Cookies and responses apps keep from their network requests", "~/Library/HTTPStorages"),
+	item("webkit-data", "Web view data", "Website data of apps that show web pages", "~/Library/WebKit"),
 	item("library-user", "Other user library data", "Preferences and other local application data", "~/Library"),
 	item("library-shared", "Other shared library data", "Shared application and system support files", "/Library"),
 	item("private-other", "Other system working data", "System-managed databases and working files", "/private", system),

@@ -469,7 +469,7 @@ Applications reads each bundle's Info.plist and one `mdls` query for last-used
 dates; leftovers compare against `mdfind`'s list of every installed app.
 Disks & Volumes runs `diskutil info -plist /` and `diskutil apfs list -plist`.
 
-The app and framework changes are described in [DESIGN.md](DESIGN.md); the research behind the features and their sources are in [VISION.md](VISION.md).
+The app and framework changes are described in [DESIGN.md](DESIGN.md); the research behind the features and their sources are in [VISION.md](VISION.md). What people ask about the Library folders, and how Diskmap tells whose a folder is, is in [the Library research](../../docs/research/DISKMAP_LIBRARY_QUESTIONS.md).
 
 ## Component boundaries
 
