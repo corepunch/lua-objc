@@ -2257,12 +2257,13 @@ end
 --- @prop onSelect function optional. `onSelect(id)`.
 --- @prop onMove function optional. `onMove(id, seconds)` when a dragged marker is dropped.
 --- @prop onKey function optional. `onKey(key) -> handled`; the view takes keyboard focus when clicked.
+--- @prop onZoom function optional. `onZoom(factor)` for a vertical wheel or pinch; the app sets the new `width` and the view keeps the time under the pointer in place.
 --- @example <Waveform source="loop.wav" bpm="140"><WaveformMarker id="a" time="1.5" /></Waveform>
 --- @platform AppKit uses the AppKit implementation.
 function AppKit.Waveform(props)
 	props = props or {}
 	local view = bridge._waveform(props.onAdd, props.onSelect, props.onMove,
-		props.onKey and function(_, key) return props.onKey(key) end)
+		props.onKey and function(_, key) return props.onKey(key) end, props.onZoom)
 	AppKit.waveformMarkers(view, props)
 	view.beatsPerBar = props.beatsPerBar or 4
 	view.division = props.division or 4

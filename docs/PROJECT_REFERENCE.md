@@ -1152,7 +1152,10 @@ snapped live, calling `onMove(id, seconds)` on release. `onKey(key)` gets
 keys while it has focus. `playFrom`, `playTo` and `playState`
 (`stopped`, `playing`, `paused`) show a playhead that Core Animation moves
 across the span in real time (no timer, no Lua per frame); pausing stops it
-where it is. `selected`, the grid and playback attributes patch in place
+where it is. A vertical wheel or a pinch calls `onZoom(factor)`; the app
+sets the new `width`, and the view lays it out and scrolls so the time under
+the pointer stays under it (horizontal scrolling stays the scroll view's).
+`selected`, the grid and playback attributes patch in place
 and marker records update in place. It has no natural width: give it
 `maxWidth="infinity"` to fit or a `width` to zoom inside a horizontal
 `ScrollView`. `apps/slicer` uses it with the `AudioFile` plugin

@@ -839,7 +839,7 @@ local TAG_SCHEMA = {
             selected = "str", playFrom = "num", playTo = "num", playState = "str", accessibilityLabel = "str" },
         updateRecords = function(view, records) return require("AppKit").waveformMarkers(view, records) end,
         transform = function(props, attrs)
-            bindActions(props, attrs, { "onAdd", "onSelect", "onMove", "onKey" })
+            bindActions(props, attrs, { "onAdd", "onSelect", "onMove", "onKey", "onZoom" })
         end,
     },
     WaveformMarker = {

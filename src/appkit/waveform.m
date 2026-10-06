@@ -19,6 +19,7 @@
 @property (nonatomic, strong) LuaReg *addReg;
 @property (nonatomic, strong) LuaReg *selectReg;
 @property (nonatomic, strong) LuaReg *moveReg;
+@property (nonatomic, strong) LuaReg *zoomReg;
 @property (nonatomic, strong) NSData *mono;
 @property (nonatomic) double sampleRate;
 @property (nonatomic, copy) NSArray<NSDictionary *> *markers;
@@ -272,6 +273,42 @@ static double waveform_marker_time(NSDictionary *marker) {
 	}
 }
 
+#pragma mark Zoom
+
+/* A vertical wheel or a pinch zooms around the pointer; horizontal
+ * scrolling stays the scroll view's. The width is the app's (it may fit
+ * the window or stop at its closest zoom), so the view asks with
+ * `onZoom(factor)`, lets the new width lay out, then scrolls so the time
+ * under the pointer is under it again. */
+- (void)zoomBy:(double)factor atX:(CGFloat)x {
+	if (!self.zoomReg || self.duration <= 0 || factor <= 0 || factor == 1) return;
+	NSClipView *clip = [self.superview isKindOfClass:NSClipView.class] ? (NSClipView *)self.superview : nil;
+	double time = [self timeAtX:x];
+	CGFloat offset = x - (clip ? clip.bounds.origin.x : 0);
+	lua_State *L = lua_reg_live_state(self.zoomReg);
+	if (!L || !lua_reg_push(self.zoomReg)) return;
+	lua_pushnumber(L, factor);
+	if (lua_objc_pcall(L, 1, 0, "waveform zoom") != LUA_OK) return;
+	flush_pending_layout();
+	if (!clip) return;
+	CGFloat limit = MAX(0, self.frame.size.width - clip.bounds.size.width);
+	CGFloat origin = MIN(MAX([self xAtTime:time] - offset, 0), limit);
+	[clip scrollToPoint:NSMakePoint(origin, clip.bounds.origin.y)];
+	[self.enclosingScrollView reflectScrolledClipView:clip];
+}
+- (void)scrollWheel:(NSEvent *)event {
+	if (!self.zoomReg || fabs(event.scrollingDeltaY) <= fabs(event.scrollingDeltaX)) {
+		[super scrollWheel:event];
+		return;
+	}
+	// A notched wheel reports lines; a trackpad reports points.
+	CGFloat delta = event.scrollingDeltaY * (event.hasPreciseScrollingDeltas ? 1 : kWaveformZoomPointsPerLine);
+	[self zoomBy:pow(kWaveformZoomPerPoint, delta) atX:[self convertPoint:event.locationInWindow fromView:nil].x];
+}
+- (void)magnifyWithEvent:(NSEvent *)event {
+	[self zoomBy:1 + event.magnification atX:[self convertPoint:event.locationInWindow fromView:nil].x];
+}
+
 #pragma mark Drawing
 
 - (void)drawGridIn:(NSRect)dirty height:(CGFloat)height {
@@ -387,14 +424,15 @@ static double waveform_marker_time(NSDictionary *marker) {
 }
 @end
 
-// _waveform(onAdd, onSelect, onMove, onKey): onAdd(time), onSelect(id),
-// onMove(id, time), onKey(view, key) -> handled.
+// _waveform(onAdd, onSelect, onMove, onKey, onZoom): onAdd(time),
+// onSelect(id), onMove(id, time), onKey(view, key) -> handled, onZoom(factor).
 static int bridge_waveform(lua_State *L) {
 	LuaWaveformView *view = [[LuaWaveformView alloc] initWithFrame:NSZeroRect];
 	view.addReg = lua_reg_opt(L, 1);
 	view.selectReg = lua_reg_opt(L, 2);
 	view.moveReg = lua_reg_opt(L, 3);
 	view.keyReg = lua_reg_opt(L, 4);
+	view.zoomReg = lua_reg_opt(L, 5);
 	push_objc(L, view, "nsview");
 	return 1;
 }
@@ -407,8 +445,9 @@ static int bridge_waveform_markers(lua_State *L) {
 	return 0;
 }
 
-// Test hook: _waveformSend(view, "press" | "drag" | "release", x) and
-// _waveformSend(view, "duration") -> seconds.
+// Test hook: _waveformSend(view, "press" | "drag" | "release", x),
+// _waveformSend(view, "zoom", x, factor) and _waveformSend(view, "duration")
+// -> seconds.
 static int bridge_waveform_send(lua_State *L) {
 	LuaWaveformView *view = lua_objc_check_object(L, 1, [LuaWaveformView class], "waveform");
 	const char *kind = luaL_checkstring(L, 2);
@@ -420,7 +459,14 @@ static int bridge_waveform_send(lua_State *L) {
 		lua_pushboolean(L, view.playResumedAt > 0);
 		return 2;
 	}
+	// "scrolled" -> the visible origin's x in a scroll view
+	if (strcmp(kind, "scrolled") == 0) {
+		NSClipView *clip = [view.superview isKindOfClass:NSClipView.class] ? (NSClipView *)view.superview : nil;
+		lua_pushnumber(L, clip ? clip.bounds.origin.x : 0);
+		return 1;
+	}
 	CGFloat x = luaL_checknumber(L, 3);
+	if (strcmp(kind, "zoom") == 0) { [view zoomBy:luaL_checknumber(L, 4) atX:x]; return 0; }
 	if (strcmp(kind, "press") == 0) [view pressAt:x];
 	else if (strcmp(kind, "drag") == 0) [view dragTo:x];
 	else if (strcmp(kind, "release") == 0) [view releaseAt:x];

@@ -18,13 +18,14 @@ Model.maxZoom = 2048
 
 -- `zoom` is points per bar; nil fits the whole file in the window.
 function Model.new()
-	return setmetatable({bpm = 140, beatsPerBar = 4, grid = 3, cuts = {}, nextId = 1}, Model)
+	return setmetatable({bpm = 140, beatsPerBar = 4, grid = 3, cuts = {}, nextId = 1, undos = {}, redos = {}}, Model)
 end
 
 -- `info` is {duration, sampleRate, channels} from the audio service.
 function Model:open(path, info)
 	self.path, self.info, self.zoom, self.playback = path, info, nil, nil
 	self.cuts, self.selected, self.nextId = {}, nil, 1
+	self.undos, self.redos = {}, {}
 end
 
 function Model:duration() return self.info and self.info.duration or 0 end
@@ -62,6 +63,40 @@ function Model:find(id)
 	end
 end
 
+-- Undo history: each edit of the cuts saves the cuts and selection before
+-- it; undoing restores them and keeps what it replaced for redo. Grid, zoom
+-- and selection alone are not edits. Cut ids keep counting up, so an undone
+-- cut and a new one never share an id.
+Model.undoLimit = 100
+
+local function snapshot(self)
+	local cuts = {}
+	for _, cut in ipairs(self.cuts) do table.insert(cuts, {id = cut.id, time = cut.time}) end
+	return {cuts = cuts, selected = self.selected}
+end
+
+function Model:record()
+	table.insert(self.undos, snapshot(self))
+	if #self.undos > Model.undoLimit then table.remove(self.undos, 1) end
+	self.redos = {}
+end
+
+local function restore(self, from, to)
+	local state = table.remove(from)
+	if not state then return false end
+	table.insert(to, snapshot(self))
+	self.cuts, self.selected = state.cuts, state.selected
+	return true
+end
+
+function Model:undo() return restore(self, self.undos, self.redos) end
+
+function Model:redo() return restore(self, self.redos, self.undos) end
+
+function Model:canUndo() return #self.undos > 0 end
+
+function Model:canRedo() return #self.redos > 0 end
+
 -- Adds a cut at `time` and selects it; a cut already there is selected
 -- instead, so clicking a grid line twice does not stack two cuts.
 function Model:addCut(time)
@@ -69,6 +104,7 @@ function Model:addCut(time)
 	for _, cut in ipairs(self.cuts) do
 		if math.abs(cut.time - time) < 1e-6 then self.selected = cut.id; return cut.id end
 	end
+	self:record()
 	local id = "cut" .. self.nextId
 	self.nextId = self.nextId + 1
 	table.insert(self.cuts, {id = id, time = time})
@@ -78,7 +114,11 @@ end
 
 function Model:moveCut(id, time)
 	local cut = self:find(id)
-	if cut then cut.time = math.max(0, math.min(self:duration(), time)) end
+	time = math.max(0, math.min(self:duration(), time))
+	if cut and cut.time ~= time then
+		self:record()
+		cut.time = time
+	end
 	self.selected = id
 end
 
@@ -89,12 +129,15 @@ end
 function Model:removeSelected()
 	local _, index = self:find(self.selected)
 	if not index then return false end
+	self:record()
 	table.remove(self.cuts, index)
 	self.selected = nil
 	return true
 end
 
 function Model:clear()
+	if #self.cuts == 0 then return end
+	self:record()
 	self.cuts, self.selected = {}, nil
 end
 
