@@ -193,6 +193,7 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 #define kWaveformMarkerWidth             1
 #define kWaveformSelectedMarkerWidth     2
 #define kWaveformHandleSize             10
+#define kWaveformPlayheadWidth           2
 /* How close, in points, a press must land to grab a marker. */
 #define kWaveformMarkerHitWidth          5
 #define kTableCellLoadingGap             4

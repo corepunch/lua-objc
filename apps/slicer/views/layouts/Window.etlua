@@ -12,7 +12,7 @@
       <MenuItem title="Export Samples…" keyEquivalent="e" action="export" validate="canExport" />
     </CommandGroup>
     <CommandMenu title="Slice">
-      <MenuItem title="Play Slice" systemImage="play.fill" keyEquivalent="p" modifiers="command,shift" action="play" validate="canExport" />
+      <MenuItem title="Play/Pause" systemImage="playpause.fill" keyEquivalent="p" modifiers="command,shift" action="play" validate="canExport" />
       <MenuItem title="Stop" systemImage="stop.fill" keyEquivalent="." action="stop" />
       <Separator />
       <MenuItem title="Previous Cut" keyEquivalent="[" action="previousCut" validate="hasCuts" />
@@ -36,7 +36,11 @@
     <ToolbarSpacer />
     <ToolbarItem id="zoomOut" label="Zoom Out" icon="minus.magnifyingglass" tooltip="Zoom out" action="zoomOut" />
     <ToolbarItem id="zoomIn" label="Zoom In" icon="plus.magnifyingglass" tooltip="Zoom in" action="zoomIn" />
+    <% if playing then %>
+    <ToolbarItem id="play" label="Pause" icon="pause.fill" tooltip="Pause (Space)" action="play" />
+    <% else %>
     <ToolbarItem id="play" label="Play Slice" icon="play.fill" tooltip="Play the selected slice (Space)" action="play" />
+    <% end %>
     <ToolbarItem id="export" label="Export" icon="square.and.arrow.up" tooltip="Export every slice as a WAV file" action="export" />
   </Toolbar>
   <VStack id="content" maxWidth="infinity" maxHeight="infinity" />

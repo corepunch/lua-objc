@@ -25,7 +25,12 @@ function Audio:info(path) return self:plugin().info(path) end
 -- nil and a message.
 function Audio:export(path, from, to, out) return self:plugin().export(path, from, to, out) end
 
-function Audio:play(path, from, to) return self:plugin().play(path, from, to) end
+-- `onEnd()` runs once the span has been heard, not after `stop`.
+function Audio:play(path, from, to, onEnd) return self:plugin().play(path, from, to, onEnd) end
+
+function Audio:pause() if self.native then self.native.pause() end end
+
+function Audio:resume() if self.native then self.native.resume() end end
 
 function Audio:stop() if self.native then self.native.stop() end end
 

@@ -23,7 +23,7 @@ end
 
 -- `info` is {duration, sampleRate, channels} from the audio service.
 function Model:open(path, info)
-	self.path, self.info, self.zoom = path, info, nil
+	self.path, self.info, self.zoom, self.playback = path, info, nil, nil
 	self.cuts, self.selected, self.nextId = {}, nil, 1
 end
 
@@ -141,6 +141,21 @@ function Model:currentSlice()
 	return slices[1]
 end
 
+-- The audition: nil when silent, else {state = "playing" | "paused",
+-- from, to} in seconds. The player is the audio service; this is what the
+-- editor shows of it.
+function Model:startPlayback(slice)
+	self.playback = {state = "playing", from = slice.start, to = slice.finish}
+end
+
+function Model:setPlaybackState(state)
+	if self.playback then self.playback.state = state end
+end
+
+function Model:stopPlayback() self.playback = nil end
+
+function Model:playing() return self.playback ~= nil and self.playback.state == "playing" end
+
 -- "Break 03.wav" for slice 3 of Break.aif; the number is padded to the
 -- width of the slice count so the files sort in order.
 function Model:fileName(index, count)
@@ -166,6 +181,10 @@ function Model:presentation()
 		width = self:width(),
 		selected = self.selected or "",
 		cuts = self:sorted(),
+		playing = self:playing(),
+		playState = self.playback and self.playback.state or "stopped",
+		playFrom = self.playback and self.playback.from or 0,
+		playTo = self.playback and self.playback.to or 0,
 	}
 	if self.info then
 		data.name = self.path:match("([^/]+)$")

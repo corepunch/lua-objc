@@ -836,7 +836,7 @@ local TAG_SCHEMA = {
         constructor = "Waveform",
         children = "array",
         props = { source = "str", bpm = "num", beatsPerBar = "num", division = "num", gridOffset = "num",
-            selected = "str", accessibilityLabel = "str" },
+            selected = "str", playFrom = "num", playTo = "num", playState = "str", accessibilityLabel = "str" },
         updateRecords = function(view, records) return require("AppKit").waveformMarkers(view, records) end,
         transform = function(props, attrs)
             bindActions(props, attrs, { "onAdd", "onSelect", "onMove", "onKey" })
@@ -2308,6 +2308,9 @@ local TAG_INNER = {
         division = setter("division", number(4)),
         gridOffset = setter("gridOffset", number(0)),
         selected = setter("selectedId", function(v) return v or "" end),
+        playFrom = setter("playFrom", number(0)),
+        playTo = setter("playTo", number(0)),
+        playState = setter("playState", function(v) return v or "stopped" end),
     },
     Slider = { value = setter("value", number(0)) },
     Picker = { value = function(view, v)

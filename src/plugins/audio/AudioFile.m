@@ -6,6 +6,7 @@
 
 #import <AVFAudio/AVFAudio.h>
 #import <Foundation/Foundation.h>
+#import <dlfcn.h>
 #import <lua.h>
 #import <lauxlib.h>
 
@@ -84,16 +85,58 @@ static int exportSlice(lua_State *L) {
 	return 1;
 }
 
-// stop(): silences the audition.
+// The audition's end callback: a registry reference in the main Lua state.
+// Each play bumps the generation, so a segment that was stopped or replaced
+// never reports an end.
+static lua_State *gMainState;
+static int gOnEnd = LUA_NOREF;
+static uint64_t gGeneration;
+
+static void releaseOnEnd(void) {
+	if (gMainState && gOnEnd != LUA_NOREF) luaL_unref(gMainState, LUA_REGISTRYINDEX, gOnEnd);
+	gOnEnd = LUA_NOREF;
+}
+
+static void finished(uint64_t generation) {
+	if (generation != gGeneration || gOnEnd == LUA_NOREF) return;
+	int ref = gOnEnd;
+	gOnEnd = LUA_NOREF;
+	gPlaying = nil;
+	lua_State *L = gMainState;
+	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+	luaL_unref(L, LUA_REGISTRYINDEX, ref);
+	if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+		fprintf(stderr, "AudioFile onEnd: %s\n", lua_tostring(L, -1));
+		lua_pop(L, 1);
+	}
+}
+
+// stop(): silences the audition; its end callback does not run.
 static int stop(lua_State *L) {
 	(void)L;
+	gGeneration++;
+	releaseOnEnd();
 	[gPlayer stop];
 	[gEngine stop];
 	gPlaying = nil;
 	return 0;
 }
 
-// play(path, from, to) -> true, or nil, message. Replaces what is playing.
+// pause() keeps the position; resume() continues from it.
+static int pausePlayback(lua_State *L) {
+	(void)L;
+	[gPlayer pause];
+	return 0;
+}
+
+static int resume(lua_State *L) {
+	(void)L;
+	if (gPlaying) [gPlayer play];
+	return 0;
+}
+
+// play(path, from, to, onEnd) -> true, or nil, message. Replaces what is
+// playing; `onEnd()` runs on the main thread once the span has been heard.
 static int play(lua_State *L) {
 	NSError *error = nil;
 	AVAudioFile *file = openFile(L, 1, &error);
@@ -111,15 +154,36 @@ static int play(lua_State *L) {
 	[gEngine connect:gPlayer to:gEngine.mainMixerNode format:file.processingFormat];
 	if (![gEngine startAndReturnError:&error]) return pushError(L, error, "The audio device could not start.");
 	gPlaying = file;
-	[gPlayer scheduleSegment:file startingFrame:from frameCount:(AVAudioFrameCount)(to - from) atTime:nil completionHandler:nil];
+	if (lua_isfunction(L, 4)) {
+		lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD);
+		gMainState = lua_tothread(L, -1);
+		lua_pop(L, 1);
+		lua_pushvalue(L, 4);
+		gOnEnd = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+	uint64_t generation = gGeneration;
+	[gPlayer scheduleSegment:file startingFrame:from frameCount:(AVAudioFrameCount)(to - from) atTime:nil
+		completionCallbackType:AVAudioPlayerNodeCompletionDataPlayedBack
+		completionHandler:^(AVAudioPlayerNodeCompletionCallbackType type) {
+			(void)type;
+			dispatch_async(dispatch_get_main_queue(), ^{ finished(generation); });
+		}];
 	[gPlayer play];
 	lua_pushboolean(L, 1);
 	return 1;
 }
 
 int luaopen_AudioFile(lua_State *L) {
+	// Completion blocks are plugin code: keep the image mapped even if Lua
+	// unloads the library while a segment is still playing.
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		Dl_info image;
+		if (dladdr((const void *)&luaopen_AudioFile, &image)) dlopen(image.dli_fname, RTLD_NOW | RTLD_NODELETE);
+	});
 	const luaL_Reg functions[] = {
-		{"info", info}, {"export", exportSlice}, {"play", play}, {"stop", stop}, {NULL, NULL}};
+		{"info", info}, {"export", exportSlice}, {"play", play}, {"pause", pausePlayback}, {"resume", resume},
+		{"stop", stop}, {NULL, NULL}};
 	luaL_newlib(L, functions);
 	return 1;
 }
