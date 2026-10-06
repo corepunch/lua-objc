@@ -1135,6 +1135,34 @@ height (or a width and height); it relays out whenever its size changes.
 </Treemap>
 ```
 
+### `Waveform{...}`
+
+`<Waveform source="…">` draws a sound file (anything AVAudioFile opens) as
+its waveform under a tempo grid, with `<WaveformMarker id time />` records
+as markers (`src/appkit/waveform.m`, `LuaWaveformView`). The file is decoded
+once to mono; each draw reduces only the dirty columns to min/max, so inside
+a horizontal `ScrollView` it costs what is visible. `bpm`, `beatsPerBar`
+(4) and `division` (snap steps per beat, 4; 0 places freely) set the grid:
+bar lines with numbers in a ruler band, beat and step lines when they are
+at least 6 pt apart. `gridOffset` is where bar 1 starts. Every other slice
+between markers is shaded and numbered from the file's start, skipping
+empty slices. Pressing empty space calls `onAdd(seconds)` snapped to the
+grid; pressing a marker selects it (`onSelect(id)`) and dragging moves it,
+snapped live, calling `onMove(id, seconds)` on release. `onKey(key)` gets
+keys while it has focus. `selected` and the grid attributes patch in place
+and marker records update in place. It has no natural width: give it
+`maxWidth="infinity"` to fit or a `width` to zoom inside a horizontal
+`ScrollView`. `apps/slicer` uses it with the `AudioFile` plugin
+(`src/plugins/audio/README.md`).
+
+```xml
+<ScrollView horizontal="true" vertical="false" maxWidth="infinity" maxHeight="infinity">
+  <Waveform source="loop.wav" bpm="140" division="4" maxWidth="infinity" maxHeight="infinity" onAdd="addCut" onMove="moveCut">
+    <WaveformMarker id="a" time="1.714" />
+  </Waveform>
+</ScrollView>
+```
+
 ### Motion
 
 There is no animation engine: no `withAnimation`, no `transition`. An `Arc`
@@ -1894,6 +1922,7 @@ Templates use the `.etlua` extension to reflect that they contain etlua
 | `<SectorChart>` + `<SectorMark>` children | native `Arc`s in a `ZStack` | native `Arc`s in a `ZStack` |
 | `<Gauge>` | `NSLevelIndicator` (continuous capacity) | `UIProgressView` |
 | `<Treemap>` + `<TreemapNode>` children | `LuaTreemapView` (squarified, drawn natively) | — |
+| `<Waveform>` + `<WaveformMarker>` children | `LuaWaveformView` (sound file, tempo grid, draggable markers) | — |
 | `<ActivityRings>`, `<BarChart>`, `<CapacityBar>`, `<HeatmapGrid>` | etlua components (`lua/components/`) of native `Arc`s and stacks | same templates |
 | `<Window>` | window config table | window config table |
 | `<Toolbar>` + `<ToolbarItem>` | toolbar items | toolbar items |

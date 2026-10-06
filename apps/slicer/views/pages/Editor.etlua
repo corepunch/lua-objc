@@ -1,0 +1,30 @@
+<% --[[
+  The waveform under its 140 BPM grid, cuts as markers. Pressing the
+  waveform adds a cut on the nearest grid line; a cut drags along the grid,
+  Delete removes the selected one and Space plays its slice. The waveform
+  is one view for the open file: cuts, grid and zoom update it in place. ]] %>
+<Resources>
+  <Number id="statusPadding" value="8" />
+  <Number id="statusSpacing" value="12" />
+</Resources>
+<VStack spacing="0" maxWidth="infinity" maxHeight="infinity" onDrop="openDropped" dropExternalOnly="true">
+  <% if path then %>
+  <ScrollView id="scroll" horizontal="true" vertical="false" maxWidth="infinity" maxHeight="infinity">
+    <Waveform id="waveform" source="<%= path %>" bpm="<%= bpm %>" beatsPerBar="<%= beatsPerBar %>" division="<%= division %>" selected="<%= selected %>" <% if width then %>width="<%= width %>"<% else %>maxWidth="infinity"<% end %> maxHeight="infinity" onAdd="addCut" onSelect="selectCut" onMove="moveCut" onKey="key" accessibilityLabel="Waveform of <%= name %>">
+      <% for _, cut in ipairs(cuts) do %>
+      <WaveformMarker id="<%= cut.id %>" time="<%= string.format("%.9f", cut.time) %>" />
+      <% end %>
+    </Waveform>
+  </ScrollView>
+  <Divider />
+  <HStack spacing="@statusSpacing" padding="@statusPadding" alignment="center" maxWidth="infinity">
+    <Label id="summary" text="<%= summary %>" color="secondary" />
+    <Spacer />
+    <Label id="slice" text="<%= sliceSummary %>" color="secondary" />
+  </HStack>
+  <% else %>
+  <ContentUnavailable title="No Sound File" systemImage="waveform" description="Open a sound file or drop one here, then click the waveform to place cuts on the 140 BPM grid.">
+    <Button title="Open…" action="open" />
+  </ContentUnavailable>
+  <% end %>
+</VStack>

@@ -36,3 +36,21 @@ The queue capacity is the latency between a parameter change and hearing it.
 Producers refill it from a Lua timer; Lua timers run in the common run-loop
 modes, so refills continue while a slider tracks the mouse. The code image stays
 mapped until process exit because the render block is plugin code.
+
+# AudioFile native Lua plugin
+
+Built by `make` as `build/AudioFile.dylib`: reading, slicing and auditioning
+sound files with AVAudioFile (WAV, AIFF, CAF, MP3, AAC, ALAC, FLAC). The
+Slicer app (`apps/slicer`) is the client.
+
+```lua
+local file = App.loadNativePlugin(assert(package.searchpath("AudioFile", package.cpath)), "AudioFile")
+file.info(path)                     -- {duration, frames, sampleRate, channels}, or nil, message
+file.export(path, from, to, out)    -- seconds -> frames written to a 24-bit WAV, or nil, message
+file.play(path, from, to)           -- auditions a span; replaces what is playing
+file.stop()
+```
+
+Slices keep the source's sample rate and channels. Audition uses one shared
+AVAudioEngine that is stopped, not left idling, by `stop` and before each
+new `play`.

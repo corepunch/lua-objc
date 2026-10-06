@@ -305,6 +305,10 @@ static int bridge_application_support_directory(lua_State *L) {
 	return 1;
 }
 
+/* `_pickFile(title, options)`: the standard open panel for one file.
+ * Options: `types`, a list of Uniform Type Identifiers the panel enables
+ * ("public.audio" takes every sound file), and `prompt` for the default
+ * button. */
 static int bridge_pick_file(lua_State *L) {
 	const char *titleC = luaL_optstring(L, 1, "Open File");
 	NSOpenPanel *panel = [NSOpenPanel openPanel];
@@ -313,6 +317,22 @@ static int bridge_pick_file(lua_State *L) {
 	panel.allowsMultipleSelection = NO;
 	panel.canCreateDirectories = NO;
 	panel.title = [NSString stringWithUTF8String:titleC];
+	if (lua_istable(L, 2)) {
+		lua_getfield(L, 2, "types");
+		if (lua_istable(L, -1)) {
+			NSMutableArray<UTType *> *types = [NSMutableArray array];
+			for (lua_Integer i = 1; lua_rawgeti(L, -1, i) == LUA_TSTRING; i++) {
+				UTType *type = [UTType typeWithIdentifier:@(lua_tostring(L, -1))];
+				if (type) [types addObject:type];
+				lua_pop(L, 1);
+			}
+			lua_pop(L, 1);
+			if (types.count) panel.allowedContentTypes = types;
+		}
+		lua_getfield(L, 2, "prompt");
+		if (lua_isstring(L, -1)) panel.prompt = @(lua_tostring(L, -1));
+		lua_pop(L, 2);
+	}
 
 	NSInteger response = [panel runModal];
 	if (response != NSModalResponseOK || panel.URL == nil) {

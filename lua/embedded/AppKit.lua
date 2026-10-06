@@ -2236,6 +2236,53 @@ function AppKit.Treemap(props)
 	return require("ui.treemap").view(bridge, applyLayout, props)
 end
 
+--- Draws a sound file's waveform under a tempo grid, with `WaveformMarker`
+--- records the person places and drags.
+---
+--- Grid lines fall on bars, beats and `division` steps per beat; bar numbers
+--- sit in a ruler band at the top, and slice numbers (counted from the file's
+--- start, as exported) at the bottom. Pressing empty space adds a marker on
+--- the nearest step; pressing a marker selects it and dragging moves it,
+--- snapped while it moves. `division` 0 places markers freely.
+--- @prop source string optional. Path of the sound file.
+--- @prop bpm number optional. Tempo of the grid; 0 draws no grid.
+--- @prop beatsPerBar number optional. Beats in a bar (default 4).
+--- @prop division number optional. Snap steps per beat (default 4, sixteenths in 4/4).
+--- @prop gridOffset number optional. Seconds where bar 1 starts.
+--- @prop selected string optional. Id of the selected marker.
+--- @prop onAdd function optional. `onAdd(seconds)`.
+--- @prop onSelect function optional. `onSelect(id)`.
+--- @prop onMove function optional. `onMove(id, seconds)` when a dragged marker is dropped.
+--- @prop onKey function optional. `onKey(key) -> handled`; the view takes keyboard focus when clicked.
+--- @example <Waveform source="loop.wav" bpm="140"><WaveformMarker id="a" time="1.5" /></Waveform>
+--- @platform AppKit uses the AppKit implementation.
+function AppKit.Waveform(props)
+	props = props or {}
+	local view = bridge._waveform(props.onAdd, props.onSelect, props.onMove,
+		props.onKey and function(_, key) return props.onKey(key) end)
+	AppKit.waveformMarkers(view, props)
+	view.beatsPerBar = props.beatsPerBar or 4
+	view.division = props.division or 4
+	view.bpm = props.bpm or 0
+	view.gridOffset = props.gridOffset or 0
+	if props.source then view.source = props.source end
+	if props.selected then view.selectedId = props.selected end
+	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
+	return applyLayout(view, props)
+end
+
+--- Gives a waveform new `WaveformMarker` records in place.
+function AppKit.waveformMarkers(view, records)
+	local markers = {}
+	for _, record in ipairs(records) do
+		if type(record) == "table" and record.__waveformMarker then
+			table.insert(markers, {id = record.id, time = record.time or 0})
+		end
+	end
+	bridge._waveformMarkers(view, markers)
+	return true
+end
+
 --- Returns the volume's capacities in bytes: `total`, `available` (free),
 --- `important` (free plus purgeable storage macOS will release) and
 --- `opportunistic`. Nil when the path is not on a readable volume.
@@ -2659,6 +2706,13 @@ end
 --- `prompt` for the default button.
 function AppKit.pickFolder(title, options)
 	return bridge._pickFolder(title, options)
+end
+
+--- The standard open panel for one file; returns its path or nil.
+--- `options`: `types`, Uniform Type Identifiers the panel enables
+--- (`{"public.audio"}`), and `prompt` for the default button.
+function AppKit.pickFile(title, options)
+	return bridge._pickFile(title, options)
 end
 
 --- The newest file system event ID; store it and pass it as `since` later.

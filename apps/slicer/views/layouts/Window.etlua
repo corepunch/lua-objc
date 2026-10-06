@@ -1,0 +1,43 @@
+<Resources>
+  <Number id="windowWidth" value="1100" />
+  <Number id="windowHeight" value="520" />
+  <Number id="windowMinWidth" value="640" />
+  <Number id="windowMinHeight" value="320" />
+</Resources>
+<Window title="Slicer" width="@windowWidth" height="@windowHeight" minWidth="@windowMinWidth" minHeight="@windowMinHeight">
+  <Commands appName="Slicer">
+    <CommandGroup replacing="importExport">
+      <MenuItem title="Open…" keyEquivalent="o" action="open" />
+      <Separator />
+      <MenuItem title="Export Samples…" keyEquivalent="e" action="export" validate="canExport" />
+    </CommandGroup>
+    <CommandMenu title="Slice">
+      <MenuItem title="Play Slice" systemImage="play.fill" keyEquivalent="p" modifiers="command,shift" action="play" validate="canExport" />
+      <MenuItem title="Stop" systemImage="stop.fill" keyEquivalent="." action="stop" />
+      <Separator />
+      <MenuItem title="Previous Cut" keyEquivalent="[" action="previousCut" validate="hasCuts" />
+      <MenuItem title="Next Cut" keyEquivalent="]" action="nextCut" validate="hasCuts" />
+      <MenuItem title="Delete Cut" keyEquivalent="delete" action="deleteCut" validate="hasSelection" />
+      <MenuItem title="Remove All Cuts" keyEquivalent="delete" modifiers="command,shift" action="clearCuts" validate="hasCuts" />
+      <Separator />
+      <MenuItem title="Zoom In" systemImage="plus.magnifyingglass" keyEquivalent="=" action="zoomIn" validate="canZoomIn" />
+      <MenuItem title="Zoom Out" systemImage="minus.magnifyingglass" keyEquivalent="-" action="zoomOut" validate="canZoomOut" />
+    </CommandMenu>
+  </Commands>
+  <Toolbar>
+    <ToolbarItem id="open" label="Open" icon="folder" tooltip="Open a sound file" action="open" />
+    <ToolbarItem id="grid" label="Grid">
+      <Picker id="grid" style="segmented" value="<%= grid %>" onChange="setGrid" accessibilityLabel="Snap cuts to">
+        <% for _, option in ipairs(grids) do %>
+        <Option title="<%= option.title %>" />
+        <% end %>
+      </Picker>
+    </ToolbarItem>
+    <ToolbarSpacer />
+    <ToolbarItem id="zoomOut" label="Zoom Out" icon="minus.magnifyingglass" tooltip="Zoom out" action="zoomOut" />
+    <ToolbarItem id="zoomIn" label="Zoom In" icon="plus.magnifyingglass" tooltip="Zoom in" action="zoomIn" />
+    <ToolbarItem id="play" label="Play Slice" icon="play.fill" tooltip="Play the selected slice (Space)" action="play" />
+    <ToolbarItem id="export" label="Export" icon="square.and.arrow.up" tooltip="Export every slice as a WAV file" action="export" />
+  </Toolbar>
+  <VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+</Window>
