@@ -472,6 +472,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textFieldTestCommand", bridge_text_field_test_command},
 	{"_textFieldTestFocus", bridge_text_field_test_focus},
 	{"_textView", bridge_text_view},
+	{"_textEditorTestInput", bridge_text_editor_test_input},
 	{"_tabview", bridge_tabview},
 	{"_segmentedControl", bridge_segmented_control},
 	{"_watch", bridge_watch},

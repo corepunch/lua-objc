@@ -176,6 +176,16 @@ static int bridge_text_view(lua_State *L) {
 	return 1;
 }
 
+/* Headless tests type into a TextEditor: an edit the person made, so the
+ * change observer runs (unlike a programmatic `text` write). */
+static int bridge_text_editor_test_input(lua_State *L) {
+	NSScrollView *sv = lua_objc_check_object(L, 1, [NSScrollView class], "TextEditor");
+	NSTextView *tv = (NSTextView *)sv.documentView;
+	tv.string = [NSString stringWithUTF8String:luaL_checkstring(L, 2)];
+	[tv didChangeText];
+	return 0;
+}
+
 static int bridge_NSScrollView_onChange(lua_State *L) {
 	id obj = check_objc(L, 1);
 	luaL_checktype(L, 2, LUA_TFUNCTION);

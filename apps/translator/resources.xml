@@ -1,0 +1,12 @@
+<Resources>
+	<Number id="pagePadding" value="16" />
+	<Number id="pageSpacing" value="20" />
+	<Number id="cardSpacing" value="8" />
+	<Number id="editorHeight" value="140" />
+	<Number id="captionSize" value="13" />
+	<Number id="resultSize" value="20" />
+	<Number id="recentSpacing" value="2" />
+	<Number id="recentRowPadding" value="10" />
+	<String id="sourceLanguage" value="English" />
+	<String id="targetLanguage" value="Russian" />
+</Resources>

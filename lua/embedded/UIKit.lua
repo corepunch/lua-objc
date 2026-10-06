@@ -753,6 +753,7 @@ end
 --- @prop drawsBackground boolean optional. Draws the control’s background when true.
 --- @prop editable boolean optional. Allows text editing when true.
 --- @prop italic boolean optional. Component-specific setting passed to the native control.
+--- @prop onChange function optional. Receives the text after each edit.
 --- @prop selectable boolean optional. Allows text or rows to be selected when true.
 --- @prop size number optional. Component-specific setting passed to the native control.
 --- @prop text string optional. Initial or displayed text value.
@@ -771,6 +772,9 @@ function UIKit.TextEditor(props)
 	if props.wrapMode == false then
 		v.textContainer.lineBreakMode = 1
 	end
+	-- SwiftUI `TextEditor(text:)`: each edit hands the new text to the page.
+	if props.onChange then bridge._textEditorCallbacks(v, props.onChange) end
+	if props.accessibilityLabel then v.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(v, props)
 end
 
@@ -1703,6 +1707,11 @@ end
 --- `sleep` resumes late whenever the main run loop is busy.
 function UIKit.uptime()
 	return bridge._uptime()
+end
+
+--- Puts `text` on the general pasteboard, as AppKit.copyToClipboard does.
+function UIKit.copyToClipboard(text)
+	bridge._clipboardCopy(text)
 end
 
 function UIKit.async(fn)

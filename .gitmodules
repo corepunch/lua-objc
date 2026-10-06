@@ -7,3 +7,6 @@
 [submodule "vendor/libgit2"]
 	path = vendor/libgit2
 	url = https://github.com/libgit2/libgit2.git
+[submodule "apps/translator/en-ru-translator"]
+	path = apps/translator/en-ru-translator
+	url = https://github.com/corepunch/en-ru-translator.git

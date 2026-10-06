@@ -13,6 +13,7 @@
 static char kAxisKey;
 static char kWindowCloseKey;
 static char kTextFieldDelegateKey;
+static char kTextEditorDelegateKey;
 static char kFlexibleKey;
 static char kTableSourceKey;
 static char kCallbackKey;
@@ -231,6 +232,9 @@ static const luaL_Reg bridge_lib[] = {
 	{"_textFieldTestInput", bridge_text_field_test_input},
 	{"_textFieldTestCommand", bridge_text_field_test_command},
 	{"_textFieldTestFocus", bridge_text_field_test_focus},
+	{"_textEditorCallbacks", bridge_text_editor_callbacks},
+	{"_textEditorTestInput", bridge_text_editor_test_input},
+	{"_clipboardCopy", bridge_clipboard_copy},
 	{"_arc", bridge_arc},
 	{"_textField", bridge_UIKitControls_textField},
 	{"_searchField", bridge_UIKitControls_searchField},

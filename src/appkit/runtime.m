@@ -14,6 +14,7 @@ static int bridge_tableview_replace(lua_State *L);
 static int bridge_table_select_row(lua_State *L);
 static int bridge_table_activate_row(lua_State *L);
 static int bridge_text_view(lua_State *L);
+static int bridge_text_editor_test_input(lua_State *L);
 static int bridge_outlineview(lua_State *L);
 static int bridge_list_directory(lua_State *L);
 static int bridge_tabview(lua_State *L);

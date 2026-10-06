@@ -49,7 +49,8 @@ function App.optional(name)
 end
 
 -- Returns the launch class for the manifest at `path`. `options.services`
--- is every page's `self.app` (a mock service runs the real routes),
+-- is every page's `self.app` (a mock service runs the real routes;
+-- `Services.lua` beside app.xml when omitted),
 -- `options.store` the store the models read (or a function that
 -- returns a fresh one; `Store.lua` beside app.xml when omitted) and `options.args` replaces the
 -- process arguments. `defaults` are options for every instance.
@@ -81,7 +82,13 @@ function Launcher.create(path, options)
 	self.routes = require(self.module .. "." .. self.manifest.routes)
 	-- A page that names no route fails at launch, not when first shown.
 	for _, entry in ipairs(self.manifest.order) do Routes.find(self.routes, entry) end
-	self.services = options.services or {}
+	-- The services every page sees as `self.app` are `Services.lua` beside
+	-- app.xml, a function returning them, built fresh for each launch as
+	-- the store is; an app that has none hands its pages an empty table.
+	local services = options.services
+	if services == nil then services = App.optional(self.module .. ".Services") end
+	if type(services) == "function" then services = services() end
+	self.services = services or {}
 	self.pages = {}
 	-- The store's seed is `Store.lua` beside app.xml, a function returning the
 	-- tables the models read; each launch binds a fresh store from it.
@@ -149,6 +156,7 @@ function Launcher:createWindow()
 	local isolated = self.options.isolated == true
 	local config, refs = xml.renderFile(SHELL, {
 		app = self.manifest, isolated = isolated, actions = self:actions(),
+		platform = ns.platform, title = self.manifest.pages[self.startup].title,
 	}, ns)
 	self.content = refs.content
 	if ns.platform == "AppKit" and not isolated then
@@ -158,8 +166,10 @@ function Launcher:createWindow()
 		config.sidebar, self.sidebar = view, sidebarRefs.sidebar
 		self.sidebar:replaceRows(self:rows())
 	end
-	self.window = ns.Window(config)
+	-- The page is in the content before the window hosts it: UIKit sizes a
+	-- hosted tree when it is installed, not views added to it afterwards.
 	self:show(self.startup)
+	self.window = ns.Window(config)
 	return self.window
 end
 
