@@ -147,8 +147,8 @@ local categoryApp
 for _, row in ipairs(Categories:rows("apps-system")) do if row.id == "discovered-editor" then categoryApp = row end end
 t.assertEqual(categoryApp.fileIcon, "/Applications/Visual Studio Code.app", "application rows retain their native icon path")
 local managedApp
-for _, row in ipairs(Categories:managementRows("applications")) do if row.id == "discovered-editor" then managedApp = row end end
-t.assertEqual(managedApp.fileIcon, "/Applications/Visual Studio Code.app", "management rows retain their native icon path")
+for _, row in ipairs(Categories:leafRows("applications")) do if row.id == "discovered-editor" then managedApp = row end end
+t.assertEqual(managedApp.fileIcon, "/Applications/Visual Studio Code.app", "category page rows retain their native icon path")
 local paths = {}; for _, path in ipairs(measuredPaths) do paths[path] = true end
 t.expect(paths["/Users/test/Developer/demo/node_modules"], "generated folders receive independent measurements")
 t.expect(paths["/Applications/Install macOS Tahoe.app"], "installer apps receive independent measurements")

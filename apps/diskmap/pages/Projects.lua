@@ -2,6 +2,9 @@ local Model = require("data.model")
 local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
 local Projects = require("apps.diskmap.models.Projects")
+local Categories = require("apps.diskmap.models.Categories")
+local ChartNodes = require("apps.diskmap.helpers.ChartNodes")
+local Locations = require("apps.diskmap.models.Locations")
 
 local routes = {}
 
@@ -14,7 +17,7 @@ local LAYOUT = {
 			help = "Mark build data of projects with a clean git tree, untouched for three months"}},
 		empties = {{id = "projectsEmpty", title = "No Build Folders Found", systemImage = "folder.badge.gearshape",
 			description = "Projects appear here once Diskmap finds node_modules, target, .build and similar folders beside their project files."}},
-		panelId = "projectsList",
+		panelId = "projectsList", chart = true,
 		list = {id = "projects", menu = "rowMenu", activate = "reveal", detailColumn = true}}},
 	footnote = {text = "Only folders a project's tools create (node_modules, target, .build, …) are listed. Projects with uncommitted or unpushed work are never marked in bulk."},
 }
@@ -87,6 +90,25 @@ routes.projects = ListRoute.extend({layout = LAYOUT,
 		table.insert(items, actions:reveal(group.path))
 		table.insert(items, actions:copyPath(group.path))
 		return items
+	end,
+	-- Rings and rectangles: each project, and its build folders inside it.
+	chart = function(_, presented)
+		local top = {}
+		for _, group in ipairs(presented.lists.projects) do
+			local folders = {}
+			for _, artifact in ipairs(group.artifacts) do
+				table.insert(folders, {id = artifact.id, name = artifact.name, bytes = artifact.bytes, size = artifact.size})
+			end
+			table.insert(top, {id = group.id, name = group.name, bytes = group.bytes, size = group.size, color = group.color, children = folders, leaf = false})
+		end
+		return ChartNodes.build(top, Categories:hues(top), 2, Categories.mapMinimumShare)
+	end,
+	-- A project or one of its build folders opens in the Finder, as a
+	-- double-clicked row does.
+	activateRow = function(page, row) page.app.service.reveal(row.path) end,
+	activateNode = function(page, id)
+		local folder = Locations:find(id)
+		if folder and folder.path then page.app.service.reveal(folder.path) end
 	end,
 	markStale = function(page)
 		return page.rowActions:bulk(stale(page), function() return true end, Projects.items)

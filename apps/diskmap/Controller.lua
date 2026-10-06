@@ -26,7 +26,7 @@ function Controller.new(service, launch)
 	launch = launch or Provider.launch(App.args(), service)
 	local self = setmetatable({launch = launch, query = ""}, Controller)
 	local router = {
-		open = function(id, params) return self:open(id, params) end,
+		open = function(id) return self:open(id) end,
 		show = function(id, params) return self:show(id, params) end,
 		search = function(text) return self:search(text) end,
 		refresh = function() self:updateRows() end,
@@ -103,17 +103,17 @@ function Controller:focusSearch()
 	if self.window and self.searchField then self.window:focus(self.searchField) end
 end
 -- Opens a resource where its location sends it: a sidebar page, a sheet of
--- its own, or its category's list with its row selected. An id that names
+-- its own, or its category's page with its row selected. An id that names
 -- no resource is a page ("updates").
-function Controller:open(id, filter)
+function Controller:open(id)
 	local destination = Locations:destination(id) or self.env.manifest.pages[id] and {page = id}
 	if not destination then return end
 	if destination.page then
-		self.env.management:close(); self:show(destination.page)
+		self:show(destination.page)
 	elseif destination.sheet == "sdks" then
-		self.env.management:close(); self.env.sdks:open(self.window, Locations:find(id))
+		self.env.sdks:open(self.window, Locations:find(id))
 	else
-		self.env.management:open(self.window, destination.category, {filter = filter, select = destination.select})
+		self:show("category", {category = destination.category, select = destination.select})
 	end
 end
 
@@ -163,7 +163,6 @@ function Controller:updateRows()
 	if self.page then self.page:update(self:state()) end
 	self.navigation:setBadges(self:badges())
 	self.navigation:setWorkflows(self.env:presentWorkflows())
-	self.env.management:draw()
 	self.env.sdks:draw()
 end
 -- A kind of work leads nobody who does not do it (#52): its pages appear

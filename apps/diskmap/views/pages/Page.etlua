@@ -25,6 +25,9 @@
       empties              {id, title, systemImage, description, hidden}
       panelId              ref of the box around the list
       list                 ResourceList.etlua's arguments: {id, menu, activate, …}
+      chart                true: a List | Rings | Rectangles picker ends the
+                           heading row, and the rings or rectangles of the page's
+                           `chart` (sections/Chart.etlua) stand in for the list
     }
     leads                refs for retained child templates right below the header:
                          the page's leading decision (Decision.etlua)
@@ -59,9 +62,14 @@
     <VStack <% if section.id then %>id="<%= section.id %>" <% end %> spacing="8" alignment="leading">
       <% if section.title then %>
       <HStack spacing="12" alignment="<%= section.sizeId and "bottom" or "center" %>">
-        <%- partial("../components/SectionHeader.etlua", {title = section.title, titleId = section.titleId, detail = section.detail or "", detailId = section.detailId}) %>
+        <%- partial("../components/SectionHeader.etlua", {title = section.title, titleId = section.titleId, detail = section.detail or "", detailId = section.detailId, grow = section.chart}) %>
         <% if section.sizeId then %>
         <Label id="<%= section.sizeId %>" text="" size="13" weight="semibold" monospacedDigit="true" />
+        <% end %>
+        <% if section.chart then %>
+        <Picker id="viewStyle" style="segmented" value="<%= viewIndex - 1 %>" onChange="pickView" help="Show these items as a list, as rings or as rectangles">
+          <% for _, title in ipairs(viewStyles) do %><Option title="<%= title %>" /><% end %>
+        </Picker>
         <% end %>
       </HStack>
       <% end %>
@@ -80,7 +88,9 @@
       <% for _, empty in ipairs(section.empties or {}) do %>
       <ContentUnavailable id="<%= empty.id %>"<% if empty.hidden then %> hidden="true"<% end %> title="<%= empty.title %>" systemImage="<%= empty.systemImage %>" description="<%= texts and texts[empty.id .. "Description"] or empty.description %>" />
       <% end %>
-      <% if section.collapsed then %>
+      <% if section.chart and chart then %>
+      <%- partial("../sections/Chart.etlua", chart) %>
+      <% elseif section.collapsed then %>
       <Disclosure id="<%= section.id %>_disclosure" label="<%= section.collapsed %>" expanded="false" spacing="8">
         <GroupBox <% if section.panelId then %>id="<%= section.panelId %>" <% end %>>
           <%- partial("../components/ResourceList.etlua", section.list) %>

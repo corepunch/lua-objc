@@ -44,9 +44,11 @@ t.assertEqual(row.action, "finder", "persistent SQLite files cannot be cleared a
 local _, _, exclusions = Scans:plan(); local found = false
 for _, path in ipairs(exclusions) do if path == row.path then found = true end end
 t.expect(found, "discovered file is excluded from agent residual")
-t.assertEqual(#Categories:managementRows("codex", "state_99.sqlite"), 1, "management searches exact paths")
-t.assertEqual(#Categories:managementRows("codex", "["), 0, "management search is literal")
-t.assertEqual(#Categories:managementRows("runtimes", nil, "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
+local codexRows = Categories:leafRows("codex")
+local listed = false
+for _, codexRow in ipairs(codexRows) do if codexRow.path == row.path then listed = true end end
+t.expect(listed, "a discovered file is listed in its category with its exact path")
+t.assertEqual(#Categories:leafRows("runtimes", "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
 t.expect(Locations:find("grok-other") ~= nil, "Grok known local root is scanned")
 local uid = "12345678-ABCD-1234-ABCD-123456789ABC"
 local other = "12345678-ABCD-1234-ABCD-123456789ABD"
@@ -94,89 +96,84 @@ t.expect(not controller.stock.busy and controller.stock.loaded, "and leaves the 
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
-local function management(open)
-	return require("tests.diskmap_sheet").new("management", {model = model, service = service, scanning = function() return false end,
-		keep = function(id) model.kept[id] = not model.kept[id] end, open = open or function() end})
+-- A category is a page: its locations largest first, filtered by impact,
+-- as a list, rings or rectangles.
+local manifest = require("data.manifest").load("apps/diskmap/app.xml")
+local opened, scanning = {}, false
+local function categoryPage(id)
+	local page, route = Host.new("category", {model = model, service = service, pages = manifest.pages,
+		scanning = function() return scanning end, open = function(target) table.insert(opened, target) end,
+		keep = function(target) model.kept[target] = not model.kept[target] end})
+	route:focus({category = id})
+	local host = ns.VStack {}
+	page:mount(host, {})
+	host.size = ns.Size(880, 700); host:layout(880)
+	return page, route, host
 end
-local manager = management()
-local parent = ns.Window {visible = false, width = 1000, height = 700}
-manager:open(parent, "developer")
-t.assertEqual(manager.sheet.size.width, 620, "a wide window keeps the default sheet 80 points inside a 700 point window")
-local narrow = ns.Window {visible = false, width = 600, height = 700}
-manager:close(); manager:open(narrow, "developer")
-t.assertEqual(manager.sheet.size.width, 520, "a narrower window keeps the sheet 80 points inside it")
-manager:close(); narrow:close(); manager:open(parent, "developer")
-t.assertEqual(manager.sheet.className, "LuaPanel", "management uses a native sheet-capable panel")
-t.assertEqual(manager.refs.tabs.className, "LuaTabView", "impact tabs are native")
-t.assertEqual(manager.refs.categoryName.text, "Developer", "sheet identifies the managed category")
-t.assertEqual(manager.refs.categoryText, nil, "the sheet uses its rows instead of an explanation")
--- The header is the title alone: the toolbar refreshes, the category's own
--- row menu keeps it, and a second "Keep" there read as the row's.
-t.expect(manager.refs.categoryKeep == nil and manager.refs.categoryRefresh == nil, "the sheet header has no buttons")
-t.expect(manager.refs.manage.hidden, "with no selection the footer offers no row action")
+local page, route, host = categoryPage("developer")
 local function resourceAt(index)
-	return bridge._tableCell(manager.refs.rows1, 0, index).textField.stringValue
+	return bridge._tableCell(page.refs.locations, 0, index).textField.stringValue
 end
-t.assertEqual(resourceAt(0), "Archives", "management starts with largest measured resource")
-manager:sortBy("name")
-local positions = {}
-for index = 0, manager.refs.rows1.rowCount - 1 do positions[resourceAt(index)] = index end
-t.expect(positions.Archives < positions["Xcode DerivedData"], "resource header sorts names ascending")
-manager:sortBy("name")
-positions = {}
-for index = 0, manager.refs.rows1.rowCount - 1 do positions[resourceAt(index)] = index end
-t.expect(positions["Xcode DerivedData"] < positions.Archives, "repeated resource sort reverses direction")
-manager:sortBy("impact")
-local previousImpact = ""
-for index = 0, manager.refs.rows1.rowCount - 1 do
-	local impact = bridge._tableCell(manager.refs.rows1, 1, index).textField.stringValue:lower()
-	t.expect(previousImpact <= impact, "impact header sorts impact values")
-	previousImpact = impact
+t.assertEqual(page.refs.pageTitle.text, "Developer", "the page is titled with its category")
+t.expect(page.refs.categorySummary.text:find(" in ", 1, true) ~= nil, "its summary states the total and the count")
+t.assertEqual(resourceAt(0), "Archives", "the largest measured location comes first")
+local shown = route.presented.lists.locations
+for index = 2, #shown do
+	t.expect((shown[index - 1].bytes or -1) >= (shown[index].bytes or -1), "locations are listed largest first")
 end
-manager.selectedId = "runtime-assets"; manager:draw()
-t.expect(manager.refs.reveal.enabled, "runtime can be revealed for inspection")
--- The selected row's own action is a text button beside Show in Finder,
--- never a bare symbol between labelled buttons.
-manager.selectedId = "devices"; manager:draw()
-t.expect(not manager.refs.manage.hidden and manager.refs.manage.title == "Open Xcode", "a row with its own action names it in the footer")
-t.expect(manager.refs.manage.image == nil, "the footer action is text, not a symbol")
-local manageX, revealX, keepX = manager.refs.manage.frame.origin.x, manager.refs.reveal.frame.origin.x, manager.refs.keep.frame.origin.x
-t.expect(manageX < revealX and revealX < keepX, "row actions read left to right before Done")
-t.assertEqual(manager.refs.keep.title, "Keep", "Keep is one title-case word")
-manager.selectedId = "runtime-assets"; manager:draw()
-t.expect(manager.refs.status.text:find("iOSSimulatorRuntime", 1, true) ~= nil, "selected resource shows its location")
-for _, size in ipairs({{800, 560}, {1100, 780}}) do
-	manager.sheet:resize(size[1], size[2]); manager.sheet:layout()
-	local width, height = manager.refs.rows1.size.width, manager.refs.rows1.size.height
-	t.expect(width > 400 and height > 80, "native table retains usable geometry after resize")
+local runtime = route:rowFor("runtime-assets")
+t.expect(runtime ~= nil and runtime.subtitle:find("iOSSimulatorRuntime", 1, true) ~= nil, "a row shows where it lives")
+t.assertEqual(runtime.detail, runtime.impact, "and its impact")
+local menuTitles = {}
+for _, item in ipairs(route:rowMenu(nil, nil, runtime)) do if item.title then menuTitles[item.title] = true end end
+t.expect(menuTitles.Keep and menuTitles["Show in Finder"], "a row's menu keeps and reveals it")
+local simulatorRow = route:rowFor("simulators")
+t.assertEqual(simulatorRow.detail, "On Simulators", "a row that lives on a page of its own names it")
+route:activateRow(simulatorRow)
+t.assertEqual(opened[#opened], "simulators", "and opens it")
+-- Filtering by impact.
+route:filter(Categories.impacts:index("Essential to keep") - 1); page:update({})
+for _, essential in ipairs(route.presented.lists.locations) do
+	t.assertEqual(essential.impact, "Essential to keep", "the impact filter lists only its impact")
 end
-manager.query = "no such resource"; manager:draw()
-t.assertEqual(manager.refs.rows1.rowCount, 0, "empty management search")
-t.expect(not manager.refs.manage.enabled and not manager.refs.reveal.enabled, "empty result clears destructive and reveal actions")
-manager:close()
-local openedSimulators = 0
-manager = management(function() openedSimulators = openedSimulators + 1 end)
-manager:open(parent, "developer")
-local simulatorRow
-for index = 0, manager.refs.rows1.rowCount - 1 do
-	if resourceAt(index) == "Simulator devices" then simulatorRow = index end
-end
-t.expect(simulatorRow ~= nil, "developer review lists simulator devices")
-t.expect(bridge._pressColumnButton(manager.refs.rows1, 3, simulatorRow), "simulator row has an info button")
-t.assertEqual(openedSimulators, 1, "simulator info opens the installed device list")
-manager:close()
+t.assertEqual(route:location().filter, "Essential to keep", "and the filter is part of the location")
+route:filter(0); page:update({})
+t.expect(page.refs.locations.size.width > 400, "the list keeps a usable width")
+-- Rings and rectangles stand in for the list and draw the same rows.
+t.assertEqual(page.refs.viewStyle.className, "NSSegmentedControl", "the view picker is a segmented control")
+route:pickView(1); page:update({})
+t.expect(page.refs.chart ~= nil and page.refs.locations == nil, "rings replace the list")
+local chart = route.chartData
+local ids = {}
+for _, node in ipairs(chart.nodes) do ids[node.id] = node end
+t.expect(ids.archives ~= nil or ids["developer#other"] ~= nil or next(ids) ~= nil, "the rings draw the category's locations")
+route:chartHover(chart.nodes[1].id)
+t.expect(page.refs.chartCaption.text:find(chart.nodes[1].label, 1, true) ~= nil, "pointing at a mark names it under the chart")
+route:chartHover(nil)
+t.assertEqual(page.refs.chartCaption.text, chart.caption, "and leaving it restores the guidance")
+route:pickView(2); page:update({})
+t.assertEqual(page.refs.chart.className, "LuaTreemapView", "rectangles are a treemap")
+route:chartSelect("simulators", 2)
+t.assertEqual(opened[#opened], "simulators", "double-clicking a mark opens it as its row would")
+route:pickView(0); page:update({})
+t.expect(page.refs.locations ~= nil and page.refs.chart == nil, "List brings the list back")
+-- While the scan measures, the page waits.
+scanning = true; page:update({})
+t.expect(page.refs.waiting ~= nil and page.refs.locations == nil, "a category lists nothing while it is measured")
+scanning = false; page:dispose()
 local finderPath = "/System/Library/CoreServices/Finder.app"
 local app, appError = Locations:add("apps-system", {id = "finder-icon-test", name = "Finder.app", subtitle = "Installed application",
 	path = finderPath, fileIcon = finderPath, icon = "app.fill", color = "systemBlue", policy = "Review", action = "finder"})
 t.expect(app ~= nil, appError and appError.message or "application registered for icon verification")
-manager:open(parent, "applications")
+page = categoryPage("applications")
 local finderCell
-for index = 0, manager.refs.rows1.rowCount - 1 do
-	local cell = bridge._tableCell(manager.refs.rows1, 0, index)
+for index = 0, page.refs.locations.rowCount - 1 do
+	local cell = bridge._tableCell(page.refs.locations, 0, index)
 	if cell.textField.stringValue == "Finder.app" then finderCell = cell end
 end
-t.expect(finderCell and finderCell.imageView.resolvedAppIcon, "application management shows the installed app icon")
-manager:close()
+t.expect(finderCell and finderCell.imageView.resolvedAppIcon, "an application row shows the installed app icon")
+page:dispose()
+local parent = ns.Window {visible = false, width = 1000, height = 700}
 local runtimeId = "0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
 local runtimeList = {[runtimeId] = {identifier = runtimeId, runtimeIdentifier = "ios", version = "26.0", build = "23A339",
 	platformIdentifier = "com.apple.platform.iphonesimulator", deletable = true, sizeBytes = 8.4e9}}

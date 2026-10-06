@@ -9,7 +9,6 @@ return Routes.include(
 	"apps.diskmap.pages.sheets.SnapshotChanges",
 	"apps.diskmap.pages.sheets.Settings",
 	"apps.diskmap.pages.sheets.Review",
-	"apps.diskmap.pages.sheets.Management",
 	"apps.diskmap.pages.sheets.Onboarding",
 	"apps.diskmap.pages.sheets.Tour"
 )

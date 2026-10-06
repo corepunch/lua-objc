@@ -72,7 +72,7 @@ function Environment.new(service, launch, router)
 	self.notifications.isolated = self.launch.isolated
 	context.notifications = self.notifications
 	self.settings, self.history = sheet("settings"), sheet("history")
-	self.sdks, self.management, self.session.changesSheet = sheet("sdks"), sheet("management"), sheet("snapshotChanges")
+	self.sdks, self.session.changesSheet = sheet("sdks"), sheet("snapshotChanges")
 	self.tour, self.onboarding = sheet("tour"), sheet("onboarding")
 	self.scan = Scan.new(self.model, service, self.model.home, router.changed, function() self:scanFinished() end)
 	self.inventories = InventoryService.new(service, router.refresh, function() return self.scan.generation end)

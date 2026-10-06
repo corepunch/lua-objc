@@ -46,7 +46,7 @@ local developer
 for _, row in ipairs(Categories:rows()) do if row.id == "developer" then developer = row end end
 t.assertEqual(developer.bytes, 307200, "a category totals its locations")
 t.expect(Locations:details("applications").text:find("Review its measured resources", 1, true) ~= nil,
-	"category guidance points to resources in the management sheet")
+	"category guidance points to resources on its page")
 Scans:apply({"derived"}, {failure = "cancelled"})
 t.expect(not Locations:find("derived"):validateTrash(), "failed measurement disables removal")
 t.assertEqual(model.measurements.derived.bytes, nil, "failure discards old bytes")
@@ -164,27 +164,16 @@ ui.env.model.scan.errors = 7; ui:updateRows()
 t.assertEqual(ui.page.refs.access.title, "Review scan access…", "access guidance becomes specific when scan issues exist")
 ui.env.model.scan.errors = 0; ui:updateRows()
 ui:open("developer")
-t.assertEqual(ui.env.management.rootId, "developer", "opening a category shows its sheet")
-t.assertEqual(ui.env.management.refs.categoryName.text, "Developer", "selected category appears in its sheet")
-local naturalSheetWidth = ui.env.management.sheet.size.width
-t.expect(naturalSheetWidth <= ui.window.size.width - 80, "category sheet fits 80 points inside a wide window")
-ui.env.management:close()
--- A window narrower than the sheet plus its margin clamps the sheet.
-local wideWindow = ui.window.size
--- A window is never resized below its minimum, so lower it to reach a
--- window narrower than the sheet.
-ui.window.contentMinSize = ns.Size(0, 0)
-ui.window.size = ns.Size(naturalSheetWidth, wideWindow.height)
-ui:open("developer")
-t.assertEqual(ui.env.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than a narrow window")
-ui.env.management:close()
-ui.window.size = wideWindow
+t.assertEqual(ui.destination, "category", "opening a category shows its page")
+t.assertEqual(ui.page.refs.pageTitle.text, "Developer", "the category names its page")
+t.assertEqual(ui:location(), "/category/developer", "a category page has its own location")
+ui:show("overview")
 local meterOf = dofile("tests/fixtures/meter.lua")
 local sizeCell = meterOf(bridge._tableCell(ui.page.refs.results, 1, 0))
 t.expect(sizeCell.value ~= nil and sizeCell.bar ~= nil, "size, share and bar are one meter cell")
 t.expect(bridge._pressColumnButton(ui.page.refs.results, 2, 0), "category rows open with a trailing button")
-t.expect(ui.env.management.sheet ~= nil, "the row button opens that category")
-ui.env.management:close()
+t.assertEqual(ui.destination, "category", "the row button opens that category")
+ui:show("overview")
 t.expect(sizeCell.spinner.hidden, "loaded category has no spinner")
 t.expect(not meterOf(bridge._tableCell(ui.page.refs.results, 1, 0)).bar.hidden, "measured categories show a share bar")
 local _, loadingIds = Scans:plan()

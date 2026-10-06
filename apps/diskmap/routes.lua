@@ -9,6 +9,7 @@ return Routes.include(
 	"apps.diskmap.pages.Files",
 	"apps.diskmap.pages.Duplicates",
 	"apps.diskmap.pages.Projects",
+	"apps.diskmap.pages.Category",
 	"apps.diskmap.pages.Simulators",
 	"apps.diskmap.pages.Worktrees",
 	"apps.diskmap.pages.Explore",

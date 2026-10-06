@@ -136,8 +136,9 @@ there. There is no separate folder-hunting workflow required to finish cleanup.
 
 ## Window and interaction design
 
-Use one native window with a source-list sidebar. Category management, SDKs
-and Diskmap settings are sheets; suggested cleanups are the Clean Up page.
+Use one native window with a source-list sidebar. A category is a page like
+any other list; SDKs and Diskmap settings are sheets; suggested cleanups are
+the Clean Up page.
 All screens and partials are etlua.
 
 Every page scrolls as one surface. Lists inside a page are `scrollDisabled`

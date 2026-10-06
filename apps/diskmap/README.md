@@ -210,8 +210,11 @@ emptying the Trash. It then offers to empty the
 Trash and reports how much more free space macOS actually sees. Every action
 is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
 
-Categories open their resources in a sheet with Safe/rebuildable, Needs review
-and Essential to keep filters. Back, Forward, Refresh (Stop while
+A category opens as a page of its own (`/category/developer`,
+`pages/Category.lua`): its locations largest first with All, Safe/rebuildable,
+Needs review and Essential to keep filters, each row's menu holding Keep, Show
+in Finder and its owner's removal. Like Projects, it shows its items as a List,
+Rings or Rectangles (`views/sections/Chart.etlua`). Back, Forward, Refresh (Stop while
 measuring), Clean Up, Marked, Settings and Search live in the toolbar. Search is one page over the
 whole store, as Spotlight is (`pages/Search.lua`): typing opens it with the
 matching pages, locations, large files, apps, leftovers, projects, simulators,
@@ -618,7 +621,7 @@ documentation links to Storage Settings; user-owned offline docs may be moved to
 Trash. No protected asset directory is directly deleted.
 
 Selecting System Data decodes the measured total into its ranked contributors
-with virtual memory reported separately; opening its management sheet annotates
+with virtual memory reported separately; opening its category page annotates
 the live local snapshot count and recent snapshot date identifiers, which remain system managed and unattributable
 to exclusive file allocation. Permission errors and unreconciled allocation
 appear directly below the storage summary. Review candidates may use partial lower bounds marked ≥, while filesystem
