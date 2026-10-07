@@ -49,6 +49,23 @@ for input, expected in pairs({
 }) do
 	t.assertEqual(engine:translate(input), expected, "the native contraction table handles " .. input)
 end
+-- Captured from the original LTPRO, including the partial input from iOS.
+for input, expected in pairs({
+	["I’m doing th"] = "Я делаю т",
+	["Aaron."] = "Аарон.",
+	["Ivanova."] = "Иванова.",
+	["Vadim."] = "Вадим.",
+	["Welch."] = "Уэльский.",
+	["Albert Lea."] = "Альберт Ли.",
+	["Allen town."] = "Аллен таун.",
+	["Bel Air."] = "БЕЛ ЭР.",
+	["O'Fallon."] = "=.",
+	["Ppg."] = "=частей на грамм.",
+	["Weaselly."] = "Уиселли.",
+	["Narvskiy."] = "Нарвский.",
+}) do
+	t.assertEqual(engine:translate(input), expected, "native lexical macros handle " .. input)
+end
 local open, path = io.open, package.path
 engine:translate("Hello.")
 t.expect(io.open == open and package.path == path, "io.open and package.path are restored after a call")
@@ -116,6 +133,9 @@ t.assertEqual(app.refs.russian.text, "Я тестирую это.", "smart keybo
 t.assertEqual(editor.text, "I’m testing this.", "translation preserves the user's original editor text")
 app.page.actions.copy()
 t.assertEqual(copied[2], "Я тестирую это.", "Copy receives the corrected translation")
+ns._textEditorTestInput(editor, "I’m doing th")
+t.assertEqual(app.refs.russian.text, "Я делаю т", "partial input executes the native lexical macro")
+t.expect(app.refs.failure == nil and app.refs.english == editor, "partial input keeps the editor and shows no error")
 
 app.page.actions.clear()
 t.assertEqual(editor.text, "", "Clear empties the editor")
