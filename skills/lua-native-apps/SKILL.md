@@ -5,7 +5,13 @@ description: Laravel-style MVC architecture for Lua macOS/iOS apps in lua-objc. 
 
 # Lua Native Apps
 
-Build user-facing apps in Lua only. Keep AppKit/UIKit work behind the bridge
+Build user-facing apps in Lua only.
+
+SwiftUI-shaped review belongs to `skills/swiftui-parity`. Use that skill when
+the task is a parity check against SwiftUI Pro. It only names tags registered
+in `lua/ui/xml.lua`, and `tests/swiftui_parity_contract.test.lua` fails if one
+disappears.
+ Keep AppKit/UIKit work behind the bridge
 and keep the app shell thin enough that most behavior lives in reusable Lua
 modules.
 
