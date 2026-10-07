@@ -1,0 +1,7 @@
+interface:
+  display_name: "SwiftUI Parity"
+  short_description: "Reviews lua-objc apps against the SwiftUI Pro checklist."
+  default_prompt: "Use $swiftui-parity to review this lua-objc app for native UI that matches the implemented SwiftUI-shaped APIs."
+
+policy:
+  allow_implicit_invocation: true

@@ -128,6 +128,7 @@ point. See [preview behavior](ARCHITECTURE.md#--preview-cli-mode).
 
 | Task | Start here |
 |---|---|
+| Review a Lua app against the SwiftUI Pro checklist | `skills/swiftui-parity/SKILL.md` |
 | Maintain native framework `.m` code | `skills/maintain-lua-objc-framework/SKILL.md`, then `src/README.md` |
 | Add or compose a Lua widget | `lua/embedded/AppKit.lua` |
 | Describe an app as data (manifest, Lapis-style models, routes and flows, resources) | `lua/data/`, [`docs/data-driven.md`](docs/data-driven.md), `demo/storage` |
