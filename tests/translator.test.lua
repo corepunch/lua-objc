@@ -18,27 +18,45 @@ local function readFile(path)
 end
 local engine = Translator.new({ readFile = readFile })
 t.expect(not engine:isLoaded(), "the dictionaries are not loaded until the first translation")
-t.assertEqual(engine:translate("The weather is good today."), "Погода хорошая сегодня.", "a sentence translates")
+t.assertEqual(engine:translate(" \n\t"), "", "empty input needs no assets")
+t.expect(not engine:isLoaded() and #reads == 0, "empty input keeps the engine unloaded")
+local translated, failure = engine:translate("The weather is good today.")
+t.assertEqual(translated, "Погода хорошая сегодня.", "a sentence translates")
+t.assertEqual(failure, nil, "the engine's diagnostic state is not a page error")
 t.expect(engine:isLoaded(), "and then they are")
-t.expect(#reads >= 2 and reads[1]:find("^apps/translator/en%-ru%-translator/data/") ~= nil,
-	"the dictionaries are read through the platform's reader")
-t.assertEqual(engine:translate("Hello.\n\nWhere is the station"), "Привет.\n\nГде станция",
+t.assertEqual(#reads, 3, "the three runtime assets are read through the platform's reader")
+t.assertEqual(reads[1], "apps/translator/data/LTPRO.EXE", "executable tables come from the bundled data")
+t.assertEqual(engine:translate("Hello.\n\nWhere is the station"), "Привет.\n\nГде - станция",
 	"each line translates alone and the breaks are kept")
 t.assertEqual(engine:translate(""), "", "nothing translates to nothing")
 t.assertEqual(engine:translate("Xyzzy."), "Xyzzy.", "an unknown word passes through")
 local open, path = io.open, package.path
 engine:translate("Hello.")
 t.expect(io.open == open and package.path == path, "io.open and package.path are restored after a call")
+t.assertEqual(#reads, 3, "later sentences reuse the asset bytes")
 -- On AppKit the files are on disk.
 t.assertEqual(Translator.new({ readFile = false }):translate("Hello."), "Привет.", "the service reads from disk without a reader")
 
 -- Typing changes one line: the others come from the previous call.
 local counting = Translator.new({ readFile = false })
-counting.engine = { translate = function(_, line) counting.calls = (counting.calls or 0) + 1; return "<" .. line .. ">" end }
+counting.engine = { translate = function(line) counting.calls = (counting.calls or 0) + 1; return "<" .. line .. ">" end }
 counting:translate("one\ntwo")
 counting.calls = 0
 t.assertEqual(counting:translate("one\ntwo!"), "<one>\n<two!>", "the text is translated line by line")
 t.assertEqual(counting.calls, 1, "only the changed line goes to the engine")
+
+-- Upstream throws for unsupported branches; the page receives a message.
+counting.engine.translate = function() error("unsupported lexical branch", 0) end
+local failedText, message = counting:translate("bad")
+t.assertEqual(failedText, nil, "engine errors do not escape the service")
+t.assertEqual(message, "unsupported lexical branch", "the error reaches the page")
+t.expect(io.open == open and package.path == path, "a failed translation restores global IO and module paths")
+t.assertEqual(counting.lines["one"], "<one>", "failure preserves the previous successful line cache")
+local missing = Translator.new({ readFile = function() return nil, "missing asset" end })
+failedText, message = missing:translate("Hello.")
+t.expect(failedText == nil and message:find("LTPRO.EXE", 1, true) ~= nil, "missing assets are reported")
+t.expect(not missing:isLoaded(), "a failed asset load can be retried")
+t.expect(io.open == open and package.path == path, "a failed asset load restores global state")
 
 -- The app's own services come from Services.lua beside app.xml.
 local launched = dofile("apps/translator/init.lua").new({ args = {} })
@@ -62,12 +80,13 @@ t.assertEqual(refs.clear.hidden, true, "Clear is hidden while there is nothing t
 local editor = refs.english
 ns._textEditorTestInput(editor, "She can speak Russian.")
 t.assertEqual(app.pages.translate.text, "She can speak Russian.", "each keystroke reaches the page")
-t.assertEqual(app.refs.russian.text, "Она может говорить русского.", "and is translated at once")
+t.assertEqual(app.refs.russian.text, "Она может сказать Русского.", "and is translated at once")
+t.expect(app.refs.failure == nil, "successful diagnostics do not render an error")
 t.expect(app.refs.english == editor, "the editor survives the page being drawn again")
 t.assertEqual(app.refs.clear.hidden, false, "Clear shows")
 t.expect(app.refs.copy ~= nil, "with a Copy button")
 app.page.actions.copy()
-t.assertEqual(copied[1], "Она может говорить русского.", "Copy puts the translation on the pasteboard")
+t.assertEqual(copied[1], "Она может сказать Русского.", "Copy puts the translation on the pasteboard")
 
 ns._textEditorTestInput(editor, "Hello.")
 t.assertEqual(app.refs.russian.text, "Привет.", "the next keystroke replaces it")
