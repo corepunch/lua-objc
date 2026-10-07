@@ -1,7 +1,9 @@
 -- The one screen: English in, Russian out as the person types. Every
 -- keystroke is an action that translates (the service re-translates only
 -- the line that changed); the editor keeps its caret because a page drawn
--- with the text it already shows leaves it alone.
+-- with the text it already shows leaves it alone. Clear and Copy are the
+-- window's toolbar items (app.xml), which ask `hasText` and
+-- `hasTranslation` whether they are enabled.
 return {
 	translate = {
 		view = "pages/Translate",
@@ -17,5 +19,7 @@ return {
 		end,
 		clear = function(self) self.text, self.russian, self.failure = "", "", nil end,
 		copy = function(self) if self.russian ~= "" then self.app.clipboard.copy(self.russian) end end,
+		hasText = function(self) return self.text ~= "" end,
+		hasTranslation = function(self) return self.russian ~= "" end,
 	},
 }

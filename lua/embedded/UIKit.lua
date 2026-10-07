@@ -237,6 +237,9 @@ local sheetScopes = {}
 --- @prop hidesNavigationBar boolean optional. Hides the navigation bar when true.
 --- @prop hidesTabBar boolean optional. Hides the tab bar when true.
 --- @prop largeTitle boolean optional. Uses the large navigation title style when true.
+--- @prop toolbar table optional. ToolbarItem records for the root view, placed as on a `Page`.
+--- @prop subtitle string optional. Second line under the root's title (SwiftUI `.navigationSubtitle`).
+--- @prop background string optional. Color behind the root view where it does not reach, such as behind the keyboard.
 --- @prop title value optional. Component-specific setting passed to the native control.
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.NavigationStack(props)
@@ -245,6 +248,12 @@ function UIKit.NavigationStack(props)
 	local root = asViewController(content)
 	local navigation = bridge._navigationStack(root, props.hidesNavigationBar == true)
 	if props.title then root.title = props.title end
+	-- SwiftUI `.navigationSubtitle`: a second line under the title (iOS 26).
+	if props.subtitle and props.subtitle ~= "" then root.navigationItem.subtitle = props.subtitle end
+	if props.toolbar then bridge._pageToolbar(root, props.toolbar) end
+	-- What shows where the root does not reach: the root ends at the
+	-- keyboard's top, so this color fills behind the keyboard's corners.
+	if props.background then root.view.backgroundColor = bridge._systemColor(props.background) end
 	if props.largeTitle ~= nil then
 		navigation.navigationBar.prefersLargeTitles = props.largeTitle
 	end
@@ -754,6 +763,7 @@ end
 --- @prop editable boolean optional. Allows text editing when true.
 --- @prop italic boolean optional. Component-specific setting passed to the native control.
 --- @prop onChange function optional. Receives the text after each edit.
+--- @prop placeholder string optional. Prompt shown in the system placeholder color while the editor is empty.
 --- @prop selectable boolean optional. Allows text or rows to be selected when true.
 --- @prop size number optional. Component-specific setting passed to the native control.
 --- @prop text string optional. Initial or displayed text value.
@@ -774,6 +784,7 @@ function UIKit.TextEditor(props)
 	end
 	-- SwiftUI `TextEditor(text:)`: each edit hands the new text to the page.
 	if props.onChange then bridge._textEditorCallbacks(v, props.onChange) end
+	if props.placeholder then v.placeholder = props.placeholder end
 	if props.accessibilityLabel then v.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(v, props)
 end

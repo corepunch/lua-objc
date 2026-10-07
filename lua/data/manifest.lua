@@ -12,10 +12,23 @@
 -- A page is drawn by its route (lua/data/routes.lua): `route` names it, and
 -- the page id is the route's name when it is omitted. Every other attribute
 -- is kept in `page.attrs`, the route's `self.params` (`workflow="music"`).
+-- `navigationTitle` and `navigationSubtitle` are what the title bar shows
+-- for the page, as SwiftUI's `.navigationTitle` and `.navigationSubtitle`
+-- (`title` names the page in the sidebar and the Go menu);
 -- `sidebar="Dev tools"` is a shorter name for the sidebar row;
 -- `listed="false"` keeps a page out of the sidebar and the Go menu (a page
 -- opened from elsewhere). `arg="topic"` names the param a page's location
 -- carries in its path, `/help/shortcuts` (lua/data/location.lua).
+--
+-- A `<Toolbar>` of `<ToolbarItem id label icon action validate placement>`
+-- holds the window-wide actions (the window toolbar on macOS, the navigation
+-- bar on iPhone). An item calls `action` on the page being shown and is
+-- dimmed on a page that has no such method; `validate` names a page method
+-- that says whether it is enabled now (`canCopy`).
+--
+-- `<App background="secondaryBackground">` is the color behind the pages
+-- where they do not reach: on iPhone a page ends at the keyboard's top, and
+-- this color fills behind the keyboard's rounded corners.
 --
 -- `<App routes="pages">` names the module of the app's routes, a module path
 -- inside the app; it is `routes` when omitted. `<App controller="Controller">`
@@ -36,7 +49,8 @@ function Manifest.parse(nodes)
 	end
 	if not root then fail("no <App> element") end
 	local manifest = { name = root.attrs.name or "App", startup = root.attrs.startup, controller = root.attrs.controller,
-		routes = root.attrs.routes or "routes", sections = {}, pages = {}, order = {} }
+		routes = root.attrs.routes or "routes", sections = {}, pages = {}, order = {}, toolbar = {},
+		background = root.attrs.background }
 	local function page(node, section)
 		local attrs = node.attrs
 		for _, key in ipairs({ "id", "title" }) do
@@ -62,6 +76,16 @@ function Manifest.parse(nodes)
 						page(child, current)
 					end
 				end
+			elseif node.tag == "Toolbar" then
+				for _, child in ipairs(node.children) do
+					if child.kind == "element" then
+						if child.tag ~= "ToolbarItem" then fail("<" .. child.tag .. "> inside <Toolbar>; only <ToolbarItem> belongs there") end
+						for _, key in ipairs({ "id", "action" }) do
+							if not child.attrs[key] or child.attrs[key] == "" then fail("<ToolbarItem> needs " .. key) end
+						end
+						table.insert(manifest.toolbar, child.attrs)
+					end
+				end
 			elseif node.tag == "Page" then
 				-- Pages before the first section lead the sidebar without a header.
 				if #manifest.sections > 1 and current.title then
@@ -70,7 +94,7 @@ function Manifest.parse(nodes)
 				end
 				page(node, current)
 			else
-				fail("<" .. node.tag .. "> is not part of the manifest; use Section or Page")
+				fail("<" .. node.tag .. "> is not part of the manifest; use Section, Page or Toolbar")
 			end
 		end
 	end

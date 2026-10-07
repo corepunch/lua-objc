@@ -502,10 +502,46 @@ static UIView *page_keyboard_toolbar(UIResponder *input) {
 
 @interface LuaTextView : UITextView
 @property(nonatomic) BOOL verbatim;
+@property(nonatomic, copy) NSString *placeholder;
 @end
-@implementation LuaTextView
+/* SwiftUI `TextField(axis: .vertical)` prompt: UITextView has no
+ * placeholder, so an empty editor shows a label in the editor's font and
+ * the system placeholder color where the first glyph would sit. */
+@implementation LuaTextView {
+	UILabel *_placeholderLabel;
+}
 - (void)setVerbatim:(BOOL)value { _verbatim = value; set_verbatim_input(self, value); }
 - (UIView *)inputAccessoryView { return super.inputAccessoryView ?: page_keyboard_toolbar(self); }
+- (void)setPlaceholder:(NSString *)value {
+	_placeholder = [value copy];
+	if (!_placeholderLabel) {
+		_placeholderLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+		_placeholderLabel.textColor = UIColor.placeholderTextColor;
+		_placeholderLabel.isAccessibilityElement = NO;
+		[self addSubview:_placeholderLabel];
+		[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(placeholderTextChanged)
+			name:UITextViewTextDidChangeNotification object:self];
+	}
+	_placeholderLabel.text = _placeholder;
+	[self placeholderTextChanged];
+}
+- (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
+- (void)placeholderTextChanged {
+	_placeholderLabel.hidden = !_placeholder.length || self.text.length > 0;
+	[self setNeedsLayout];
+}
+- (void)setText:(NSString *)text { [super setText:text]; [self placeholderTextChanged]; }
+- (void)setFont:(UIFont *)font { [super setFont:font]; [self setNeedsLayout]; }
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	if (!_placeholderLabel) return;
+	_placeholderLabel.font = self.font;
+	UIEdgeInsets inset = self.textContainerInset;
+	CGFloat padding = self.textContainer.lineFragmentPadding;
+	CGFloat width = MAX(0, self.bounds.size.width - inset.left - inset.right - 2 * padding);
+	CGSize size = [_placeholderLabel sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)];
+	_placeholderLabel.frame = CGRectMake(inset.left + padding, inset.top, MIN(width, size.width), size.height);
+}
 @end
 
 static int bridge_UIKitControls_textField(lua_State *L) {

@@ -1,3 +1,7 @@
-<App name="Translator" startup="translate">
-	<Page id="translate" title="Translate" icon="character.bubble" color="systemBlue" key="1" />
+<App name="Translator" startup="translate" background="secondaryBackground">
+	<Toolbar>
+		<ToolbarItem id="clear" label="Clear" icon="xmark.circle" placement="topBarLeading" action="clear" validate="hasText" />
+		<ToolbarItem id="copy" label="Copy Translation" icon="doc.on.doc" placement="topBarTrailing" action="copy" validate="hasTranslation" />
+	</Toolbar>
+	<Page id="translate" title="Translate" navigationTitle="English → Russian" navigationSubtitle="Translates as you type" icon="character.bubble" color="systemBlue" key="1" />
 </App>

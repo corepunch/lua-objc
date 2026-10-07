@@ -1230,6 +1230,7 @@ end
 --- @prop drawsBackground boolean optional. Draws the control’s background when true.
 --- @prop editable boolean optional. Allows text editing when true.
 --- @prop onChange function optional. Receives the text after each edit.
+--- @prop placeholder string optional. Prompt shown in the system placeholder color while the editor is empty.
 --- @prop language string optional. Component-specific setting passed to the native control.
 --- @prop selectable boolean optional. Allows text or rows to be selected when true.
 --- @prop size number optional. Component-specific setting passed to the native control.
@@ -1256,12 +1257,14 @@ function AppKit.TextEditor(props)
 	end
 	if props.drawsBackground ~= nil then
 		textView.drawsBackground = props.drawsBackground ~= false
+		view.drawsBackground = props.drawsBackground ~= false
 	end
 	if props.wrapMode ~= nil then
 		view.hasHorizontalScroller = not props.wrapMode
 	end
 	-- SwiftUI `TextEditor(text:)`: each edit hands the new text to the page.
 	if props.onChange then view:onChange(props.onChange) end
+	if props.placeholder then textView.placeholder = props.placeholder end
 	if props.accessibilityLabel then textView.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(view, props)
 end
@@ -2523,11 +2526,17 @@ local navScreenScopes = setmetatable({}, { __mode = "k" })
 --- @prop content value optional. Rendered child content or the control’s text value.
 --- @prop path table optional. A `ui.navigation`.Path value path.
 --- @prop destinations table optional. Map path types to destination view builders.
+--- @prop toolbar table optional. ToolbarItem records for the root view, placed as on a `Page`.
 --- @prop title value optional. Component-specific setting passed to the native control.
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function AppKit.NavigationStack(props)
 	props = props or {}
-	local root = AppKit.HostingController(props.content or props[1])
+	-- The root's toolbar items, as a pushed Page's, go to the window toolbar.
+	local toolbar = {}
+	for _, item in ipairs(props.toolbar or {}) do
+		if item.placement ~= "keyboard" then table.insert(toolbar, item) end
+	end
+	local root = bridge._hostingController(props.content or props[1], nil, toolbar)
 	root.title = props.title or ""
 	local host = applyLayout(bridge._navigationStack(root), props)
 	navScreenScopes[host] = {}

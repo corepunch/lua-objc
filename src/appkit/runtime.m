@@ -502,11 +502,45 @@ static NSWindow *lua_objc_app_window(void) {
 
 @interface LuaNativeTextView : NSTextView
 @property(nonatomic, copy) NSString *text;
+@property(nonatomic, copy) NSString *placeholder;
 @end
 
 @implementation LuaNativeTextView
 - (NSString *)text { return self.string; }
 - (void)setText:(NSString *)value { self.string = value ?: @""; }
+/* The syntax storage styles text with its own base font; a font set on the
+ * view is the editor's font, so the storage follows it. */
+- (void)setFont:(NSFont *)font {
+	[super setFont:font];
+	id storage = self.textStorage;
+	if ([storage respondsToSelector:@selector(setEditorFont:)]) [storage performSelector:@selector(setEditorFont:) withObject:font];
+	self.needsDisplay = YES;
+}
+/* SwiftUI `TextField(axis: .vertical)` prompt: NSTextView has no public
+ * placeholder, so an empty editor draws its own in the editor's font and
+ * the system placeholder color, where the first glyph would sit. */
+- (void)setPlaceholder:(NSString *)value {
+	_placeholder = [value copy];
+	self.needsDisplay = YES;
+}
+- (void)setString:(NSString *)value {
+	[super setString:value];
+	self.needsDisplay = YES;
+}
+- (void)didChangeText {
+	[super didChangeText];
+	self.needsDisplay = YES;
+}
+- (void)drawRect:(NSRect)dirty {
+	[super drawRect:dirty];
+	if (!_placeholder.length || self.string.length) return;
+	NSPoint origin = self.textContainerOrigin;
+	origin.x += self.textContainer.lineFragmentPadding;
+	[_placeholder drawAtPoint:origin withAttributes:@{
+		NSFontAttributeName: self.font ?: [NSFont systemFontOfSize:NSFont.systemFontSize],
+		NSForegroundColorAttributeName: NSColor.placeholderTextColor,
+	}];
+}
 @end
 
 static id check_objc(lua_State *L, int idx) {

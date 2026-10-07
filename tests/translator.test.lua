@@ -107,39 +107,81 @@ local app = App.new({ args = {}, services = {
 	clipboard = { copy = function(text) table.insert(copied, text) end },
 } })
 local window = app:createWindow()
+t.expect(app.sidebar == nil, "a one-page app has no sidebar")
+t.assertEqual(window.title, "English → Russian", "the languages are the window's title")
+t.assertEqual(window.subtitle, "Translates as you type", "with what happens as its subtitle")
 bridge._appkitLayout(window)
 local refs = app.refs
-t.expect(refs.english ~= nil and refs.russian == nil, "the page has an editor and no result yet")
-t.assertEqual(refs.clear.hidden, true, "Clear is hidden while there is nothing to clear")
+local actions = app:actions()
+
+-- Two halves of the window: the editor on top, the read-only translation
+-- below, the same height whatever they hold.
+t.expect(refs.english ~= nil and refs.russian ~= nil, "the page has an editor and a translation")
+t.assertEqual(refs.russian.documentView.editable, false, "the translation is read-only")
+t.assertEqual(refs.russian.documentView.selectable, true, "but can be selected")
+t.assertEqual(refs.english.documentView.placeholder, "Enter text", "the empty editor prompts for text")
+t.expect(refs.clear == nil and refs.copy == nil, "Clear and Copy are not in the page")
+local function halves() -- heights of the page's two halves
+	local heights = {}
+	for _, view in ipairs({ app.refs.english, app.refs.russian or app.refs.failure }) do
+		local half = view
+		while half.superview and half.superview ~= app.content.subviews[1] do half = half.superview end
+		table.insert(heights, half.frame.size.height)
+	end
+	return heights
+end
+local before = halves()
+t.expect(before[1] > 0, "the halves have height")
+t.assertEqual(before[1], before[2], "the editor and the translation split the height equally")
+local function windowX(view) -- a view's leading edge in its window
+	local x = 0
+	while view do x, view = x + view.frame.origin.x, view.superview end
+	return x
+end
+t.assertEqual(windowX(refs.english), windowX(refs.russian), "English and Russian text start on one leading edge")
+
+-- The window toolbar's Clear and Copy act on the page and ask it whether
+-- they are enabled.
+t.assertEqual(actions.canTool_clear(), false, "Clear is dimmed with nothing typed")
+t.assertEqual(actions.canTool_copy(), false, "Copy is dimmed with nothing translated")
 
 -- Typing translates as it goes; the editor is kept, not rebuilt.
 local editor = refs.english
+local russian = refs.russian
 ns._textEditorTestInput(editor, "She can speak Russian.")
 t.assertEqual(app.pages.translate.text, "She can speak Russian.", "each keystroke reaches the page")
 t.assertEqual(app.refs.russian.text, "Она может сказать Русского.", "and is translated at once")
 t.expect(app.refs.failure == nil, "successful diagnostics do not render an error")
-t.expect(app.refs.english == editor, "the editor survives the page being drawn again")
-t.assertEqual(app.refs.clear.hidden, false, "Clear shows")
-t.expect(app.refs.copy ~= nil, "with a Copy button")
-app.page.actions.copy()
+t.expect(app.refs.english == editor and app.refs.russian == russian, "neither half is rebuilt")
+bridge._appkitLayout(window)
+local after = halves()
+t.assertEqual(after[1], before[1], "typing does not resize the editor")
+t.assertEqual(after[2], before[2], "or the translation")
+t.assertEqual(actions.canTool_clear(), true, "Clear is enabled once there is text")
+t.assertEqual(actions.canTool_copy(), true, "and Copy once there is a translation")
+actions.tool_copy()
 t.assertEqual(copied[1], "Она может сказать Русского.", "Copy puts the translation on the pasteboard")
 
 ns._textEditorTestInput(editor, "Hello.")
 t.assertEqual(app.refs.russian.text, "Привет.", "the next keystroke replaces it")
-t.expect(app.refs.english == editor and app.refs.russian ~= nil, "in place")
+t.expect(app.refs.english == editor and app.refs.russian == russian, "in place")
 
 ns._textEditorTestInput(editor, "I’m testing this.")
 t.assertEqual(app.refs.russian.text, "Я тестирую это.", "smart keyboard punctuation reaches the engine correctly")
 t.assertEqual(editor.text, "I’m testing this.", "translation preserves the user's original editor text")
-app.page.actions.copy()
+actions.tool_copy()
 t.assertEqual(copied[2], "Я тестирую это.", "Copy receives the corrected translation")
 ns._textEditorTestInput(editor, "I’m doing th")
 t.assertEqual(app.refs.russian.text, "Я делаю т", "partial input executes the native lexical macro")
 t.expect(app.refs.failure == nil and app.refs.english == editor, "partial input keeps the editor and shows no error")
 
-app.page.actions.clear()
+actions.tool_clear()
 t.assertEqual(editor.text, "", "Clear empties the editor")
-t.expect(app.refs.russian == nil and app.refs.copy == nil, "and removes the result")
+t.assertEqual(app.refs.russian.text, "", "and the translation")
+t.assertEqual(actions.canTool_clear(), false, "and dims itself")
+t.assertEqual(actions.canTool_copy(), false, "and Copy")
+actions.tool_copy()
+t.assertEqual(#copied, 2, "Copy with nothing translated copies nothing")
 
 -- A failing engine says why instead of translating.
 app.pages.translate.app = { translator = { translate = function() return nil, "no rule" end }, clipboard = {} }

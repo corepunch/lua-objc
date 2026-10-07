@@ -13,6 +13,9 @@
 --   --page=<id>   starts on that page instead of the manifest's startup page
 --   --isolated    shows that page alone: no sidebar and no menu
 --
+-- An app of one page is always shown alone, as with --isolated: there is
+-- nothing to navigate to, so no sidebar, menu or navigation title.
+--
 -- That is "playable from every scene": a page asks its models for what it
 -- shows, so it runs on its own.
 local ns = require("ns")
@@ -143,20 +146,36 @@ function Launcher:select(id)
 end
 
 -- The Go menu's actions: `page_<id>` shows a page, `isPage_<id>` validates.
+-- A toolbar item's `tool_<action>` runs that action of the page being shown
+-- and `canTool_<action>` says whether it is enabled: the page has the action
+-- and its `validate` method, if the item names one, agrees.
 function Launcher:actions()
 	local actions = {}
 	for _, page in ipairs(self.manifest.order) do
 		actions["page_" .. page.id] = function() self:show(page.id) end
 		actions["isPage_" .. page.id] = function() return true, self.current == page.id end
 	end
+	for _, item in ipairs(self.manifest.toolbar) do
+		local name, validate = item.action, item.validate
+		actions["tool_" .. name] = function()
+			local action = self.page and self.page.actions[name]
+			if action then return action() end
+		end
+		actions["canTool_" .. name] = function()
+			local request = self.page and self.page.request
+			if type(request) ~= "table" or type(request[name]) ~= "function" then return false end
+			if validate then return type(request[validate]) == "function" and request[validate](request) and true or false end
+			return true
+		end
+	end
 	return actions
 end
 
 function Launcher:createWindow()
-	local isolated = self.options.isolated == true
+	local isolated = self.options.isolated == true or #self.manifest.order == 1
 	local config, refs = xml.renderFile(SHELL, {
 		app = self.manifest, isolated = isolated, actions = self:actions(),
-		platform = ns.platform, title = self.manifest.pages[self.startup].title,
+		platform = ns.platform, page = self.manifest.pages[self.startup],
 	}, ns)
 	self.content = refs.content
 	if ns.platform == "AppKit" and not isolated then

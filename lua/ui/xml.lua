@@ -972,6 +972,7 @@ local TAG_SCHEMA = {
             selectable      = "bool",
             wrapMode        = "bool",
             drawsBackground = "bool",
+            placeholder     = "str",
             accessibilityLabel = "str",
         },
         transform = function(props, attrs)
@@ -1728,6 +1729,8 @@ local TAG_SCHEMA = {
         children = "array",
         props = {
             title = "str",
+            subtitle = "str",
+            background = "str",
             largeTitle = "bool",
             hidesTabBar = "bool",
             hidesNavigationBar = "bool",
@@ -1740,6 +1743,10 @@ local TAG_SCHEMA = {
             for _, child in ipairs(children) do
                 if type(child) == "table" and child.__navigationPalette then
                     props[child.edge .. "Palette"] = child.content
+                elseif type(child) == "table" and child.__toolbar then
+                    -- The root view's `.toolbar`, as on a pushed <Page>.
+                    if props.toolbar then error("xml: <NavigationStack> accepts one <Toolbar>") end
+                    props.toolbar = child.items or {}
                 elseif content == nil then
                     content = child
                 else
@@ -1751,6 +1758,7 @@ local TAG_SCHEMA = {
             for index = #props, 1, -1 do props[index] = nil end
         end,
         transform = function(props)
+            for _, item in ipairs(props.toolbar or {}) do bindToolbarActions(item) end
             if renderData then
                 if type(props.path) == "string" then props.path = renderData[props.path] end
                 if type(props.destinations) == "string" then
