@@ -30,6 +30,25 @@ t.assertEqual(engine:translate("Hello.\n\nWhere is the station"), "Привет.
 	"each line translates alone and the breaks are kept")
 t.assertEqual(engine:translate(""), "", "nothing translates to nothing")
 t.assertEqual(engine:translate("Xyzzy."), "Xyzzy.", "an unknown word passes through")
+for _, apostrophe in ipairs({ "'", "’", "‘" }) do
+	t.assertEqual(engine:translate("I" .. apostrophe .. "m testing this."), "Я тестирую это.",
+		"the contraction translates with straight or smart apostrophes")
+end
+for input, expected in pairs({
+	["He’s testing this."] = "Он тестирует это.",
+	["You’re testing this."] = "Вы тестируете это.",
+	["We’ve tested this."] = "Мы протестировали это.",
+	["I’ll test this."] = "Я протестирую это.",
+	["I’d test this."] = "Я протестирую это.",
+	["I don’t test this."] = "Я не тестирую это.",
+	["I can’t test this."] = "Я не могу протестировать это.",
+	["I won’t test this."] = "Я не протестирую это.",
+	["I shan’t test this."] = "Я не протестирую это.",
+	["There’s a book."] = "Есть книга.",
+	["John’s book."] = "Книга Джона.",
+}) do
+	t.assertEqual(engine:translate(input), expected, "the native contraction table handles " .. input)
+end
 local open, path = io.open, package.path
 engine:translate("Hello.")
 t.expect(io.open == open and package.path == path, "io.open and package.path are restored after a call")
@@ -91,6 +110,12 @@ t.assertEqual(copied[1], "Она может сказать Русского.", "
 ns._textEditorTestInput(editor, "Hello.")
 t.assertEqual(app.refs.russian.text, "Привет.", "the next keystroke replaces it")
 t.expect(app.refs.english == editor and app.refs.russian ~= nil, "in place")
+
+ns._textEditorTestInput(editor, "I’m testing this.")
+t.assertEqual(app.refs.russian.text, "Я тестирую это.", "smart keyboard punctuation reaches the engine correctly")
+t.assertEqual(editor.text, "I’m testing this.", "translation preserves the user's original editor text")
+app.page.actions.copy()
+t.assertEqual(copied[2], "Я тестирую это.", "Copy receives the corrected translation")
 
 app.page.actions.clear()
 t.assertEqual(editor.text, "", "Clear empties the editor")
