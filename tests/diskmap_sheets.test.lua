@@ -59,19 +59,6 @@ sdks:close()
 pending({2e9})
 t.expect(sdks.sheet == nil, "an answer after closing is dropped")
 
--- Management: no lists while the scan measures.
-local scanning = true
-local model = Store.new("/Users/test")
-local manager = require("tests.diskmap_sheet").new("management", {model = model, service = require("apps.diskmap.services.Contract").stub({}), scanning = function() return scanning end,
-	rescan = function() end, keep = function() end, open = function() end})
-manager:open(parent, "developer")
-t.assertEqual(manager.refs.rows1.rowCount, 0, "a category lists nothing while it is measured")
-t.assertEqual(manager.refs.status.text, "Measuring…", "and shows one status")
-scanning = false
-manager:draw()
-t.expect(manager.refs.rows1.rowCount > 0, "its locations appear once the scan is done")
-manager:close()
-
 -- Snapshot changes: rows and a title from the comparison.
 local changes = require("tests.diskmap_sheet").new("snapshotChanges", {actions = {resource = function() return {} end}})
 changes:open(parent, {title = "Since Sep 1", detail = "1 location changed", rows = {{id = "derived", name = "DerivedData", before = "1 GB", size = "2 GB", detail = 0.5, text = "+1 GB"}}})

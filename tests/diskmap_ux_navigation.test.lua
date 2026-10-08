@@ -31,15 +31,13 @@ for _, id in ipairs({"projects", "derived", "devices", "downloads"}) do
 	mapLeaf(id)
 	if destination.page then t.assertEqual(app.destination, destination.page, id .. " reaches its dedicated page")
 	else
-		t.assertEqual(app.env.management.selectedId, id, id .. " arrives selected in its sheet")
-		t.assertEqual(app.env.management.rootId, destination.category, "the category matches its destination")
+		t.assertEqual(app.env:page("category").selectedId, id, id .. " arrives selected on its category page")
+		t.assertEqual(app.env:page("category").rootId, destination.category, "the category matches its destination")
 	end
-	app.env.management:close()
 	app:show("largest")
 	app.page.actions.open(nil, nil, {id = id})
 	if destination.page then t.assertEqual(app.destination, destination.page, "Largest Locations agrees")
-	else t.assertEqual(app.env.management.selectedId, id, "Largest Locations preserves the same selection") end
-	app.env.management:close()
+	else t.assertEqual(app.env:page("category").selectedId, id, "Largest Locations preserves the same selection") end
 end
 
 -- Search is one page over the whole store; a refresh keeps its results.

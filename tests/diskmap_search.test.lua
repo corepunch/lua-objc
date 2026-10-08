@@ -55,7 +55,7 @@ local location = app.page.request.presented.lists.results_locations[1]
 app.page.actions.open(nil, nil, location)
 local destination = Locations:find(location.id):destination()
 if destination.page then t.assertEqual(app.destination, destination.page, "a location opens its page")
-else t.assertEqual(app.env.management.selectedId, location.id, "a location opens selected in its sheet"); app.env.management:close() end
+else t.assertEqual(app.env:page("category").selectedId, location.id, "a location opens selected on its category page") end
 
 -- Pages are found by name, and each result has a menu.
 app:search("simul")

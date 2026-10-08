@@ -1,0 +1,34 @@
+<% --[[ A list page's items as rings or rectangles, in place of its list
+  (Page.etlua, a section with `chart`). The page scrolls as one surface, so
+  the chart has one fixed height rather than filling a pane as the Storage
+  Map's does; the rings scale to it. The caption under the chart names the
+  pointed item and keeps its line, so the chart never moves as it changes.
+
+    style      "rings" or "rectangles"
+    nodes      helpers/ChartNodes.lua's marks
+    center     {title, detail}: the rings' hole
+    caption    the line under the chart when nothing is pointed at
+    label      the chart's accessibility label ]]
+  local CHART = { height = 400, diameter = 360 }
+%>
+<VStack id="chartPane" maxWidth="infinity" spacing="8" alignment="center">
+  <% if #nodes == 0 then %>
+  <ContentUnavailable id="chartEmpty" title="Nothing Measured Here Yet" systemImage="chart.pie" description="Sizes appear as Diskmap measures these items." />
+  <% elseif style == "rectangles" then %>
+  <Treemap id="chart" height="<%= CHART.height %>" maxWidth="infinity" onSelect="chartSelect" onHover="chartHover" dragItem="dragPath" accessibilityLabel="<%= label %>">
+    <% for _, node in ipairs(nodes) do %>
+    <TreemapNode id="<%= node.id %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" label="<%= node.label %>" detail="<%= node.detail %>" hatched="<%= node.hatched and "true" or "false" %>" />
+    <% end %>
+  </Treemap>
+  <% else %>
+  <VStack id="chartHost" height="<%= CHART.height %>" maxWidth="infinity" alignment="center">
+    <StorageRings id="chart" diameter="<%= CHART.diameter %>" onSelect="chartSelect" onHover="chartHover" dragItem="dragPath" accessibilityLabel="<%= label %>">
+      <% for _, node in ipairs(nodes) do %>
+      <StorageSector id="<%= node.id %>" ring="<%= node.ring %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" other="<%= node.other and "true" or "false" %>" label="<%= node.label %>" />
+      <% end %>
+      <ChartCenter titleId="chartCenterTitle" detailId="chartCenterDetail" total="<%= center.title %>" caption="<%= center.detail %>" />
+    </StorageRings>
+  </VStack>
+  <% end %>
+  <Label id="chartCaption" text="<%= caption %>" size="12" color="secondary" monospacedDigit="true" maxWidth="infinity" alignment="center" lines="1" reservesSpace="true" truncation="middle" />
+</VStack>

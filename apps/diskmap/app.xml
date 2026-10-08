@@ -39,6 +39,7 @@
 		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" />
 		<Page id="help" route="topics" arg="topic" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
 	</Section>
+	<Page id="category" arg="category" title="Category" icon="folder.fill" color="systemGray" listed="false" />
 	<Page id="search" title="Search" icon="magnifyingglass" color="systemGray" listed="false" />
 
 </App>

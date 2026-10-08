@@ -3,6 +3,7 @@ local Locations = require("apps.diskmap.models.Locations")
 local Scans = require("apps.diskmap.models.Scans")
 local Format = require("apps.diskmap.helpers.Format")
 local Palette = require("apps.diskmap.helpers.Palette")
+local ChartNodes = require("apps.diskmap.helpers.ChartNodes")
 
 -- Categories: the catalog's tree of locations with each group's measurement
 -- rolled up from its children, the rows every list, chart and map of
@@ -149,19 +150,24 @@ function Categories:distribution(disk)
 	if model.scan.running then return segments, "Measurements are still arriving. The gray part includes storage Diskmap has not measured yet; it is not a cleanup estimate." end
 	return segments, "Not attributed can include inaccessible files, snapshots and filesystem accounting differences. Category measurements may be partial."
 end
--- Flat management rows retain their owner and exact path; totals stay in the ledger.
-function Categories:managementRows(rootId, query, filter)
+-- The impacts a category page filters its locations by, "All" first.
+Categories.impacts = Model.enum({"All", "Safe/rebuildable", "Needs review", "Essential to keep"})
+
+-- The measured leaves under `rootId` (or every category) whose impact is
+-- `filter`, flat, each keeping the name of the group that owns it.
+function Categories:leafRows(rootId, filter)
 	local model = Model.db
-	local result, needle = {}, (query or ""):lower()
+	local result = {}
 	local function visit(row, owner)
 		if not row:isLeaf() then
-			for _, child in ipairs(row:children()) do visit(child, row.name) end
+			for _, child in ipairs(row:children()) do visit(child, row) end
 		else
 			local m = model.measurements[row.id] or {}
 			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
-			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
-				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, fileIcon = row.fileIcon, info = Locations:opensElsewhere(row.id), impact = impact,
-					bytes = m.bytes})
+			if not filter or filter == "All" or filter == impact then
+				table.insert(result, {id = row.id, name = row.name, owner = owner and owner.name, ownerId = owner and owner.id, path = row.path,
+					icon = row.icon, color = row.color, appIcon = row.appIcon, fileIcon = row.fileIcon,
+					opensElsewhere = Locations:opensElsewhere(row.id), impact = impact, kept = row:isKept(), bytes = m.bytes})
 				Format.sizeLabel(result[#result], m.status, m.bytes)
 			end
 		end
@@ -307,18 +313,9 @@ end
 
 -- The Map shows Diskmap's semantic tree from a focus node downwards: the
 -- whole disk, a category, or a group. Rings and rectangles draw the same
--- nodes. Nodes under 1.5% of the map (about 5 degrees of the rings) fold into
--- one "Other" node per parent so every mark is big enough to see and to
--- point at. An outer-ring "Other" that is itself a sliver is left out: its
--- parent's arc simply ends early, which reads as "and a little more". So is
--- one that would be its parent's only child: a grey ring that repeats the
--- parent says nothing, so the parent ends the map there like a leaf.
+-- nodes (helpers/ChartNodes.lua), and a rebuildable leaf is hatched.
 Categories.mapDepth = 3
 Categories.mapMinimumShare = 0.015
-
-local function measured(row)
-	return row.bytes ~= nil and row.bytes > 0
-end
 
 -- The focused row and its ancestors, root first, for the breadcrumb.
 function Categories:path(focus)
@@ -335,39 +332,14 @@ end
 -- Nodes {id, parent, value, color, label, detail, ring, hatched, leaf} for
 -- the focus. The top level is the focus's children (or the categories).
 function Categories:mapNodes(focus, depth)
-	depth = depth or Categories.mapDepth
 	local top = Categories:rows(focus ~= "" and focus or nil)
-	local total = 0
-	for _, row in ipairs(top) do if measured(row) then total = total + row.bytes end end
-	local nodes = {}
-	local hues = Categories:hues(top)
-	local function visit(rows, parent, ring, color)
-		local other, otherBytes, shown = 0, 0, 0
+	local function hatch(rows)
 		for _, row in ipairs(rows) do
-			if measured(row) then
-				if (total > 0 and row.bytes / total < Categories.mapMinimumShare) or (ring == 1 and not hues[row.id]) then
-					other, otherBytes = other + 1, otherBytes + row.bytes
-				else
-					shown = shown + 1
-					local resource = Locations:find(row.id)
-					local leaf = resource and resource:isLeaf()
-					local rowColor = ring == 1 and hues[row.id] or color
-					table.insert(nodes, {id = row.id, parent = parent, value = row.bytes, color = rowColor,
-						label = row.name, detail = row.size, ring = ring, leaf = leaf,
-						hatched = leaf and resource.policy == "Rebuildable" or false})
-					if row.children and ring < depth then visit(row.children, row.id, ring + 1, rowColor) end
-				end
-			end
-		end
-		if other > 0 and (ring == 1 or (shown > 0 and otherBytes / total >= Categories.mapMinimumShare)) then
-			-- Nested smaller items are more of their parent, so they keep its
-			-- hue (the view fades them); only the top level has no family.
-			table.insert(nodes, {id = (parent or "top") .. "#other", parent = parent, value = otherBytes, color = color or "systemGray",
-				label = other .. " smaller", detail = Format.size(otherBytes), ring = ring, leaf = true, other = true})
+			if row.children then hatch(row.children) else row.hatched = row.policy == "Rebuildable" end
 		end
 	end
-	visit(top, nil, 1, nil)
-	return nodes, total
+	hatch(top)
+	return ChartNodes.build(top, Categories:hues(top), depth or Categories.mapDepth, Categories.mapMinimumShare)
 end
 
 -- Largest rebuildable resources under the focus: the "Worth a look" list.
