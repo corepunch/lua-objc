@@ -2026,7 +2026,7 @@ returns `(config, refs)` instead of `(view, refs)`:
 `toolbarLabels`, `visible`, `sidebarWidth`, `toolbarContentDividerAfter`.
 
 **ToolbarItem attributes:** `id`, `label`, `icon`, `tooltip`, `action`,
-`bordered`, `visibilityPriority`. `<ToolbarSpacer />` creates the native
+`bordered`, `visibilityPriority`, `badge` (a count the system draws on the item, macOS 26; 0 shows none). `<ToolbarSpacer />` creates the native
 flexible space item. A `ToolbarItem` accepts at most one view child, installed by
 `AppKit.Window` as the item's custom control — toolbar content is declared in
 etlua, never assembled in controller code:

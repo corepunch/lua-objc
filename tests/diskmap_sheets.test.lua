@@ -84,18 +84,17 @@ local app = Controller.new(Mock.new())
 app:createWindow()
 local home = app.env.model.home
 app.env.basket:toggle({path = home .. "/Downloads/a.zip", name = "a.zip", bytes = 10})
-app.env.review:open(app.window)
-t.assertEqual(app.env.review.refs.items.rowCount, 1, "the sheet lists the marked item")
-t.assertEqual(app.env.review.selected.path, home .. "/Downloads/a.zip", "and selects it")
-app.env.review.busy = true
-app.env.review:draw()
-t.assertEqual(app.env.review.refs.items.rowCount, 0, "while sizes are measured again the list gives way to one progress state")
-t.expect(not app.env.review.refs.trash.enabled and not app.env.review.refs.clear.enabled, "and the buttons wait")
-app.env.review.busy = false
-app.env.review:draw()
-t.assertEqual(app.env.review.refs.items.rowCount, 1, "the item returns")
-app.env.review:close()
-t.expect(app.env.review.sheet == nil, "Close dismisses the sheet")
+app:openReview()
+t.assertEqual(app.env:page("basket").refs.items.rowCount, 1, "the sheet lists the marked item")
+t.assertEqual(app.env:page("basket").selected.path, home .. "/Downloads/a.zip", "and selects it")
+app.env:page("basket").busy = true
+app:updateRows()
+t.assertEqual(app.env:page("basket").refs.items.rowCount, 0, "while sizes are measured again the list gives way to one progress state")
+t.expect(not app.env:page("basket").refs.trash.enabled and not app.env:page("basket").refs.clear.enabled, "and the buttons wait")
+app.env:page("basket").busy = false
+app:updateRows()
+t.assertEqual(app.env:page("basket").refs.items.rowCount, 1, "the item returns")
+app:show("overview")
 t.assertEqual(app.env.basket:count(), 1, "the basket outlives its sheet")
 
 os.exit(t.summary() and 0 or 1)

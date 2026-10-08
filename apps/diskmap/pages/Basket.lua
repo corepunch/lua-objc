@@ -2,33 +2,41 @@ local Model = require("data.model")
 local Marks = require("apps.diskmap.models.Marks")
 local Format = require("apps.diskmap.helpers.Format")
 local Selection = require("apps.diskmap.helpers.Selection")
-local SheetRoute = require("apps.diskmap.pages.SheetRoute")
 local Batch = require("apps.diskmap.helpers.Batch")
 local Verify = require("apps.diskmap.helpers.Verify")
 
--- Review presents the scan-owned basket; staging is flows/Basket.lua.
--- Nothing touches the disk until the sheet's Move to Trash, which
--- revalidates each item, moves it, logs it, and then offers to empty the
--- Trash so the freed space can be measured rather than assumed. The sheet is
--- drawn from `data()` (views/sheets/Review.etlua); the app hears of marks through
+-- The basket page presents the scan-owned basket; staging is
+-- flows/Basket.lua. It is a page like any other, so Back and Forward reach
+-- it, and the toolbar's Marked button carries the count. Nothing touches the
+-- disk until Move to Trash, which revalidates each item, moves it, logs it,
+-- and then offers to empty the Trash so the freed space can be measured
+-- rather than assumed. The page is drawn from `data()`
+-- (views/pages/Basket.etlua); the app hears of marks through
 -- `app.basketChanged`; what moved or was emptied leaves the model through
 -- `app.trashed` and `app.removed`, and the disk is not measured again.
 local routes = {}
 
-local Review = SheetRoute.extend({view = "sheets/Review", width = 620, height = 560})
-routes.review = Review
+-- The list is as tall as its rows, between a few and a dozen, so the page
+-- scrolls beyond that rather than stretching the list.
+local LIST = {rowHeight = 44, minRows = 3, maxRows = 12}
+
+local Review = {view = "pages/Basket"}
+routes.basket = Review
 
 function Review:init()
 	self.service = self.app.service
 	self.results, self.done = self.app.basket.results, self.app.basket.done
 end
 
--- The sheet opens on `path`'s item, or on the first.
-function Review:open(parent, path)
+-- The page opens on `params.path`'s item, or on the first.
+function Review:focus(params)
+	self.selectedPath = params.path or self.selectedPath or ((Marks:all()[1] or {}).path)
+end
+
+-- What this visit moved or failed is forgotten when it ends.
+function Review:deactivate()
 	self.app.basket.done = {}
-	self.done, self.status, self.movedBytes = self.app.basket.done, nil, nil
-	self.selectedPath = path or ((Marks:all()[1] or {}).path)
-	SheetRoute.open(self, parent)
+	self.done, self.status, self.movedBytes, self.selectedPath = self.app.basket.done, nil, nil, nil
 end
 
 function Review:data()
@@ -44,6 +52,8 @@ function Review:data()
 	if not self.selected then self.selectedPath = nil end
 	local selected, pending, busy = self.selected, Marks:count(), self.busy == true
 	return {
+		rowHeight = LIST.rowHeight,
+		listHeight = math.max(LIST.minRows, math.min(LIST.maxRows, #rows)) * LIST.rowHeight,
 		-- Measuring again shows one progress state in place of the list.
 		lists = {items = busy and {} or rows}, loading = {items = busy},
 		texts = {
@@ -53,14 +63,16 @@ function Review:data()
 			consequence = selected and (selected.consequence or "This item has already left the cleanup basket.") or "",
 			selectedResult = selected and selected.result or "",
 		},
-		hidden = {selectedDetails = selected == nil, emptyTrash = (self.movedBytes or 0) <= 0},
+		hidden = {selectedDetails = selected == nil, emptyTrash = (self.movedBytes or 0) <= 0,
+			basketList = #rows == 0 and not busy, basketEmpty = #rows > 0 or busy},
 		disabled = {remove = busy or not (selected and Marks:contains(selected.path)),
 			trash = busy or pending == 0, clear = busy or pending == 0},
 	}
 end
 
 -- After a draw the native selection follows the selected row.
-function Review:sync(refs)
+function Review:rendered(refs)
+	self.refs = refs
 	Selection.show(refs.items, self.rows, self.selectedPath)
 end
 
@@ -79,7 +91,6 @@ function Review:clear()
 end
 
 function Review:history()
-	self:close()
 	self.app.openHistory()
 end
 
@@ -108,7 +119,7 @@ function Review:moveAll(paths)
 	for index, row in ipairs(rows) do if index <= 12 then table.insert(names, "· " .. row.name .. " (" .. row.size .. ")") end end
 	if #rows > 12 then table.insert(names, "· and " .. (#rows - 12) .. " more") end
 	if not self.service.confirmAction("Move to Trash", table.concat(names, "\n") .. "\n\n" .. Format.size(bytes)
-		.. " moves to the Trash. You can put items back from the Trash in Finder until you empty it.") then self:draw(); return false end
+		.. " moves to the Trash. You can put items back from the Trash in Finder until you empty it.") then return false end
 	self.busy = true
 	local home = Model.db.home
 	local before = self.service.diskSpace(home)
@@ -155,7 +166,6 @@ function Review:moveAll(paths)
 	self.lastResult = result
 	self.status = Verify.summary(result)
 	self.app.basketChanged()
-	self:draw()
 	return true
 end
 
@@ -167,7 +177,7 @@ function Review:emptyTrash()
 	if status then
 		if ok then self.movedBytes = nil end
 		self.status = status
-		self:draw()
+		self.app.refresh()
 	end
 	return ok
 end

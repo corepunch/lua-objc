@@ -174,9 +174,9 @@ end
 
 function Controller:basketChanged()
 	if self.window then self.window.subtitle = self:subtitle() end
+	self:updateToolbar()
 	self.collectorController:update()
 	if self.page and self.page.marksChanged then self.page:marksChanged() end
-	self.env.review:draw()
 end
 
 -- A folder or disk opened with Diskmap (dropped on the window or the Dock
@@ -254,6 +254,8 @@ function Controller:show(id, params, restoring)
 		self.destination, self.page = id, page
 		page:mount(self.content, self:state())
 		self.navigation:select(id)
+		self.collectorController.onBasket = id == "basket"
+		self.collectorController:update()
 		self:updateRows()
 	end
 	self.restoring = nil
@@ -319,12 +321,12 @@ function Controller:compareScan(path)
 	self:show("overview")
 end
 function Controller:openSettings()
-	self.env.review:close()
 	self.env.settings:open(self.window)
 end
+-- The marked items are a page: Back and Forward reach it like any other.
 function Controller:openReview(path)
 	self.env.settings:close()
-	self.env.review:open(self.window, path)
+	self:show("basket", {path = path})
 end
 -- Window.etlua's data. Its toolbar follows the scan as a SwiftUI toolbar
 -- follows state: Refresh while idle, Stop in its place while measuring.
@@ -338,20 +340,21 @@ function Controller:windowData()
 	}, {__index = self.commandActions})
 	data.navigation = not self.launch.isolated
 	data.scanning = self.env.scan.job ~= nil
+	data.marked = self.env.basket:count()
 	return data
 end
 -- The window template is described again only when the scan starts or
 -- stops, and only its toolbar is applied.
 function Controller:updateToolbar()
-	local scanning = self.env.scan.job ~= nil
-	if not self.window or self.scanning == scanning then return end
-	self.scanning = scanning
+	local scanning, marked = self.env.scan.job ~= nil, self.env.basket:count()
+	if not self.window or (self.scanning == scanning and self.marked == marked) then return end
+	self.scanning, self.marked = scanning, marked
 	self.window:updateToolbar(xml.toolbarFile(layout("Window"), self:windowData()))
 end
 function Controller:createWindow()
 	self.env:prepare()
 	local data = self:windowData()
-	self.scanning = data.scanning
+	self.scanning, self.marked = data.scanning, data.marked
 	local cfg, windowRefs = render("Window", data)
 	self.searchField = windowRefs and windowRefs.search
 	self.shortcuts = self.commands:shortcuts(cfg.commands)

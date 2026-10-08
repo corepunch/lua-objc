@@ -1555,6 +1555,7 @@ local TAG_SCHEMA = {
             placement = "str",
             bordered = "bool",
             visibilityPriority = "num",
+            badge = "num",
         },
         collect = function(rec, children)
             if #children == 1 then

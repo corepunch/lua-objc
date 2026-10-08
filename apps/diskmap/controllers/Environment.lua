@@ -62,8 +62,6 @@ function Environment.new(service, launch, router)
 	context.basket = self.basket
 	self.operations = Operations({app = context})
 	context.log = function(...) return self.operations:log(...) end
-	self.review = sheet("review")
-	context.review = self.review
 	self.rowActions = Rows({app = context})
 	self.notifications = Notifications.new(self.model, service, {
 		mark = function(items) self.rowActions:markAll(items) end,

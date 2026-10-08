@@ -6,6 +6,7 @@ local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
 local Scope = require("apps.diskmap.helpers.Scope")
 local Selection = require("apps.diskmap.helpers.Selection")
+local Treemap = require("apps.diskmap.helpers.Treemap")
 local Sectors = require("ui.sectors")
 local Scans = require("apps.diskmap.models.Scans")
 local Categories = require("apps.diskmap.models.Categories")
@@ -194,6 +195,7 @@ function map:data(state)
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
 	return {nodes = nodes, rows = rows, trail = trail, worth = worth, style = self.style, hover = self.hover,
+		chartHeight = Treemap.height(nodes),
 		center = self.center,
 		selection = self.rowActions:locationAction(self.selectedId), selected = self.selectedId ~= nil,
 		-- Rectangles have no list beside them.
