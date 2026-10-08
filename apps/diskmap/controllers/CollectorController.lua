@@ -16,7 +16,14 @@ function Collector:update()
 	local count = self.app.basket:count()
 	refs.collectorText.text = count == 0 and "Drag items here to mark them for cleanup" or self.app.basket:summary()
 	refs.collectorReview.enabled = count > 0
-	refs.collectorArea.hidden = count == 0 and not self.dragging
+	refs.collectorArea.hidden = self:hidden()
+end
+
+-- The staging area shows while items wait or a drag is over the window, and
+-- not on the basket page, which lists the same items itself.
+function Collector:hidden()
+	if self.dragging then return false end
+	return self.app.basket:count() == 0 or self.onBasket == true
 end
 
 -- A file drag reveals the empty staging area. Delay an exit to the next
@@ -32,7 +39,7 @@ end
 function Collector:dragged(generation)
 	if self.closed or generation ~= self.dragGeneration then return end
 	self.dragging = next(self.dragTargets) ~= nil
-	if self.refs then self.refs.collectorArea.hidden = self.app.basket:count() == 0 and not self.dragging end
+	if self.refs then self.refs.collectorArea.hidden = self:hidden() end
 end
 
 -- Files dropped on the collector are marked for cleanup. A catalog location

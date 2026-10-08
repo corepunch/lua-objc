@@ -41,8 +41,8 @@ app.env.scan:start()
 window.size = ns.Size(950,580); window:layout()
 app:show('kinds'); app.page.actions.showInstallers()
 local files, changes = app.page.request, 0
-local originalChanged = app.env.review.app.basketChanged
-app.env.review.app.basketChanged = function() changes=changes+1; originalChanged() end
+local originalChanged = app.env:page("basket").app.basketChanged
+app.env:page("basket").app.basketChanged = function() changes=changes+1; originalChanged() end
 local total = #files.visible
 local button = app.page.refs.decisionAction
 t.assertEqual(button.title,'Mark ' .. Format.plural(total,'File'),'initial bulk action uses eligible visible count')

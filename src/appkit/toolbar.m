@@ -74,6 +74,10 @@ static void toolbar_button_apply(NSToolbarItem *ti, NSDictionary *item) {
 	ti.label = item[@"label"] ?: ti.itemIdentifier;
 	ti.paletteLabel = ti.label;
 	ti.toolTip = item[@"tooltip"];
+	/* A count badge, as a shop's cart shows its items: the system draws it
+	 * (NSItemBadge, macOS 26); zero or none removes it. */
+	NSInteger badge = [item[@"badge"] integerValue];
+	ti.badge = badge > 0 ? [NSItemBadge badgeWithCount:badge] : nil;
 	NSImage *img = item[@"icon"]
 		? [NSImage imageWithSystemSymbolName:item[@"icon"] accessibilityDescription:ti.label]
 		: nil;
@@ -363,6 +367,9 @@ static NSMutableArray<NSDictionary *> *toolbar_items_from_lua(lua_State *L, int 
 		lua_pop(L, 1);
 		lua_getfield(L, item, "visibilityPriority");
 		if (lua_isnumber(L, -1)) dict[@"visibilityPriority"] = @(lua_tointeger(L, -1));
+		lua_pop(L, 1);
+		lua_getfield(L, item, "badge");
+		if (lua_isnumber(L, -1)) dict[@"badge"] = @(lua_tointeger(L, -1));
 		lua_pop(L, 1);
 		lua_getfield(L, item, "minWidth");
 		if (lua_isnumber(L, -1)) dict[@"minWidth"] = @(lua_tonumber(L, -1));

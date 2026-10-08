@@ -1,5 +1,5 @@
 <%
-  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, meter = 130, worthColumn = 16 }
+  local MAP = { minChart = 200, minPane = 300, chartUnits = 360, minimumHole = 0.3, ring = 0.7 / 3, center = { total = 24, caption = 12, totalScale = 12 / 24, captionScale = 0.77 }, gap = 3, corner = 6, meter = 130, worthColumn = 16, ringsHeight = 460 }
 %>
 <% --[[ "Worth a look" sits under the list beside the rings, so the rings
   keep the pane's height, and under the rectangles when there is no list.
@@ -26,8 +26,8 @@
         </VStack>
       </GroupBox>
 <% end %>
-<PageFrame id="page" scrolls="false">
-<VStack flexGrow="1" maxWidth="infinity" maxHeight="infinity" spacing="16" alignment="leading">
+<PageFrame id="page">
+<VStack id="pageContent" maxWidth="infinity" spacing="16" alignment="leading">
   <%- partial("../components/PageHeader.etlua", {header = page, summary = subtitle, summaryId = "mapSummary"}) %>
   <Breadcrumb id="mapBar">
     <% for index, step in ipairs(trail) do %>
@@ -40,7 +40,10 @@
     </Picker>
   </Breadcrumb>
   <Label id="mapScope" text="Storage Map groups measured locations by category. Folder Map inspects everything inside one folder." size="12" color="secondary" maxWidth="infinity" lines="0" />
-  <HStack id="mapBody" flexGrow="1" maxHeight="infinity" spacing="16" alignment="top">
+  <% --[[ The page scrolls, so the body has a height of its own: the rings
+    and their list one fixed height, the rectangles the height their cells
+    need (helpers/Treemap.lua). ]] %>
+  <HStack id="mapBody" maxWidth="infinity" <% if style ~= "rectangles" then %>height="<%= MAP.ringsHeight %>" <% end %>spacing="16" alignment="top">
     <% --[[ Rectangles already name every item, so the list serves the rings
       only. Equal flexible panes give long names the spare width instead of
       leaving it around a height-limited ring. ]] %>
@@ -59,11 +62,11 @@
     <% end %>
     <% --[[ The rings scale to the pane, as on the Folder Map, so a small
       window shrinks them instead of scrolling them out of view. ]] %>
-    <VStack id="mapChartPane" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= MAP.minPane %>" maxWidth="infinity" maxHeight="infinity" spacing="12" alignment="center">
+    <VStack id="mapChartPane" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="<%= MAP.minPane %>" maxWidth="infinity"<% if style ~= "rectangles" then %> maxHeight="infinity"<% end %> spacing="12" alignment="center">
       <% if #nodes == 0 then %>
       <ContentUnavailable id="mapEmpty" title="Nothing Measured Here Yet" systemImage="chart.pie" description="Sizes appear as Diskmap measures this part of your storage." />
       <% elseif style == "rectangles" then %>
-      <Treemap id="treemap" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
+      <Treemap id="treemap" height="<%= chartHeight %>" maxWidth="infinity" onSelect="chartSelect" onHover="chartHover" onBack="up" dragItem="dragPath" accessibilityLabel="<%= accessibilityLabel %>">
         <% for _, node in ipairs(nodes) do %>
         <TreemapNode id="<%= node.id %>" parent="<%= node.parent or "" %>" value="<%= node.value %>" color="<%= node.color %>" label="<%= node.label %>" detail="<%= node.detail %>" hatched="<%= node.hatched and "true" or "false" %>" />
         <% end %>

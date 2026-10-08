@@ -173,20 +173,21 @@ total = app.env.basket:count()
 
 -- Review: move to Trash, empty, and measure what was freed.
 app:openReview()
-t.assertEqual(app.env.review.refs.items.rowCount, total, "the review lists every marked item")
+t.assertEqual(app.env:page("basket").refs.items.rowCount, total, "the review lists every marked item")
 local before = service.diskSpace().freeKb
 local measure, measured = service.measure, 0
 service.measure = function(...) measured = measured + 1; return measure(...) end
-t.expect(app.env.review:trash(), "marked items move to the Trash after confirmation")
+t.expect(app.env:page("basket"):trash(), "marked items move to the Trash after confirmation")
 service.measure = measure
 t.assertEqual(measured, 0, "moving marked items measures nothing again; they leave with their marked sizes")
 t.assertEqual(app.env.basket:count(), 0, "moved items leave the basket")
 t.assertEqual(service.diskSpace().freeKb, before, "moving to Trash frees nothing yet")
-t.expect(not app.env.review.refs.emptyTrash.hidden, "emptying the Trash is offered next")
-t.expect(app.env.review:emptyTrash(), "the Trash can be emptied")
+t.expect(not app.env:page("basket").refs.emptyTrash.hidden, "emptying the Trash is offered next")
+t.expect(app.env:page("basket"):emptyTrash(), "the Trash can be emptied")
 t.expect(service.diskSpace().freeKb > before, "emptying the Trash frees space")
-t.expect(app.env.review.refs.reviewSummary.text:find("more free space", 1, true) ~= nil, "freed space is reported as measured")
-app.env.review:close()
+t.expect(app.env:page("basket").refs.reviewSummary.text:find("more free space", 1, true) ~= nil, "freed space is reported as measured")
+t.expect(app.navigation:back(), "Back leaves the basket page like any other")
+t.assertEqual(app.destination, "updates", "and returns to the page the marks were reviewed from")
 app.env.history:open(window)
 t.assertEqual(app.env.history.refs.entries.rowCount, total + 1, "every move and the empty are in the history")
 app.env.history:close()

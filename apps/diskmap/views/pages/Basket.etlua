@@ -1,0 +1,32 @@
+<% local DETAILS = {maximumHeight = 144} %>
+<PageFrame id="page">
+<VStack id="pageContent" maxWidth="infinity" spacing="16" alignment="leading">
+  <%- partial("../components/PageHeader.etlua", {header = page, summaryId = "reviewSummary",
+    buttons = {{id = "history", title = "History…", action = "history", help = "Every action Diskmap has taken"}}}) %>
+  <ContentUnavailable id="basketEmpty" title="Nothing Marked" systemImage="tray" description="Use Mark for Cleanup on any page, or drag items onto the bar at the bottom of the window. Nothing is removed until you move the marked items to the Trash here." />
+  <VStack id="basketList" maxWidth="infinity" spacing="12" alignment="leading">
+    <GroupBox>
+      <List id="items" onSelect="select" style="fullWidth" header="false" alternatingRows="false" rowHeight="<%= rowHeight %>" drawsBackground="false" height="<%= listHeight %>">
+        <Column id="name" title="Item" subtitleKey="subtitle" minWidth="220" />
+        <Column id="result" title="" width="120" minWidth="90" />
+        <Column id="size" title="On disk" width="100" minWidth="90" alignment="trailing" />
+      </List>
+    </GroupBox>
+    <ScrollView id="selectedDetails" vertical="true" maxHeight="<%= DETAILS.maximumHeight %>">
+      <VStack spacing="8" alignment="leading">
+        <Label id="consequence" size="12" maxWidth="infinity" lines="0" />
+        <Label id="selectedPath" size="11" color="secondary" maxWidth="infinity" lines="0" />
+        <Label id="selectedResult" size="11" color="secondary" maxWidth="infinity" lines="0" />
+      </VStack>
+    </ScrollView>
+    <Label id="revalidation" text="Sizes are measured again, and each item is checked just before it moves: one whose app is open, whose project file is gone or that was replaced is skipped. Nothing is deleted until you empty the Trash." size="11" color="secondary" maxWidth="infinity" lines="0" />
+    <HStack spacing="8" alignment="center">
+      <Button id="remove" title="Unmark Selected" action="remove" />
+      <Button id="clear" title="Clear All" action="clear" />
+      <Spacer />
+      <Button id="emptyTrash" title="Empty Trash…" action="emptyTrash" />
+      <Button id="trash" title="Move to Trash" style="borderedProminent" action="trash" />
+    </HStack>
+  </VStack>
+</VStack>
+</PageFrame>

@@ -6,6 +6,7 @@ local FolderTree = require("apps.diskmap.helpers.FolderTree")
 local Sectors = require("ui.sectors")
 local Format = require("apps.diskmap.helpers.Format")
 local Selection = require("apps.diskmap.helpers.Selection")
+local Treemap = require("apps.diskmap.helpers.Treemap")
 
 -- The Folder page: any folder or disk dropped on the window or the Dock icon,
 -- or chosen with File › Open Folder…, measured in one scan and shown as
@@ -393,6 +394,7 @@ function Folder:data()
 	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
 	self.center = {title = Format.size(total), detail = #data.trail > 1 and "Click to go up" or "Measured"}
 	data.center = self.center
+	data.chartHeight = Treemap.height(nodes)
 	data.selection = self:selection()
 	data.legend = self.tree:legend(self.focusPath, self.coloring, now)
 	data.lists = self.style ~= "rectangles" and {folderList = data.rows} or nil
