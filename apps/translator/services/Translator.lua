@@ -74,6 +74,10 @@ function Translator:load()
 			executable = module.read_asset(self.dataRoot .. "/LTPRO.EXE", "LTPRO.EXE"),
 			dictionary = module.read_asset(self.dataRoot .. "/BASE.DIC", "BASE.DIC"),
 			russian = module.read_asset(self.dataRoot .. "/BASE.RUS", "BASE.RUS"),
+			-- The engine probes ERPREFIX.PRE from its data dir when prefixes
+			-- is nil. The app bundles no prefix tables, so disable the probe
+			-- explicitly instead of reading through the platform on every line.
+			prefixes = false,
 		}
 	end)
 	self.engine, self.assets = engine, assets
