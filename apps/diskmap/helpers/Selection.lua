@@ -1,8 +1,8 @@
 local Selection = {}
 
 -- One selection token per page: the id of the resource that a chart sector,
--- a map cell and a list row all stand for. Hovering a sector selects its row
--- and selecting a row highlights its sector, so both name the same thing.
+-- a map cell and a list row all stand for. Selecting a row or clicking a
+-- sector keeps it; hovering keeps nothing and leaves the list alone.
 -- The native controls paint it: the list its selected row, the chart its
 -- highlighted sector. See MOTION.md.
 

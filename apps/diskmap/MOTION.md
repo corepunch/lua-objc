@@ -38,8 +38,9 @@ Rules:
    per-selection opacity.
 2. Hover on a chart sector or map cell updates the inspector with the same
    payload a row click would: name, owner, size, share, status, actions.
-3. Hovering a donut sector points at its row in the ranked list beside it
-   without scrolling the page. On File Types a click keeps the kind: the
+3. Hovering a donut sector names it in the hole and its tooltip only; the
+   list beside it is a separate widget and does not follow the pointer.
+   On File Types a click keeps the kind: the
    headline and Top extensions follow it, and a second click opens its
    largest files. On the Overview a click opens the Map inside the category.
    The chart is never the only readout (see DESIGN.md).

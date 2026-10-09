@@ -17,9 +17,9 @@ local routes = {}
 
 -- The Map page: the semantic tree as a breakdown above a list of the focused
 -- node's children. Clicking a group focuses it, the center or the trail
--- goes back up. The pointer over a wedge or cell and the list row name one
--- resource (helpers/Selection.lua), which the native chart and list paint;
--- that pointing is the live part and never draws the page again.
+-- goes back up. The kept selection is one resource (helpers/Selection.lua)
+-- that the native chart and list paint. The pointer over a wedge or cell only
+-- names it in the hole; the list is a widget of its own and does not follow.
 local map = {view = "pages/Breakdown"}
 routes.map = map
 
@@ -53,21 +53,17 @@ function map:up()
 end
 
 -- The hole names the pointed sector and its size, as Apple's SectorMark
--- sample does, and the native tooltip gives its full path; its row follows.
+-- sample does, and the native tooltip gives its full path.
 -- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function map:point(id)
-	if self.refs then
-		local node = id and self.nodeById and self.nodeById[id]
-		if self.refs.breakdownTotal then
-			self.refs.breakdownTotal.text = node and node.label or self.center.title
-			self.refs.breakdownCaption.text = node and node.detail or self.center.detail
-		end
-		local chart = self.refs.breakdownChart or self.refs.breakdownRectangles
-		if chart then chart.toolTip = id and Categories:describe(id, self.total) or "" end
-		self.pointing = true
-		Selection.show(self.refs.mapList, self.rows, id or self.selectedId)
-		self.pointing = false
+	if not self.refs then return end
+	local node = id and self.nodeById and self.nodeById[id]
+	if self.refs.breakdownTotal then
+		self.refs.breakdownTotal.text = node and node.label or self.center.title
+		self.refs.breakdownCaption.text = node and node.detail or self.center.detail
 	end
+	local chart = self.refs.breakdownChart or self.refs.breakdownRectangles
+	if chart then chart.toolTip = id and Categories:describe(id, self.total) or "" end
 end
 
 function map:chartHover(id) self:point(id) end
@@ -87,7 +83,7 @@ end
 
 -- A selected row points at its sector, as hovering the sector would.
 function map:selectRow(_, _, row)
-	if not row or self.pointing then return end
+	if not row then return end
 	self.selectedId = row.id
 	self:point(row.id)
 	if self.refs.breakdownChart then Sectors.highlight(self.refs.breakdownChart, row.id) end
@@ -213,10 +209,9 @@ function kinds:kindMenu(_, _, row)
 	return {{title = "Show Largest " .. (kind and kind.name or "Files"), systemImage = "doc.fill", action = function() self:showFiles(kindId) end}}
 end
 
--- A row the pointer selected through its sector is only pointed at; one
--- the person selected is the kept kind, and the page is drawn again for it.
+-- A selected row is the kept kind, and the page is drawn again for it.
 function kinds:selectKind(_, _, row)
-	if not row or self.pointing or row.id == self.selectedId then return end
+	if not row or row.id == self.selectedId then return end
 	self.selectedId = row.id
 	self.app.refresh()
 end
@@ -226,8 +221,6 @@ function kinds:chartSelect(id)
 	if id == self.selectedId then self:showFiles(id) else self.selectedId = Selection.index(self.kinds, id) and id or nil end
 end
 
--- The pointer over a sector points at its row; leaving the chart returns to
--- the kind that was kept.
 -- The hole names the pointed kind and its size, or the kept kind's, as
 -- Apple's SectorMark sample names the selected sector or its default.
 -- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
@@ -236,9 +229,6 @@ function kinds:chartCenter() self.selectedId = nil end
 function kinds:chartHover(id)
 	local refs = self.refs
 	if not refs then return end
-	self.pointing = true
-	Selection.show(refs.kinds, self.kinds, id or self.selectedId)
-	self.pointing = false
 	if not id and refs.breakdownChart then Sectors.highlight(refs.breakdownChart, self.selectedId) end
 	local mark = self.markById and self.markById[id or self.selectedId]
 	if refs.breakdownTotal then

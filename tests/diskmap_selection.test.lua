@@ -104,13 +104,10 @@ t.assertEqual(overview.actions["category_" .. Categories.folded], nil, "the fold
 app:show("map")
 local mapPage = app.page
 mapPage.actions.chartHover("developer")
-t.assertEqual(map.selectedId, nil, "hovering points at a row without changing the kept selection")
-t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, Selection.index(map.rows, "developer"),
-	"hovering a wedge selects its row")
-t.assertEqual(map.focusId, "", "without looking inside it")
-mapPage.actions.chartHover("developer#other")
-t.assertEqual(map.selectedId, nil, "a folded remainder is no resource")
-t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, -1, "and selects no row")
+t.assertEqual(map.selectedId, nil, "hovering keeps no selection")
+t.assertEqual(mapPage.refs.mapList.documentView.selectedRow, -1,
+	"the list is its own widget: hovering a wedge selects no row")
+t.assertEqual(map.focusId, "", "and does not look inside it")
 
 app:show("kinds")
 local page = app.page
@@ -121,7 +118,7 @@ model.showFiles = function(_, id) opened = id end
 local first, second = model.kinds[1].id, model.kinds[2].id
 local allExtensions = page.refs.extensions.rowCount
 page.actions.chartHover(second)
-t.assertEqual(page.refs.kinds.documentView.selectedRow, 1, "hovering a kind's sector points at its row")
+t.assertEqual(page.refs.kinds.documentView.selectedRow, -1, "hovering a kind's sector selects no row")
 t.assertEqual(model.selectedId, nil, "pointing keeps no kind")
 t.assertEqual(page.refs.extensions.rowCount, allExtensions, "and leaves the top extensions whole")
 page.actions.chartSelect(second)
@@ -131,7 +128,7 @@ t.expect(page.refs.extensions.rowCount <= allExtensions, "the top extensions fol
 t.assertEqual(opened, nil, "the first click opens nothing")
 page.actions.chartHover(first)
 page.actions.chartHover(nil)
-t.assertEqual(page.refs.kinds.documentView.selectedRow, 1, "leaving the chart returns to the kept kind")
+t.assertEqual(page.refs.kinds.documentView.selectedRow, 1, "hovering never moves the kept kind's row")
 page.actions.chartSelect(second)
 t.assertEqual(opened, second, "a second click opens the kind's largest files")
 page.refs.kinds:selectRow(0)
