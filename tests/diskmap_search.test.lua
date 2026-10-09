@@ -32,7 +32,7 @@ t.expect(refs().results_locations.rowCount >= 1, "DerivedData is found")
 t.expect(app.window.subtitle:find("for “DerivedData”", 1, true) ~= nil, "the summary names the query")
 
 -- Results come from every model: a file found by name, an app, a topic.
-local file = Files:rows("All")[1]
+local file = Files:rows()[1]
 app:search(file.name)
 t.expect(refs().results_files ~= nil and refs().results_files.rowCount >= 1, "large files are searched")
 app.page.actions.open(nil, nil, app.page.request.presented.lists.results_files[1])

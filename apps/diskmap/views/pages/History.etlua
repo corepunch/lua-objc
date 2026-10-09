@@ -1,6 +1,7 @@
 <TablePage id="page">
-
-
+  <VStack id="entriesHeader" spacing="0" alignment="leading">
+    <%- partial("../components/SectionHeader.etlua", {title = "Actions", detail = "Every move, deletion and owner command Diskmap ran, most recent first."}) %>
+  </VStack>
   <List flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" id="entries" style="fullWidth" header="false" alternatingRows="false" rowHeight="44">
     <Column id="name" title="Action" subtitleKey="subtitle" minWidth="220" />
     <Column id="date" title="When" width="160" minWidth="130" />

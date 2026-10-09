@@ -27,12 +27,9 @@ function Files:find(path)
 	end
 end
 
--- Large Files filters. "Unused" is a year without being opened or changed,
--- the threshold CleanMyMac's Large & Old Files and most Reddit advice use.
--- "All" is the discovery default; "Yours" narrows to actionable documents.
--- Files inside apps, system volumes and tool folders remain visible in All.
-Files.filters = Model.enum({"Yours", "All", "Unused for a year", "Installers & archives", "Media"})
-local FILTER_KINDS = {["Installers & archives"] = {installers = true, archives = true}, Media = {video = true, images = true, audio = true}}
+-- The kinds counted as installers and archives: once installed or expanded
+-- they are rarely needed.
+local INSTALLER_KINDS = {installers = true, archives = true}
 
 local plural = Format.plural
 
@@ -105,20 +102,29 @@ function Files:validateTrash(path)
 	return true
 end
 
--- Rows for Large Files. `kind` narrows to one File Types kind. Share bars
--- compare files with the largest one shown.
-function Files:rows(filter, kind, now)
+-- The installers and archives this app would move to the Trash. System and
+-- runtime images share the extension but not the owner: they are listed in
+-- Large Files and counted in the File Types totals, never offered here.
+function Files:installers()
+	local rows = {}
+	for _, row in ipairs(Files:rows()) do
+		if INSTALLER_KINDS[row.kindId] and row.trashable then table.insert(rows, row) end
+	end
+	return rows
+end
+
+-- Rows for Large Files, largest first. `kind` narrows to one File Types
+-- kind. Share bars compare files with the largest one shown.
+function Files:rows(kind, now)
 	local model = Model.db
 	local summary = model.files
 	if not summary then return {} end
 	now = now or os.time()
-	local source = filter == "Unused for a year" and summary.old or summary.large
-	local kinds = FILTER_KINDS[filter]
 	local oldBefore = now - require("apps.diskmap.models.Scans").fileSummary.oldDays * 86400
 	local rows = {}
-	for _, file in ipairs(source) do
+	for _, file in ipairs(summary.large) do
 		local fileKind = FileKind.of(file.path)
-		if (not kinds or kinds[fileKind.id]) and (not kind or fileKind.id == kind) then
+		if not kind or fileKind.id == kind then
 			local owner = Locations:owner(file.path)
 			local row = {id = file.path, path = file.path, name = file.path:match("([^/]+)$") or file.path,
 				subtitle = (owner and owner.path ~= file.path and owner.path ~= file.path:match("^(.*)/[^/]+$") and (owner.name .. " · ") or "") .. Files:folder(file.path), bytes = file.bytes, size = Format.size(file.bytes),
@@ -127,11 +133,7 @@ function Files:rows(filter, kind, now)
 				kind = fileKind.name, kindId = fileKind.id, fileIcon = file.path, icon = fileKind.icon, color = fileKind.color,
 				trashable = (Files:validateTrash(file.path))}
 			row.detail = Format.used(row.lastUse)
-			-- "Yours" and "Installers & archives" list only what this app would move
-			-- to the Trash. System and runtime images share the extension but
-			-- not the owner: they stay under All and in the File Types totals.
-			local removableOnly = filter == "Yours" or filter == "Installers & archives"
-			if not removableOnly or row.trashable then table.insert(rows, row) end
+			table.insert(rows, row)
 		end
 	end
 	table.sort(rows, function(a, b) if a.bytes ~= b.bytes then return a.bytes > b.bytes end return a.path < b.path end)
@@ -164,7 +166,7 @@ function Files:kinds()
 	-- runtime images included. What this app would move to the Trash is the
 	-- user-owned subset, stated beside the inventory total, never as it.
 	local removable = {}
-	for _, file in ipairs(Files:rows("Installers & archives")) do
+	for _, file in ipairs(Files:installers()) do
 		local entry = removable[file.kindId] or {count = 0, bytes = 0}
 		entry.count, entry.bytes = entry.count + 1, entry.bytes + file.bytes
 		removable[file.kindId] = entry
@@ -176,7 +178,7 @@ function Files:kinds()
 			local extension = total.extensions[index].extension
 			if extension ~= "" then table.insert(top, "." .. extension) end
 		end
-		local own = FILTER_KINDS["Installers & archives"][total.kind.id] and (removable[total.kind.id] or {count = 0, bytes = 0}) or nil
+		local own = INSTALLER_KINDS[total.kind.id] and (removable[total.kind.id] or {count = 0, bytes = 0}) or nil
 		table.insert(rows, {id = total.kind.id, name = total.kind.name, icon = total.kind.icon, color = total.kind.color,
 			advice = total.kind.advice, bytes = total.bytes, size = Format.size(total.bytes), count = total.count, oldBytes = total.oldBytes,
 			subtitle = table.concat(top, ", ") .. (#top > 0 and total.oldBytes > 0 and " · " or "")
@@ -246,7 +248,7 @@ function Files:kindsDecision(kinds)
 		end
 		return data
 	end
-	local installers = Files:rows("Installers & archives")
+	local installers = Files:installers()
 	local removable = 0
 	for _, row in ipairs(installers) do removable = removable + row.bytes end
 	local files = Files:summary()
@@ -260,7 +262,7 @@ function Files:kindsDecision(kinds)
 		data.title = "Review " .. Format.plural(files.reviewableOld, "file") .. " of yours unused for a year"
 		data.detail = "No installer or archive in your folders is large enough to list. These files were not opened or changed in a year; they may be your only copy."
 		data.amount, data.amountCaption = Format.size(files.reviewableOldBytes), "to review"
-		data.actionTitle, data.action = "Show Unused Files", "showOld"
+		data.actionTitle, data.action = "Show Large Files", "showAllFiles"
 	else
 		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
 		data.title = "No large file of yours to review"

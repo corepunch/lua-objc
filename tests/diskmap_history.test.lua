@@ -19,10 +19,10 @@ local function history() return table.concat(nav.history, " ") end
 t.assertEqual(app:location(), "/overview", "the window opens on the overview")
 app:show("help", {topic = "shortcuts"})
 t.assertEqual(app:location(), "/help/shortcuts", "a page's argument is in its location")
-app:show("files", {filter = "Installers & archives"})
+app:show("files", {kind = "installers"})
 app:show("map", {focus = "developer"})
 app.page.actions.up()
-t.assertEqual(history(), "/overview /help/shortcuts /files/Installers%20%26%20archives /map/developer /map",
+t.assertEqual(history(), "/overview /help/shortcuts /files/installers /map/developer /map",
 	"moving within a page is a visit too")
 
 nav:back()
@@ -30,23 +30,23 @@ t.assertEqual(app:location(), "/map/developer", "Back returns inside the map")
 t.assertEqual(app.env:page("map").focusId, "developer", "with the group focused again")
 nav:back()
 t.assertEqual(app.destination, "files", "Back returns to the previous page")
-t.assertEqual(app:location(), "/files/Installers%20%26%20archives", "on the filter it showed")
+t.assertEqual(app:location(), "/files/installers", "on the filter it showed")
 nav:back()
 t.assertEqual(app.env:page("help").opened, "shortcuts", "Back reopens the topic that was open")
 t.expect(nav:canGoForward(), "Forward is possible after Back")
 nav:forward()
-t.assertEqual(app:location(), "/files/Installers%20%26%20archives", "Forward returns where Back left")
+t.assertEqual(app:location(), "/files/installers", "Forward returns where Back left")
 t.assertEqual(#nav.history, 5, "Back and Forward add no visits")
 
-app:go("/applications/Most%20data")
-t.assertEqual(app.env:page("applications").filterIndex, 3, "a location opens its page on its argument")
+app:go("/files/video")
+t.assertEqual(app.env:page("files").kind, "video", "a location opens its page on its argument")
 t.expect(not nav:canGoForward(), "a new visit drops the visits ahead, as in a browser")
-t.assertEqual(history(), "/overview /help/shortcuts /files/Installers%20%26%20archives /applications/Most%20data",
+t.assertEqual(history(), "/overview /help/shortcuts /files/installers /files/video",
 	"the dropped visits are gone")
 
 -- Showing the page and argument already showing is not a visit.
 local count = #nav.history
-app:show("applications", {filter = "Most data"})
+app:show("files", {kind = "video"})
 t.assertEqual(#nav.history, count, "the same location is one visit")
 
 -- Inside a measured folder, Back looks out again without measuring again.

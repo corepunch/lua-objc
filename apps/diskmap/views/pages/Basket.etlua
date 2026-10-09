@@ -2,6 +2,7 @@
 <ContentPage id="page" dropAction="drop">
   <ContentUnavailable id="basketEmpty" title="Nothing Flagged" systemImage="flag" description="Use the flag beside an item, or drop files onto this page. Review flagged items here before taking action." />
   <VStack id="basketList" maxWidth="infinity" spacing="12" alignment="leading">
+    <%- partial("../components/SectionHeader.etlua", {title = "Flagged items", detail = "What you flagged across Diskmap, waiting for your review. Nothing moves until you confirm."}) %>
     <GroupBox>
       <List id="items" onSelect="select" style="fullWidth" header="false" alternatingRows="false" rowHeight="<%= rowHeight %>" drawsBackground="false" height="<%= listHeight %>">
         <Column id="name" title="Item" subtitleKey="subtitle" minWidth="220" />

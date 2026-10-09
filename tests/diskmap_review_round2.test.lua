@@ -44,7 +44,8 @@ app:show('kinds'); app.page.actions.showInstallers()
 local files, changes = app.page.request, 0
 local originalChanged = app.env:page("basket").app.basketChanged
 app.env:page("basket").app.basketChanged = function() changes=changes+1; originalChanged() end
-local total = #files.visible
+local total = 0
+for _, row in ipairs(files.visible) do if row.trashable then total = total + 1 end end
 local button = app.page.refs.decisionAction
 t.assertEqual(button.title,'Mark ' .. Format.plural(total,'File'),'initial bulk action uses eligible visible count')
 files:markFiles()
@@ -68,7 +69,7 @@ t.assertEqual(reviewed,1,'review action routes to existing review sheet')
 app:show('applications'); Marks:clear(); app:basketChanged()
 app:show('files')
 t.expect(app.page.refs.decisionAction.title:find('Mark ',1,true),'cross-page clearing is reflected on return')
-files.filterIndex = require('apps.diskmap.models.Files').filters:index('Installers & archives')
+files.kind = 'installers'
 app:updateRows(); bridge._flushLayout()
 local refs = app.page.refs
 t.expect(refs.scopeNote.superview ~= refs.pageContent,'accounting is disclosed separately')

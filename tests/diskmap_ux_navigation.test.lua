@@ -39,8 +39,10 @@ app:updateRows()
 t.assertEqual(app.query, "DerivedData", "refresh preserves the query")
 app:show("files")
 t.assertEqual(app.searchField.stringValue, "", "another page shows the field empty")
-t.assertEqual(refs().files.rowCount, #Files:rows("All"), "All measured files are discoverable immediately")
-t.expect(refs().files.rowCount > #Files:rows("Yours"), "the default includes owner-managed files")
+t.assertEqual(refs().files.rowCount, #Files:rows(), "All measured files are discoverable immediately")
+local trashable = 0
+for _, row in ipairs(Files:rows()) do if row.trashable then trashable = trashable + 1 end end
+t.expect(refs().files.rowCount > trashable, "the list includes owner-managed files")
 local file = app.env:page("files").visible[1]
 t.expect(refs().openSelection == nil, "Large Files has no selection panel")
 app.page.actions.reveal(nil, nil, file)

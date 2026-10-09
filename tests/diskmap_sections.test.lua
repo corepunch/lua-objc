@@ -220,7 +220,6 @@ local _, fullRefs = render("Page", {header = header, actions = anyAction, layout
 	sections = {
 		{id = "firstSection", title = "First", detail = "Detail", detailId = "firstDetail", titleId = "firstTitle", sizeId = "firstSize",
 			links = {{id = "clear", title = "Clear", style = "link", action = "clear", hidden = true}},
-			filters = {id = "filter", options = {"All", "Some"}},
 			buttons = {{id = "bulk", title = "Mark", action = "bulk", disabled = true}},
 			empties = {{id = "firstEmpty", hidden = true, title = "Nothing", systemImage = "doc", description = "Nothing here."}},
 			panelId = "firstPanel", list = {id = "first", menu = "rowMenu", activate = "open", status = true}},
@@ -233,14 +232,10 @@ for _, id in ipairs({"stats", "oneTileValue", "firstSection", "firstTitle", "fir
 	"firstEmpty", "firstPanel", "first", "second", "extra"}) do
 	t.expect(fullRefs[id] ~= nil, "the layout's " .. id .. " is on the page")
 end
-t.assertEqual(fullRefs.filter.className, "NSSegmentedControl", "filters are a segmented control")
 t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden, "hidden and disabled come from the layout")
--- Actions lead and filters trail on one centered row below the heading.
+-- Links lead on their own row below the heading.
 fullRefs.page.size = ns.Size(620, 600); fullRefs.page:layout(620)
-local filterRow, titleRow = fullRefs.filter.superview, fullRefs.firstTitle.superview.superview
-t.expect(filterRow ~= titleRow, "the filter is not on the heading's row")
-t.assertEqual(fullRefs.filter.frame.origin.x + fullRefs.filter.frame.size.width, filterRow.frame.size.width,
-	"the filter ends at the row's trailing edge")
+t.expect(fullRefs.clear.superview ~= fullRefs.firstTitle.superview.superview, "the links are not on the heading's row")
 t.expect(fullRefs.firstDetail.frame.size.width > 400, "the heading's detail keeps the section's width beside no controls")
 t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intrinsicContentSize.height, "the detail stays on one line")
 -- The meter is no wider than its widest value and share, "≥ 999.9 MB" and

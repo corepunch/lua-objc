@@ -105,12 +105,10 @@ local deadline = os.time() + 10
 while not app.env.model.files and os.time() < deadline do ns.sleep(0.05) end
 t.expect(app.env.model.files ~= nil, "the mock scan finishes")
 
--- Large Files leads with discovery; Yours is the actionable subset.
-t.expect(Files.filters:index("All") ~= nil and Files.filters:index("Yours") ~= nil, "Large Files distinguishes discovery and review")
-t.assertEqual(Files.filters:index("Installers & archives"), 4, "pages open a filter by name")
-local yours, all = Files:rows("Yours"), Files:rows("All")
-t.expect(#yours > 0 and #yours < #all, "Yours is a part of All")
-for _, file in ipairs(yours) do t.expect(file.trashable, file.name .. " can be moved to the Trash") end
+-- Large Files lists every measured file; only some can be moved to the Trash.
+local all, yours = Files:rows(), 0
+for _, file in ipairs(all) do if file.trashable then yours = yours + 1 end end
+t.expect(yours > 0 and yours < #all, "the list holds files of yours and files their owners manage")
 app:show("files")
 t.assertEqual(app.page.refs.files.rowCount, #all, "the page opens on All measured files")
 t.expect(app.page.refs.filesEmpty.hidden, "a list with files shows no empty state")
@@ -133,7 +131,7 @@ t.expect(#cleanup.decisions > 1, "the mock has suggestions to order")
 -- Apps are called what Finder calls them.
 local bundle = Applications:all()[1]
 Model.db.applicationInfo = {[bundle.path] = {displayName = "Other", bundleId = "com.example.shown"}}
-for _, entry in ipairs(Applications:rows("All")) do
+for _, entry in ipairs(Applications:rows()) do
 	t.assertEqual(entry.name, entry.path:match("([^/]+)%.app$"), "an app is named as Finder names it, by its file")
 end
 local rawModel = Store.new(home)
@@ -141,7 +139,7 @@ Locations:add("applications", {id = "raw-app", name = "logioptionsplus.app", sub
 rawModel.measurements["raw-app"] = {status = "complete", bytes = 5e8}
 local raw
 Model.db.applicationInfo = {["/Applications/logioptionsplus.app"] = {displayName = "Logi Options+"}}
-for _, entry in ipairs(Applications:rows("All")) do
+for _, entry in ipairs(Applications:rows()) do
 	if entry.path == "/Applications/logioptionsplus.app" then raw = entry end
 end
 t.assertEqual(raw and raw.name, "Logi Options+", "a file name that is only an identifier gives way to the display name")
@@ -149,8 +147,8 @@ t.expect(raw.usageUnknown and not raw.unused, "an app without a recorded date ha
 t.assertEqual(raw.detail, "Last use unknown", "and says so")
 t.assertEqual(Applications.summary({raw}).unused, 0, "unknown usage never counts as unused")
 Model.db.applicationInfo = {["/Applications/logioptionsplus.app"] = {displayName = "Logi Options+"}}
-t.assertEqual(#Applications:rows("Unused for 6 months"), 0,
-	"the Unused filter excludes unknown usage")
+t.assertEqual(Applications.summary(Applications:rows()).unused, 0,
+	"the unused count excludes unknown usage")
 
 -- Include media libraries is remembered.
 t.assertEqual(app.env.model.includeMedia, false, "media libraries start excluded")

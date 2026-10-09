@@ -1,4 +1,5 @@
 <TablePage id="page">
+  <%- partial("../components/SectionHeader.etlua", {title = "SDKs", detail = "The platform SDKs this installation holds, which its compilers build against."}) %>
   <SearchField id="search" placeholder="Search" accessibilityLabel="Search SDKs" onChange="search" defaultFocus="true" />
   <ContentUnavailable id="noSdks" flexGrow="1" maxHeight="infinity" title="No SDKs" systemImage="shippingbox" description="No SDKs match this installation and search." />
   <List onColumnButton="markRow" onActivate="openRow" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" id="rows" style="fullWidth" header="false" alternatingRows="false" rowHeight="44">

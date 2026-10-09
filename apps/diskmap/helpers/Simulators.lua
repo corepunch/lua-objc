@@ -4,7 +4,6 @@ local UUID = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%
 -- Devices unused for this long are worth a look; the threshold is a review
 -- hint, never a deletion rule, and devices without a recorded use never match.
 Simulators.staleDays = 90
-Simulators.filters = {"All", "Unavailable", "Unused for 90 days"}
 
 -- Days since an ISO 8601 timestamp ("2026-09-20T16:20:00Z"), or nil when the
 -- date is missing or unreadable.
@@ -27,7 +26,7 @@ function Simulators.symbol(name)
 	return "iphone"
 end
 
-function Simulators.rows(inventory, filter, now)
+function Simulators.rows(inventory, now)
 	local rows, runtimes = {}, {}
 	for _, runtime in ipairs(inventory.runtimes or {}) do runtimes[runtime.identifier] = runtime.name end
 	for runtime, devices in pairs(inventory.devices or {}) do
@@ -39,18 +38,15 @@ function Simulators.rows(inventory, filter, now)
 			if device.state == "Shutdown" then running = false
 			elseif device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down" then running = true end
 			local age = Simulators.age(device.lastUsedAt, now)
-			if (filter ~= "Unavailable" or available == false)
-				and (filter ~= Simulators.filters[3] or (age ~= nil and age >= Simulators.staleDays)) then
-				-- A value names itself or stays empty: a dash in a list without
-				-- headers says nothing.
-				table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
-					icon = Simulators.symbol(name .. " " .. runtimeName), color = available == false and "systemOrange" or "systemBlue",
-					state = available == false and "Unavailable" or (device.state or "State unknown"),
-					available = available, running = running, path = device.dataPath,
-					bytes = device.dataPathSize, size = Format.size(device.dataPathSize), age = age,
-					runtimeIdentifier = runtime, deviceType = device.deviceType,
-					lastUse = age and Format.used(Format.ago(age)) or "Last use unknown"})
-			end
+			-- A value names itself or stays empty: a dash in a list without
+			-- headers says nothing.
+			table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
+				icon = Simulators.symbol(name .. " " .. runtimeName), color = available == false and "systemOrange" or "systemBlue",
+				state = available == false and "Unavailable" or (device.state or "State unknown"),
+				available = available, running = running, path = device.dataPath,
+				bytes = device.dataPathSize, size = Format.size(device.dataPathSize), age = age,
+				runtimeIdentifier = runtime, deviceType = device.deviceType,
+				lastUse = age and Format.used(Format.ago(age)) or "Last use unknown"})
 		end
 	end
 	table.sort(rows, function(a, b) if (a.bytes or 0) ~= (b.bytes or 0) then return (a.bytes or 0) > (b.bytes or 0) end; return (a.id or "") < (b.id or "") end)
@@ -99,7 +95,7 @@ end
 function Simulators.summary(inventory, runtimes, now)
 	local result = {devices = 0, deviceBytes = 0, unavailable = 0, unavailableBytes = 0, stale = 0, staleBytes = 0,
 		runtimes = #(runtimes or {}), runtimeBytes = 0, unknownAvailability = 0}
-	for _, row in ipairs(Simulators.rows(inventory or {}, nil, now)) do
+	for _, row in ipairs(Simulators.rows(inventory or {}, now)) do
 		result.devices = result.devices + 1
 		result.deviceBytes = result.deviceBytes + (row.bytes or 0)
 		if row.available == nil then result.unknownAvailability = result.unknownAvailability + 1 end

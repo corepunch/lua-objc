@@ -2,8 +2,9 @@
 <% --[[ Every location that changed since the saved snapshot, largest change
   first. Bars compare changes with the largest one: orange grew, green shrank. ]]
   local CHANGES = { name = 210, change = 160, size = 90, review = 40 } %>
-
-
+  <VStack id="changesHeader" spacing="0" alignment="leading">
+    <%- partial("../components/SectionHeader.etlua", {title = "Changed locations", detail = "Locations that grew or shrank since the saved scan, largest change first."}) %>
+  </VStack>
   <List flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" id="changes" rowMenu="rowMenu" onColumnButton="markRow" onActivate="reveal" dragKey="path" style="fullWidth" header="true" alternatingRows="false" rowHeight="44">
     <Column id="name" title="Location" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" imageSize="28" minWidth="<%= CHANGES.name %>" />
     <Column id="shareText" title="Change" width="<%= CHANGES.change %>" minWidth="<%= CHANGES.change %>" levelKey="relative" levelColorKey="levelColor" valueKey="detail" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />

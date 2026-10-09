@@ -65,11 +65,11 @@ local GROUPS = {
 		open = function(page, row) page.app.open(row.id) end,
 		menu = function(page, row) return page.rowActions:resource(row.id) end},
 	{id = "files", title = "Large Files", list = {detailColumn = true, fileIcons = true},
-		rows = function(page, needle) return page.rowActions:annotate(Search.filter(Files:rows("All"), needle, {"name", "path", "owner"})) end,
+		rows = function(page, needle) return page.rowActions:annotate(Search.filter(Files:rows(), needle, {"name", "path", "owner"})) end,
 		open = function(page, row) page.app.service.reveal(row.path) end,
 		menu = function(page, row) return page.rowActions:file(row) end},
 	{id = "applications", title = "Applications", list = {detailColumn = true},
-		rows = function(page, needle) return Search.filter(Applications:rows("All"), needle, {"name", "bundleId"}) end,
+		rows = function(page, needle) return Search.filter(Applications:rows(), needle, {"name", "bundleId"}) end,
 		open = function(page, row) page.app.service.reveal(row.path) end,
 		menu = function(page, row) return page.rowActions:application(row) end},
 	{id = "leftovers", title = "Possible App Leftovers", list = {detailColumn = true},
@@ -125,7 +125,7 @@ local GROUPS = {
 			end
 			return rows
 		end,
-		open = function(page, row) page.app.show("files", {filter = "All", kind = row.kindId}) end},
+		open = function(page, row) page.app.show("files", {kind = row.kindId}) end},
 	{id = "guide", title = "Storage Guide",
 		rows = function(page, needle)
 			local rows = {}

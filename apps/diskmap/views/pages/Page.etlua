@@ -1,6 +1,6 @@
 <% --[[ The list page: every page that ranks storage in lists is this
   template and a `layout` table (pages/ListRoute.lua), so tiles, section
-  titles, filters and lists sit in the same places on all of them. The page
+  titles, links and lists sit in the same places on all of them. The page
   is named by the window title, not by a heading of its own. The template carries structure only; rows, sizes and summaries are
   set in place, so scan progress does not rebuild the page under the reader.
 
@@ -17,9 +17,8 @@
       collapsed            label of a disclosure that hides the list until opened
       title, detail        its heading; titleId and detailId name their refs
       sizeId               ref of a total beside the heading
-      links                leading link actions beside the filter
-      filters              {id, options}: a segmented picker calling `filter`
-      controlsId           optional ref for the filters/actions row
+      links                leading link actions above the list
+      controlsId           optional ref for the links row
       buttons              section operations promoted to the window toolbar
       empties              {id, title, systemImage, description, hidden}
       panelId              ref of the box around the list
@@ -62,15 +61,10 @@
         <% end %>
       </HStack>
       <% end %>
-      <% if section.links or section.filters then %>
+      <% if section.links then %>
       <HStack <% if section.controlsId then %>id="<%= section.controlsId %>" <% end %> spacing="12" alignment="center">
         <%- partial("../components/Buttons.etlua", {buttons = section.links}) %>
         <Spacer />
-        <% if section.filters then %>
-        <Picker id="<%= section.filters.id %>" style="segmented" value="<%= (filterIndex or 1) - 1 %>" onChange="filter">
-          <% for _, title in ipairs(section.filters.options) do %><Option title="<%= title %>" /><% end %>
-        </Picker>
-        <% end %>
       </HStack>
       <% end %>
       <% for _, empty in ipairs(section.empties or {}) do %>

@@ -37,7 +37,7 @@ local function open(id, service, model)
 	return page, model, services
 end
 
--- Large Files: waiting, then the list; the filter and a kind are the model's.
+-- Large Files: waiting, then the list, largest first; a kind is the model's.
 local model = Store.new(home)
 model.scan = {running = true}
 model.files = {large = {{path = home .. "/Downloads/a.dmg", bytes = 3e9, used = os.time()}}, old = {}, extensions = {}, oldBytes = 0, oldCount = 0}
@@ -46,18 +46,16 @@ t.expect(page.refs.waiting ~= nil and page.refs.files == nil, "a running scan dr
 model.scan = {running = false}
 page:update({query = ""})
 t.expect(page.refs.waiting == nil and page.refs.files ~= nil, "the finished scan is drawn")
-t.assertEqual(page.refs.filter.selectedSegment, 1, "the page opens on All measured files")
-page.actions.filter(1)
-t.assertEqual(page.request.filterIndex, 2, "the picker is the model's filter index")
-t.assertEqual(page.refs.filter.selectedSegment, 1, "and the picker follows it")
-page.request:focus({kind = "installers", filter = "Installers & archives"})
+t.assertEqual(page.refs.filter, nil, "the list has no filter picker: it is sorted by size")
+t.expect(page.refs.fileControls.hidden, "without a kind there is no controls row above the list")
+page.request:focus({kind = "installers"})
 page:update({query = ""})
 t.expect(not page.refs.clearKind.hidden, "a narrowed list offers all kinds")
 page.actions.clearKind()
 t.expect(page.refs.clearKind.hidden and page.request.kind == nil, "and clearing the kind restores them")
-t.assertEqual(page.request.filterIndex, 4, "without touching the filter")
+page.request:focus({kind = "video"})
 page.request:focus({})
-t.assertEqual(page.request.filterIndex, 2, "focusing without a filter opens All")
+t.assertEqual(page.request.kind, nil, "focusing without a kind opens every file")
 page:dispose()
 
 -- File Types waits for the scan too.

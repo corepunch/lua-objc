@@ -99,8 +99,8 @@ local unknown = SimulatorService.discover(service, model.home)
 local row = Simulators.rows(unknown)[1]
 t.assertEqual(row.lastUse, "Last use unknown", "no boot date does not imply never started")
 t.assertEqual(row.available, nil, "filesystem discovery cannot prove runtime availability")
-t.assertEqual(#Simulators.rows(unknown, "Unavailable"), 0, "unknown device is not falsely called unavailable")
-t.assertEqual(#Simulators.rows(unknown, "Unused for 90 days"), 0, "unknown age cannot qualify as stale")
+t.expect(row.available ~= false, "unknown device is not falsely called unavailable")
+t.assertEqual(row.age, nil, "unknown age cannot qualify as stale")
 local ok, reason = Simulators.validate("delete", row)
 t.expect(not ok and reason.code == "state_unknown", "unknown running state prevents device deletion")
 local live = {devices = {[runtime] = {{udid = uuid, state = "Booted", isAvailable = true}}}}
@@ -158,8 +158,8 @@ page.request.selectedId = "no-such-suggestion"
 page:update({disk = disk})
 t.assertEqual(page.request.selectedRow, nil, "a selection no row matches is dropped")
 local opened
-page.request.app.show = function(id, params) opened = {id, params.filter} end
-page.actions.open(nil, nil, {id = "unused-apps", page = "applications", filter = "Unused for 6 months"})
+page.request.app.show = function(id, params) opened = {id, params} end
+page.actions.open(nil, nil, {id = "unused-apps", page = "applications"})
 t.assertEqual(opened[1], "applications", "opening a row navigates to the suggested page")
-t.assertEqual(opened[2], "Unused for 6 months", "and preserves its review filter")
+t.assertEqual(opened[2], nil, "which lists everything, largest first")
 os.exit(t.summary() and 0 or 1)

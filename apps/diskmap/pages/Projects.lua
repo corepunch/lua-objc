@@ -9,7 +9,6 @@ local LAYOUT = {
 	subtitle = "Build data your projects can recreate.",
 	buttons = {{id = "addFolder", title = "Add Folder…", systemImage = "plus", action = "addFolder", help = "Search another folder for projects"}},
 	sections = {{title = "Build folders", detailId = "projectRoots",
-		filters = {id = "filter", options = Projects.filters},
 		buttons = {{id = "markStale", title = "Mark Old Build Data", systemImage = "plus.circle", action = "markStale",
 			help = "Mark build data of projects with a clean git tree, untouched for three months"}},
 		empties = {{id = "projectsEmpty", title = "No Build Folders Found", systemImage = "folder.badge.gearshape",
@@ -50,8 +49,9 @@ end
 -- Old build data of a project whose git tree is clean.
 local function stale(page)
 	local found = {}
-	for _, group in ipairs(Projects:groups(Projects.filters[2])) do
-		if type(group.git) == "table" and group.git.clean and not included(page, group) then table.insert(found, group) end
+	for _, group in ipairs(Projects:groups()) do
+		if group.age ~= nil and group.age >= Projects.staleDays and type(group.git) == "table" and group.git.clean
+			and not included(page, group) then table.insert(found, group) end
 	end
 	return found
 end
@@ -107,12 +107,12 @@ routes.projects = ListRoute.extend({layout = LAYOUT,
 		-- Nothing is listed until the scan has found the projects and git has
 		-- told their state, one project at a time.
 		if model.scan.running then return {waiting = WAITING} end
-		for _, group in ipairs(Projects:groups(Projects.filters[1])) do
+		for _, group in ipairs(Projects:groups()) do
 			if not Model.db.projectInfo[group.path] then return {computing = "Reading the state of your projects…"} end
 		end
 		-- Rows are the groups themselves, so menus receive a project's
 		-- artifacts. A project is marked when all its build folders are.
-		local rows = Projects:groups(Projects.filters[page.filterIndex])
+		local rows = Projects:groups()
 		for _, group in ipairs(rows) do
 			group.id, group.detail = group.path, group.gitText
 			group.subtitle = Format.tilde(group.path, model.home) .. " · " .. group.artifactText .. " · " .. group.ageText
@@ -123,7 +123,7 @@ routes.projects = ListRoute.extend({layout = LAYOUT,
 				group.included = true
 			end
 		end
-		local all, bytes = Projects:groups(Projects.filters[1]), 0
+		local all, bytes = Projects:groups(), 0
 		for _, group in ipairs(all) do bytes = bytes + group.bytes end
 		return {lists = {projects = page.rowActions:annotate(rows)}, hidden = {projectsEmpty = #all > 0, projectsList = #all == 0},
 			disabled = {markStale = #stale(page) == 0}, texts = {projectRoots = "Project folders: " .. rootsText(page) .. "."},

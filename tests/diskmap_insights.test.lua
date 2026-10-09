@@ -74,17 +74,16 @@ model.kept.downloads = true
 t.assertEqual(reason(home .. "/Downloads/Old macOS Installer.dmg"), "kept", "a kept location protects its files")
 model.kept.downloads = nil
 
--- Large Files filters.
-local all = Files:rows("All")
+-- Large Files.
+local all = Files:rows()
 t.expect(#all > 5, "large files are listed")
 for index = 2, #all do t.expect(all[index - 1].bytes >= all[index].bytes, "large files are largest first") end
 t.assertEqual(all[1].relative, 1, "the largest file has a full bar")
-for _, row in ipairs(Files:rows("Unused for a year")) do t.expect(row.old, "the unused filter lists only old files") end
-for _, row in ipairs(Files:rows("Installers & archives")) do
-	t.expect(row.kindId == "installers" or row.kindId == "archives", "the installer filter lists installers and archives")
+for _, row in ipairs(Files:installers()) do
+	t.expect(row.kindId == "installers" or row.kindId == "archives", "the installers to review are installers and archives")
 end
-for _, row in ipairs(Files:rows("All", "video")) do t.assertEqual(row.kindId, "video", "a kind narrows the list") end
-t.assertEqual(#require("apps.diskmap.helpers.Search").filter(Files:rows("All"), "ubuntu", {"name", "path", "owner"}), 1, "Search matches file names")
+for _, row in ipairs(Files:rows("video")) do t.assertEqual(row.kindId, "video", "a kind narrows the list") end
+t.assertEqual(#require("apps.diskmap.helpers.Search").filter(Files:rows(), "ubuntu", {"name", "path", "owner"}), 1, "Search matches file names")
 local fileSummary = Files:summary()
 t.expect(fileSummary.reviewableOldBytes > 0 and fileSummary.reviewableOldBytes <= fileSummary.oldBytes, "reviewable old files are a subset of old files")
 
@@ -111,7 +110,7 @@ t.assertEqual(Format.ago(45), "1 month ago", "use a month ago reads in months")
 local info
 app.env.service.applicationInfo({"/Applications/Mock Video Studio.app", "/Applications/Mock Notes.app", home .. "/Applications/Mock Game.app"}, function(value) info = value end)
 Model.db.applicationInfo = info
-local apps = Applications:rows("All")
+local apps = Applications:rows()
 local byName = {}
 for _, row in ipairs(apps) do byName[row.name] = row end
 t.expect(byName["Mock Video Studio"] and byName["Mock Video Studio"].dataBytes == 2.2e9, "app data is found by bundle identifier")
@@ -119,8 +118,7 @@ t.assertEqual(byName["Mock Video Studio"].bytes, 3.4e9 + 2.2e9, "an app's total 
 t.expect(byName["Mock Game"].unused and not byName["Mock Notes"].unused, "apps unused for six months are flagged")
 t.expect(byName["Xcode & bundled SDKs"] == nil, "missing bundles are not listed as installed")
 Model.db.applicationInfo = info
-local unused = Applications:rows("Unused for 6 months")
-t.assertEqual(#unused, 1, "the unused filter lists only unused apps")
+t.assertEqual(Applications.summary(Applications:rows()).unused, 1, "only unused apps are counted as unused")
 Model.db.installedApplications = nil
 t.assertEqual(Applications:leftovers(), nil, "without installed identifiers nothing is called a leftover")
 local installed
@@ -180,11 +178,11 @@ end
 local derivedMenu = titles(app.env.rowActions:resource("derived"))
 t.expect(derivedMenu["Review Move to Trash…"] and derivedMenu["Show in Finder"] and derivedMenu.Keep and derivedMenu["Copy Path"], "resource menus offer review, Finder, Keep and Copy")
 local dmg
-for _, row in ipairs(Files:rows("All")) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
+for _, row in ipairs(Files:rows()) do if row.name == "Old macOS Installer.dmg" then dmg = row end end
 local fileMenu = app.env.rowActions:file(dmg)
 t.assertEqual(fileMenu[1].title, "Move to Trash…", "own documents can be moved to the Trash from their menu")
 local backup
-for _, row in ipairs(Files:rows("All")) do if row.name == "Manifest.db" then backup = row end end
+for _, row in ipairs(Files:rows()) do if row.name == "Manifest.db" then backup = row end end
 local backupMenu = app.env.rowActions:file(backup)
 t.expect(backupMenu[1].disabled and backupMenu[1].title:find("belong to apps", 1, true), "a refused trash explains itself in the menu")
 

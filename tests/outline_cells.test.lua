@@ -64,11 +64,23 @@ t.expect(bridge._viewMidlineFill(badge) >= 0.95, "symbol badges fill their frame
 t.expect(image.contentTintColor == nil, "real app artwork retains its colors")
 badged:replaceRows({{id = "badge", name = "Finder at path", icon = "folder", color = "systemTeal", appIcon = "invalid.diskmap.missing", fileIcon = "/System/Library/CoreServices/Finder.app"}})
 image = bridge._tableCell(badged, 0, 0).imageView
-t.expect(image.resolvedAppIcon and image.image ~= nil, "existing app path takes precedence over bundle identifier fallback")
+t.expect(image.resolvedAppIcon and image.image ~= nil, "an app path without a resolvable bundle takes its type's icon")
 t.expect(image.contentTintColor == nil, "file artwork retains native colors")
-badged:replaceRows({{id = "badge", name = "Missing app", icon = "folder", color = "systemTeal", appIcon = "invalid.diskmap.missing", fileIcon = "/not-an-installed-app/Absent.app"}})
+-- Cells never touch the disk: a file's icon comes from its extension, so a
+-- path that does not exist still shows its type, and a path of no known type
+-- (a folder, an unknown extension) keeps the row's symbol.
+badged:replaceRows({{id = "badge", name = "Movie", icon = "film", fileIcon = "/not-on-this-disk/Movie.mov"}})
 image = bridge._tableCell(badged, 0, 0).imageView
-t.expect(not image.resolvedAppIcon and image.image ~= nil, "missing application path falls back to symbol")
+t.expect(image.resolvedAppIcon and image.image ~= nil, "file icons come from the extension's type, not the disk")
+badged:replaceRows({{id = "badge", name = "Folder", icon = "folder", color = "systemTeal", appIcon = "invalid.diskmap.missing", fileIcon = "/not-on-this-disk/Folder"}})
+image = bridge._tableCell(badged, 0, 0).imageView
+t.expect(not image.resolvedAppIcon and image.image ~= nil, "a path without a type keeps the row's symbol")
+badged:replaceRows({{id = "badge", name = "Blob", icon = "doc", fileIcon = "/not-on-this-disk/blob.zzqx"}})
+image = bridge._tableCell(badged, 0, 0).imageView
+t.expect(not image.resolvedAppIcon, "an unknown extension keeps the row's symbol")
+badged:replaceRows({{id = "badge", name = "Finder", icon = "folder", color = "systemTeal", appIcon = "com.apple.finder", fileIcon = "/System/Library/CoreServices/Finder.app"}})
+image = bridge._tableCell(badged, 0, 0).imageView
+t.expect(image.resolvedAppIcon and image.appBundleId == "com.apple.finder", "an app's own artwork outranks its type's icon")
 t.assertEqual(image.badgeColorName, "systemTeal", "reused cell updates badge")
 local colored = ns.List {columns = {{id = "name", cell = {color = "color"}}}, data = {{name = "Brown", color = "systemBrown"}}}
 local coloredCell = bridge._tableCell(colored, 0, 0)

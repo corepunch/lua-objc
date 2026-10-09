@@ -11,7 +11,6 @@ Projects = Model:extend("projects", {primaryKey = "path", source = function() re
 -- Projects untouched for this long are worth reviewing first. Age comes from
 -- the project's own folder, never from the generated artifact.
 Projects.staleDays = 90
-Projects.filters = Model.enum({"All", "Not touched in 3 months", "Clean git tree"})
 
 -- Parses `git status --porcelain=v1 --branch`. Returns nil for output that is
 -- not from git (not a repository or git missing).
@@ -76,7 +75,7 @@ function Projects.lastWorked(output, budget)
 end
 
 -- The projects a filter leaves, largest first.
-function Projects:groups(filter, now)
+function Projects:groups(now)
 	local model = Model.db
 	local info = model.projectInfo or {}
 	now = now or os.time()
@@ -111,10 +110,7 @@ function Projects:groups(filter, now)
 		for _, artifact in ipairs(group.artifacts) do table.insert(names, artifact.name) end
 		group.artifactText = table.concat(names, ", ")
 		group.size = Format.size(group.bytes)
-		local passes = filter == nil or filter == Projects.filters[1]
-			or (filter == Projects.filters[2] and group.age ~= nil and group.age >= Projects.staleDays)
-			or (filter == Projects.filters[3] and type(group.git) == "table" and group.git.clean)
-		if passes then table.insert(rows, group) end
+		table.insert(rows, group)
 	end
 	table.sort(rows, function(a, b)
 		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
@@ -140,7 +136,7 @@ end
 
 function Projects:badge()
 	local bytes = 0
-	for _, group in ipairs(self:groups(self.filters[1])) do bytes = bytes + group.bytes end
+	for _, group in ipairs(self:groups()) do bytes = bytes + group.bytes end
 	return bytes > 0 and require("apps.diskmap.helpers.Format").size(bytes) or nil
 end
 

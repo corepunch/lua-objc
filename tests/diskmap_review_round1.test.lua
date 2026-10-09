@@ -37,7 +37,7 @@ for family, id in pairs(choices) do
 	for _, row in ipairs(page:plan().removal) do t.expect(row.id ~= id, 'chosen ' .. family .. ' never enters removal plan') end
 end
 
--- The heading and explanation have their own row, above filters/actions;
+-- The heading and explanation have their own row, above the list;
 -- verify actual native geometry, rather than matching template strings.
 app:show('projects'); bridge._flushLayout()
 local refs = app.page.refs
@@ -47,7 +47,6 @@ t.assertEqual(O(app, "markStale").title, 'Mark Old Build Data', 'toolbar action 
 t.assertEqual(refs.markStale, nil, 'the bulk operation has no duplicate inline button')
 for _, width in ipairs({950, 1100, 1400}) do
 	window.size = ns.Size(width, 580); window:layout(); bridge._flushLayout()
-	t.expect(refs.filter.frame.size.width > 0, 'project filtering remains usable at ' .. width)
 	t.expect(ns.ToolbarItem(window, "operation_markStale") ~= nil, 'bulk marking is in the toolbar at ' .. width)
 end
 window.size = ns.Size(950, 580); window:layout()
@@ -64,19 +63,20 @@ t.expect(O(app, "openOwner").enabled, 'managed checkout exposes its owner action
 local widths = bridge._tableColumnWidths(refs.reviewList)
 t.expect(widths[1].width > widths[2].width and widths[1].width > widths[3].width, 'name/branch gets more space than repeated status/date')
 
--- Installer arrival leads with the actual filtered subset, with staging
--- only; no confirmation or deletion is triggered by marking.
+-- Installer arrival lists the installers kind, with staging only; no
+-- confirmation or deletion is triggered by marking, and only files of yours
+-- are staged.
 app:show('kinds'); app.page.actions.showInstallers()
-local rows = Files:rows('Installers & archives')
+local rows = Files:rows('installers')
 local bytes = 0
 for _, row in ipairs(rows) do bytes = bytes + row.bytes end
 local lead = app.page.refs
-t.assertEqual(lead.decisionAmount.text, require("apps.diskmap.helpers.Format").size(bytes), 'file decision totals only the visible subset')
-t.assertEqual(lead.decisionCaption.text, 'to review', 'documents are review candidates')
+t.assertEqual(lead.decisionAmount.text, require("apps.diskmap.helpers.Format").size(bytes), 'file decision totals the visible kind')
+t.assertEqual(lead.decisionCaption.text, 'measured', 'which it names')
 local before = app.env.basket:count()
 ns._invokeAction(lead.decisionAction)
 t.expect(app.env.basket:count() > before, 'marking stages visible installers')
-for _, row in ipairs(rows) do t.expect(app.env.basket:isMarked(row.path), 'each installer is staged') end
+for _, row in ipairs(rows) do t.assertEqual(app.env.basket:isMarked(row.path), row.trashable, 'each installer of yours is staged, and only those') end
 Marks:clear(); app:basketChanged()
 
 app:show('applications')

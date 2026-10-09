@@ -13,7 +13,7 @@ end
 
 function Inventories:applicationsSummary()
 	if not Model.db.files or Model.db.files.measuring then return nil end
-	return Applications.summary(Applications:rows("All"), Applications:leftovers())
+	return Applications.summary(Applications:rows(), Applications:leftovers())
 end
 
 function Inventories:rebuildWorktrees()

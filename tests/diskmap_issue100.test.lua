@@ -90,12 +90,12 @@ local AppController = require("apps.diskmap.Controller")
 local app = AppController.new(Mock.new())
 app.env.scan:start()
 local all, removable = 0, 0
-for _, row in ipairs(Files:rows("All")) do
+for _, row in ipairs(Files:rows()) do
 	if row.kindId == "installers" or row.kindId == "archives" then all = all + 1 end
 end
-for _, row in ipairs(Files:rows("Installers & archives")) do
+for _, row in ipairs(Files:installers()) do
 	removable = removable + 1
-	t.expect(row.trashable, "the installers filter lists only files this app can move to the Trash: " .. row.path)
+	t.expect(row.trashable, "the installers to review are only files this app can move to the Trash: " .. row.path)
 end
 t.expect(removable > 0 and removable <= all, "removable installers are a subset of the installer-kind files")
 local kinds = Files:kinds()
@@ -135,14 +135,14 @@ Locations:add("applications", {id = "run-app", name = "Busy.app", subtitle = "In
 appModel.measurements["run-app"] = {status = "complete", bytes = 5e8}
 local oldDate = os.time() - 400 * 86400
 Model.db.applicationInfo = {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}
-local busy = Applications:rows("All")[1]
+local busy = Applications:rows()[1]
 t.expect(busy.running and not busy.unused, "an app that is open now is not unused")
 t.assertEqual(busy.detail, "Running now", "and says so")
 Model.db.applicationInfo = {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate, running = true}}
-t.assertEqual(#Applications:rows("Unused for 6 months"), 0,
-	"the Unused filter leaves it out")
+t.assertEqual(Applications.summary(Applications:rows()).unused, 0,
+	"the unused count leaves it out")
 Model.db.applicationInfo = {["/Applications/Busy.app"] = {bundleId = "com.example.busy", lastUsed = oldDate}}
-local idle = Applications:rows("Unused for 6 months")[1]
+local idle = Applications:rows()[1]
 t.expect(idle and idle.unused, "the same app closed with a known old date is unused")
 
 -- Totals say what they cover and what the scan could not see.

@@ -95,18 +95,14 @@ local now = os.time({year = 2026, month = 9, day = 27, hour = 12})
 local info = {["/Users/test/Developer/app"] = {modified = now - 200 * 86400, git = Projects.parseGit("## main\n"), loaded = true},
 	["/Users/test/Code/tool"] = {modified = now - 3 * 86400, loaded = true}}
 Model.db.projectInfo = info
-local groups = Projects:groups(nil, now)
+local groups = Projects:groups(now)
 t.assertEqual(#groups, 2, "artifacts group by project")
 t.assertEqual(groups[1].bytes, 4e9, "a project totals its artifacts")
 t.assertEqual(groups[1].artifactText, "Node modules, Next.js build output", "a project lists its artifact kinds")
 t.assertEqual(groups[1].ageText, "200 days ago", "age comes from the project folder")
 t.assertEqual(groups[2].gitText, "Not in git", "projects outside git say so")
-Model.db.projectInfo = info
-t.assertEqual(#Projects:groups(Projects.filters[2], now), 1, "the stale filter keeps untouched projects")
-Model.db.projectInfo = info
-t.assertEqual(#Projects:groups(Projects.filters[3], now), 1, "the clean filter keeps clean git trees")
 Model.db.projectInfo = {}
-t.assertEqual(Projects:groups(nil, now)[1].gitText, "Checking…", "git state shows progress until read")
+t.assertEqual(Projects:groups(now)[1].gitText, "Checking…", "git state shows progress until read")
 
 -- Basket: refuses system and standard folders, never double counts.
 local home = "/Users/test"

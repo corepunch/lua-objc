@@ -190,7 +190,7 @@ function routes.cleanup:present(state)
 	local tips, links = Scans:tips(state.disk), {}
 	for _, tip in ipairs(tips) do links["tip_" .. tip.id] = TIP_LINKS[tip.action] end
 	local first = data.lead
-	links.leadOpen = first and (first.page and {page = first.page, filter = first.filter} or {open = first.id}) or nil
+	links.leadOpen = first and (first.page and {page = first.page} or {open = first.id}) or nil
 	links.leadFiles = {page = "files"}
 	return {lists = lists, hidden = hidden, links = links, children = {tips = {tips = tips}, lead = lead(data)}, subtitle = data.summary, texts = {
 		scopeNote = Scope.text("cleanup", Scans:coverage()),

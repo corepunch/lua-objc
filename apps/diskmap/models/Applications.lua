@@ -33,7 +33,6 @@ Applications.dataSources = {
 	{id = "http-storages", label = "Network storage", byId = true, files = true},
 	{id = "webkit-data", label = "Web data", byId = true},
 }
-Applications.filters = Model.enum({"All", "Unused for 6 months", "Most data"})
 Applications.unusedDays = 180
 -- Folders smaller than this are not worth listing as possible leftovers.
 Applications.leftoverMinimum = 50e6
@@ -65,7 +64,7 @@ function Applications:data(bundleId, name)
 end
 
 -- Rows for the Applications page.
-function Applications:rows(filter, now)
+function Applications:rows(now)
 	local model = Model.db
 	local info = model.applicationInfo
 	now = now or os.time()
@@ -96,18 +95,16 @@ function Applications:rows(filter, now)
 		row.size = Format.size(row.bytes)
 		row.subtitle = (details.version and ("Version " .. details.version .. " · ") or "") .. "App " .. Format.size(appBytes)
 			.. (dataBytes > 0 and (" · Data " .. Format.size(dataBytes)) or "")
-		if filter ~= "Unused for 6 months" or row.unused then table.insert(rows, row) end
+		table.insert(rows, row)
 	end
 	table.sort(rows, function(a, b)
-		local left, right = a.bytes, b.bytes
-		if filter == "Most data" then left, right = a.dataBytes, b.dataBytes end
-		if left ~= right then return left > right end
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
 		return a.name:lower() < b.name:lower()
 	end)
 	local largest = 0
-	for _, row in ipairs(rows) do largest = math.max(largest, filter == "Most data" and row.dataBytes or row.bytes) end
+	for _, row in ipairs(rows) do largest = math.max(largest, row.bytes) end
 	for _, row in ipairs(rows) do
-		row.relative = largest > 0 and (filter == "Most data" and row.dataBytes or row.bytes) / largest or 0
+		row.relative = largest > 0 and row.bytes / largest or 0
 		row.shareText = ""
 	end
 	return rows
@@ -243,7 +240,6 @@ function Applications.decision(summary, unmarkedHigh, markedHigh, hasInfo)
 		data.title = Format.plural(summary.unused, "app") .. " not opened in six months"
 		data.detail = "No leftover data was found. These apps have a known last use over six months ago; uninstall them in the Finder or with their own uninstaller if you no longer need them."
 		data.amount, data.amountCaption = Format.size(summary.unusedBytes), "to review"
-		data.actionTitle, data.action = "Show Unused Apps", "unusedFilter"
 	else
 		data.icon, data.color = "checkmark.circle.fill", "systemGreen"
 		data.title = "No leftover app data"

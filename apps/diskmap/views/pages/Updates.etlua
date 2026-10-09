@@ -4,7 +4,7 @@
     <% else %>
     <%- partial("../sections/Decision.etlua", decision) %>
     <VStack spacing="8" alignment="leading">
-      <%- partial("../components/SectionTitle.etlua", {icon = "gearshape.arrow.triangle.2.circlepath", title = "Software Update"}) %>
+      <%- partial("../components/SectionHeader.etlua", {title = "Software Update", detail = "What macOS is downloading or staging, and the space it holds until the update finishes."}) %>
       <GroupBox>
         <%- partial("../components/GroupedRowMetrics.etlua") %>
         <VStack spacing="0" alignment="leading">
@@ -26,7 +26,7 @@
       </GroupBox>
     </VStack>
     <VStack spacing="8" alignment="leading">
-      <%- partial("../components/SectionTitle.etlua", {icon = "externaldrive.badge.plus", title = "Installers & Disk Images"}) %>
+      <%- partial("../components/SectionHeader.etlua", {title = "Installers & Disk Images", detail = "macOS installers, disk images and installer packages. Once installed, they are rarely needed."}) %>
       <GroupBox>
         <VStack spacing="0" alignment="leading">
           <% if #installers == 0 then %>
@@ -39,10 +39,7 @@
       </GroupBox>
     </VStack>
     <VStack spacing="8" alignment="leading">
-      <HStack spacing="8" alignment="center">
-        <%- partial("../components/SectionTitle.etlua", {id = "snapshotTitle", icon = "clock.arrow.circlepath", title = snapshotTitle}) %>
-
-      </HStack>
+      <%- partial("../components/SectionHeader.etlua", {titleId = "snapshotTitle", title = snapshotTitle, detail = "Local snapshots of the startup disk."}) %>
       <GroupBox>
         <%- partial("../components/GroupedRowMetrics.etlua") %>
         <VStack spacing="0" alignment="leading">

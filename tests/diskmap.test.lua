@@ -205,8 +205,8 @@ local developerMenu = bridge._tableRowMenu(ui.page.refs.list_xcode, 1)
 t.expect(#developerMenu >= 3, "developer rows keep their actions in the row menu")
 sidebar:selectRow(row("simulators"))
 t.assertEqual(ui.destination, "simulators", "simulators are a sidebar destination")
-t.expect(ui.page.refs.devices ~= nil and ui.page.refs.runtimes ~= nil and ui.page.refs.filter.className == "NSSegmentedControl",
-	"the simulators page lists devices and runtimes with a segmented filter")
+t.expect(ui.page.refs.devices ~= nil and ui.page.refs.runtimes ~= nil and ui.page.refs.filter == nil,
+	"the simulators page lists every device and runtime, without a filter")
 sidebar:selectRow(row("updates"))
 t.assertEqual(ui.destination, "updates", "updates and snapshots are a sidebar destination")
 t.expect(ui.page.refs.updateTitle ~= nil and ui.page.refs.snapshotTitle ~= nil, "the updates page shows Software Update and snapshots")

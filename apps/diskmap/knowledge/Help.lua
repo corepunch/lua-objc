@@ -58,7 +58,7 @@ return {
 			summary = "Large Files lists individual files over 50 MB and when you last used them.",
 			steps = {
 				"Choose Go › Large Files.",
-				"Filter by Unused for a year, Installers & archives or Media to find likely candidates.",
+				"Files are listed largest first, with when you last used each one.",
 				"To remove a document from your home folder, choose Move to Trash from its row menu and confirm.",
 			},
 			note = "Files inside Library, hidden tool folders and packages such as a Photos library cannot be trashed here; their owner manages them."},
@@ -144,7 +144,7 @@ return {
 			summary = "Applications shows each app with the data it keeps, and data no installed app claims.",
 			steps = {
 				"Choose Go › Applications.",
-				"Filter by Unused for 6 months or Most data to find apps worth removing.",
+				"Apps are listed largest first, with when you last used each one.",
 				"Review Possible leftovers: folders named like an app identifier that no installed app claims.",
 			},
 			note = "Diskmap never uninstalls apps. Apple's own identifiers are never listed as leftovers."},

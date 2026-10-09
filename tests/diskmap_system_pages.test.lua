@@ -59,11 +59,7 @@ t.expect(Simulators.runtimeImpact(runtimes[1]):find("3 devices using it will bec
 t.assertEqual(Simulators.age("2026-09-20T16:20:00Z", now), 6, "device age counts whole days")
 t.assertEqual(Simulators.age(nil, now), nil, "missing dates have no age")
 t.assertEqual(Simulators.age("yesterday", now), nil, "unreadable dates have no age")
-local stale = Simulators.rows(inventory, Simulators.filters[3], now)
-t.assertEqual(#stale, 1, "only devices with a recorded, old last use are unused")
-t.assertEqual(stale[1].name, "iPhone 12", "the stale filter finds the old device")
-t.assertEqual(#Simulators.rows(inventory, "Unavailable", now), 1, "the unavailable filter still works")
-t.assertEqual(#Simulators.rows(inventory, "All", now), 4, "all devices are listed")
+t.assertEqual(#Simulators.rows(inventory, now), 4, "all devices are listed")
 
 local summary = Simulators.summary(inventory, runtimes, now)
 t.assertEqual(summary.devices, 4, "summary counts every device")

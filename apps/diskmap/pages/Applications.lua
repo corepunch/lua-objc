@@ -16,7 +16,6 @@ local LAYOUT = {
 			detail = "Data folders no app on this Mac claims. High means no app from that vendor is installed; review Medium and Low before removing anything. Reinstalling the app starts it fresh.",
 			list = {id = "leftovers", menu = "rowMenu", activate = "reveal", detailColumn = true}},
 		{title = "Installed", detailId = "installedDetail", detail = "Each app with the data it keeps in your Library.",
-			filters = {id = "filter", options = Applications.filters},
 			list = {id = "apps", menu = "rowMenu", activate = "reveal", detailColumn = true}},
 	},
 	footnote = {text = "Last used comes from Spotlight, as Finder's Last Opened; an app without a recorded date reads Last use unknown and is never counted as unused. Apps outside /Applications and ~/Applications are not listed; their data never counts as a leftover."},
@@ -49,10 +48,6 @@ routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sec
 		if not row.tier then return page.rowActions:application(row) end
 		return page.rowActions:folder(row, function(value) trashLeftover(page, value) end, Applications.leftoverItem(row))
 	end,
-	-- File Types and Clean Up open the page on one filter.
-	focus = function(page, params) page.filterIndex = params.filter and assert(Applications.filters:index(params.filter), "Unknown application filter") or 1 end,
-	location = function(page) return {filter = page.filterIndex ~= 1 and Applications.filters[page.filterIndex] or nil} end,
-	unusedFilter = function(page) page.filterIndex = 2 end,
 	markHigh = function(page)
 		return page.rowActions:bulk(page.visibleLeftovers or {}, function(row) return row.tier == "high" end, Applications.leftoverItem)
 	end,
@@ -72,8 +67,9 @@ routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sec
 				if page.rowActions:isIncluded(row.path) then markedHigh = markedHigh + 1 else unmarkedHigh = unmarkedHigh + 1 end
 			end
 		end
-		local summary = Applications.summary(Applications:rows("All"), Applications:leftovers())
-		return {lists = {apps = Applications:rows(Applications.filters[page.filterIndex]),
+		local apps = Applications:rows()
+		local summary = Applications.summary(apps, Applications:leftovers())
+		return {lists = {apps = apps,
 			leftovers = page.rowActions:annotate(leftovers or {})}, links = LINKS,
 			hidden = {leftoversSection = not leftovers or #leftovers == 0},
 			children = {lead = Applications.decision(summary, unmarkedHigh, markedHigh, Model.db.applicationInfo ~= nil)},

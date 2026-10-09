@@ -3,8 +3,9 @@
 --
 --   /overview
 --   /help/shortcuts               <Page id="help" arg="topic">     {topic = "shortcuts"}
---   /files/All?kind=video         <Page id="files" arg="filter">   {filter = "All", kind = "video"}
+--   /files/video                  <Page id="files" arg="kind">     {kind = "video"}
 --   /folder//Users/me/Downloads   <Page id="folder" arg="path">    {path = "/Users/me/Downloads"}
+--   /folder//a?focus=%2Fa%2Fb     <Page id="folder" arg="path">    {path = "/a", focus = "/a/b"}
 --
 -- The argument keeps its slashes, so a folder path reads as itself after the
 -- one that separates it from the page. History holds these strings: two

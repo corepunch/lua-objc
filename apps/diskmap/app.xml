@@ -3,8 +3,8 @@
 	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" />
 	<Page id="basket" title="Flagged for Review" sidebar="Flagged" icon="flag.fill" color="systemOrange" />
 	<Section title="Free Up Space">
-		<Page id="applications" arg="filter" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" />
-		<Page id="files" arg="filter" title="Large Files" icon="doc.fill" color="systemTeal" key="4" />
+		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" />
+		<Page id="files" arg="kind" title="Large Files" icon="doc.fill" color="systemTeal" key="4" />
 		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" />
 		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" workflow="developer" />
 		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" workflow="developer" />

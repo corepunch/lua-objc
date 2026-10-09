@@ -74,10 +74,17 @@ local stock = model.stock
 app:show("overview")
 t.expect(model.stock == stock and xcode.template == nil and xcode.refs == nil, "leaving a page ends its visit")
 
--- Filters sit in one place with one ref on every page that has them.
-for _, id in ipairs({"files", "applications", "projects"}) do
+-- Lists are sorted by size; no page filters them.
+for _, id in ipairs({"files", "applications", "projects", "simulators"}) do
 	app:show(id)
-	t.assertEqual(app.page.refs.filter.className, "NSSegmentedControl", id .. " filters with a segmented control")
+	t.assertEqual(app.page.refs.filter, nil, id .. " has no filter picker")
 end
+
+-- Every list has a title and a subtitle above it.
+app:show("files")
+t.assertEqual(app.page.refs.filesTitle.text, "Largest files", "Large Files titles its list")
+t.expect(app.page.refs.filesDetail.text:find("largest first", 1, true), "and says how it is ordered")
+app:show("files", {kind = "video"})
+t.assertEqual(app.page.refs.filesTitle.text, require("apps.diskmap.helpers.FileKind").byId("video").name, "a kind names the list")
 
 os.exit(t.summary() and 0 or 1)

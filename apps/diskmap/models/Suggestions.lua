@@ -297,7 +297,7 @@ function Suggestions:presentation(sources)
 	local files = Files:summary()
 	local elsewhere = {}
 	if files and files.reviewableOldBytes > 0 then
-		table.insert(elsewhere, candidate({id = "old-files", name = "Documents unused for a year", page = "files", filter = "Unused for a year",
+		table.insert(elsewhere, candidate({id = "old-files", name = "Documents unused for a year", page = "files",
 			subtitle = Format.count(files.reviewableOld) .. " of your own files over " .. Format.size(require("apps.diskmap.models.Scans").fileSummary.minimumFileBytes)
 				.. " were not opened or changed in a year. Review them; they may be your only copy.",
 			icon = "clock.fill", color = "systemOrange", bytes = files.reviewableOldBytes, detail = "Large Files"},
@@ -306,11 +306,11 @@ function Suggestions:presentation(sources)
 	-- Installers are the user-owned ones only: file-kind totals also count
 	-- system and runtime images that this list never offers to remove.
 	local installers, installerBytes = 0, 0
-	for _, row in ipairs(Files:rows("Installers & archives")) do
+	for _, row in ipairs(Files:installers()) do
 		installers = installers + 1; installerBytes = installerBytes + row.bytes
 	end
 	if installerBytes > 0 then
-		table.insert(elsewhere, candidate({id = "installers", name = "Installers & archives", page = "files", filter = "Installers & archives",
+		table.insert(elsewhere, candidate({id = "installers", name = "Installers & archives", page = "files",
 			subtitle = installers .. " disk images, installers and archives in your folders. Once installed or expanded they are rarely needed.",
 			icon = "opticaldiscdrive.fill", color = "systemTeal", bytes = installerBytes, detail = "Large Files"},
 			{eligibleBytes = installerBytes, confidence = "Medium", effort = "Low"}))
@@ -333,7 +333,7 @@ function Suggestions:presentation(sources)
 				effort = "Medium"}))
 	end
 	if apps and apps.unused and apps.unused > 0 then
-		table.insert(elsewhere, candidate({id = "unused-apps", name = "Apps unused for 6 months", page = "applications", filter = "Unused for 6 months",
+		table.insert(elsewhere, candidate({id = "unused-apps", name = "Apps unused for 6 months", page = "applications",
 			subtitle = Format.plural(apps.unused, "app") .. " with a known last-use date over six months ago, and their data. Apps with an unknown last use are not counted.",
 			icon = "hourglass", color = "systemBlue", bytes = apps.unusedBytes, detail = "Applications"},
 			{confidence = "Low", effort = "Medium"}))

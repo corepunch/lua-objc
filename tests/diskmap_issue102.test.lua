@@ -114,7 +114,7 @@ for _, kind in ipairs(kinds) do
 	if kind.id == "installers" then installers = kind elseif kind.id == "archives" then archives = kind end
 end
 local ownInstallers, ownArchives = 0, 0
-for _, row in ipairs(Files:rows("Installers & archives")) do
+for _, row in ipairs(Files:installers()) do
 	if row.kindId == "installers" then ownInstallers = ownInstallers + row.bytes else ownArchives = ownArchives + row.bytes end
 end
 t.assertEqual(installers.removableBytes, ownInstallers, "the installers kind counts only its own user-owned files")
@@ -126,7 +126,7 @@ t.assertEqual(decision.amountCaption, "could recover", "which it names")
 t.expect(decision.detail:find("installed or extracted", 1, true), "the lead explains the review before removal")
 app.page.actions.showInstallers()
 t.assertEqual(app.destination, "files", "its action opens Large Files")
-t.assertEqual(app.page.request.filterIndex, Files.filters:index("Installers & archives"), "on the reviewable files")
+t.assertEqual(app.page.request.kind, "installers", "on the installers")
 
 -- Updates routes to Clean Up with the same estimate Clean Up states.
 app:show("updates")

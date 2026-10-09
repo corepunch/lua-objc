@@ -110,7 +110,7 @@ end
 function Service:projects(stock, current, done)
 	Model.db.projectInfo = Model.db.projectInfo or {}
 	local queue = {}
-	for _, group in ipairs(Projects:groups(Projects.filters[1])) do
+	for _, group in ipairs(Projects:groups()) do
 		if not Model.db.projectInfo[group.path] then table.insert(queue, group.path) end
 	end
 	local function step(index)

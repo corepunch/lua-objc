@@ -11,7 +11,7 @@ SnapshotChanges.queries = {rowMenu = true, reveal = true}
 function SnapshotChanges:data()
 	local result = self.app.snapshotResult() or {rows = {}, title = "Snapshot Changes", detail = "No comparison available."}
 	local rows = self:flow("Rows"):annotate(result.rows)
-	return {lists = {changes = rows}, hidden = {changes = #rows == 0, changesEmpty = #rows > 0}, title = result.title, subtitle = result.detail}
+	return {lists = {changes = rows}, hidden = {changes = #rows == 0, changesHeader = #rows == 0, changesEmpty = #rows > 0}, title = result.title, subtitle = result.detail}
 end
 
 function SnapshotChanges:markRow(_, _, row) self:flow("Rows"):toggleReview(row) end

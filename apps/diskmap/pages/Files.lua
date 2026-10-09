@@ -17,13 +17,12 @@ local LAYOUT = {
 		{id = "movableTile", icon = "trash.fill", color = "systemRed", title = "Yours to review", value = "—", detail = "Unused documents you can move to the Trash"},
 	},
 	sections = {{
-		controlsId = "fileControls",
+		title = "Largest files", titleId = "filesTitle", detailId = "filesDetail", controlsId = "fileControls",
 		links = {{id = "clearKind", title = "Show All Kinds", style = "link", action = "clearKind"}},
-		filters = {id = "filter", options = Files.filters},
 		empties = {
 			{id = "filesUnavailable", title = "File Results Unavailable", systemImage = "exclamationmark.triangle", description = "Check scan access, then refresh to measure files again."},
 			{id = "filesNone", title = "No Large Files Found", systemImage = "doc", description = "No files over " .. THRESHOLD .. " were ranked. Clean Up can still find rebuildable data."},
-			{id = "filesEmpty", title = "No Files Here", systemImage = "doc", description = "No large file fits this filter. Choose All to see every file Diskmap ranked."},
+			{id = "filesEmpty", title = "No Files Here", systemImage = "doc", description = "No large file is of this kind. Show All Kinds to see every file Diskmap ranked."},
 		},
 		panelId = "filesPanel",
 		list = {id = "files", menu = "rowMenu", activate = "reveal", selectAction = "select", detailColumn = true, fileIcons = true}}},
@@ -35,7 +34,7 @@ local LINKS = {cleanup = {page = "cleanup"}, reviewMarked = {handler = "review"}
 
 -- The lead card: what a person can mark here, or why there is nothing to.
 local function decision(page, rows, fileState, reason, kind, noFiles)
-	local filter, actions = Files.filters[page.filterIndex], page.rowActions
+	local actions = page.rowActions
 	local bytes, reviewable, marked, included = 0, 0, 0, 0
 	for _, row in ipairs(rows) do
 		bytes = bytes + row.bytes
@@ -46,10 +45,9 @@ local function decision(page, rows, fileState, reason, kind, noFiles)
 		end
 	end
 	local data = {id = "decision", icon = "doc.fill", color = "systemTeal",
-		title = (kind and kind.name or filter) .. " · " .. Format.plural(#rows, "file"),
-		detail = filter == "Installers & archives" and "Check that these are installed or extracted. Marking stages them for your final review."
-			or "Review the contents before marking. Files inside apps or libraries stay with their owners.",
-		amount = Format.size(bytes), amountCaption = filter == "All" and "measured" or "to review",
+		title = (kind and kind.name or "All") .. " · " .. Format.plural(#rows, "file"),
+		detail = "Review the contents before marking. Files inside apps or libraries stay with their owners.",
+		amount = Format.size(bytes), amountCaption = "measured",
 		actionTitle = reviewable > 0 and ("Mark " .. Format.plural(reviewable, "File")) or (marked > 0 and "Review Marked Items…" or "No Files to Mark"),
 		action = reviewable > 0 and "markFiles" or "reviewMarked", disabled = reviewable == 0 and marked == 0,
 		secondaryTitle = reviewable > 0 and marked > 0 and "Review Marked Items…" or nil, secondaryAction = "reviewMarked"}
@@ -66,20 +64,14 @@ local function decision(page, rows, fileState, reason, kind, noFiles)
 	return data
 end
 
--- Large Files: the individual files the last scan ranked, with filters for
--- files unused for a year, installers and media. File Types opens it on one
--- kind (`focus`).
+-- Large Files: the individual files the last scan ranked, largest first.
+-- File Types opens it on one kind (`focus`).
 routes.files = ListRoute.extend({layout = LAYOUT,
-	init = function(page) ListRoute.init(page); page.filterIndex = Files.filters:index("All") end, children = {lead = "sections/Decision"},
+	children = {lead = "sections/Decision"},
 	menu = function(page, row) return page.rowActions:file(row) end,
-	-- Opens the page narrowed to one File Types kind and one filter.
-	focus = function(page, params)
-		page.kind, page.filterIndex = params.kind, params.filter and assert(Files.filters:index(params.filter), "Unknown file filter") or Files.filters:index("All")
-	end,
-	location = function(page)
-		local filter = Files.filters[page.filterIndex]
-		return {filter = filter ~= "All" and filter or nil, kind = page.kind}
-	end,
+	-- Opens the page narrowed to one File Types kind.
+	focus = function(page, params) page.kind = params.kind end,
+	location = function(page) return {kind = page.kind} end,
 	clearKind = function(page) page.kind = nil end,
 	-- Mark only the visible, user-owned subset. This stages the files; the
 	-- existing basket supplies the review and confirmation before removal.
@@ -100,13 +92,16 @@ routes.files = ListRoute.extend({layout = LAYOUT,
 		if fileState == "loading" then return {waiting = WAITING} end
 		local kind = page.kind and FileKind.byId(page.kind)
 		local files, summary = model.files, Files:summary()
-		local rows = Files:rows(Files.filters[page.filterIndex], page.kind)
+		local rows = Files:rows(page.kind)
 		page.visible = rows
 		local noLarge = files ~= nil and #files.large == 0 and #files.old == 0
 		local noFiles = fileState == "empty" or (fileState == "loaded" and noLarge)
 		local unavailable = fileState == "error" or fileState == "unavailable"
 		local listed = files ~= nil and #rows == 0 and fileState == "loaded" and not noLarge
-		local texts = {scopeNote = Scope.text("files", Scans:coverage())}
+		local texts = {scopeNote = Scope.text("files", Scans:coverage()),
+			filesTitle = kind and kind.name or "Largest files",
+			filesDetail = "Every file over " .. THRESHOLD .. " the scan measured" .. (kind and (" that is " .. kind.name:lower()) or "")
+				.. ", largest first. Only your own documents can be moved to the Trash; the rest stay with the app or library that owns them."}
 		local subtitle = not summary and "No file results are available. Refresh to try again."
 			or "Files over " .. THRESHOLD .. " · " .. (summary.partial and "scan coverage is incomplete" or "largest first")
 		if summary then
@@ -117,7 +112,7 @@ routes.files = ListRoute.extend({layout = LAYOUT,
 		end
 		return {lists = {files = page.rowActions:annotate(rows)}, texts = texts, subtitle = subtitle, links = LINKS,
 			children = {lead = decision(page, rows, fileState, reason, kind, noFiles)}, hidden = {
-				filesPanel = #rows == 0 or unavailable, fileControls = unavailable or noLarge,
+				filesPanel = #rows == 0 or unavailable, fileControls = unavailable or noLarge or kind == nil,
 				filesUnavailable = not unavailable, filesNone = not noFiles,
 				filesEmpty = not listed, clearKind = kind == nil}}
 	end})

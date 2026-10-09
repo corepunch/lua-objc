@@ -167,7 +167,8 @@ function map:deactivate() self.refs = nil end
 local LARGEST = {limit = 100}
 
 routes.largest = ListRoute.extend({layout = {scopeNote = Scope.pages.largest,
-	sections = {{list = {id = "largest", menu = "rowMenu", activate = "open", selectAction = "select", status = true}}},
+	sections = {{title = "Largest locations", detail = "Locations Diskmap knows, measured one by one across every category, largest first.",
+		list = {id = "largest", menu = "rowMenu", activate = "open", selectAction = "select", status = true}}},
 	footnote = {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."},
 }, limit = LARGEST.limit})
 
@@ -191,13 +192,13 @@ local WAITING = {title = "File Types Not Measured Yet", systemImage = "square.gr
 local kinds = {view = "pages/Breakdown"}
 routes.kinds = kinds
 -- Hovering, menus and the lead card's buttons only read or navigate.
-kinds.queries = {selectKind = true, chartHover = true, kindMenu = true, openKind = true, showHeadline = true, showInstallers = true, showOld = true,
+kinds.queries = {selectKind = true, chartHover = true, kindMenu = true, openKind = true, showHeadline = true, showInstallers = true, showAllFiles = true,
 	cleanup = true, refresh = true}
 
 -- Large Files, narrowed to one kind.
-function kinds:showFiles(kind) self.app.show("files", {filter = "All", kind = kind}) end
-function kinds:showInstallers() self.app.show("files", {filter = "Installers & archives"}) end
-function kinds:showOld() self.app.show("files", {filter = "Unused for a year"}) end
+function kinds:showFiles(kind) self.app.show("files", {kind = kind}) end
+function kinds:showInstallers() self.app.show("files", {kind = "installers"}) end
+function kinds:showAllFiles() self.app.show("files") end
 function kinds:cleanup() self.app.show("cleanup") end
 function kinds:refresh() self.app.rescan() end
 function kinds:showHeadline() if self.headlineId then self:showFiles(self.headlineId) end end

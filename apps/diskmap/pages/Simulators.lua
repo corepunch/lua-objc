@@ -28,7 +28,7 @@ end
 
 function Page:init()
 	self.service = self.app.service
-	self.stock, self.filterIndex = Inventories:state("simulators"), 1
+	self.stock = Inventories:state("simulators")
 end
 
 -- The page is read again whenever it opens, like a request.
@@ -113,7 +113,7 @@ function Page:data()
 		return {computing = "Reading simulator devices and runtimes…", disabled = {retry = true}}
 	end
 	local inventory = self.stock.inventory
-	local rows = Simulators.rows(inventory, Simulators.filters[self.filterIndex])
+	local rows = Simulators.rows(inventory)
 	local runtimes = Simulators.runtimeRows(self.stock.runtimeList, inventory)
 	local plan = self:plan()
 	self.selected, self.selectedRuntime = pick(rows, self.selected), pick(runtimes, self.selectedRuntime)
@@ -130,7 +130,7 @@ function Page:data()
 	local summary, detail = texts(self, runtimes)
 	local row = self.planSelected
 	return {
-		filters = Simulators.filters, filter = self.filterIndex - 1, subtitle = summary, devicesDetail = detail, status = status,
+		subtitle = summary, devicesDetail = detail, status = status,
 		runtimeStatus = runtime and runtimeReason and runtimeReason.message or self.stock.runtimeError or "",
 		plan = planView(self, plan),
 		lists = self.lists,
@@ -156,7 +156,6 @@ function Page:rendered(refs)
 	for id, rows in pairs(self.lists) do Selection.show(refs[id], rows, selected[id] and selected[id].id) end
 end
 
-function Page:filter(index) self.filterIndex = (index or 0) + 1 end
 function Page:select(_, _, row) self.selected = row end
 function Page:selectRuntime(_, _, row) self.selectedRuntime = row end
 function Page:planSelect(_, _, row) self.planSelected = row end
@@ -234,8 +233,8 @@ end
 -- The unavailable devices that may be deleted now.
 function Page:unavailableDevices()
 	local rows = {}
-	for _, row in ipairs(Simulators.rows(self.stock.inventory, "Unavailable")) do
-		if Simulators.command("delete", row, Locations.keeps) then table.insert(rows, row) end
+	for _, row in ipairs(Simulators.rows(self.stock.inventory)) do
+		if row.available == false and Simulators.command("delete", row, Locations.keeps) then table.insert(rows, row) end
 	end
 	return rows
 end
