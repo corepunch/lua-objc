@@ -3,8 +3,8 @@ local Selection = {}
 -- One selection token per page: the id of the resource that a chart sector,
 -- a map cell and a list row all stand for. Selecting a row or clicking a
 -- sector keeps it; hovering keeps nothing and leaves the list alone.
--- The native controls paint it: the list its selected row, the chart its
--- highlighted sector. See MOTION.md.
+-- The list paints it as its native selected row; the chart highlights only
+-- what the pointer is over. See MOTION.md.
 
 -- Sectors that are volume geometry, not a resource a list row can select.
 local TRACKS = {free = true, unreconciled = true}

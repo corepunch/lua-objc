@@ -3,7 +3,6 @@ local Explain = require("apps.diskmap.helpers.Explain")
 local Locations = require("apps.diskmap.models.Locations")
 local Model = require("data.model")
 local FolderTree = require("apps.diskmap.helpers.FolderTree")
-local Sectors = require("ui.sectors")
 local Format = require("apps.diskmap.helpers.Format")
 local Breakdown = require("apps.diskmap.helpers.Breakdown")
 local Selection = require("apps.diskmap.helpers.Selection")
@@ -245,7 +244,6 @@ function Folder:selectRow(_, _, row)
 	if not row then return end
 	if not row.other then self.selected = row.path; self:askPackage(row.path) end
 	self:describe(row.id)
-	if self.refs.breakdownChart then Sectors.highlight(self.refs.breakdownChart, row.id) end
 end
 
 function Folder:markRow(_, _, row) self.rowActions:toggleReview(row) end

@@ -1074,9 +1074,9 @@ sample code [Visualizing your app's data](https://developer.apple.com/documentat
 opacity and every other sector fades to 0.3 of its own, without animation on
 macOS. In a sunburst the hovered sector's parents and children stay with it.
 The chart reports the sector to `onHover(id)`, and the page names it in the
-hole, as the sample's center text does.
-`require("ui.sectors").highlight(chart, id)` highlights a sector from code,
-so a list beside the chart can point at it. Changed marks, `innerRadius`,
+hole, as the sample's center text does. Only the pointer and keyboard
+highlight a sector; a list beside the chart is a separate widget and never
+drives it. Changed marks, `innerRadius`,
 or `angularInset` rebuild the chart with fresh arcs in their final geometry.
 An unchanged chart stays in place. Shape and hover changes apply immediately
 without explicit or implicit layer animations (see

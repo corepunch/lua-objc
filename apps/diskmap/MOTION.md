@@ -33,8 +33,9 @@ Rules:
 
 1. Accent color is selection only. Category color stays muted; rebuildable
    data stays hatched. Do not invent a second hover chrome: the list paints
-   its native selected row and the chart its highlighted sector
-   (`Sectors.highlight`). Rows carry no `selected` field and marks no
+   its native selected row and the chart highlights only the sector under the
+   pointer. The chart and the list are separate widgets: neither drives the
+   other's highlight. Rows carry no `selected` field and marks no
    per-selection opacity.
 2. Hover on a chart sector or map cell updates the inspector with the same
    payload a row click would: name, owner, size, share, status, actions.
@@ -104,7 +105,7 @@ Slack pinch, wallet-hero cycles, or bottom-sheet snap points into `apps/diskmap`
 
 1. Done: shared selection token used by the Overview donut, File Types donut,
    Map and rows.
-2. Done: File Types sector ↔ top-extensions list cross-highlight.
+2. Done: a File Types kind narrows the top-extensions list.
 3. Done: Map change of level behind Reduce Motion.
 4. Stat cards join the selection token.
 5. Marked sheet sequential Trash + post-remeasure pulse on capacity.

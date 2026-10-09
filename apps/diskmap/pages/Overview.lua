@@ -5,7 +5,6 @@ local Format = require("apps.diskmap.helpers.Format")
 local ListRoute = require("apps.diskmap.pages.ListRoute")
 local Scope = require("apps.diskmap.helpers.Scope")
 local Selection = require("apps.diskmap.helpers.Selection")
-local Sectors = require("ui.sectors")
 local Scans = require("apps.diskmap.models.Scans")
 local Categories = require("apps.diskmap.models.Categories")
 local Suggestions = require("apps.diskmap.models.Suggestions")
@@ -43,11 +42,8 @@ end
 
 function overview:largestMenu(_, _, row) return self:flow("Rows"):resource(row.id) end
 
--- A selected category points at its sector, as hovering it would.
 function overview:select(_, _, row)
-	if not row then return end
-	self.selectedId = row.id
-	if self.refs then Sectors.highlight(self.refs.breakdownChart, row.id) end
+	if row then self.selectedId = row.id end
 end
 
 -- The ring leads into the Map: a category's sector opens the Map inside it,

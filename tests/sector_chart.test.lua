@@ -148,6 +148,7 @@ t.assertEqual(faded.subviews[1].strokeAlpha, 0.5, "a translucent hovered sector 
 t.expect(faded.subviews[2].strokeAlpha < 0.5, "and the others recede below theirs")
 -- In a sunburst the hovered sector keeps its lineage: the parent it sits in
 -- and the children inside it. Siblings and cousins recede.
+local burstHovered
 local burst = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius = 0.3,
 	{__sectorMark = true, id = "a", value = 1, color = "systemBlue"},
 	{__sectorMark = true, id = "b", value = 1, color = "systemGreen"},
@@ -155,20 +156,31 @@ local burst = ns.SectorChart {fixedWidth = 200, fixedHeight = 200, innerRadius =
 	{__sectorMark = true, id = "a2", parent = "a", ring = 2, value = 1, color = "systemBlue"},
 	{__sectorMark = true, id = "b1", parent = "b", ring = 2, value = 1, color = "systemGreen"},
 	{__sectorMark = true, id = "a1x", parent = "a1", ring = 3, value = 1, color = "systemBlue"},
-	onHover = function() end}
+	onHover = function(id) burstHovered = id end}
 local burstArcs = {}
 for index, id in ipairs({"a", "b", "a1", "a2", "b1", "a1x"}) do burstArcs[id] = burst.subviews[index] end
-Sectors.highlight(burst, "a1")
+local burstPointer = burst.subviews[#burst.subviews]
+-- Moves the pointer across the chart until it rests on sector `id`.
+local function hoverOn(id)
+	for y = 0, 200, 2 do
+		for x = 0, 200, 2 do
+			bridge._pointerSend(burstPointer, "hover", x, y)
+			if burstHovered == id then return end
+		end
+	end
+	error("no point of the chart hovers " .. id)
+end
+hoverOn("a1")
 t.assertEqual(burstArcs.a1.strokeAlpha, 1, "the hovered sector keeps its opacity")
 t.assertEqual(burstArcs.a.strokeAlpha, 1, "its parent stays")
 t.assertEqual(burstArcs.a1x.strokeAlpha, 1, "its child stays")
 t.expect(burstArcs.a2.strokeAlpha < 1, "its sibling recedes")
 t.expect(burstArcs.b.strokeAlpha < 1 and burstArcs.b1.strokeAlpha < 1, "another branch recedes")
-Sectors.highlight(burst, "a")
+hoverOn("a")
 t.assertEqual(burstArcs.a2.strokeAlpha, 1, "hovering a first-ring sector keeps all its children")
 t.expect(burstArcs.b1.strokeAlpha < 1, "but not another sector's")
-Sectors.highlight(burst, nil)
-t.assertEqual(burstArcs.b1.strokeAlpha, 1, "no highlight restores the whole chart")
+bridge._pointerSend(burstPointer, "hover")
+t.assertEqual(burstArcs.b1.strokeAlpha, 1, "leaving restores the whole chart")
 bridge._pointerSend(pointer, "click", 100, 40, 1)
 t.expect(chosen and chosen[1] == "a" and chosen[2] == 1, "clicking selects a sector")
 bridge._pointerSend(pointer, "click", 100, 100, 1)
@@ -247,7 +259,7 @@ t.expect(scalableCentered, "the view's center is the chart's hole")
 first.startAngle, first.endAngle = 0, 90
 t.assertEqual(first.endAngle, 90, "angle changes apply immediately")
 t.assertEqual(first.layer.animationKeys, nil, "shape changes start no implicit or explicit animation")
-Sectors.highlight(scalable, "a")
+bridge._pointerSend(scalablePointer, "hover")
 t.assertEqual(first.layer.animationKeys, nil, "hover styling starts no animation")
 
 -- UIKit composes the same chart from its own Arc and ZStack.

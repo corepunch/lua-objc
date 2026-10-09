@@ -233,8 +233,7 @@ end
 -- `chartBackground` content in the hole. `onSelect(id, clickCount)`,
 -- `onHover(id)`, `onCenter()` (a click in the hole) and `onBack()` (Delete,
 -- up a level) make it interactive; the hovered sector, its parents and its
--- children keep their opacity while every other sector recedes, and
--- `Sectors.highlight` does the same from code.
+-- children keep their opacity while every other sector recedes.
 -- `scalable = true` lays the sectors out in a fixed geometry of `diameter`
 -- units (default 360) and lets the view take whatever room it is given: the
 -- rings fill the view's narrower side, so the chart stays centered, keeps
@@ -327,7 +326,6 @@ function Sectors.chart(ns, props)
 			back = function() if props.onBack then props.onBack() end end,
 			filtered = restyle,
 		})
-		state.highlight = function(id) highlight(id and sectorFor(id) or nil) end
 		-- The sector under a pointer, and the pointer in chart units.
 		local function locate(view, x, y)
 			if not (x and y) then return nil, x, y end
@@ -361,16 +359,6 @@ function Sectors.chart(ns, props)
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	charts[view] = state
 	return view
-end
-
--- Highlights the sector for mark `id` of an interactive chart as hovering it
--- would, or none for nil, so a list beside the chart can point at its sector.
--- Returns false for a view this module did not build or that takes no input.
-function Sectors.highlight(view, id)
-	local state = charts[view]
-	if not (state and state.highlight) then return false end
-	state.highlight(id)
-	return true
 end
 
 return Sectors

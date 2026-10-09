@@ -7,7 +7,6 @@ local ListRoute = require("apps.diskmap.pages.ListRoute")
 local Scope = require("apps.diskmap.helpers.Scope")
 local Breakdown = require("apps.diskmap.helpers.Breakdown")
 local Selection = require("apps.diskmap.helpers.Selection")
-local Sectors = require("ui.sectors")
 local Scans = require("apps.diskmap.models.Scans")
 local Categories = require("apps.diskmap.models.Categories")
 
@@ -81,12 +80,11 @@ function map:drill(id)
 	self.app.open(id)
 end
 
--- A selected row points at its sector, as hovering the sector would.
+-- A selected row is the kept selection; the hole names it.
 function map:selectRow(_, _, row)
 	if not row then return end
 	self.selectedId = row.id
 	self:point(row.id)
-	if self.refs.breakdownChart then Sectors.highlight(self.refs.breakdownChart, row.id) end
 	self.app.refresh()
 end
 
@@ -230,7 +228,6 @@ function kinds:chartCenter() self.selectedId = nil end
 function kinds:chartHover(id)
 	local refs = self.refs
 	if not refs then return end
-	if not id and refs.breakdownChart then Sectors.highlight(refs.breakdownChart, self.selectedId) end
 	local mark = self.markById and self.markById[id or self.selectedId]
 	if refs.breakdownTotal then
 		refs.breakdownTotal.text = mark and mark.name or self.center.title
@@ -307,11 +304,10 @@ function kinds:data()
 	return data
 end
 
--- After a draw the native selection and the chart follow the token.
+-- Reloading rows drops the native selection; the token restores it.
 function kinds:rendered(refs)
 	self.refs = refs
 	Selection.show(refs.kinds, self.kinds, self.selectedId)
-	if refs.breakdownChart then Sectors.highlight(refs.breakdownChart, self.selectedId) end
 end
 
 function kinds:deactivate() self.refs = nil end
