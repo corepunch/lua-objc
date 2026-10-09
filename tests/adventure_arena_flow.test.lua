@@ -131,33 +131,6 @@ t.assertEqual(rendered.refs.input.text, "", "send clears input")
 t.assertEqual(rendered.refs.progress.text, "Score 0 · Time 1", "session refreshes progress after a command")
 t.assertEqual(SavedGames:latest().gameId, catalog:all()[1].id, "a played story is saved")
 t.expect(controller.tabs.accessoryHidden, "the tab accessory stays hidden while the book is open")
--- The compass is off the reader's page, and still works where a page
--- includes it: the session binds its drag and marks its exits.
-local _, compassRefs = renderFile("apps/adventure-arena/views/sections/Compass.etlua", {
-	availableDirections = rendered.data.availableDirections,
-	compassSegments = rendered.data.compassSegments, size = 52, actions = rendered.data.actions,
-}, ns)
-for id, view in pairs(compassRefs) do rendered.refs[id] = view end
-local compassDrag = drags[rendered.refs.compassControl]
-t.expect(type(compassDrag) == "function", "compass binds the native drag gesture")
-t.assertEqual(rendered.refs.compassExit_north.strokeAlpha, 1, "compass marks the north exit")
-t.assertEqual(rendered.refs.compassExit_east.strokeAlpha, 0, "compass hides exits the player cannot take")
-t.assertEqual(rendered.refs.compassTrack.stroke, "secondary", "compass keeps the full direction ring")
-if compassDrag then
-	compassDrag({ state = "changed", translation = { x = 0, y = -24 } })
-	t.assertEqual(rendered.refs.compassDrag_north.strokeAlpha, 1, "dragging north highlights that section")
-	t.assertEqual(rendered.refs.compassDrag_north.stroke, "accent", "an available drag uses the accent section")
-	t.expect(rendered.refs.compassImage.offsetY < 0, "compass follows a north drag")
-	compassDrag({ state = "ended", translation = { x = 0, y = -24 } })
-	t.assertEqual(select(2, lastEntry()).paragraphs[1], 'Response <&> "go north"', "compass drag submits an available direction")
-	t.assertEqual(rendered.refs.compassDrag_north.strokeAlpha, 0, "releasing the compass clears the highlight")
-	t.assertEqual(rendered.refs.compassImage.offsetY, 0, "released compass returns to center")
-	local compassTranscript = lastEntry()
-	compassDrag({ state = "changed", translation = { x = 24, y = 0 } })
-	t.assertEqual(rendered.refs.compassDrag_east.stroke, "tertiary", "an unavailable drag uses the tertiary section")
-	compassDrag({ state = "ended", translation = { x = 24, y = 0 } })
-	t.assertEqual(lastEntry(), compassTranscript, "compass ignores unavailable directions")
-end
 chooseMenu("Look Around")
 local lookIndex = lastEntry()
 t.assertEqual(page()["paragraph_" .. lookIndex .. "_1"].text, 'Response <&> "look"', "quick command reaches session")

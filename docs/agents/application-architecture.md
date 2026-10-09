@@ -255,7 +255,7 @@ apps/adventure-arena/
   pages/        Discover Bookshelf Search Settings Detail Collection
   flows/        Opening
   controllers/  PageHost SessionController OnboardingController ReadingSettingsController
-  services/     ZILRuntime JsonDocument CompassGesture
+  services/     ZILRuntime JsonDocument
   views/        layouts/ pages/ sections/ sheets/ components/
 ```
 

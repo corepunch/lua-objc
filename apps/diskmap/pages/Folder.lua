@@ -243,7 +243,6 @@ function Folder:chartHover(id) self:describe(id) end
 function Folder:selectRow(_, _, row)
 	if not row then return end
 	if not row.other then self.selected = row.path; self:askPackage(row.path) end
-	self:describe(row.id)
 end
 
 function Folder:markRow(_, _, row) self.rowActions:toggleReview(row) end

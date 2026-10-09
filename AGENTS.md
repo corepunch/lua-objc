@@ -216,6 +216,18 @@ that, and outranks any feature request that conflicts with it.
   diffing pass, a registry or an abstraction layer, look for the version
   that is a loop in a template or one call on a native view. Delete
   machinery that a simpler design makes unnecessary.
+- **No feature is better than a hack.** Widgets that sit side by side are
+  independent unless Apple's own control connects them. Do not wire one
+  widget's event into another widget's native state from a controller:
+  hovering a chart must not select a list row, selecting a row must not
+  highlight a chart sector, scrolling one view must not drive another. Such
+  glue needs re-entrancy guards (`self.pointing`), framework helpers that
+  exist only for it (`Sectors.highlight`, removed), and tests that pin the
+  coupling, and it breaks the moment either widget changes. A shared
+  selection lives in data: an action changes it and the page renders again.
+  If a feature can only be built by reaching into a sibling widget's ref,
+  leave the feature out. Dead handlers for views no page renders are deleted
+  with the view.
 - **Ask "are you sure?" first.** When the user asks for a feature that could
   slow the application down or add a large amount of machinery, stop and ask
   "are you sure?" before building it, naming the cost.

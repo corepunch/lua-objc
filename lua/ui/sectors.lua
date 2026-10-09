@@ -167,9 +167,6 @@ function Sectors.hit(sectors, diameter, x, y)
 	end
 end
 
--- Chart state serves hit testing and hover emphasis for this chart only.
-local charts = setmetatable({}, {__mode = "k"})
-
 -- The arcs to draw: one per sector over its whole share, which the Arc's
 -- inset separates from its neighbours, or the empty ring in the quaternary
 -- label color when no value is positive, so the chart keeps its shape. Each
@@ -357,7 +354,6 @@ function Sectors.chart(ns, props)
 	end
 	local view = ns.ZStack(stack)
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
-	charts[view] = state
 	return view
 end
 

@@ -80,11 +80,11 @@ function map:drill(id)
 	self.app.open(id)
 end
 
--- A selected row is the kept selection; the hole names it.
+-- A selected row is the kept selection. The hole belongs to the chart and
+-- names only what the pointer is over.
 function map:selectRow(_, _, row)
 	if not row then return end
 	self.selectedId = row.id
-	self:point(row.id)
 	self.app.refresh()
 end
 

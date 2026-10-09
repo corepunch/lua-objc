@@ -1,7 +1,6 @@
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
-local CompassGesture = require("apps.adventure-arena.services.CompassGesture")
 
 local Controller = {}
 Controller.__index = Controller
@@ -81,30 +80,9 @@ function Controller:show(id, fresh)
 		dictate = function() self:toggleDictation() end,
 		close = function() self:close() end,
 		readingSettings = function() self:showReadingSettings() end,
-		-- The reader's page no longer shows the compass; Compass.etlua
-		-- still binds to this when a page includes it.
-		compassDrag = function(gesture)
-			if type(gesture) ~= "table" or not self.refs then return end
-			local direction = CompassGesture.direction(gesture.translation)
-			if gesture.state == "changed" or gesture.state == "began" then
-				local x, y = CompassGesture.offset(gesture.translation)
-				self.refs.compassImage.offsetX = x
-				self.refs.compassImage.offsetY = y
-				self:updateCompass(direction)
-				return
-			end
-			self.refs.compassImage.offsetX = 0
-			self.refs.compassImage.offsetY = 0
-			self:updateCompass(nil)
-			if gesture.state ~= "ended" then return end
-			if direction and self.model:hasExit(direction) then
-				self:submitCommand("go " .. direction)
-			end
-		end,
 	}
 	local presentation = self.model:presentation()
 	presentation.speechAvailable = speechAvailable
-	presentation.compassSegments = CompassGesture.segments()
 	actions.disappear = function() self:onDisappear() end
 	presentation.actions = actions
 	self.page, self.refs = self.push("pages/Session", presentation)
@@ -114,7 +92,6 @@ function Controller:show(id, fresh)
 	if not saved then self:beginTyping(1, TYPING.openingDelay) end
 	self:applyReadingSettings()
 	self:updateComposer(self.refs.input.text)
-	self:updateCompass(nil)
 	-- A new story is read from its title page; a resumed one from its last line.
 	self.refs.transcriptScroll:scrollTo(saved and "bottom" or "top", false)
 	self.onProgress()
@@ -141,21 +118,6 @@ function Controller:scrollToEntry(entry)
 	local id = "entry_" .. (entry - (self.transcriptEarlier or 0))
 	if not (self.transcript and self.transcript.refs[id]) then return self:scrollTranscript(true) end
 	scroll:scrollTo(id, not self.reduceMotion(), "top")
-end
-
-function Controller:updateCompass(activeDirection)
-	if not self.refs then return end
-	for _, segment in ipairs(CompassGesture.segments()) do
-		local exitArc = self.refs["compassExit_" .. segment.direction]
-		local dragArc = self.refs["compassDrag_" .. segment.direction]
-		local available = self.model:hasExit(segment.direction)
-		if exitArc then exitArc.strokeAlpha = available and 1 or 0 end
-		if dragArc then
-			local active = activeDirection == segment.direction
-			dragArc.strokeAlpha = active and 1 or 0
-			if active then dragArc.stroke = available and "accent" or "tertiary" end
-		end
-	end
 end
 
 function Controller:updateComposer(text)
@@ -409,7 +371,6 @@ function Controller:submitCommand(command)
 	self.refs.dictationStatus.text = ""
 	self.refs.dictationStatus.hidden = true
 	self:renderTranscript()
-	self:updateCompass(nil)
 	self:scrollToEntry(firstNew)
 	self:updateComposer("")
 	self:announceScore(presentation.scoreChange)
