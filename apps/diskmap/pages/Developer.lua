@@ -32,19 +32,19 @@ function routes.workflow:present()
 		lists["list_" .. section.id] = section.rows
 		texts["size_" .. section.id] = section.size
 	end
-	texts.summary = data.calculating and ("Measuring " .. workflow.noun .. "…")
+	local subtitle = data.calculating and ("Measuring " .. workflow.noun .. "…")
 		or (data.total .. " " .. workflow.summary
 			.. (data.rebuildable > 0 and (" · " .. data.rebuildableSize .. " rebuildable now") or ""))
 	return {layout = {buttons = buttons, sections = structure, scopeNote = workflow.id == "developer" and "Developer tools includes Xcode, package managers, containers and AI tools. Overview’s Developer category covers a different set by owner; these totals overlap." or nil, footnote = {text = workflow.footnote},
 			empty = #structure == 0 and {id = "workflowEmpty", systemImage = self.params.icon, description = workflow.empty,
 				title = data.calculating and ("Measuring " .. workflow.noun .. "…") or ("No " .. workflow.noun .. " found")} or nil},
-		lists = lists, texts = texts, links = links}
+		lists = lists, texts = texts, links = links, subtitle = subtitle}
 end
 
 local SECTIONS, STATUS = Xcode.sections, Xcode.statuses
 
 local LAYOUT = {
-	summary = "Reading Xcode's device support, build data and archives…", summaryId = "xcodeSummary",
+	subtitle = "Reading Xcode's device support, build data and archives…",
 	buttons = {{id = "openOrganizer", title = "Open Xcode", action = "openXcode", help = "Manage archives in Xcode's Organizer"}},
 	sections = {},
 }
@@ -96,9 +96,9 @@ routes.xcode = ListRoute.extend({layout = LAYOUT, statuses = STATUS,
 			end
 			disabled["bulk_" .. section.id] = not pending
 		end
-		return {lists = lists, hidden = hidden, disabled = disabled, texts = {xcodeSummary = total == 0
+		return {lists = lists, hidden = hidden, disabled = disabled, subtitle = total == 0
 			and "No Xcode device support, build data or archives on this Mac."
-			or (Format.size(total) .. " in device support, build data and archives")}}
+			or (Format.size(total) .. " in device support, build data and archives")}
 	end})
 -- "Mark All" of each section marks its rows that can be marked.
 for _, section in ipairs(SECTIONS) do

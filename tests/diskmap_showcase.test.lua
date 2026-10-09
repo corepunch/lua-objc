@@ -34,7 +34,7 @@ t.assertEqual(state.volumeName, "Macintosh HD", "the page header names the showc
 t.expect(not state.status:find("Mock HDD", 1, true), "the status line has no Mock HDD marker")
 t.assertEqual(app.env.model.home, "/Users/appleseed", "catalog paths follow the virtual disk's home")
 local window = app:createWindow()
-t.assertEqual(window.title, "Diskmap", "the showcase window title has no Mock HDD marker")
+t.expect(not window.title:find("Mock HDD", 1, true), "the showcase window title has no Mock HDD marker")
 app.env.scan:start()
 local derived = app.env.model.measurements["derived"]
 t.expect(derived ~= nil and (derived.bytes or 0) > 0, "catalog measurements match the virtual home folder")

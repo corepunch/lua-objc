@@ -14,7 +14,6 @@
     {button = true, action = "openStorage", title = "Storage", detail = "macOS storage settings."},
   }},
 } %>
-  <%- partial("../components/PageHeader.etlua", {header = page}) %>
   <% for _, group in ipairs(GROUPS) do %>
   <VStack spacing="6" alignment="leading">
     <Label text="<%= group.title %>" size="11" weight="semibold" color="secondary" />

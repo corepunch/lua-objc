@@ -58,9 +58,9 @@ function Review:data()
 		listHeight = math.max(LIST.minRows, math.min(LIST.maxRows, #rows)) * LIST.rowHeight,
 		-- Measuring again shows one progress state in place of the list.
 		lists = {items = busy and {} or rows}, loading = {items = busy},
+		subtitle = self.status or (pending == 0 and "Nothing flagged. Use the flag beside any item."
+			or (pending .. (pending == 1 and " item · " or " items · ") .. Format.size(bytes) .. " on disk")),
 		texts = {
-			reviewSummary = self.status or (pending == 0 and "Nothing marked. Use Flag for Review on any page."
-				or (pending .. (pending == 1 and " item · " or " items · ") .. Format.size(bytes) .. " on disk")),
 			selectedPath = selected and selected.path or "",
 			consequence = selected and (selected.consequence or "This item has already left the cleanup basket.") or "",
 			selectedResult = selected and selected.result or "",

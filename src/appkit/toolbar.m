@@ -222,7 +222,9 @@ static BOOL page_item_is_leading(NSDictionary *item) {
 			if (item[@"bordered"]) ti.bordered = [item[@"bordered"] boolValue];
 			if (item[@"visibilityPriority"])
 				ti.visibilityPriority = [item[@"visibilityPriority"] integerValue];
-			if ([item[@"navigational"] boolValue]) ti.navigational = YES;
+			// Navigational items (Back, Forward) sit before the window title, as
+			// Finder's do.
+			if ([item[@"navigational"] boolValue] || [item[@"placement"] isEqualToString:@"navigation"]) ti.navigational = YES;
 
 			if ([ti isKindOfClass:NSSearchToolbarItem.class]) {
 				if (content) {
@@ -256,6 +258,13 @@ static BOOL page_item_is_leading(NSDictionary *item) {
 				}
 			}
 			if (content) {
+				// A view rendered for the toolbar has had no layout pass, so it
+				// has no frame yet; the toolbar sizes an item by its view's frame.
+				// A control takes its natural size, as it would in Interface Builder.
+				if (NSIsEmptyRect(content.frame)) {
+					if ([content isKindOfClass:NSControl.class]) [(NSControl *)content sizeToFit];
+					else [content setFrameSize:content.fittingSize];
+				}
 				ti.view = content;
 				return ti;
 			}
@@ -423,7 +432,12 @@ static int bridge_NSWindow_updateToolbar(lua_State *L) {
 		NSMutableDictionary *item = [description mutableCopy];
 		for (NSDictionary *previous in delegate.items) {
 			if ([previous[@"id"] isEqualToString:identifier] && previous[@"view"]) {
-				item[@"view"] = previous[@"view"];
+				// The window keeps the control it shows; a segmented control
+				// takes the selection the new description names.
+				NSView *kept = previous[@"view"], *described = description[@"view"];
+				if ([kept isKindOfClass:NSSegmentedControl.class] && [described isKindOfClass:NSSegmentedControl.class])
+					((NSSegmentedControl *)kept).selectedSegment = ((NSSegmentedControl *)described).selectedSegment;
+				item[@"view"] = kept;
 				break;
 			}
 		}

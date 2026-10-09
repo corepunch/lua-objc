@@ -1,10 +1,6 @@
 <% --[[ The breakdown card of a breakdown page (pages/Breakdown.etlua), from the
   `breakdown` table of the route:
     style            "rings" or "rectangles", the chart style of the window
-    title, detail    the level shown and what it measures; `warning` beneath
-    trail            {name, action}: the levels above it, each going back up
-    picker           {id, value, action, help, options}: a segmented picker beside the title
-                     (these head the page above the card: components/BreakdownHeading.etlua)
     center           {title, detail}: the hole of the ring
     marks            {id, value, color, label, detail or size}: the sectors of the ring
     rectangles       the nodes of the treemap ({id, parent, ...}); the marks when absent

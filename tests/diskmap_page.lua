@@ -2,7 +2,9 @@
 -- over the page one route of apps/diskmap/routes.lua builds, with the services
 -- a test supplies. `services.model` is the store the page's models read.
 -- `refresh` draws the mounted page again, as the root does when work that
--- started earlier finishes. Returns the controller and the page it draws.
+-- started earlier finishes. Returns the controller and the page it draws;
+-- `controller.presented` is the data of its last draw, whose `title` and
+-- `subtitle` the root shows as the window title.
 local Model = require("data.model")
 local Routes = require("data.routes")
 local PageController = require("data.pagecontroller")
@@ -28,7 +30,8 @@ function Host.new(id, services, params)
 	end
 	local entry = {id = id, title = id, icon = "circle", color = "systemBlue", attrs = params or {}}
 	local page = Routes.page(Routes.find(require("apps.diskmap.routes"), entry), entry, context, "apps.diskmap")
-	controller = PageController.new({page = entry, request = page, ns = ns, viewsDir = "apps/diskmap/views/", store = context.model})
+	controller = PageController.new({page = entry, request = page, ns = ns, viewsDir = "apps/diskmap/views/", store = context.model,
+		presented = function(data) controller.presented = data end})
 	return controller, page
 end
 

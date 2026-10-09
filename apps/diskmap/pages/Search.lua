@@ -171,7 +171,7 @@ local function layout(page, presented)
 		empty = {id = "searchNoResults", title = "No Results", systemImage = "magnifyingglass",
 			description = "Nothing Diskmap measured or explains mentions “" .. page.query .. "”."}
 	end
-	return {summaryId = "searchSummary", sections = sections, empty = empty}
+	return {sections = sections, empty = empty}
 end
 
 routes.search = ListRoute.extend({layout = layout})
@@ -199,8 +199,8 @@ function routes.search:present(state)
 			end
 		end
 	end
-	return {groups = groups, lists = lists, texts = {searchSummary = not self.needle and "Everything Diskmap measured and explains, in one search."
-		or count == 0 and "No results" or (Format.plural(count, "result") .. " for “" .. self.query .. "”")}}
+	return {groups = groups, lists = lists, subtitle = not self.needle and "Everything Diskmap measured and explains, in one search."
+		or count == 0 and "No results" or (Format.plural(count, "result") .. " for “" .. self.query .. "”")}
 end
 
 function routes.search:activateRow(row)

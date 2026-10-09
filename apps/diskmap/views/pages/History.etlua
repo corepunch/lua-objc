@@ -1,6 +1,5 @@
 <TablePage id="page">
 
-  <%- partial("../components/PageHeader.etlua", {header = page, summaryId = "detail"}) %>
 
   <List flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" id="entries" style="fullWidth" header="false" alternatingRows="false" rowHeight="44">
     <Column id="name" title="Action" subtitleKey="subtitle" minWidth="220" />

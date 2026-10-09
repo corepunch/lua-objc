@@ -86,7 +86,8 @@ t.assertEqual(bridge._tableCell(refs.folderList, 0, 0).textField.stringValue, "O
 local folderMeter = dofile("tests/fixtures/meter.lua")(bridge._tableCell(refs.folderList, 1, 0))
 t.expect(folderMeter.value.stringValue ~= "" and folderMeter.share.stringValue:find("%%$") ~= nil, "the folder meter shows the size and its share")
 t.expect(not folderMeter.bar.hidden, "the folder meter draws its bar")
-t.expect(refs.breakdownDetail.text:find("~/Downloads", 1, true) ~= nil, "the summary names the folder from the home folder")
+t.expect(app.window.subtitle:find("~/Downloads", 1, true) ~= nil, "the window subtitle names the folder from the home folder")
+t.assertEqual(app.window.title, "Downloads", "and the window is titled by it")
 t.expect(app:badges().folder ~= nil, "the sidebar badge is the open folder's size")
 
 -- Colorings and chart styles.

@@ -58,7 +58,7 @@ local legend, hidden = #hero.breakdownLegend.subviews, #hero.hiddenSpace.subview
 -- Each legend and hidden-space row; the warning heads the page above the card.
 assertOneColumn(symbolRows(column), legend + hidden, "the Overview card")
 local function within(view, ancestor) while view do if view == ancestor then return true end; view = view.superview end; return false end
-t.expect(within(hero.lowSpace, hero.breakdownHeading) and not within(hero.lowSpace, hero.breakdown), "the low-space warning is in the heading, above the card")
+t.expect(not within(hero.lowSpace, hero.breakdown) and hero.lowSpace.frameInWindow.origin.y > hero.breakdown.frameInWindow.origin.y, "the low-space warning leads the page, above the card")
 
 -- The "could not measure" card: its own symbol and each reason's symbol share
 -- one column, and the title, each reason's name and what is written under it

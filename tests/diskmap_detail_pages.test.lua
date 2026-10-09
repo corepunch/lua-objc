@@ -33,10 +33,10 @@ app.navigation:back()
 t.assertEqual(app:location(), sdkLocation, "SDK installation survives Back")
 app.env.snapshots = {result = {title = "Since Sep 1", detail = "1 location changed", rows = {{id = "derived", name = "DerivedData", before = "1 GB", size = "2 GB"}}}}
 app:show("snapshotChanges")
-t.assertEqual(app.page.refs.title.text, "Since Sep 1", "comparison page uses the current result")
+t.assertEqual(app.window.title, "Since Sep 1", "comparison page is titled by the current result")
 t.assertEqual(app.page.refs.changes.rowCount, 1, "comparison page lists every change")
 bridge._flushLayout()
-t.expect(app.page.refs.pageHeader.frame.size.height < 80, "comparison heading keeps its natural height")
+t.expect(app.page.refs.pageHeader == nil, "the page has no heading of its own; the window title names it")
 t.expect(app.page.refs.changes.frame.size.height > 200, "the comparison table fills the available workspace")
 local width = 0
 for _, column in ipairs(bridge._tableColumnWidths(app.page.refs.changes)) do width = width + column.minWidth end

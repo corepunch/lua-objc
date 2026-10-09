@@ -29,7 +29,7 @@ t.assertEqual(app.destination, "search", "typing opens the Search page")
 t.assertEqual(app.searchField.stringValue, "DerivedData", "the field shows the query")
 t.expect(refs().results_locations ~= nil, "matching locations are listed")
 t.expect(refs().results_locations.rowCount >= 1, "DerivedData is found")
-t.expect(refs().searchSummary.text:find("for “DerivedData”", 1, true) ~= nil, "the summary names the query")
+t.expect(app.window.subtitle:find("for “DerivedData”", 1, true) ~= nil, "the summary names the query")
 
 -- Results come from every model: a file found by name, an app, a topic.
 local file = Files:rows("All")[1]

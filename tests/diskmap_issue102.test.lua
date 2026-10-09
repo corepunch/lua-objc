@@ -177,7 +177,7 @@ simulators:dispose()
 simulators:mount(ns.VStack {}, {query = ""})
 for _, reply in ipairs(replies) do reply() end
 t.expect(not inventory.stock.busy and inventory.stock.loaded, "the read finishes after navigating away and back")
-t.expect(simulators.refs.summary.text:find("stored in", 1, true), "and the mounted page shows it: " .. simulators.refs.summary.text)
+t.expect(simulators.presented.subtitle:find("stored in", 1, true), "and the mounted page shows it: " .. simulators.presented.subtitle)
 t.expect(simulators.refs.planReview ~= nil and simulators.refs.planAmount.text ~= "—", "with the plan's amount beside its review button")
 t.expect(storage.simulatorPlan ~= nil, "and the plan is published for Clean Up")
 t.expect(O(simulators, "retry").enabled, "Retry is available again")
@@ -189,7 +189,7 @@ closedInventory:load(); closed:mount(ns.VStack {}, {query = ""}); closed:dispose
 for _, reply in ipairs(replies) do reply() end
 t.expect(closedInventory.stock.loaded and not closedInventory.stock.busy and closedStorage.simulatorPlan ~= nil, "a read that finishes while the page is closed publishes its plan")
 closed:mount(ns.VStack {}, {query = ""})
-t.expect(closed.refs.summary.text:find("stored in", 1, true), "and the next visit shows it at once")
+t.expect(closed.presented.subtitle:find("stored in", 1, true), "and the next visit shows it at once")
 
 -- Simulators: keep choices, recoverable bytes and the review action sit
 -- together, before the plan's list; the full inventory is collapsed.

@@ -2651,12 +2651,14 @@ function M.describeFile(path, data)
     return M.describe(readFile(path), context, path)
 end
 
--- The toolbar items a window template describes for `data`, made without
--- any view: SwiftUI evaluates a toolbar's content again when state changes
--- (Refresh becomes Stop while work runs), and `window:updateToolbar(items)`
--- applies the answer in place. An item's view child (a search field) is left
--- out; the window keeps the one it was made with.
-function M.toolbarFile(path, data)
+-- The toolbar items a window template describes for `data`: SwiftUI
+-- evaluates a toolbar's content again when state changes (Refresh becomes
+-- Stop while work runs), and `window:updateToolbar(items)` applies the answer
+-- in place. An item's view child (a search field, a page's picker) is made
+-- too, so an item that first appears on an update has its control; an item
+-- the window already shows keeps the view it was made with.
+function M.toolbarFile(path, data, ns)
+    ns = ns or require("ns")
     local description = M.describeFile(path, data)
     local toolbar
     local function find(nodes)
@@ -2672,13 +2674,13 @@ function M.toolbarFile(path, data)
     local nodes = {}
     for _, node in ipairs(toolbar.children) do
         if node.kind == "element" then
-            table.insert(nodes, {kind = "element", tag = node.tag, attrs = node.attrs, children = {}})
+            table.insert(nodes, node)
         end
     end
     local previous = renderData
     renderData = description.data
     local ok, items = pcall(function()
-        local records = compile(nodes, {}, registry, {})
+        local records = compile(nodes, ns, registry, {})
         for _, item in ipairs(records) do
             bindToolbarActions(item)
         end

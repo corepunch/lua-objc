@@ -17,6 +17,9 @@ local Selection = require("apps.diskmap.helpers.Selection")
 --   unload    function(self): work to cancel when the page goes
 --   present(self, state) -> {
 --     lists     {id = rows}: rows for each list
+--     subtitle  the second line of the window title (the page's summary);
+--               `layout.subtitle` until the page presents one
+--     title     the window title, when it is not the page's manifest title
 --     texts     {id = text}
 --     hidden    {id = boolean}
 --     disabled  {id = boolean}
@@ -117,7 +120,7 @@ function ListRoute:data(state)
 	-- A link named by `present` is an action of the view that follows it.
 	local handlers = {}
 	for name, link in pairs(presented.links or {}) do handlers[name] = function() self:follow(link) end end
-	return {layout = layout, header = self.header, lists = presented.lists, loading = presented.loading,
+	return {layout = layout, title = presented.title, subtitle = presented.subtitle or layout.subtitle, lists = presented.lists, loading = presented.loading,
 		filterIndex = self.filterIndex, waiting = presented.waiting, computing = presented.computing, texts = presented.texts,
 		hidden = presented.hidden, disabled = presented.disabled, children = presented.children, childViews = self.children,
 		handlers = handlers}

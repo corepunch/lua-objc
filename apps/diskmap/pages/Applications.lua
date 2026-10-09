@@ -9,7 +9,7 @@ local ListRoute = require("apps.diskmap.pages.ListRoute")
 local routes = {}
 
 local LAYOUT = {
-	summary = "Reading installed applications…",
+	subtitle = "Reading installed applications…",
 	leads = {"lead"},
 	sections = {
 		{id = "leftoversSection", title = "Possible leftovers",
@@ -76,9 +76,10 @@ routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sec
 		return {lists = {apps = Applications:rows(Applications.filters[page.filterIndex]),
 			leftovers = page.rowActions:annotate(leftovers or {})}, links = LINKS,
 			hidden = {leftoversSection = not leftovers or #leftovers == 0},
-			children = {lead = Applications.decision(summary, unmarkedHigh, markedHigh, Model.db.applicationInfo ~= nil)}, texts = {
-			summary = summary.count == 0 and "No applications measured yet."
+			children = {lead = Applications.decision(summary, unmarkedHigh, markedHigh, Model.db.applicationInfo ~= nil)},
+			subtitle = summary.count == 0 and "No applications measured yet."
 				or string.format("%s %s %s, and their data another %s stored.", Format.plural(summary.count, "app"), summary.count == 1 and "uses" or "use", Format.size(summary.apps), Format.size(summary.data)),
+			texts = {
 			installedDetail = "Each app with the data it keeps in your Library."
 				.. (Model.db.applicationInfo and summary.unused > 0 and (" " .. Format.plural(summary.unused, "app") .. " with a known last use over six months ago, " .. Format.size(summary.unusedBytes) .. " with " .. (summary.unused == 1 and "its" or "their") .. " data.") or "")}}
 	end})

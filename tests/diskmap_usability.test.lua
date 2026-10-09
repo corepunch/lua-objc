@@ -68,8 +68,9 @@ local services = {model = model, service = require("apps.diskmap.services.Contra
 require("data.model").bind(model)
 t.assertEqual(require("apps.diskmap.models.Inventories"):applicationsSummary(), nil, "live file findings do not imply app-data breakdowns are ready")
 local filesEntry = {id = "files", title = "Large Files", icon = "doc.fill", color = "systemTeal"}
-local files = require("data.pagecontroller").new({page = filesEntry, request = Routes.page(routes.files, filesEntry, services, "apps.diskmap"),
-	ns = ns, viewsDir = "apps/diskmap/views/", store = model})
+local files
+files = require("data.pagecontroller").new({page = filesEntry, request = Routes.page(routes.files, filesEntry, services, "apps.diskmap"),
+	ns = ns, viewsDir = "apps/diskmap/views/", store = model, presented = function(data) files.presented = data end})
 files:mount(ns.VStack {}, {query = ""})
 -- A running scan draws no partial rows and no half-filled totals: the page
 -- says it is not measured yet and is drawn again when the scan finishes.
@@ -78,7 +79,7 @@ scan:cancel()
 t.expect(not model.files.measuring and model.files.partial, "cancellation keeps findings as a lower bound")
 files:update({query = ""})
 t.assertEqual(files.refs.files.rowCount, 1, "the kept partial file appears in the native table")
-t.expect(files.refs.summary.text:find("incomplete", 1, true), "file page names partial results")
+t.expect(files.presented.subtitle:find("incomplete", 1, true), "file page names partial results")
 scan:start()
 t.assertEqual(model.files, nil, "refresh clears file findings before collecting a new scan")
 files:update({query = ""})
@@ -120,7 +121,7 @@ held.devices(nil, "Device state could not be checked. Retry.")
 held.runtimes(nil, "Runtimes could not be read. Retry.")
 t.expect(simulator.refs.devicesDetail.text:find("could not be checked for availability", 1, true) ~= nil, "failed availability check is not a fabricated zero")
 t.expect(not simulator.refs.devicesDetail.text:find("unavailable,", 1, true), "runtime failure does not promise availability")
-t.expect(not simulator.refs.summary.text:find("0 runtimes", 1, true), "failed runtime listing is not an empty inventory")
+t.expect(not simulator.presented.subtitle:find("0 runtimes", 1, true), "failed runtime listing is not an empty inventory")
 t.expect(O(simulator, "retry").enabled, "failed reads can be retried")
 simulator.refs.devices:selectRow(0)
 t.expect(not O(simulator, "erase").enabled and not O(simulator, "delete").enabled, "unverified devices cannot be erased or deleted")

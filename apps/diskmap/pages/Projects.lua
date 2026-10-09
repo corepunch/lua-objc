@@ -6,7 +6,7 @@ local Projects = require("apps.diskmap.models.Projects")
 local routes = {}
 
 local LAYOUT = {
-	summary = "Build data your projects can recreate.", summaryId = "projectsSummary",
+	subtitle = "Build data your projects can recreate.",
 	buttons = {{id = "addFolder", title = "Add Folder…", systemImage = "plus", action = "addFolder", help = "Search another folder for projects"}},
 	sections = {{title = "Build folders", detailId = "projectRoots",
 		filters = {id = "filter", options = Projects.filters},
@@ -126,9 +126,9 @@ routes.projects = ListRoute.extend({layout = LAYOUT,
 		local all, bytes = Projects:groups(Projects.filters[1]), 0
 		for _, group in ipairs(all) do bytes = bytes + group.bytes end
 		return {lists = {projects = page.rowActions:annotate(rows)}, hidden = {projectsEmpty = #all > 0, projectsList = #all == 0},
-			disabled = {markStale = #stale(page) == 0}, texts = {projectRoots = "Project folders: " .. rootsText(page) .. ".",
-			projectsSummary = #all == 0 and "No project build folders found yet. Add the folders where you keep code."
-				or (Format.size(bytes) .. " of build data in " .. Format.plural(#all, "project"))}}
+			disabled = {markStale = #stale(page) == 0}, texts = {projectRoots = "Project folders: " .. rootsText(page) .. "."},
+			subtitle = #all == 0 and "No project build folders found yet. Add the folders where you keep code."
+				or (Format.size(bytes) .. " of build data in " .. Format.plural(#all, "project"))}
 	end})
 
 return routes

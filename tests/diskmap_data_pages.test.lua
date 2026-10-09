@@ -32,7 +32,7 @@ local function open(id, service, model)
 	Model.bind(model)
 	local entry = {id = id, title = id, icon = "doc.fill", color = "systemBlue", attrs = {}}
 	page = PageController.new({page = entry, request = Routes.page(Routes.find(require("apps.diskmap.routes"), entry), entry, services, "apps.diskmap"),
-		ns = ns, viewsDir = "apps/diskmap/views/", store = model})
+		ns = ns, viewsDir = "apps/diskmap/views/", store = model, presented = function(data) page.presented = data end})
 	page:mount(ns.VStack {}, {query = ""})
 	return page, model, services
 end
@@ -135,7 +135,7 @@ measured.done({1e9, 2e9})
 xcode:update({query = ""})
 t.assertEqual(xcode.refs.list_support.rowCount, 2, "the answer draws device support")
 t.expect(xcode.refs.derivedSection.hidden and xcode.refs.archivesSection.hidden, "empty sections hide")
-t.assertEqual(xcode.refs.xcodeSummary.text, "3.0 GB in device support, build data and archives", "the summary totals the sections")
+t.assertEqual(xcode.presented.subtitle, "3.0 GB in device support, build data and archives", "the summary totals the sections")
 t.assertEqual(require("apps.diskmap.models.Inventories"):xcodeBadge(), "3.0 GB", "and so does the badge")
 
 os.exit(t.summary() and 0 or 1)

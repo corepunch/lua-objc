@@ -8,7 +8,6 @@
         <InventoryList id="<%= id %>" onSelect="select" kind="worktrees" />
 <% end %>
 <ContentPage id="page">
-    <%- partial("../components/PageHeader.etlua", {header = page, summary = summary, summaryId = "summary"}) %>
     <% if computing then %>
     <%- partial("../components/Computing.etlua", {status = computing}) %>
     <% else %>

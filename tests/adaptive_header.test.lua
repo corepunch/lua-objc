@@ -41,17 +41,6 @@ refs.header.trailingMaxWidthFraction = 0
 resize(root, 400)
 t.expect(not below(refs.heading, refs.actions), "zero disables adaptive layout")
 
--- Diskmap headers reserve no space for operations; the native toolbar owns them.
-local page, refs = xml.renderFile("apps/diskmap/views/components/PageHeader.etlua", {
-	header = {icon = "hammer", color = "systemBlue", title = "Xcode DerivedData"},
-	summary = "8.0 GB · ~/Library/Developer/Xcode/DerivedData",
-}, ns)
-for _, width in ipairs({350, 1000, 2000, 350}) do
-	resize(page, width)
-	t.assertEqual(refs.pageActions, nil, "headers have no inline operation row at " .. width)
-	t.expect(refs.pageTitle.size.width > 0, "the title keeps usable width at " .. width)
-	t.expect(page.fittingSize.height < 100, "the header keeps its concise intrinsic height at " .. width)
-end
 -- Retained changes patch the property in place, including its removal.
 local Template = require("ui.template")
 local path = os.tmpname() .. ".etlua"

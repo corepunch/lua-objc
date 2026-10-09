@@ -35,7 +35,7 @@ local chartActions = {chartSelect = function() end, chartHover = function() end,
 for _, item in ipairs(chart.legend) do item.action = "category_" .. item.id; chartActions[item.action] = function() end end
 -- The Overview's card, as its route builds it.
 local function card(summary, shown, notes)
-	local data = Overview.breakdown(summary, shown, "Startup Disk", "rings")
+	local data = Overview.breakdown(summary, shown, "rings")
 	data.notes, data.actions = notes, chartActions
 	return render("Breakdown", data)
 end
@@ -49,7 +49,7 @@ t.assertEqual(heroRefs.cleanUp, nil, "cleanup uses the native window toolbar")
 hero.size = ns.Size(760, 320); hero:layout(760)
 -- The total fits the chart's hole once laid out.
 t.expect(heroRefs.breakdownTotal.font.pointSize >= heroRefs.breakdownCaption.font.pointSize, "the used total leads the capacity beneath it")
-t.expect(heroRefs.breakdownTitle == nil, "the card has no title of its own: the page heading names it")
+t.expect(heroRefs.breakdownTitle == nil, "the card has no title of its own: the window title names it")
 local buttons = {}
 local function collect(view)
 	if view.className == "NSButton" and not view.bordered then table.insert(buttons, view) end
@@ -74,13 +74,12 @@ t.expect(busyRefs.cleanUp == nil and heroRefs.cleanUp == nil, "cleanup is offere
 t.expect(busyRefs.breakdownLegend == nil and busyRefs.legendExplanation ~= nil, "a running scan draws no legend")
 model.measurements.downloads = {bytes = 5e9, status = "complete"}
 t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains why no partition is drawn")
-local fullCard = Overview.breakdown(Scans:summary({totalKb = 1, freeKb = 0}), Categories:chart({totalKb = 1, freeKb = 0}), "Startup Disk", "rings")
-local _, fullHeading = xml.renderFile("apps/diskmap/views/components/BreakdownHeading.etlua", fullCard, ns)
-local _, heroHeading = xml.renderFile("apps/diskmap/views/components/BreakdownHeading.etlua", Overview.breakdown(Scans:summary(disk), chart, "Startup Disk", "rings"), ns)
-t.expect(fullHeading.lowSpace ~= nil and heroHeading.lowSpace == nil, "only a nearly full disk shows the low-space warning")
+t.expect(Scans:summary({totalKb = 1, freeKb = 0}).lowSpace and not Scans:summary(disk).lowSpace, "only a nearly full disk has the low-space warning")
+local _, warning = xml.renderFile("apps/diskmap/views/components/Warning.etlua", {id = "lowSpace", text = "Less than 10% of this disk is free"}, ns)
+t.assertEqual(warning.lowSpaceText.text, "Less than 10% of this disk is free", "the warning says it in one sentence")
 t.assertEqual(#emptyRefs.breakdownChart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
 local overviewData = {sections = {{id = "categoriesSection", title = "Categories", detail = "", panelId = "categoriesPanel", view = "components/CategoryList", list = {id = "results"}}},
-	breakdown = Overview.breakdown(Scans:summary(disk), {marks = chart.marks, legend = {}, explanation = "Measured"}, "Startup Disk", "rings"),
+	breakdown = Overview.breakdown(Scans:summary(disk), {marks = chart.marks, legend = {}, explanation = "Measured"}, "rings"),
 	actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, select = function() end, open = function() end, categoryButton = function() end}}
 local _, refs = render("BreakdownPage", overviewData)
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
@@ -213,10 +212,9 @@ local onlyTitle = xml.renderFile("apps/diskmap/views/components/SectionHeader.et
 t.assertEqual(#onlyTitle.subviews, 1, "a section without detail has no empty or nil subtitle")
 local bare, bareRefs = render("Page", {header = header, layout = {}, actions = anyAction})
 t.expect(bare ~= nil and bareRefs.page ~= nil and bareRefs.pageContent ~= nil, "an empty layout renders as one scrolling page")
-t.assertEqual(bareRefs.pageTitle.text, "Example", "the header shows the page's title")
+t.expect(bareRefs.pageTitle == nil and bareRefs.pageHeader == nil, "a list page has no heading; the window title names it")
 t.expect(bareRefs.stats == nil, "a layout without tiles has no tile row")
 local _, fullRefs = render("Page", {header = header, actions = anyAction, layout = {
-	summary = "Summary", summaryId = "exampleSummary",
 	buttons = {{id = "add", title = "Add…", action = "add"}},
 	tiles = {{id = "oneTile", icon = "doc.fill", color = "systemTeal", title = "One", value = "—", detail = "Detail"}},
 	sections = {
@@ -231,7 +229,6 @@ local _, fullRefs = render("Page", {header = header, actions = anyAction, layout
 	slots = {"extra"},
 	footnote = {text = "Footnote"},
 }})
-t.assertEqual(fullRefs.exampleSummary.text, "Summary", "the summary takes the ref the layout names")
 for _, id in ipairs({"stats", "oneTileValue", "firstSection", "firstTitle", "firstDetail", "firstSize", "clear",
 	"firstEmpty", "firstPanel", "first", "second", "extra"}) do
 	t.expect(fullRefs[id] ~= nil, "the layout's " .. id .. " is on the page")

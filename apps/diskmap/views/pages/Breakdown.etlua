@@ -1,7 +1,8 @@
 <% --[[ The breakdown page: Overview, Storage Map, File Types and Folder Map are
-  this one template over different data. A heading names the level shown, with
-  its trail and picker; a decision the page leads with follows, then the
-  breakdown card and what explains it; then its lists, each the full
+  this one template over different data. The window title names the level
+  shown (`title`, `subtitle`) and the toolbar carries its picker (`picker`),
+  so the page starts with what it leads with: a warning or a decision, then
+  the breakdown card and what explains it, then its lists, each the full
   width of the page.
 
     waiting      {id, title, systemImage, description}: in place of everything,
@@ -11,7 +12,7 @@
                  `stopAction` adds a Stop button under it
     breakdown    the table of sections/Breakdown.etlua; absent when there is
                  nothing to break down and no reason to wait (no files at all)
-    leads        {view, data}: the decision a page leads with, above the card
+    leads        {view, data}: a warning or the decision a page leads with, above the card
                  (#102), by its path under views/ ("sections/Decision")
     context      {view, data}: what explains the card, between it and the lists
     sections     each {id, title, detail, detailId, panelId, link = {id, title, action},
@@ -28,7 +29,6 @@
     <% if stopAction then %><Button id="computingStop" title="Stop" action="<%= stopAction %>" /><% end %>
   </VStack>
   <% else %>
-  <% if breakdown then %><%- partial("../components/BreakdownHeading.etlua", breakdown) %><% end %>
   <% for _, lead in ipairs(leads or {}) do %>
   <%- partial("../" .. lead.view .. ".etlua", lead.data) %>
   <% end %>

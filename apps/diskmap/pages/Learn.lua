@@ -54,7 +54,7 @@ function routes.topics:data()
 	for _, chapter in ipairs(self.answer.chapters) do
 		for _, topic in ipairs(chapter.topics) do handlers["open_" .. topic.id] = book.follow(self, topic) end
 	end
-	return {chapters = self.answer.chapters, summary = book.summary, topic = book.topic, opened = self.opened, handlers = handlers}
+	return {chapters = self.answer.chapters, subtitle = book.summary, topic = book.topic, opened = self.opened, handlers = handlers}
 end
 
 function routes.topics:deactivate() self.answer, self.opened, self.reveal = nil, nil, nil end
@@ -94,6 +94,7 @@ function filesystem:data(state)
 	local storage = Model.db
 	local data = Filesystem.presentation(storage.folderSizes, state.fullDiskAccess, Categories:facts())
 	if self:waiting() then data.computing = "Measuring folders…" end
+	data.subtitle = "Where macOS keeps things, what each folder is for and how much it takes"
 	data.handlers = {}
 	for _, area in ipairs(data.areas) do
 		for index, row in ipairs(area.rows) do

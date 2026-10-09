@@ -1,6 +1,5 @@
 <% local DETAILS = {maximumHeight = 144} %>
 <ContentPage id="page" dropAction="drop">
-  <%- partial("../components/PageHeader.etlua", {header = page, summaryId = "reviewSummary"}) %>
   <ContentUnavailable id="basketEmpty" title="Nothing Flagged" systemImage="flag" description="Use the flag beside an item, or drop files onto this page. Review flagged items here before taking action." />
   <VStack id="basketList" maxWidth="infinity" spacing="12" alignment="leading">
     <GroupBox>

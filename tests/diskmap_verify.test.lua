@@ -89,7 +89,7 @@ t.assertEqual(Marks:find(iso), nil, "a moved item leaves the basket")
 t.assertEqual(app.env:page("basket").results[pkg], "Skipped", "a replaced item is skipped")
 t.assertEqual(app.env:page("basket").results[cache], "Skipped", "a cache whose app is open is skipped")
 t.expect(Marks:find(pkg) and Marks:find(cache), "skipped items stay marked")
-local summary = app.env:page("basket").refs.reviewSummary.text
+local summary = app.window.subtitle
 t.assertEqual(app.env:page("basket").results[site], "Skipped", "a build folder whose project file is gone is skipped")
 t.expect(summary:find("moved to the Trash · 1 item", 1, true), "the sheet says what moved")
 t.expect(summary:find("skipped because the project file that identified it is gone", 1, true), "the sheet explains a lost proof")

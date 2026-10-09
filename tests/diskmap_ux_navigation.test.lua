@@ -87,7 +87,7 @@ t.assertEqual(app.destination, "projects", "build review keeps its dedicated des
 inspect.action()
 t.assertEqual(app.env:page("folder").path, projects.path, "menu inspection keeps the exact path")
 t.expect(Locations:folderBytes(projects.path) >= Projects:bytesWithin(projects.path), "full folder contents include separately catalogued build folders")
-t.expect(refs().breakdownDetail.text:find(Format.size(Locations:folderBytes(projects.path)), 1, true) ~= nil, "folder scan and combined catalog bytes agree")
+t.expect(app.window.subtitle:find(Format.size(Locations:folderBytes(projects.path)), 1, true) ~= nil, "folder scan and combined catalog bytes agree")
 t.assertEqual(Projects:bytesWithin("/no-artifacts"), nil, "missing measurements are not shown as zero build bytes")
 
 app:openFolder(service.home .. "/Downloads")

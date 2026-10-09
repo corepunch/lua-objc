@@ -137,9 +137,6 @@ function map:data(state)
 	self.nodeById = {}
 	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
 	self.center = {title = Format.size(total), detail = #trail > 1 and "Click to go up" or "Measured"}
-	-- Breadcrumb actions are named by their position.
-	local handlers = {}
-	for index, step in ipairs(trail) do handlers["focus_" .. index] = function() self:setFocus(step.id) end end
 	if not Selection.index(rows, self.selectedId) and not self.nodeById[self.selectedId] then self.selectedId = nil end
 	-- The Overview counts what the disk reports as used; the Map counts
 	-- what Diskmap measured. Saying both keeps the two pages reconcilable.
@@ -149,10 +146,10 @@ function map:data(state)
 	local detail = Format.size(total) .. " measured"
 		.. (self.focusId == "" and (used and used >= total and (" of " .. Format.size(used) .. " used · shares are of what was measured")
 			or " across every category") or "")
-	local ancestors = {}
-	for index = 1, #trail - 1 do table.insert(ancestors, {name = trail[index].name, action = "focus_" .. index}) end
-	return {handlers = handlers, lists = {mapList = rows},
-		breakdown = {style = self.app.chartStyle, title = trail[#trail].name, detail = detail, trail = ancestors,
+	-- The whole map is the page itself; a group inside it is titled by its
+	-- name, as Finder titles a window by its folder. Back returns up a level.
+	return {lists = {mapList = rows}, title = #trail > 1 and trail[#trail].name or nil, subtitle = detail,
+		breakdown = {style = self.app.chartStyle,
 			marks = marks, rectangles = nodes, legend = legend, dragItem = "dragPath", center = self.center, centerAction = "up",
 			accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas"},
 		sections = {{id = "mapSection", title = "Contents", list = {id = "mapList", menu = "rowMenu", selectAction = "selectRow", activate = "drillRow"}}}}
@@ -173,7 +170,7 @@ function map:deactivate() self.refs = nil end
 -- a glance; the category lists still show everything.
 local LARGEST = {limit = 100}
 
-routes.largest = ListRoute.extend({layout = {summaryId = "largestSummary", scopeNote = Scope.pages.largest,
+routes.largest = ListRoute.extend({layout = {scopeNote = Scope.pages.largest,
 	sections = {{list = {id = "largest", menu = "rowMenu", activate = "open", selectAction = "select", status = true}}},
 	footnote = {text = "Known locations measured individually, across every category. Open an item's menu to show it in Finder, review it, or keep it out of suggestions."},
 }, limit = LARGEST.limit})
@@ -185,9 +182,9 @@ function routes.largest:present(state)
 	for _, row in ipairs(rows) do bytes = bytes + row.bytes end
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
-	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest", Scans:coverage()), largestSummary = #rows == 0 and "No measured items yet."
+	return {lists = {largest = rows}, texts = {scopeNote = Scope.text("largest", Scans:coverage())}, subtitle = (#rows == 0 and "No measured items yet."
 		or string.format("The %d largest measured locations use %s%s.", #rows, Format.size(bytes),
-			used and used >= bytes and (" of " .. Format.size(used) .. " used") or "")}}
+			used and used >= bytes and (" of " .. Format.size(used) .. " used") or ""))}
 end
 
 -- File Types: extension totals grouped into kinds, with a donut, advice for
@@ -255,7 +252,7 @@ function kinds:data()
 	local fileState = Files:state()
 	self.kinds, self.headlineId = {}, nil
 	-- Nothing is listed until the scan has measured the files.
-	if fileState == "loading" then return {waiting = WAITING} end
+	if fileState == "loading" then return {waiting = WAITING, subtitle = "Measuring files…"} end
 	local kinds, extensions = Files:kinds()
 	if fileState == "error" or fileState == "unavailable" then kinds, extensions = {}, {} end
 	self.kinds = kinds
@@ -296,9 +293,9 @@ function kinds:data()
 	self.center = {title = Format.size(all), detail = "in files"}
 	local kept = self.markById[self.selectedId]
 	local sectors, legend = Breakdown.rows(kinds)
-	local data = {lists = lists, decision = decision, inventoryNote = inventoryNote,
+	local data = {lists = lists, subtitle = summary, decision = decision, inventoryNote = inventoryNote,
 		headline = headline and {title = headline.name .. " · " .. headline.size .. " stored"} or {},
-		breakdown = #kinds > 0 and {style = self.app.chartStyle, title = "File Types", detail = summary, marks = sectors, legend = legend,
+		breakdown = #kinds > 0 and {style = self.app.chartStyle, marks = sectors, legend = legend,
 			center = kept and {title = kept.name, detail = Format.size(kept.bytes)} or self.center,
 			accessibilityLabel = "File types: " .. table.concat(labels, ", ")} or nil,
 		leads = {{view = "sections/Decision", data = decision}},

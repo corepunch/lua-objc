@@ -47,11 +47,10 @@ function Overview.center(summary)
 	return {title = summary.used, detail = summary.available and (summary.total .. " total") or "Capacity unavailable"}
 end
 
--- The Overview's breakdown card (views/sections/Breakdown.etlua): the volume,
--- its capacity line, a low-space warning and the categories of `chart`.
-function Overview.breakdown(summary, chart, volumeName, style)
-	return {style = style, title = volumeName, detail = summary.subtitle or summary.caption,
-		warning = summary.lowSpace and summary.lowSpaceMessage or "", explanation = chart.explanation, center = Overview.center(summary),
+-- The Overview's breakdown card (views/sections/Breakdown.etlua): the
+-- categories of `chart` around the used space.
+function Overview.breakdown(summary, chart, style)
+	return {style = style, explanation = chart.explanation, center = Overview.center(summary),
 		marks = chart.marks, legend = chart.legend, accessibilityLabel = chart.accessibilityLabel}
 end
 

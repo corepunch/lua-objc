@@ -98,7 +98,7 @@ function Page:data()
 	self.selected = selected
 	local idle = not self.busy
 	return {
-		summary = (self.busy and "Working · " or "") .. Format.plural(linked, "linked worktree") .. " in "
+		subtitle = (self.busy and "Working · " or "") .. Format.plural(linked, "linked worktree") .. " in "
 			.. Format.plural(self.stock.repositories or 0, "repository") .. " · " .. Format.size(stored) .. " stored", decision = decision(self, plan), status = self.result or "",
 		removeDetail = "Clean, every commit published, and unchanged for " .. Format.plural(Worktrees.recentDays, "day")
 			.. ". Source " .. Format.size(plan.sourceBytes) .. ", generated output " .. Format.size(plan.generatedBytes) .. ", Git record " .. Format.size(plan.gitBytes) .. ".",

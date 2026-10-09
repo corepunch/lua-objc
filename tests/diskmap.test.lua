@@ -156,7 +156,7 @@ t.expect(ui.page.refs.list_now ~= nil and ui.page.refs.list_checked ~= nil and u
 t.expect(ui.page.refs.list_now.scrollDisabled and ui.page.refs.page ~= nil, "clean up scrolls as one page")
 window.subtitle = "stale"
 ui:updateRows()
-t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "scan updates continue while clean up is shown")
+t.expect(window.subtitle:find("could recover", 1, true) or window.subtitle:find("to review", 1, true), "Clean Up names what it could recover in the window subtitle: " .. window.subtitle)
 t.assertEqual(#Suggestions:presentation().now, 1, "clean up finds the measured candidate")
 t.expect(#bridge._tableRowMenu(ui.page.refs.list_now, 1) > 0, "each suggestion has a row menu")
 ui:show("overview")

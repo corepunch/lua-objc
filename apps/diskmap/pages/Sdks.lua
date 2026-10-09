@@ -31,7 +31,7 @@ end
 function SdksPage:data()
 	local rows = self.measuring and {} or Sdks.filter(self.rows, self.query)
 	for _, row in ipairs(rows) do row.reviewOnly = true; self:flow("Rows"):annotateReview(row) end
-	return {lists = {rows = rows}, loading = {rows = self.measuring}, texts = {title = self.title},
+	return {lists = {rows = rows}, loading = {rows = self.measuring}, title = self.title,
 		hidden = {noSdks = self.measuring or #rows > 0, rows = not self.measuring and #rows == 0}}
 end
 

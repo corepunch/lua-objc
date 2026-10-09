@@ -23,7 +23,7 @@ local EMPTIES = {
 }
 
 local LAYOUT = {
-	summary = "Identical files in folders you choose.",
+	subtitle = "Identical files in folders you choose.",
 	buttons = {{id = "addFolder", title = "Add Folder…", systemImage = "plus", action = "addFolder"},
 		{id = "search", title = "Find Duplicates", action = "search"}},
 	sections = {{title = "Identical files", detailId = "duplicateRoots", empties = EMPTIES, panelId = "duplicatesList",
@@ -105,7 +105,7 @@ routes.duplicates = ListRoute.extend({layout = LAYOUT,
 		local hidden = {duplicatesList = current ~= "list"}
 		for _, empty in ipairs(EMPTIES) do hidden[empty.id] = current ~= empty.state end
 		presented.lists, presented.hidden = {duplicates = rows}, hidden
-		presented.texts.summary = summaryText(page, groups)
+		presented.subtitle = summaryText(page, groups)
 		presented.texts.duplicateRoots = #names == 0 and "Add the folders to compare. Diskmap reads file contents only in them."
 			or "Comparing files in " .. table.concat(names, ", ") .. "."
 		return presented

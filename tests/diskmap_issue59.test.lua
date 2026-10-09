@@ -118,7 +118,7 @@ t.expect(app.page.refs.filesEmpty.hidden, "a list with files shows no empty stat
 -- The Map lists every category of its level, one per sector.
 app:show("map")
 t.assertEqual(app.page.refs.mapList.rowCount, #app.env:page("map"):data(app:state()).lists.mapList, "the map's list has every row of its level")
-t.expect(app.page.refs.breakdownDetail.text:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
+t.expect(app.window.subtitle:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
 
 -- The sidebar badge and the Developer page name one total.
 t.assertEqual(app:badges().developer, developerWorkflow:presentation().total, "the Developer badge is the page's total")
@@ -173,7 +173,7 @@ t.expect(app.page.refs.computingSpinner ~= nil and app.page.refs.devices == nil 
 simulators.stock.loaded = true
 app:updateRows()
 t.expect(app.page.refs.planAmount ~= nil and app.page.refs.planAmount.text ~= "", "a loaded plan has its amount")
-t.expect(not app.page.refs.summary.text:find(" 1 runtimes", 1, true) and not app.page.refs.summary.text:find(" 1 devices", 1, true), "counts are pluralized")
+t.expect(not app.window.subtitle:find(" 1 runtimes", 1, true) and not app.window.subtitle:find(" 1 devices", 1, true), "counts are pluralized")
 
 -- Overview sections with nothing to show take no place.
 app:show("overview")

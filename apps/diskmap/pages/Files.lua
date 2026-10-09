@@ -10,7 +10,7 @@ local routes = {}
 
 local THRESHOLD = Format.size(Scans.fileSummary.minimumFileBytes)
 local LAYOUT = {
-	summary = "Measuring files…", scopeNote = Scope.pages.files, leads = {"lead"}, contextAfterSections = true, contextDisclosure = "Scan scope and statistics",
+	subtitle = "Measuring files…", scopeNote = Scope.pages.files, leads = {"lead"}, contextAfterSections = true, contextDisclosure = "Scan scope and statistics",
 	tiles = {
 		{id = "largeTile", icon = "doc.fill", color = "systemTeal", title = "Over " .. THRESHOLD, value = "—", detail = "Individual files, largest first"},
 		{id = "oldTile", icon = "clock.fill", color = "systemOrange", title = "Unused for a year", value = "—", detail = "Not opened or changed since"},
@@ -106,15 +106,16 @@ routes.files = ListRoute.extend({layout = LAYOUT,
 		local noFiles = fileState == "empty" or (fileState == "loaded" and noLarge)
 		local unavailable = fileState == "error" or fileState == "unavailable"
 		local listed = files ~= nil and #rows == 0 and fileState == "loaded" and not noLarge
-		local texts = {scopeNote = Scope.text("files", Scans:coverage()), summary = not summary and "No file results are available. Refresh to try again."
-			or "Files over " .. THRESHOLD .. " · " .. (summary.partial and "scan coverage is incomplete" or "largest first")}
+		local texts = {scopeNote = Scope.text("files", Scans:coverage())}
+		local subtitle = not summary and "No file results are available. Refresh to try again."
+			or "Files over " .. THRESHOLD .. " · " .. (summary.partial and "scan coverage is incomplete" or "largest first")
 		if summary then
 			texts.largeTileValue, texts.largeTileDetail = Format.size(summary.bytes), Format.plural(Format.count(summary.count), "file") .. ", largest first"
 			texts.oldTileValue, texts.oldTileDetail = Format.size(summary.oldBytes), Format.plural(Format.count(summary.oldCount), "file") .. " not opened or changed in a year"
 			texts.movableTileValue = Format.size(summary.reviewableOldBytes)
 			texts.movableTileDetail = Format.plural(Format.count(summary.reviewableOld), "unused document") .. " you can move to the Trash"
 		end
-		return {lists = {files = page.rowActions:annotate(rows)}, texts = texts, links = LINKS,
+		return {lists = {files = page.rowActions:annotate(rows)}, texts = texts, subtitle = subtitle, links = LINKS,
 			children = {lead = decision(page, rows, fileState, reason, kind, noFiles)}, hidden = {
 				filesPanel = #rows == 0 or unavailable, fileControls = unavailable or noLarge,
 				filesUnavailable = not unavailable, filesNone = not noFiles,

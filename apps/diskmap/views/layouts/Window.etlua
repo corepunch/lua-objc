@@ -64,9 +64,16 @@
   </Commands>
   <Toolbar>
     <% if navigation then %><ToolbarItem id="toggleSidebar" /><% end %>
-    <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" validate="canGoBack" />
-    <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" validate="canGoForward" />
+    <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" validate="canGoBack" placement="navigation" />
+    <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" validate="canGoForward" placement="navigation" />
     <ToolbarSpacer />
+    <% if picker then %>
+    <ToolbarItem id="pagePicker" label="<%= picker.label or "" %>">
+      <Picker id="<%= picker.id %>" style="segmented" value="<%= picker.value or 0 %>" onChange="pagePicker" help="<%= picker.help or "" %>">
+        <% for _, option in ipairs(picker.options) do %><Option title="<%= option %>" /><% end %>
+      </Picker>
+    </ToolbarItem>
+    <% end %>
     <% if charted then %>
     <% -- Rings or rectangles for every breakdown page, as the view buttons of Finder serve every folder. %>
     <% if chartStyle == "rectangles" then %>

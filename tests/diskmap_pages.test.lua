@@ -25,8 +25,8 @@ local function perform(list, row, title)
 	return false
 end
 
-t.expect(window.subtitle:find("available of", 1, true) ~= nil and not window.subtitle:find("free", 1, true),
-	"the window subtitle is Finder's one number, purgeable storage included, short enough for the toolbar")
+t.expect(window.subtitle:find("available of", 1, true) ~= nil,
+	"the Overview's window subtitle names the space available, purgeable storage included")
 t.expect(app.page.refs.hiddenSpace ~= nil, "the overview lists hidden space")
 
 -- Map: rings by default, drill in and out, switch to rectangles.
@@ -55,23 +55,10 @@ for _, node in ipairs(mapNodes) do
 end
 app.page.actions.chartSelect("developer", 1)
 t.assertEqual(app.env:page("map").focusId, "developer", "clicking a group focuses it")
-t.assertEqual(page().breakdownTitle.text, "Developer", "the focused map names Developer")
--- No Up button: the path's earlier steps are the way back. Each is a
--- label, as before, that underlines its text while the pointer is over it.
-local crumbs = {}
-for _, view in ipairs(page().breakdownTrail.subviews) do
-	if view.className == "LuaLabel" and view.underlinesOnHover then table.insert(crumbs, view) end
-end
-t.assertEqual(#crumbs, 1, "the focused map offers one step back")
-t.assertEqual(crumbs[1].text, "All Storage", "named for the level it shows")
-t.assertEqual(#page().breakdownTrail.subviews, 1, "the trail holds only the level above, no Up button; the title names the level shown")
-t.expect(not crumbs[1].underlined, "at rest the step is plain text")
-crumbs[1].hovered = true
-t.expect(crumbs[1].underlined, "under the pointer it is underlined")
-crumbs[1].hovered = false
-t.expect(not crumbs[1].underlined, "and plain again when the pointer leaves")
-app.page.actions.focus_1()
-t.assertEqual(app.env:page("map").focusId, "", "clicking the step goes back up")
+t.assertEqual(app.window.title, "Developer", "the focused map names Developer in the window title")
+-- No Up button and no trail: Back is the way up, as in Finder.
+app.navigation:back()
+t.assertEqual(app.env:page("map").focusId, "", "Back goes back up")
 app.page.actions.chartSelect("developer", 1)
 app:toggleChartStyle()
 t.expect(page().breakdownRectangles ~= nil and page().breakdownChart == nil, "rectangles replace the rings")
@@ -127,7 +114,7 @@ t.expect(unmark, "marked rows say so in their menu")
 -- Projects: artifacts grouped with git state.
 app:show("projects")
 t.assertEqual(page().projects.rowCount, 2, "artifacts group into their project")
-t.expect(page().projectsSummary.text:find("2 projects", 1, true) ~= nil, "the summary counts projects")
+t.expect(app.window.subtitle:find("2 projects", 1, true) ~= nil, "the window subtitle counts projects")
 t.assertEqual(bridge._tableRowMenu(page().projects, 1)[1].title, "Mark Build Data for Cleanup", "a project marks its build data")
 
 -- Updates: installers found in Downloads.
@@ -165,7 +152,7 @@ t.assertEqual(service.diskSpace().freeKb, before, "moving to Trash frees nothing
 t.expect(not O(app, "emptyTrash").hidden, "emptying the Trash is offered next")
 t.expect(app.env:page("basket"):emptyTrash(), "the Trash can be emptied")
 t.expect(service.diskSpace().freeKb > before, "emptying the Trash frees space")
-t.expect(app.env:page("basket").refs.reviewSummary.text:find("more free space", 1, true) ~= nil, "freed space is reported as measured")
+t.expect(app.window.subtitle:find("more free space", 1, true) ~= nil, "freed space is reported as measured")
 t.expect(app.navigation:back(), "Back leaves the basket page like any other")
 t.assertEqual(app.destination, "updates", "and returns to the page the marks were reviewed from")
 app:show("history")

@@ -1,15 +1,14 @@
 <% --[[ The list page: every page that ranks storage in lists is this
-  template and a `layout` table (models/ListPage.lua), so headers,
-  tiles, section titles, filters and lists sit in the same places on all of
-  them. The template carries structure only; rows, sizes and summaries are
+  template and a `layout` table (pages/ListRoute.lua), so tiles, section
+  titles, filters and lists sit in the same places on all of them. The page
+  is named by the window title, not by a heading of its own. The template carries structure only; rows, sizes and summaries are
   set in place, so scan progress does not rebuild the page under the reader.
 
     waiting              {title, systemImage, description}: while the scan has not
                          measured what the page lists, this empty state stands
-                         in place of everything below the header
+                         in place of everything
     computing            while a request of the page's own is running: its status
                          line beside one native spinner, in place of the same
-    summary, summaryId   the header's second line and its ref ("summary")
     buttons              toolbar operations: {id, title, systemImage, action, help, disabled}
     tiles                stat tiles: {id, icon, color, title, value, detail, actionTitle, action}
     empty                {id, title, systemImage, description}, in place of the sections
@@ -26,7 +25,7 @@
       panelId              ref of the box around the list
       list                 ResourceList.etlua's arguments: {id, menu, activate, …}
     }
-    leads                refs for retained child templates right below the header:
+    leads                refs for retained child templates at the top of the page:
                          the page's leading decision (Decision.etlua)
     slots                refs for retained child templates, below the sections
     contextAfterSections puts scope and statistics after the actual rows
@@ -34,7 +33,6 @@
     scopeNote            initial text of the note stating what the totals cover (helpers/Scope.lua)
     footnote             {text, icon} ]] %>
 <ContentPage id="page">
-    <%- partial("../components/PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId}) %>
     <% if waiting then %>
     <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
     <% elseif computing then %>

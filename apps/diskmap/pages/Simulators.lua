@@ -130,7 +130,7 @@ function Page:data()
 	local summary, detail = texts(self, runtimes)
 	local row = self.planSelected
 	return {
-		filters = Simulators.filters, filter = self.filterIndex - 1, summary = summary, devicesDetail = detail, status = status,
+		filters = Simulators.filters, filter = self.filterIndex - 1, subtitle = summary, devicesDetail = detail, status = status,
 		runtimeStatus = runtime and runtimeReason and runtimeReason.message or self.stock.runtimeError or "",
 		plan = planView(self, plan),
 		lists = self.lists,

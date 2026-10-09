@@ -1,6 +1,4 @@
 <ContentPage id="page">
-    <%- partial("../components/PageHeader.etlua", {header = page,
-      summary = "Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk."}) %>
     <% if computing then %>
     <%- partial("../components/Computing.etlua", {status = computing}) %>
     <% else %>

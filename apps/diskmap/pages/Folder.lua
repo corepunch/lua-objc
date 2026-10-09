@@ -334,10 +334,13 @@ function Folder:summary()
 	if self.loading and not self.tree then return self:progressText() end
 	if self.failure then return self.path end
 	if not self.tree then return "See everything in any folder or disk, largest first." end
-	local home, shown = Model.db.home or "", self.path
+	-- The folder looked inside, where it is and what it holds; the count of
+	-- items is the whole measurement's, so it shows at the folder measured.
+	local focus = self.tree:find(self.focusPath) or self.tree.root
+	local home, shown = Model.db.home or "", focus.path or self.path
 	if home ~= "" and (shown == home or shown:sub(1, #home + 1) == home .. "/") then shown = "~" .. shown:sub(#home + 1) end
-	local parts = {shown, Format.size(self.tree.root.bytes)}
-	if self.stats and (self.stats.visited or 0) > 0 then table.insert(parts, Format.count(self.stats.visited) .. " items") end
+	local parts = {shown, Format.size(focus.bytes)}
+	if focus == self.tree.root and self.stats and (self.stats.visited or 0) > 0 then table.insert(parts, Format.count(self.stats.visited) .. " items") end
 	return table.concat(parts, " · ")
 end
 
@@ -351,7 +354,8 @@ local EMPTY = {id = "folderEmpty", title = "Open a Folder", systemImage = "folde
 
 function Folder:data()
 	local phase = self.failure and "failed" or self.tree and "loaded" or self.loading and "scanning" or "empty"
-	local data = {}
+	local data = {title = self.tree and self.tree:find(self.focusPath) and self.tree:find(self.focusPath).name
+		or self.path and self:displayName(self.path) or nil, subtitle = self:summary()}
 	self.trail, self.rowsByPath = {}, {}
 	if phase == "empty" then data.waiting = EMPTY; return data end
 	if phase == "failed" then
@@ -368,13 +372,6 @@ function Folder:data()
 	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
 	self.center = {title = Format.size(total), detail = #trail > 1 and "Click to go up" or "Measured"}
 	for _, row in ipairs(rows) do self.rowActions:annotateReview(row); self.rowsByPath[row.id] = row end
-	-- The trail's buttons are named by position (`focus_2`).
-	data.handlers = {}
-	local ancestors = {}
-	for index, step in ipairs(trail) do
-		data.handlers["focus_" .. index] = function() self:setFocus(step.id) end
-		if index < #trail then table.insert(ancestors, {name = step.name, action = "focus_" .. index}) end
-	end
 	local options, colorIndex = {}, 0
 	for index, coloring in ipairs(FolderTree.colorings) do
 		table.insert(options, coloring.title)
@@ -383,9 +380,10 @@ function Folder:data()
 	-- Colored by kind or by last use, the legend names the colors instead.
 	local marks, legend = Breakdown.rows(rows)
 	if self.coloring ~= "folders" then legend = self.tree:legend(self.focusPath, self.coloring, now) end
-	data.breakdown = {style = self.app.chartStyle, title = trail[#trail].name, detail = self:summary(), trail = ancestors,
-		picker = {id = "folderColoring", value = colorIndex, action = "pickColoring", options = options,
-			help = "Color the map by folder, by kind of file or by when files were last used"},
+	-- The coloring is a view option of the page, in the toolbar like Finder's view buttons.
+	data.picker = {id = "folderColoring", label = "Color By", value = colorIndex, action = "pickColoring", options = options,
+		help = "Color the map by folder, by kind of file or by when files were last used"}
+	data.breakdown = {style = self.app.chartStyle,
 		marks = marks, rectangles = nodes, legend = legend, dragItem = "dragPath", center = self.center, centerAction = "up",
 		accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas"}
 	data.lists = {folderList = rows}

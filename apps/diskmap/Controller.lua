@@ -122,9 +122,22 @@ function Controller:state()
 	return state
 end
 
-function Controller:subtitle()
-	local text = Scans:summary(self.env.scan.disk, self.env.session.capacity).short or ""
-	return text
+-- The window is titled by its page, as Finder by its folder and Mail by its
+-- mailbox: the page's `title` (its manifest title when it names none) and
+-- its `subtitle`. Pages carry no heading of their own.
+-- A virtual disk says so first in the subtitle ("Mock HDD · …").
+function Controller:windowSubtitle()
+	local subtitle, badge = self.pageSubtitle or "", self.env.service.badge
+	if not badge then return subtitle end
+	return subtitle ~= "" and (badge .. " · " .. subtitle) or badge
+end
+
+function Controller:presented(entry, data)
+	self.pageTitle, self.pageSubtitle = data.title or entry.title, data.subtitle or ""
+	self.picker = data.picker
+	if self.window then self.window.title, self.window.subtitle = self.pageTitle, self:windowSubtitle() end
+	self.operations = Operations.forPage(entry.id, data)
+	self:updateToolbar()
 end
 -- Sidebar sizes come from measured categories and scan-owned inventories.
 function Controller:badges()
@@ -156,7 +169,6 @@ function Controller:badges()
 end
 function Controller:updateRows()
 	if self.env.closed then return end
-	if self.window then self.window.subtitle = self:subtitle() end
 	-- App facts load once the scan has measured the data folders they need.
 	if self.env.model.files and not self.env.model.files.measuring then self.env.inventories:load("applications") end
 	-- A page may re-render its template, so its refs are read after updating.
@@ -171,7 +183,6 @@ end
 -- sizes, and the sidebar must not lose rows while it runs.
 
 function Controller:basketChanged()
-	if self.window then self.window.subtitle = self:subtitle() end
 	self.navigation:setBadges(self:badges())
 	if self.page and self.page.marksChanged then self.page:marksChanged() end
 end
@@ -246,7 +257,7 @@ function Controller:show(id, params, restoring)
 		if request.focus then request:focus(params) end
 		local page = PageController.new({page = entry, ns = ns, viewsDir = "apps/diskmap/views/",
 			store = self.env.model, request = request, located = function(where) self:located(entry, where) end,
-			presented = function(data) self.operations = Operations.forPage(entry.id, data); self:updateToolbar() end})
+			presented = function(data) self:presented(entry, data) end})
 		self.destination, self.page = id, page
 		self.charted = request.view == "pages/Breakdown"
 		page:mount(self.content, self:state())
@@ -328,12 +339,14 @@ end
 -- follows state: Refresh while idle, Stop in its place while measuring.
 function Controller:windowData()
 	local data = self.commands:data()
-	data.windowTitle = self.env.service.badge and ("Diskmap — " .. self.env.service.badge) or "Diskmap"
-	data.subtitle = self:subtitle()
+	data.windowTitle, data.subtitle = self.pageTitle or "Diskmap", self:windowSubtitle()
 	data.actions = setmetatable({
 		search = function(value) self:search(value) end,
 		chartStyle = function() self:toggleChartStyle() end,
+		-- The page's own picker, shown in the toolbar (Folder Map's coloring).
+		pagePicker = function(index) if self.page and self.picker then self.page.actions[self.picker.action](index) end end,
 	}, {__index = self.commandActions})
+	data.picker = self.picker
 	data.operations = self.operations or {}
 	for _, item in ipairs(data.operations) do
 		data.actions["operation_" .. item.id] = function()
@@ -362,10 +375,11 @@ function Controller:updateToolbar()
 	for _, item in ipairs(self.operations or {}) do table.insert(parts, table.concat({item.id, item.title, item.icon, item.action, tostring(item.disabled), tostring(item.hidden)}, ":")) end
 	local operationKey = table.concat(parts, "|")
 	local chartKey = tostring(self.charted) .. self.env.context.chartStyle
+	if self.picker then chartKey = chartKey .. "|" .. self.picker.id .. ":" .. self.picker.value end
 	if not self.window or (self.scanning == scanning and self.operationKey == operationKey and self.chartKey == chartKey) then return end
 	self.operationKey, self.chartKey = operationKey, chartKey
 	self.scanning = scanning
-	self.window:updateToolbar(xml.toolbarFile(layout("Window"), self:windowData()))
+	self.window:updateToolbar(xml.toolbarFile(layout("Window"), self:windowData(), ns))
 end
 function Controller:createWindow()
 	self.env:prepare()

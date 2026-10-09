@@ -101,7 +101,7 @@ do
 			local facts = {}
 			if info.FilesystemUserVisibleName then table.insert(facts, info.FilesystemUserVisibleName) end
 			if info.DeviceIdentifier then table.insert(facts, info.DeviceIdentifier) end
-			texts.summary = (info.VolumeName or "Startup disk") .. (#facts > 0 and (" · " .. table.concat(facts, " · ")) or "")
+			local subtitle = (info.VolumeName or "Startup disk") .. (#facts > 0 and (" · " .. table.concat(facts, " · ")) or "")
 			if apfs then
 				texts.containerDetail = string.format("%d volumes share %s in container %s; %s is free for all of them.",
 					#apfs.rows, Format.size(apfs.capacity), apfs.reference or "", Format.size(apfs.free))
@@ -114,7 +114,7 @@ do
 				texts.contentsDetail = analyzed.loading and "Measuring…" or analyzed.failure
 					or (Format.size(total) .. " in " .. #rows .. " items at the top level. Hidden system folders are explained; their owners manage them.")
 			end
-			return {tiles = tiles, texts = texts, lists = {volumes = apfs and apfs.rows or {}, external = external, contents = contents},
+			return {tiles = tiles, texts = texts, subtitle = subtitle, lists = {volumes = apfs and apfs.rows or {}, external = external, contents = contents},
 				loading = {contents = analyzed and analyzed.loading},
 				hidden = {volumesSection = apfs == nil, externalSection = #external == 0, contentsSection = analyzed == nil}}
 		end})
@@ -124,7 +124,7 @@ end
 -- page opens; local snapshots and installer files arrive asynchronously, and
 -- each says so with `app.refresh()`. Nothing here is removed by hand,
 -- so every action only navigates or reveals.
-local UpdatesPage = {view = "pages/Updates"}
+local UpdatesPage = {view = "pages/Updates", subtitle = "Update downloads, installers and the restore points Time Machine keeps on this disk"}
 routes.updates = UpdatesPage
 UpdatesPage.queries = {openCleanup = true, openSoftwareUpdate = true, openTimeMachine = true, installerMenu = true, revealInstaller = true}
 
@@ -170,11 +170,11 @@ end
 
 function UpdatesPage:data()
 	-- The installers and snapshots are asked for each visit; the page is drawn when both answer.
-	if self.installerFiles == nil or self.snapshotDates == nil then return {computing = "Looking for installers and local snapshots…"} end
+	if self.installerFiles == nil or self.snapshotDates == nil then return {computing = "Looking for installers and local snapshots…", subtitle = UpdatesPage.subtitle} end
 	local disk = self.service.diskSpace(Model.db.home)
 	local data = Updates.presentation(self.plist, self.snapshotDates, self.installerFiles, disk and disk.freeKb and disk.freeKb * 1024 or nil,
 		{measured = Categories.measured, installers = Locations:installers()})
-	data.decision = self:decision(data)
+	data.decision, data.subtitle = self:decision(data), UpdatesPage.subtitle
 	if #data.installers > 0 then
 		for _, row in ipairs(data.installers) do
 			row.source, row.consequence = "Installers", "An installer you can download again. Installed apps and macOS are not affected."

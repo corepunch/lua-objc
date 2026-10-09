@@ -52,10 +52,11 @@ t.assertEqual(item("work").label, "Start", "the item starts as the template's id
 bridge._invokeAction(button)
 t.assertEqual(events[#events], "start", "the idle button runs its action")
 
--- Describing the template makes no view: the search item has none.
+-- Describing the template makes its views too, so an item that first appears
+-- on an update has its control; the window keeps the views it shows.
 local described = xml.toolbarFile(path, {running = true, actions = actions})
 t.assertEqual(#described, 4, "every toolbar item is described")
-t.expect(described[4].view == nil, "a described item leaves its view child out")
+t.expect(described[4].view ~= nil, "a described item makes its view child")
 t.assertEqual(type(described[2].action), "function", "a described action is bound")
 
 window:updateToolbar(described)

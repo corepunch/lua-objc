@@ -56,24 +56,28 @@ Diskmap's breakdown pages are the worked example:
 Types and Folder Map. Its order is the house layout for a page about one
 thing:
 
-1. a heading at the top of the page — trail to the levels above, title,
-   the page's own picker beside the title, a one-line detail, warnings;
-2. a decision the page leads with, if any;
-3. the main figure (a card: chart with a compact legend, or rectangles
+1. a warning or a decision the page leads with, if any;
+2. the main figure (a card: chart with a compact legend, or rectangles
    filling the card);
-4. what explains the figure;
-5. lists, each the full width of the page.
+3. what explains the figure;
+4. lists, each the full width of the page.
 
-Titles and pickers belong to the page heading, not inside a card. A name
-appears once per screen: if the heading says "Developer", neither the card
-nor a breadcrumb repeats it as a current step.
+No page draws a heading. The window title names the page, as Finder's names
+the folder and Mail's the mailbox: a route's data returns `title` (the level
+shown, when it is not the manifest title) and `subtitle` (its one-line
+summary), and the root sets them on the window after each draw. Back and
+Forward sit before the title (`placement="navigation"`) and are the way up
+a hierarchy, so there is no breadcrumb. A page's own view option (Folder
+Map's coloring) is a `picker` in its data, shown in the toolbar. A name
+appears once per screen.
 
 ### Window chrome: each thing in one place
 
 | Surface | Holds | Never holds |
 |---|---|---|
 | Sidebar | Destinations; a count or size badge on the row (a mailbox's unread count) | Actions |
-| Toolbar | Window-wide actions and view options that apply to every page of a kind (Refresh, Search, rings/rectangles) | A destination the sidebar already lists; per-row or selection actions |
+| Window title | The page's name and its one-line summary | A second heading inside the page |
+| Toolbar | Back/Forward before the title; window-wide actions and view options (Refresh, Search, rings/rectangles, a page's picker) | A destination the sidebar already lists; per-row or selection actions |
 | Rows and charts | Opening (double-click), flagging (the row's button), menus (`rowMenu`) | — |
 | Menu bar | Every command, with its shortcut | — |
 | Sheet | Short, blocking work with its own Stop/Cancel (scan progress, confirmation) | Anything with page history |

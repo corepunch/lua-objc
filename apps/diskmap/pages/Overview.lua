@@ -95,10 +95,11 @@ function overview:data(state)
 		if row.id and row.id ~= Categories.folded then row.action = "category_" .. row.id; handlers["category_" .. row.id] = function() self.app.open(row.id) end end
 	end
 	local summary = Scans:summary(disk, state.capacity)
-	local breakdown = Figures.breakdown(summary, chart, state.volumeName, self.app.chartStyle)
+	local breakdown = Figures.breakdown(summary, chart, self.app.chartStyle)
 	self.center = breakdown.center
 	local data = {status = state.status, accessHidden = state.mock == true, accessTitle = errors > 0 and "Review scan access…" or "Scan access…",
-		breakdown = breakdown, handlers = handlers}
+		breakdown = breakdown, handlers = handlers, title = state.volumeName, subtitle = summary.short or summary.subtitle or summary.caption,
+		leads = summary.lowSpace and {{view = "components/Warning", data = {id = "lowSpace", text = summary.lowSpaceMessage}}} or nil}
 	if scanning then return data end
 	self.categoryRows = self:flow("Rows"):annotate(Categories:shares(disk))
 	if not Selection.index(self.categoryRows, self.selectedId) then self.selectedId = nil end
@@ -191,8 +192,8 @@ function routes.cleanup:present(state)
 	local first = data.lead
 	links.leadOpen = first and (first.page and {page = first.page, filter = first.filter} or {open = first.id}) or nil
 	links.leadFiles = {page = "files"}
-	return {lists = lists, hidden = hidden, links = links, children = {tips = {tips = tips}, lead = lead(data)}, texts = {
-		summary = data.summary, scopeNote = Scope.text("cleanup", Scans:coverage()),
+	return {lists = lists, hidden = hidden, links = links, children = {tips = {tips = tips}, lead = lead(data)}, subtitle = data.summary, texts = {
+		scopeNote = Scope.text("cleanup", Scans:coverage()),
 	}}
 end
 

@@ -24,31 +24,31 @@ t.expect(Navigation.page("nowhere") == nil, "an unknown id names no page")
 t.assertEqual(Navigation.page("cleanup").name, "Clean Up", "the sidebar row, the page and the toolbar share one name")
 t.assertEqual(Navigation.page("cleanup").title, nil, "with no second title to drift")
 
--- Breakdown pages are one template headed by their breakdown card.
-local OWN_HEADER = {overview = true, map = true, kinds = true, folder = true}
+-- Every page is titled in the window title by its sidebar row, and starts
+-- with its content: no page draws a heading of its own. Breakdown pages that
+-- show one level of something are titled by that level instead.
+local OWN_TITLE = {overview = true, folder = true}
 local LIST_PAGES = {"largest", "files", "duplicates", "cleanup", "applications", "disks", "xcode", "projects",
 	"everyday", "developer", "music", "video", "photography", "design", "studio3d", "games"}
 local listPage = {}
 for _, id in ipairs(LIST_PAGES) do listPage[id] = true end
 
+local window = app.window
 local origin
 for _, row in ipairs(Navigation.destinations) do
-	if row.id and not OWN_HEADER[row.id] then
+	if row.id then
 		app:show(row.id)
 		t.assertEqual(app.destination, row.id, row.id .. " opens")
 		local refs = app.page.refs
-		t.assertEqual(refs.pageTitle.text, row.title or row.name, row.id .. " is titled as its sidebar row")
+		t.expect(refs.pageHeader == nil and refs.pageTitle == nil, row.id .. " has no heading of its own")
+		if not OWN_TITLE[row.id] then t.assertEqual(window.title, row.title or row.name, row.id .. " is titled as its sidebar row") end
 		if listPage[row.id] then
 			t.assertEqual(app.page.template.path, "apps/diskmap/views/pages/Page.etlua", row.id .. " is the shared list page")
 			t.expect(refs.page ~= nil and refs.pageContent ~= nil, row.id .. " is one scrolling page")
 			bridge._flushLayout()
-			-- AppKit measures from the bottom, so the top inset is what is left
-			-- above the header in the page's content.
-			local frame, content = refs.pageHeader.frame, refs.pageContent.frame
-			local inset = {x = frame.origin.x, top = content.size.height - frame.origin.y - frame.size.height}
-			origin = origin or inset
-			t.assertEqual(inset.x, origin.x, row.id .. " header starts at the shared leading edge")
-			t.assertEqual(inset.top, origin.top, row.id .. " header starts at the shared top edge")
+			local frame = refs.pageContent.frameInWindow
+			origin = origin or frame.origin
+			t.assertEqual(frame.origin.x, origin.x, row.id .. " content starts at the shared leading edge")
 		end
 	end
 end
@@ -63,7 +63,6 @@ for _, id in ipairs({"overview", "map", "kinds", "folder"}) do
 		local frame = refs.breakdown.frameInWindow
 		cardOrigin = cardOrigin or frame.origin
 		t.assertEqual(frame.origin.x, cardOrigin.x, id .. " card starts at the shared leading edge")
-		t.expect(refs.pageHeader == nil, id .. " has no header above its card")
 	end
 end
 
