@@ -1,247 +1,153 @@
 ---
 name: lua-native-apps
-description: Laravel-style MVC architecture for Lua macOS/iOS apps in lua-objc. Use when building or refactoring app models, controllers, native app shells, etlua views, or their headless regression tests.
+description: Build, redesign or refactor a Lua macOS/iOS app in lua-objc — manifest pages, routes, Lapis models, etlua views and components, window chrome (sidebar, toolbar, sheets) — and verify it against what was asked with captures and headless tests. Use for any app-level UI or architecture change in apps/, demo/ or test/.
 ---
 
 # Lua Native Apps
 
-Build user-facing apps in Lua only.
+An app is Lua and etlua over Apple's own controls. Most mistakes in this
+repository were not syntax errors: they were a correct-looking change that
+did something other than what the person asked, verified by tests written to
+match it. This skill is mostly about not doing that.
 
-SwiftUI-shaped review belongs to `skills/swiftui-parity`. Use that skill when
-the task is a parity check against SwiftUI Pro. It only names tags registered
-in `lua/ui/xml.lua`, and `tests/swiftui_parity_contract.test.lua` fails if one
-disappears.
- Keep AppKit/UIKit work behind the bridge
-and keep the app shell thin enough that most behavior lives in reusable Lua
-modules.
+SwiftUI-shaped review belongs to `skills/swiftui-parity`; framework (bridge,
+renderer, layout engine) work belongs to `skills/maintain-lua-objc-framework`.
 
-Append to Lua sequences with `table.insert(items, value)` rather than
-`items[#items + 1] = value`, including models, controllers, services, and tests.
-When a value-producing call can return multiple results, parenthesize it to
-retain one value: `table.insert(items, (fn()))`.
+## Read first
 
-## Start with the current framework
+The rules live in the repository, not here. Read what the task touches:
 
-Read only the references needed for the task. The bridge exposes native
-AppKit/UIKit controls through Lua and etlua; it is not SwiftUI, React Native, or
-a web router. Never invent a modifier or use another framework's source code as
-the implementation path. Check [references/vocabulary.md](references/vocabulary.md)
-before using an XML tag or modifier, and extend `xml.registry` when the shared
-XML renderer needs a new tag.
+- [AGENTS.md](../../AGENTS.md) — the non-negotiable rules. They win over this file.
+- [docs/agents/application-architecture.md](../../docs/agents/application-architecture.md)
+  — what goes where: manifest, store, models, routes, flows, components, controllers.
+- [docs/data-driven.md](../../docs/data-driven.md) — pages as requests, `@name` resources.
+- [docs/components.md](../../docs/components.md) — a new tag is an etlua component.
+- [docs/agents/layout.md](../../docs/agents/layout.md) — page width, chart sizing and colors.
+- [references/vocabulary.md](references/vocabulary.md) — tags that exist. Never invent
+  a tag or modifier; add a component or extend `xml.registry` with a test.
 
-| Need | lua-objc path |
-|---|---|
-| App structure | `apps/<app>/init.lua`, `Model.lua`, `Controller.lua`, `views/*.etlua` |
-| Native views | Cross-platform XML tags rendered by `lua/ui/xml.lua` |
-| Repeated rows | `<List>` with etlua loops; see [performance](references/performance.md) |
-| Navigation | Existing controller rendering and native windows; check [navigation](references/navigation.md) for supported patterns |
-| Accessibility | Native control labels and traits; see [accessibility](references/accessibility.md) |
-| Layout and visual QA | `--dump-layout`, `--screenshot`, and headless tests; see [verification](references/verification.md) |
-| Framework gaps | Implement in the shared Lua/native bridge, with regression coverage; do not patch around it in an app |
+## The shape of an app, in one breath
 
-SwiftUI-shaped concepts that are not implemented must stay explicit gaps. Check
-the “Not yet available” section in the vocabulary before proposing a workaround.
-Do not substitute emoji, custom drawing, blur/opacity tricks, or a second
-navigation/state framework for a missing native API.
+`app.xml` names the pages; each page is a route (`pages/*.lua`) whose
+`data(state)` feeds one etlua view (`views/pages/*.etlua`); an action is a
+method of the route, after which the page is requested again. Models are
+Lapis models over the bound store and never touch `ns`. IO is a service,
+shared action code a flow. A controller exists only to coordinate (sheets,
+confirmations, window chrome). There are no bindings, observers or
+notifications: a value reaches the screen when the template renders it, or
+when a controller sets it on a retained ref because it changes every tick.
 
-## Laravel-style MVC with etlua views
+Append with `table.insert(items, value)`, never `items[#items + 1] = value`;
+parenthesize multi-value calls: `table.insert(items, (fn()))`.
 
-Use Laravel's separation of models, controller actions, and Blade views as the
-app architecture; etlua fills the Blade role. Keep the native app lifecycle:
-controllers and native widgets persist across events, so controller actions
-update existing refs or navigate to rendered templates. This convention does
-not require an HTTP router, ORM, service container, or Laravel dependency.
+## Designing screens
 
-```text
-apps/<app>/
-  init.lua        — requires and returns Controller class; never self-starts
-  Model.lua       — domain data, queries, validation, state, mutations
-  Controller.lua  — coordinates model operations, rendering, navigation, callbacks
-  views/          — .etlua screens and reusable partials only
-```
+### One look, one template
 
-Add focused model or service modules only when there is a concrete second
-responsibility. For example, Adventure Arena's `Catalog.lua` stores seed data,
-`Model.lua` queries games and owns session state, and `ZIL.lua` adapts the game
-runtime and file access. Do not create empty Laravel-style directories.
+Pages that look alike are one template over different data, never parallel
+templates that each arrange shared pieces. When asked "make these pages look
+like that one", the deliverable is a single `views/pages/<Shape>.etlua` whose
+inputs are documented at its top, and routes that only differ in `data()`.
+Shared components alone are not enough: each page template drifts (a missing
+header here, a title repeated three times there).
 
-### Model and service boundaries
+Diskmap's breakdown pages are the worked example:
+`apps/diskmap/views/pages/Breakdown.etlua` serves Overview, Storage Map, File
+Types and Folder Map. Its order is the house layout for a page about one
+thing:
 
-- Models own domain decisions: lookup, validation, command normalization,
-  session transitions, transcript history, and failure semantics.
-- Models never import AppKit/UIKit, accept the whole `ns` module, create views,
-  retain widget refs, render templates, or navigate.
-- Keep file, network, compiler, and engine integration in focused services.
-  Inject the needed operation (such as a file reader or engine factory), not
-  a platform module. Wire concrete dependencies at controller construction or
-  the app composition boundary.
-- Query the controller's model instance rather than reaching around it into
-  module-level catalog tables. Use stable record IDs for actions; resolve and
-  validate them through the model. Allow model/service injection for tests.
-- Keep symbols, colors, typography, layout, and display formatting out of domain
-  models. Preserve raw model data when preparing a view; do not decorate shared
-  records with transient presentation fields.
+1. a heading at the top of the page — trail to the levels above, title,
+   the page's own picker beside the title, a one-line detail, warnings;
+2. a decision the page leads with, if any;
+3. the main figure (a card: chart with a compact legend, or rectangles
+   filling the card);
+4. what explains the figure;
+5. lists, each the full width of the page.
 
-### Thin controllers
+Titles and pickers belong to the page heading, not inside a card. A name
+appears once per screen: if the heading says "Developer", neither the card
+nor a breadcrumb repeats it as a current step.
 
-Controller actions follow: resolve input → call the model → render/navigate or
-update existing native refs. Keep callbacks short by delegating to named actions.
-A controller may assemble a small view-data table and action map, but must not
-implement business rules, file/compiler operations, widget trees, or rating/icon
-rendering algorithms. Extract complex presentation transformations into a focused
-presenter only when a template or small data projection is insufficient.
+### Window chrome: each thing in one place
 
-For example, `showGame(id)` asks `self.model:game(id)` for a record, handles a
-missing record without disturbing navigation, and renders `Detail.etlua` with
-`{ game = game, actions = ... }`. `submitCommand(text)` calls the session model,
-then updates transcript/input refs. The model trims and executes the command.
+| Surface | Holds | Never holds |
+|---|---|---|
+| Sidebar | Destinations; a count or size badge on the row (a mailbox's unread count) | Actions |
+| Toolbar | Window-wide actions and view options that apply to every page of a kind (Refresh, Search, rings/rectangles) | A destination the sidebar already lists; per-row or selection actions |
+| Rows and charts | Opening (double-click), flagging (the row's button), menus (`rowMenu`) | — |
+| Menu bar | Every command, with its shortcut | — |
+| Sheet | Short, blocking work with its own Stop/Cancel (scan progress, confirmation) | Anything with page history |
+| Page | Anything a person navigates to and back from | — |
 
-### etlua is the sole view layer
+A view preference that several pages share (chart style) is one control in
+the toolbar affecting all of them, not a toggle on each page. A collection the
+person builds up (flagged items) is a sidebar destination with a count.
 
-**Views are etlua templates, never `.lua` files.** This includes tab shells,
-detail and session screens, loading/empty/error states, and reusable components.
-Render screens with `xml.renderFile(path, data, ns)` and compose templates with
-`partial("Component.etlua", data)`. Only the controller's `createWindow()` or the
-root App lifecycle creates a native window; components emit view trees only.
+Moving something between these surfaces — sheet to page, inline to toolbar,
+toolbar to sidebar — is a design decision. Ask before making it unless the
+request names it.
 
-Views own presentation: native XML tags, layout, labels, scalar formatting,
-conditionals, and loops over supplied data. Reuse display logic such as rating
-stars in a shared etlua partial. Templates must not query models, perform IO,
-mutate domain state, call Lua view constructors, or implement action bodies.
-Callbacks arrive in `data.actions` or are attached to returned refs by the
-controller. If a required native control lacks a template tag, extend
-`xml.registry` rather than bypassing templates with a Lua view module.
+## Working discipline
 
-The same XML vocabulary renders AppKit and UIKit controls; pass the platform to
-the renderer rather than adding platform conditionals to views. etlua is the
-only template engine, imported with `require("etlua")` when used directly.
+- **Do what was asked; ask about the rest.** A restyle request does not cover
+  converting sheets to pages or moving actions into the toolbar. List such
+  ideas in your reply instead of shipping them. AGENTS.md also requires
+  "are you sure?" before adding machinery.
+- **Write the request down as checks before coding.** Turn each sentence of
+  the request into an observable fact ("the legend is right of the ring", "the
+  list spans the page", "one toolbar button switches every breakdown page")
+  and assert those. A test that restates your implementation ("the badge
+  follows `app.marked`") proves nothing about the request.
+- **Changing a test is a claim.** When a test fails because you changed
+  behavior, update it only if the request asked for that change, and say
+  which request sentence it follows. Otherwise the test is right.
+- **Prefer deletion.** When a design replaces another, delete the old
+  templates, routes, flags and tests in the same change (no backwards
+  compatibility). Rename command-line flags and callers together.
+- **Keep the change reviewable.** One concern per commit; do not leave
+  a large uncommitted rewrite for the next agent.
 
-During refactors, migrate callers and tests together and delete replaced Lua
-views and obsolete APIs completely. Do not move view constructors into the
-controller, retain forwarding stubs, or preserve a parallel static model API.
+## Verifying a UI change
 
-### Verify the boundaries
+Headless tests are necessary and never sufficient. Follow
+[references/verification.md](references/verification.md), and for a layout
+or restyle in particular:
 
-Test model queries and mutations with injected services and no UI dependencies.
-Cover empty/missing records, rejected input, failed operations preserving prior
-state, and independent model instances. Controller tests should use injected
-models and exercise the actions actually bound by templates, including navigation
-and unchanged unrelated state. Render etlua with special characters and long
-text. Follow the repository's native layout and visual QA requirements as well.
+1. Capture every affected page in one launch with a capture plan, in each
+   state the change touches (both chart styles, focused and unfocused, empty,
+   measuring), light and dark, at the default and minimum window sizes.
+2. When the request names a reference ("like the Overview"), capture the
+   reference beside the candidates and compare them region by region: heading,
+   card, legend, lists, toolbar.
+3. Read the captures for repeated titles, clipped values (`100` for `100%`),
+   controls that moved surface, and gaps. Compare `--capture` layout XML, not
+   PNG diffs, for geometry.
+4. Then run the headless suite.
 
-## IDE App Layout
+## Model and route boundaries
 
-- Top-level files in `IDEKit/` are the core IDE components (workspace, editors, navigators, etc.).
-- Use `IDEKit/plugins/` for concrete editor surfaces — plugin folders whose
-  `init.lua` returns a manifest for a `Plugins.extensionPoint` (see
-  ARCHITECTURE.md, "Plugins").
-- Use `IDEKit/state/` for persistence and recent-item adapters.
-- Follow Xcode's `-Kit` naming convention: `IDEKit` for the IDE framework,
-  `DVTKit` for shared dev-tools widgets, `IDEFoundation` for non-UI model logic.
-
-## IDE-Owned Plugins
-
-The framework provides extension points (`lua/Plugins.lua`); the IDE owns
-the plugin list and the host API it hands plugins. Keep editor surfaces as
-plugin folders and select them by a manifest field such as the extensions
-they open:
-
-```lua
-local Plugins = require("Plugins")
-local editors = Plugins.extensionPoint({
-	name = "editor", api = 1, host = EditorKit,
-	manifest = {title = "string", extensions = "table", create = "function"},
-}):load("IDEKit.plugins", {"text", "image"})
-local surface = editors:create("text", path)
-```
-
-Lua code can optionally load native controls through the standard Lua
-dynamic-module ABI. `App.loadNativePlugin(path, moduleName)` calls the dylib's
-`luaopen_<moduleName>` entry point; the dylib should return a normal Lua module
-whose functions create bridge-compatible native views. The dylib is an
-extension provider, not the IDE plugin itself:
-
-```lua
-local App = require("App")
-local controls = App.loadNativePlugin("build/ide-controls.dylib", "ide_controls")
-local colorWell = controls.ColorWell()
-```
-
-This keeps application code Lua-only while allowing missing AppKit controls to
-be added without moving IDE behavior into Objective-C. Native extensions share
-the host Lua state and are therefore trusted in-process code, not a security
-sandbox.
-
-## Recent State
-
-- Track `recent files` and `recent folders` independently.
-- Keep app-specific persistence in the app model or a small state wrapper under
-  the app's own folder.
-- When adding open actions, record the item kind at the same time the workspace opens.
-- Keep path pickers in the app layer so the UI does not need to know how folders/files are chosen.
+- Models own lookup, validation and mutation; they read the bound store and
+  never import AppKit/UIKit, render, or navigate.
+- Routes turn models into view data and name actions; formatting that
+  several routes share is a pure helper (`helpers/`), IO a service.
+- Templates never query models, perform IO or mutate state. A missing tag is
+  a component (`components/` in the app, `lua/components/` in the framework).
+- Only the entry point creates `ns.Window`.
 
 ## Cross-pane alignment
 
-When a split-view layout has aligned peer content in both panes (e.g. a sidebar
-search field and a detail header that share the same visual baseline), the
-elements must sit at the same Y position across panes. Do not let independent
-per-pane padding values drift apart.
+Peer elements in a split view (a sidebar search field and a detail header)
+share one top edge. Verify with `--dump-layout` at the default and minimum
+size and compare their window `y`; derive the shared offset from one named
+constant instead of tuning each pane's padding.
 
-To verify:
+## Headless tests
 
-```sh
-./lua-objc --dump-layout=/tmp/layout.xml apps/<app>/init.lua
-rg 'search|header|Detail|SearchField' /tmp/layout.xml | head -20
-```
-
-In the dump, compare the y+height top edge of the two elements. AppKit uses
-bottom-left origin: `y` is the distance from the split-view bottom, so the
-visual distance from the window top is `windowHeight - (element.y + element.height)`.
-
-Example from stocks: the search field sat at y=592 (56px from top), the detail
-header at y=578 (70px from top) — a 14px drift caused by the detail pane's
-`padding="18"` not accounting for the sidebar's glass-effect margin + search
-container vertical padding.
-
-Fix approach:
-- Compute the target top-edge offset for the primary element (usually the
-  sidebar anchor — search field, master list header, etc.).
-- Set the detail pane's `paddingTop` to match it, pulling the padding constant
-  from a shared `LAYOUT` table in the Controller rather than hardcoding in the
-  template.
-- Verify both dumps (default size + minimum size) show equal top-edge values.
-
-## Headless Verification
-
-- Set `_G.__headless = true` in tests.
-- Load example files with `loadfile` and wrap them in `pcall`.
-- Test controllers directly in-process (no subprocess spawning). Require the
-  Controller module, instantiate it, call `createWindow()`, and assert
-  workspace state, view dimensions, and model behavior.
-- Do NOT spawn `./lua-objc <dir>` subprocesses in tests — they introduce
-  run-loop timing races with `dispatch_after` key/main window activation.
-- Test startup routing by stubbing `openFolder`, `openFile`, and `welcome`.
-- Verify recent-store behavior with a temporary storage root so tests do not touch user data.
-- Add a smoke test when a new app surface, entrypoint, or persistence path is introduced.
-- Test both Lua plugin loading and native provider loading when an IDE plugin
-  depends on a dylib; a successful dylib build alone does not verify the Lua
-  module ABI.
-
-## Native product rules
-
-- Use system controls, metrics, semantic colors, SF Symbols, keyboard behavior,
-  and accessibility labels. Do not use emoji as icons or draw fake system chrome.
-- Keep screens and reusable views in `.etlua` templates. Controllers prepare
-  data, render templates, retain refs, and bind actions; they do not construct
-  view trees.
-- Use native platform behavior for navigation, materials, animation, and
-  gestures only when the bridge exposes it. Never bring Reanimated worklets,
-  React Native components, or SwiftUI wrappers into app code. Private APIs are
-  unsupported by default; a specifically authorized experiment must follow
-  [`references/navigation.md`](references/navigation.md) and show the risk in
-  [`docs/PRIVATE_API_RESEARCH.md`](../../docs/PRIVATE_API_RESEARCH.md).
-- Prefer lazy/native data containers for unbounded collections. An eager stack
-  creates every child and is for small, fixed groups.
-- Before calling a UI change done, follow
-  [references/verification.md](references/verification.md): headless regression
-  coverage plus screenshots and layout inspection for affected examples.
+- `_G.__headless = true`; tests live in `tests/*.test.lua` and run under a second.
+- Drive the real controller in-process (`Controller.new(Mock.new()):createWindow()`),
+  then call page actions (`app.page.actions.x`) and window actions
+  (`app:toggleChartStyle()`) as the UI would; never spawn `./lua-objc` subprocesses.
+- Assert refs by id and their native properties; assert structure that the
+  request depends on (which view contains which: the warning is in the
+  heading, not the card).
+- Add new entry points to `tests/examples.test.lua`.

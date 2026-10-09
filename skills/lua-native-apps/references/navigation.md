@@ -1,5 +1,17 @@
 # Navigation patterns
 
+## Manifest apps: pages with history
+
+An app with an `app.xml` navigates by route. The sidebar lists its pages;
+`self.app.show(id, params)` opens one and records it in the window's page
+history, so Back and Forward work; a page that differs by an argument reads
+`self.params`. This is the default for anything a person navigates to and
+back from — settings, history, a detail — rather than a sheet. Keep sheets
+for short, blocking work (progress with Stop, a confirmation). See
+[application-architecture.md](../../../docs/agents/application-architecture.md).
+
+The patterns below are for apps without a manifest.
+
 Navigation uses the shared XML renderer and a native host. The controller owns
 model state and actions; it may render a destination template and pass that
 rendered view to the existing native stack. It must not build a view tree or
