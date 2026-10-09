@@ -117,8 +117,8 @@ t.expect(app.page.refs.filesEmpty.hidden, "a list with files shows no empty stat
 
 -- The Map lists every category of its level, one per sector.
 app:show("map")
-t.assertEqual(app.page.refs.mapList.rowCount, #app.env:page("map"):data(app:state()).rows, "the map's list has every row of its level")
-t.expect(app.page.refs.mapSummary.text:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
+t.assertEqual(app.page.refs.mapList.rowCount, #app.env:page("map"):data(app:state()).lists.mapList, "the map's list has every row of its level")
+t.expect(app.page.refs.breakdownDetail.text:find(" measured of ", 1, true) ~= nil, "the Map names its base beside the disk's used space")
 
 -- The sidebar badge and the Developer page name one total.
 t.assertEqual(app:badges().developer, developerWorkflow:presentation().total, "the Developer badge is the page's total")
@@ -157,7 +157,7 @@ t.assertEqual(app.env.model.includeMedia, false, "media libraries start excluded
 app.env.settings:setMedia(true)
 t.expect(app.env.service.loadFlag("media"), "the choice is saved")
 local relaunched = Store.new(home)
-require("tests.diskmap_sheet").new("settings", {service = app.env.service, model = relaunched, notifications = app.env.notifications})
+relaunched.includeMedia = app.env.service.loadFlag("media") == true
 t.expect(relaunched.includeMedia,
 	"and restored at the next launch")
 app.env.settings:setMedia(false)
@@ -179,7 +179,7 @@ t.expect(not app.page.refs.summary.text:find(" 1 runtimes", 1, true) and not app
 app:show("overview")
 -- The synthetic disk leaves its media libraries out, so the card names them
 -- and asks for no access it does not need.
-t.expect(not app.page.refs.notMeasured.hidden and app.page.refs.unmeasured_media ~= nil, "what was not measured is named")
+t.expect(app.page.refs.notMeasuredCard ~= nil and app.page.refs.unmeasured_media ~= nil, "what was not measured is named")
 t.expect(app.page.refs.grantAccess == nil, "no access is requested when nothing was refused")
 window.size = ns.Size(950, 580); window:layout()
 os.exit(t.summary() and 0 or 1)

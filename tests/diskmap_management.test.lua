@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
@@ -5,8 +6,6 @@ local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local Store = require("apps.diskmap.Store")
 local Simulators = require("apps.diskmap.helpers.Simulators")
-local SheetController = require("apps.diskmap.controllers.SheetController")
-local Sheets = require("apps.diskmap.pages.Sheets")
 local Host = require("tests.diskmap_page")
 local Scans = require("apps.diskmap.models.Scans")
 local Categories = require("apps.diskmap.models.Categories")
@@ -44,9 +43,6 @@ t.assertEqual(row.action, "finder", "persistent SQLite files cannot be cleared a
 local _, _, exclusions = Scans:plan(); local found = false
 for _, path in ipairs(exclusions) do if path == row.path then found = true end end
 t.expect(found, "discovered file is excluded from agent residual")
-t.assertEqual(#Categories:managementRows("codex", "state_99.sqlite"), 1, "management searches exact paths")
-t.assertEqual(#Categories:managementRows("codex", "["), 0, "management search is literal")
-t.assertEqual(#Categories:managementRows("runtimes", nil, "Safe/rebuildable"), 0, "runtime cannot appear under safe reclaim")
 t.expect(Locations:find("grok-other") ~= nil, "Grok known local root is scanned")
 local uid = "12345678-ABCD-1234-ABCD-123456789ABC"
 local other = "12345678-ABCD-1234-ABCD-123456789ABD"
@@ -94,89 +90,6 @@ t.expect(not controller.stock.busy and controller.stock.loaded, "and leaves the 
 -- Native controls and resize contracts, without showing windows.
 model.measurements.archives = {bytes = 20e9, status = "complete"}
 model.measurements.derived = {bytes = 12e9, status = "complete"}
-local function management(open)
-	return require("tests.diskmap_sheet").new("management", {model = model, service = service, scanning = function() return false end,
-		keep = function(id) model.kept[id] = not model.kept[id] end, open = open or function() end})
-end
-local manager = management()
-local parent = ns.Window {visible = false, width = 1000, height = 700}
-manager:open(parent, "developer")
-t.assertEqual(manager.sheet.size.width, 620, "a wide window keeps the default sheet 80 points inside a 700 point window")
-local narrow = ns.Window {visible = false, width = 600, height = 700}
-manager:close(); manager:open(narrow, "developer")
-t.assertEqual(manager.sheet.size.width, 520, "a narrower window keeps the sheet 80 points inside it")
-manager:close(); narrow:close(); manager:open(parent, "developer")
-t.assertEqual(manager.sheet.className, "LuaPanel", "management uses a native sheet-capable panel")
-t.assertEqual(manager.refs.tabs.className, "LuaTabView", "impact tabs are native")
-t.assertEqual(manager.refs.categoryName.text, "Developer", "sheet identifies the managed category")
-t.assertEqual(manager.refs.categoryText, nil, "the sheet uses its rows instead of an explanation")
--- The header is the title alone: the toolbar refreshes, the category's own
--- row menu keeps it, and a second "Keep" there read as the row's.
-t.expect(manager.refs.categoryKeep == nil and manager.refs.categoryRefresh == nil, "the sheet header has no buttons")
-t.expect(manager.refs.manage.hidden, "with no selection the footer offers no row action")
-local function resourceAt(index)
-	return bridge._tableCell(manager.refs.rows1, 0, index).textField.stringValue
-end
-t.assertEqual(resourceAt(0), "Archives", "management starts with largest measured resource")
-manager:sortBy("name")
-local positions = {}
-for index = 0, manager.refs.rows1.rowCount - 1 do positions[resourceAt(index)] = index end
-t.expect(positions.Archives < positions["Xcode DerivedData"], "resource header sorts names ascending")
-manager:sortBy("name")
-positions = {}
-for index = 0, manager.refs.rows1.rowCount - 1 do positions[resourceAt(index)] = index end
-t.expect(positions["Xcode DerivedData"] < positions.Archives, "repeated resource sort reverses direction")
-manager:sortBy("impact")
-local previousImpact = ""
-for index = 0, manager.refs.rows1.rowCount - 1 do
-	local impact = bridge._tableCell(manager.refs.rows1, 1, index).textField.stringValue:lower()
-	t.expect(previousImpact <= impact, "impact header sorts impact values")
-	previousImpact = impact
-end
-manager.selectedId = "runtime-assets"; manager:draw()
-t.expect(manager.refs.reveal.enabled, "runtime can be revealed for inspection")
--- The selected row's own action is a text button beside Show in Finder,
--- never a bare symbol between labelled buttons.
-manager.selectedId = "devices"; manager:draw()
-t.expect(not manager.refs.manage.hidden and manager.refs.manage.title == "Open Xcode", "a row with its own action names it in the footer")
-t.expect(manager.refs.manage.image == nil, "the footer action is text, not a symbol")
-local manageX, revealX, keepX = manager.refs.manage.frame.origin.x, manager.refs.reveal.frame.origin.x, manager.refs.keep.frame.origin.x
-t.expect(manageX < revealX and revealX < keepX, "row actions read left to right before Done")
-t.assertEqual(manager.refs.keep.title, "Keep", "Keep is one title-case word")
-manager.selectedId = "runtime-assets"; manager:draw()
-t.expect(manager.refs.status.text:find("iOSSimulatorRuntime", 1, true) ~= nil, "selected resource shows its location")
-for _, size in ipairs({{800, 560}, {1100, 780}}) do
-	manager.sheet:resize(size[1], size[2]); manager.sheet:layout()
-	local width, height = manager.refs.rows1.size.width, manager.refs.rows1.size.height
-	t.expect(width > 400 and height > 80, "native table retains usable geometry after resize")
-end
-manager.query = "no such resource"; manager:draw()
-t.assertEqual(manager.refs.rows1.rowCount, 0, "empty management search")
-t.expect(not manager.refs.manage.enabled and not manager.refs.reveal.enabled, "empty result clears destructive and reveal actions")
-manager:close()
-local openedSimulators = 0
-manager = management(function() openedSimulators = openedSimulators + 1 end)
-manager:open(parent, "developer")
-local simulatorRow
-for index = 0, manager.refs.rows1.rowCount - 1 do
-	if resourceAt(index) == "Simulator devices" then simulatorRow = index end
-end
-t.expect(simulatorRow ~= nil, "developer review lists simulator devices")
-t.expect(bridge._pressColumnButton(manager.refs.rows1, 3, simulatorRow), "simulator row has an info button")
-t.assertEqual(openedSimulators, 1, "simulator info opens the installed device list")
-manager:close()
-local finderPath = "/System/Library/CoreServices/Finder.app"
-local app, appError = Locations:add("apps-system", {id = "finder-icon-test", name = "Finder.app", subtitle = "Installed application",
-	path = finderPath, fileIcon = finderPath, icon = "app.fill", color = "systemBlue", policy = "Review", action = "finder"})
-t.expect(app ~= nil, appError and appError.message or "application registered for icon verification")
-manager:open(parent, "applications")
-local finderCell
-for index = 0, manager.refs.rows1.rowCount - 1 do
-	local cell = bridge._tableCell(manager.refs.rows1, 0, index)
-	if cell.textField.stringValue == "Finder.app" then finderCell = cell end
-end
-t.expect(finderCell and finderCell.imageView.resolvedAppIcon, "application management shows the installed app icon")
-manager:close()
 local runtimeId = "0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D"
 local runtimeList = {[runtimeId] = {identifier = runtimeId, runtimeIdentifier = "ios", version = "26.0", build = "23A339",
 	platformIdentifier = "com.apple.platform.iphonesimulator", deletable = true, sizeBytes = 8.4e9}}
@@ -191,18 +104,18 @@ t.assertEqual(simulatorUI.refs.devices.rowCount, 2, "every device is listed")
 t.assertEqual(simulatorUI.refs.runtimes.rowCount, 1, "installed runtimes are listed")
 t.assertEqual(simulatorUI.refs.summary.text, "11.0 GB stored in 2 devices · 8.4 GB in 1 runtime", "the header states totals stored, not recoverable")
 t.expect(simulatorUI.refs.devicesDetail.text:find("1 device unavailable", 1, true) ~= nil, "the inventory counts devices without a runtime")
-t.expect(simulatorUI.refs.deleteUnavailable.enabled, "unavailable devices can be deleted together")
+t.expect(O(simulatorUI, "deleteUnavailable").enabled, "unavailable devices can be deleted together")
 simulatorUI.refs.devices:selectRow(0)
-t.expect(simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "native selection enables actions for a shutdown device")
-t.assertEqual(simulatorUI.refs.reveal.title, "Show in Finder", "a device can be revealed in Finder")
+t.expect(O(simulatorUI, "erase").enabled and O(simulatorUI, "delete").enabled, "native selection enables actions for a shutdown device")
+t.assertEqual(O(simulatorUI, "reveal").title, "Show in Finder", "a device can be revealed in Finder")
 simulatorUI.refs.devices:selectRow(1)
-t.expect(not simulatorUI.refs.erase.enabled and simulatorUI.refs.delete.enabled, "unavailable device allows delete but not erase")
+t.expect(not O(simulatorUI, "erase").enabled and O(simulatorUI, "delete").enabled, "unavailable device allows delete but not erase")
 simulatorUI.refs.runtimes:selectRow(0)
-t.expect(simulatorUI.refs.deleteRuntime.enabled, "a deletable runtime can be deleted")
+t.expect(O(simulatorUI, "deleteRuntime").enabled, "a deletable runtime can be deleted")
 model.kept.runtimes = true
 -- Reselecting the same row is not a selection change, so draw again.
 simulatorUI:update({query = ""})
-t.expect(not simulatorUI.refs.deleteRuntime.enabled, "Keep protects runtimes")
+t.expect(not O(simulatorUI, "deleteRuntime").enabled, "Keep protects runtimes")
 t.expect(simulatorUI.refs.runtimeStatus.text:find("Keep", 1, true) ~= nil, "a disabled runtime action explains why")
 model.kept.runtimes = nil
 -- The inventory is secondary: collapsed until its disclosure is opened.
@@ -212,12 +125,11 @@ ns._invokeAction(inventory.subviews[1].subviews[2])
 t.expect(not inventory.subviews[2].hidden, "opening the disclosure shows the inventory")
 host.size = ns.Size(880, 580); host:layout(880)
 for _, name in ipairs({"reveal", "erase", "delete", "deleteRuntime", "deleteUnavailable", "components"}) do
-	local button = simulatorUI.refs[name]
-	t.expect(button.frame.size.width + 1 >= button.fittingSize.width, button.title .. " is shown in full")
+	t.expect(O(simulatorUI, name).title ~= "", name .. " has a toolbar label")
+	t.assertEqual(simulatorUI.refs[name], nil, name .. " has no duplicate inline button")
 end
 simulatorUI:dispose()
 t.assertEqual(simulatorUI.refs, nil, "disposing the page releases its refs")
-parent:close()
 local native = require("StorageScan")
 t.assertThrows(function() native.commandStart({}) end, "empty command rejected")
 t.assertThrows(function() native.commandStart({"/bin/echo", "bad\0argument"}) end, "NUL command arguments rejected")

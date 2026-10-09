@@ -24,8 +24,8 @@ t.expect(Navigation.page("nowhere") == nil, "an unknown id names no page")
 t.assertEqual(Navigation.page("cleanup").name, "Clean Up", "the sidebar row, the page and the toolbar share one name")
 t.assertEqual(Navigation.page("cleanup").title, nil, "with no second title to drift")
 
--- The Overview leads with its chart and the Folder Map with the open folder.
-local OWN_HEADER = {overview = true, folder = true}
+-- Breakdown pages are one template headed by their breakdown card.
+local OWN_HEADER = {overview = true, map = true, kinds = true, folder = true}
 local LIST_PAGES = {"largest", "files", "duplicates", "cleanup", "applications", "disks", "xcode", "projects",
 	"everyday", "developer", "music", "video", "photography", "design", "studio3d", "games"}
 local listPage = {}
@@ -50,6 +50,20 @@ for _, row in ipairs(Navigation.destinations) do
 			t.assertEqual(inset.x, origin.x, row.id .. " header starts at the shared leading edge")
 			t.assertEqual(inset.top, origin.top, row.id .. " header starts at the shared top edge")
 		end
+	end
+end
+
+local cardOrigin
+for _, id in ipairs({"overview", "map", "kinds", "folder"}) do
+	app:show(id, id == "folder" and {path = app.env.model.home} or nil)
+	t.assertEqual(app.page.template.path, "apps/diskmap/views/pages/Breakdown.etlua", id .. " is the shared breakdown page")
+	local refs = app.page.refs
+	if refs.breakdown then
+		bridge._flushLayout()
+		local frame = refs.breakdown.frameInWindow
+		cardOrigin = cardOrigin or frame.origin
+		t.assertEqual(frame.origin.x, cardOrigin.x, id .. " card starts at the shared leading edge")
+		t.expect(refs.pageHeader == nil, id .. " has no header above its card")
 	end
 end
 

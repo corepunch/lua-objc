@@ -1,3 +1,0 @@
-<Sheet width="<%= width %>" height="<%= height %>">
-  <VStack id="body" maxHeight="infinity" />
-</Sheet>

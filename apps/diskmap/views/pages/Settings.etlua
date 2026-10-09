@@ -1,0 +1,35 @@
+<ContentPage id="page">
+<% local GROUPS = {
+  {title = "Scanning", rows = {
+    {id = "monitor", action = "toggleMonitor", title = "Refresh while Diskmap is open", detail = "Every 15 minutes. Files are never deleted."},
+    {id = "media", action = "toggleMedia", title = "Include media libraries", detail = "Measure the Photos, Music and TV libraries too."},
+    {id = "history", action = "toggleHistory", title = "Keep storage history", detail = "Records category totals after each scan to show what grew. No file names are kept."},
+  }},
+  {title = "Notifications", rows = {
+    {id = "reminder", action = "toggleReminder", title = "Monthly storage reminder", detail = "On the first of each month, what grew most. Uses storage history."},
+    {id = "sentinel", action = "toggleSentinel", title = "Offer cleanup after deleting an app", detail = "While Diskmap is open, moving an app to the Trash offers to mark the data it left."},
+  }, footer = true},
+  {title = "System", rows = {
+    {button = true, action = "openPrivacy", title = "Full Disk Access", detail = "Optional. Protected files can still be omitted."},
+    {button = true, action = "openStorage", title = "Storage", detail = "macOS storage settings."},
+  }},
+} %>
+  <%- partial("../components/PageHeader.etlua", {header = page}) %>
+  <% for _, group in ipairs(GROUPS) do %>
+  <VStack spacing="6" alignment="leading">
+    <Label text="<%= group.title %>" size="11" weight="semibold" color="secondary" />
+    <GroupBox>
+      <VStack padding="12" spacing="10" alignment="leading">
+        <% for index, row in ipairs(group.rows) do %>
+        <% if index > 1 then %><Divider /><% end %>
+        <SettingRow title="<%= row.title %>" detail="<%= row.detail %>" action="<%= row.action %>" toggleId="<%= row.id or "" %>" button="<%= row.button and "true" or "false" %>" />
+        <% end %>
+        <% if group.footer then %>
+        <Label id="notificationsUnavailable" text="Notifications are available when Diskmap runs as an app." size="11" color="secondary" maxWidth="infinity" lines="2" />
+        <% end %>
+      </VStack>
+    </GroupBox>
+  </VStack>
+  <% end %>
+
+</ContentPage>

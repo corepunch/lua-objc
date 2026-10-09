@@ -88,7 +88,7 @@ many times a second. They should change values, not structure:
 
 Diskmap's pages mount fresh elements on navigation. Charts rebuild when
 their data changes, and legend rows never overlap
-(`apps/diskmap/views/sections/Hero.etlua`, `LegendRow.etlua`).
+(`apps/diskmap/views/sections/Breakdown.etlua`, `LegendRow.etlua`).
 
 ## Testing
 

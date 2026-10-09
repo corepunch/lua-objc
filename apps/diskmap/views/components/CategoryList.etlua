@@ -1,0 +1,8 @@
+<% -- The categories of the Overview: each opens its page; the chevron says so where
+   -- the rows of ResourceList offer a menu. %>
+<List id="<%= id %>" onSelect="select" onActivate="open" onColumnButton="categoryButton" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
+  <Column id="name" title="Category" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon" fileIconKey="fileIcon" imageSize="28" minWidth="200" />
+  <Column id="shareText" title="On disk" width="270" minWidth="240" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />
+  <Column id="review" title="Review" width="32" minWidth="32" buttonSymbol="flag" enabledKey="markable" imageKey="markIcon" helpKey="markHelp" />
+  <Column id="info" title="" width="40" minWidth="40" buttonSymbol="chevron.right.circle" />
+</List>

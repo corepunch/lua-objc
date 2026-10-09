@@ -68,7 +68,7 @@ end
 app:show("map", {focus = "applications"})
 local map = app.page.request
 local mapData = map:data(app:state())
-for _, row in ipairs(mapData.rows) do
+for _, row in ipairs(mapData.lists.mapList) do
 	local node = map.nodeById[row.id]
 	if node then t.assertEqual(row.color, node.color, row.name .. " has the color of its sector in the Map list") end
 end
@@ -76,7 +76,7 @@ end
 app:show("kinds")
 local kinds = app.page.request:data(app:state())
 local kindColors = {}
-for _, mark in ipairs(kinds.kinds) do table.insert(kindColors, mark.color) end
+for _, mark in ipairs(kinds.breakdown.marks) do table.insert(kindColors, mark.color) end
 distinct(kindColors, "File Types")
 t.assertEqual(LOOK_ALIKE.systemPink, "systemRed", "Videos (pink) and Music (red) never share the ring")
 window:close()

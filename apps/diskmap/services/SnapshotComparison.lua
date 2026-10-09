@@ -5,8 +5,8 @@ local Store = require("apps.diskmap.Store")
 local Snapshot = require("apps.diskmap.helpers.Snapshot")
 local Comparison = {}; Comparison.__index = Comparison
 
--- Compares live scans with a saved snapshot (the sheet that lists every change
--- is pages/sheets/SnapshotChanges.lua). The snapshot is measured once
+-- Compares live scans with a saved snapshot (the page that lists every change
+-- is pages/SnapshotChanges.lua). The snapshot is measured once
 -- with the live catalog — the same plan a live scan measures — and its
 -- per-location totals are cached against the snapshot's creation time, so
 -- later launches compare without decoding it again. Decoding yields every

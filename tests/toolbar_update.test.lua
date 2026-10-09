@@ -75,14 +75,24 @@ t.assertEqual(item("work").label, "Start", "the item returns to its idle button"
 bridge._invokeAction(button)
 t.assertEqual(events[#events], "start", "and runs the idle action again")
 
--- Which items a toolbar has is fixed when the window is made.
-t.assertThrows(function() window:updateToolbar({{id = "work", label = "Stop"}}) end,
-	"a toolbar cannot lose items")
-t.assertThrows(function()
-	local renamed = xml.toolbarFile(path, {running = false, actions = actions})
-	renamed[2].id = "other"
-	window:updateToolbar(renamed)
-end, "a toolbar cannot swap one item for another")
+-- Page changes insert/remove native items, preserving the search view and
+-- every unchanged item. Selection changes also update validation in place.
+local search = item("search")
+refs.search.stringValue = "unsaved query"
+local expanded = xml.toolbarFile(path, {running = false, actions = actions})
+table.insert(expanded, 3, {id = "inspect", label = "Inspect", icon = "folder", action = actions.start, validate = function() return false end})
+window:updateToolbar(expanded)
+t.expect(item("inspect") ~= nil and not item("inspect").enabled, "a page operation appears disabled until selection")
+t.expect(item("search") == search and item("search").searchField == refs.search, "insertion preserves the search item and view")
+t.assertEqual(refs.search.stringValue, "unsaved query", "insertion preserves search editing state")
+expanded[3].validate = function() return true end
+window:updateToolbar(expanded)
+t.expect(item("inspect").enabled, "selection enables the operation")
+window:updateToolbar(xml.toolbarFile(path, {running = false, actions = actions}))
+t.assertEqual(item("inspect"), nil, "leaving removes the page operation")
+t.expect(item("search") == search, "removal preserves the search item")
+t.assertEqual(order(), before, "leaving restores the window toolbar order")
+t.assertThrows(function() window:updateToolbar({{id = "duplicate"}, {id = "duplicate"}}) end, "duplicate item identity is invalid")
 t.assertThrows(function() xml.toolbarFile(path, {running = true, actions = {back = actions.back, start = actions.start}}) end,
 	"a misspelt action fails when the toolbar is described")
 

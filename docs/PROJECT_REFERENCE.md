@@ -1960,7 +1960,7 @@ holds the contract.
 | `bordered` | bool | `false` | Bezel around the scroll view |
 | `gridLines` | string | — | `"horizontal"` `"vertical"` `"both"` |
 
-**`<Column>` attributes:** `id` (required, matches row dict key), `title`, `width`, `minWidth`, `alignment`, and `sortable` (enables the native header click callback on AppKit). A list registers `onColumnSort(callback)` to receive the clicked column ID and can set its native arrow with `setSortIndicator(columnId, ascending)`. `buttonSymbol` renders a borderless SF Symbol button in that column; `onColumnButton(callback)` receives the list, column id, and row. A `<List rowMenu="action">` gives every row a native contextual menu (SwiftUI `.contextMenu`): the action receives `(list, index, row)` when the menu opens and returns `{title, action, systemImage, disabled}` and `{separator = true}` records. A column with `buttonSymbol="ellipsis.circle" buttonMenu="true"` opens the same menu from each row's "More" button, so row actions need no buttons under the list and a `scrollDisabled` list can scroll with its page. Tests read and perform row menus with `bridge._tableRowMenu(list, row[, item])` (1-based).
+**`<Column>` attributes:** `id` (required, matches row dict key), `title`, `width`, `minWidth`, `alignment`, and `sortable` (enables the native header click callback on AppKit). A list registers `onColumnSort(callback)` to receive the clicked column ID and can set its native arrow with `setSortIndicator(columnId, ascending)`. `buttonSymbol` renders a borderless SF Symbol button in that column; `onColumnButton(callback)` receives the list, column id, and row. On AppKit, a button column can use `imageKey` for a per-row SF Symbol, `helpKey` for its tooltip and accessibility action label, and `enabledKey` for a boolean row field controlling the native button. A `<List rowMenu="action">` gives every row a native contextual menu (SwiftUI `.contextMenu`): the action receives `(list, index, row)` when the menu opens and returns `{title, action, systemImage, disabled}` and `{separator = true}` records. A column with `buttonSymbol="ellipsis.circle" buttonMenu="true"` opens the same menu from each row's "More" button, so row actions need no buttons under the list and a `scrollDisabled` list can scroll with its page. Tests read and perform row menus with `bridge._tableRowMenu(list, row[, item])` (1-based).
 
 **`<Slider>` attributes:** `min`, `max`, `value`, `tickMarks`,
 `allowsTickMarkValuesOnly`.
@@ -2040,8 +2040,10 @@ etlua, never assembled in controller code:
 
 A toolbar's content follows state the SwiftUI way: the template says which
 button an item is, and the controller describes the window again when that
-state changes. The item keeps its place; only its label, tooltip, symbol and
-action change. Which items the toolbar has is fixed when the window is made.
+state changes. Matching item IDs keep their native items and custom views,
+including a focused search field. The description may add, remove or reorder
+items; AppKit owns placement and overflow. IDs must be unique, except for
+`flexibleSpace`. Labels, symbols, tooltips, actions and validation update in place.
 
 ```xml
 <% if scanning then %>

@@ -1,5 +1,0 @@
-<HStack spacing="8" alignment="center">
-  <ContentPresenter />
-  <Spacer />
-  <Button title="Done" action="<%= action %>" keyboardShortcut="defaultAction" />
-</HStack>

@@ -41,51 +41,17 @@ refs.header.trailingMaxWidthFraction = 0
 resize(root, 400)
 t.expect(not below(refs.heading, refs.actions), "zero disables adaptive layout")
 
-local function header(buttons)
-	return xml.renderFile("apps/diskmap/views/components/PageHeader.etlua", {
-		header = {icon = "hammer", color = "blue", title = "Xcode DerivedData"},
-		summary = "8.0 GB · ~/Library/Developer/Xcode/DerivedData", buttons = buttons,
-	}, ns)
+-- Diskmap headers reserve no space for operations; the native toolbar owns them.
+local page, refs = xml.renderFile("apps/diskmap/views/components/PageHeader.etlua", {
+	header = {icon = "hammer", color = "systemBlue", title = "Xcode DerivedData"},
+	summary = "8.0 GB · ~/Library/Developer/Xcode/DerivedData",
+}, ns)
+for _, width in ipairs({350, 1000, 2000, 350}) do
+	resize(page, width)
+	t.assertEqual(refs.pageActions, nil, "headers have no inline operation row at " .. width)
+	t.expect(refs.pageTitle.size.width > 0, "the title keeps usable width at " .. width)
+	t.expect(page.fittingSize.height < 100, "the header keeps its concise intrinsic height at " .. width)
 end
-local actions = {
-	{id = "reveal", title = "Show in Finder", action = "reveal"},
-	{id = "open", title = "Open Xcode DerivedData…", action = "open"},
-	{id = "remove", title = "Clear Selected Locations", action = "remove"},
-}
-local page, r = header(actions)
-resize(page, 2000)
-t.expect(below(r.pageHeading, r.pageActions), "three buttons always go below even at wide widths")
-t.expect(r.pageHeading.size.height < 100, "stacked heading keeps its intrinsic height")
-t.assertEqual(r.pageActions.frame.origin.x, 0, "action row begins at the header leading edge")
-resize(page, 350)
-t.expect(r.pageActions.size.height > r.reveal.size.height, "long groups wrap into additional rows")
-t.expect(below(r.pageHeading, r.pageActions), "wrapped actions remain below the title")
-resize(page, 2000)
-t.assertEqual(r.pageActions.subviews[1], r.reveal, "wrapping preserves the same button")
-
-actions[3].hidden = true
-local pair, p = header(actions)
-resize(pair, 2000)
-t.expect(not below(p.pageHeading, p.pageActions), "hidden third button is excluded from count")
-resize(pair, 500)
-t.expect(below(p.pageHeading, p.pageActions), "two long buttons move below at narrow widths")
-resize(pair, 2000)
-t.expect(not below(p.pageHeading, p.pageActions), "two buttons return inline when their width fits the budget")
-p.open.title = "Open a much longer SDK installation and all of its development tools…"
-resize(pair, 1000)
-t.expect(below(p.pageHeading, p.pageActions), "changed native button titles affect the width decision")
-local single, s = header({actions[1]})
-resize(single, 1000)
-t.expect(not below(s.pageHeading, s.pageActions), "one short action stays inline")
-resize(single, 300)
-t.expect(below(s.pageHeading, s.pageActions), "one long action also obeys the width budget")
-local disabled, d = header({{id = "disabled", title = "Open SDKs…", action = "open", disabled = true}})
-resize(disabled, 200)
-t.expect(below(d.pageHeading, d.pageActions), "disabled buttons still reserve their native width")
-local empty, e = header({})
-resize(empty, 500)
-t.expect(e.pageActions == nil, "empty headers have no blank action row")
-t.expect(e.pageTitle.size.width > 0, "empty actions leave title space intact")
 -- Retained changes patch the property in place, including its removal.
 local Template = require("ui.template")
 local path = os.tmpname() .. ".etlua"

@@ -5,25 +5,34 @@ page's sizing; the rules are short so that every page follows them.
 
 ## Width: one frame for every page
 
-Every page, card pages and table pages alike, sits in one frame: Diskmap's
-`components/PageFrame` component. It owns the page margin and the readable
-column (960pt, centered in a wider window), and the scroll view when the
-page scrolls. One frame for all pages: moving between pages never changes
-where content starts or ends, and no page can forget the cap.
+Diskmap pages use exactly two shells, all with the same 960pt centered
+column, 24pt margin and 16pt section spacing from
+`apps/diskmap/views/layouts/PageResources.etlua`:
+
+- `ContentPage`: one scrolling surface for reading, cards and sectioned lists.
+- `TablePage`: a fixed header and controls above a native scrolling table that
+  fills the remaining height.
 
 ```xml
-<PageFrame id="page">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
-    ...
-  </VStack>
-</PageFrame>
+<ContentPage id="page">
+  ...
+</ContentPage>
 ```
 
-A page that fills the height and does not scroll (Storage Map, Folder Map)
-passes `scrolls="false"`. A page never writes its own `ScrollView`,
-margin or width cap. Never cap the window's content frame
-(`layouts/Content.etlua`) instead: the scroll bar would then sit in the
-middle of the window.
+The shell owns the content stack. A page never declares its own outer stack,
+page scroll view, outer margin, width cap or body-height constant. Table
+bodies use `flexGrow="1" flexBasis="0" maxHeight="infinity"`. There are no
+window footers or conditional item-count bars; flags use the Review toolbar
+badge. Selection details belong within the page beside their related content.
+Never cap the window's content host (`layouts/Content.etlua`): a scrolling
+page keeps its scroll bar at the window edge.
+
+Overview, Storage Map, Folder Map and File Types compose the same `Breakdown`
+widget in `ContentPage`: a compact native chart on the left, a concise legend
+on the right, and the complete list below. The icon button shows the alternate
+chart mode. In rectangle mode the chart spans the whole widget, with no side legend.
+Switching modes never removes the complete list below. Page and selection operations belong in `NSToolbar`;
+row flags and context menus stay local.
 
 Why: Apple caps reading width in its own layouts (UIKit's
 `readableContentGuide` is 672pt at the default text size; a grouped SwiftUI

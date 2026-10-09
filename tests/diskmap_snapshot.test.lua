@@ -162,8 +162,8 @@ t.assertEqual(dividers, #overview.rows - 1, "with a vertical separator between n
 local _, historyRefs = xml.renderFile("apps/diskmap/views/sections/Changes.etlua", {changes = {rows = overview.rows, detail = "Since Sep 20 · 3 scans recorded"}, actions = {}}, ns)
 t.expect(historyRefs.changesSection ~= nil and historyRefs.showAllChanges == nil, "history changes show without Show All")
 local full = Locations:changesSince(many)
-local _, sheetRefs = xml.renderFile("apps/diskmap/views/sheets/SnapshotChanges.etlua", {title = full.title, detail = full.detail,
-	actions = {close = function() end, rowMenu = function() return {} end, reveal = function() end}}, ns)
+local _, sheetRefs = xml.renderFile("apps/diskmap/views/pages/SnapshotChanges.etlua", {page = {title = full.title, icon = "clock.arrow.circlepath", color = "systemBlue"}, detail = full.detail,
+	actions = {markRow = function() end, close = function() end, rowMenu = function() return {} end, reveal = function() end}}, ns)
 sheetRefs.changes:replaceRows(full.rows)
 t.assertEqual(sheetRefs.changes.rowCount, #full.rows, "the sheet lists every changed location")
 

@@ -1,0 +1,28 @@
+<ContentPage id="page">
+<%
+  -- The welcome tour (helpers/Tour.lua): every page is rendered once, stacked
+  -- in a ZStack that clips, and one shows at a time. Continue and Back visit
+  -- the steps (pages/Tour.lua), and the page dots below them follow. Each
+  -- screenshot is cropped by tour/capture.lua to exactly this image box, at
+  -- twice its size in pixels; keep its BOX in step.
+  local TOUR = { imageWidth = 524, imageHeight = 290 }
+%>
+  <ZStack id="pages" clipsToBounds="true">
+    <% for _, page in ipairs(pages) do %>
+    <VStack id="page_<%= page.index %>" spacing="12" alignment="leading" hidden="<%= page.index ~= current and "true" or "false" %>">
+      <Image id="image_<%= page.index %>" path="<%= page.image %>" darkPath="<%= page.darkImage %>" width="<%= TOUR.imageWidth %>" height="<%= TOUR.imageHeight %>" accessibilityLabel="<%= page.title %>" />
+      <Label text="<%= page.title %>" size="17" weight="semibold" maxWidth="infinity" lines="0" />
+      <Label text="<%= page.text %>" size="13" maxWidth="infinity" lines="0" />
+      <Spacer />
+    </VStack>
+    <% end %>
+  </ZStack>
+  <PageControl id="dots" numberOfPages="<%= #pages %>" currentPage="<%= current - 1 %>" maxWidth="infinity" onChange="goTo" />
+  <HStack spacing="8" alignment="center">
+    <Toggle id="showOnStart" label="Show this guide on start" value="<%= showOnStart and "true" or "false" %>" onChange="toggleShowOnStart" />
+    <Spacer />
+    <Button id="skip" title="Skip" action="close" keyboardShortcut="cancelAction" />
+    <Button id="back" title="Back" action="back" />
+    <Button id="next" title="Continue" style="borderedProminent" action="next" keyboardShortcut="defaultAction" />
+  </HStack>
+</ContentPage>

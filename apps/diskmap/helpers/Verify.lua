@@ -47,6 +47,7 @@ end
 -- {path, resourceId, bundleId, leftover, identity}; `resource` its catalog
 -- row when it has one.
 function Verify.check(item, resource, home, probes)
+	if item.reviewOnly then return false, {code = "review", reason = "it was flagged for inspection and must be managed by its owner"} end
 	probes = probes or {}
 	local path = item.path
 	-- Compared as the basket compares: /etc is /private/etc, in any case.
@@ -78,7 +79,7 @@ function Verify.check(item, resource, home, probes)
 	return true
 end
 
--- The result of a cleanup, as the sheet reports it: what moved, grouped
+-- The result of a cleanup, as the review page reports it: what moved, grouped
 -- skip reasons ("2 skipped because Xcode was open"), and free space before,
 -- now and after emptying the Trash.
 function Verify.summary(result)

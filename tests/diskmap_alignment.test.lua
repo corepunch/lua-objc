@@ -52,11 +52,13 @@ local window = app:createWindow()
 bridge._flushLayout()
 local hero = app.page.refs
 t.expect(hero.lowSpace ~= nil, "a nearly full disk shows the low-space warning")
-t.expect(hero.legend ~= nil and hero.hiddenSpace ~= nil, "the card lists categories and hidden space")
-local column = hero.legend.superview
-local legend, hidden = #hero.legend.subviews, #hero.hiddenSpace.subviews
--- The warning, each legend and hidden-space row.
-assertOneColumn(symbolRows(column), 1 + legend + hidden, "the Overview card")
+t.expect(hero.breakdownLegend ~= nil and hero.hiddenSpace ~= nil, "the card lists categories and hidden space")
+local column = hero.breakdownLegend.superview
+local legend, hidden = #hero.breakdownLegend.subviews, #hero.hiddenSpace.subviews
+-- Each legend and hidden-space row; the warning heads the page above the card.
+assertOneColumn(symbolRows(column), legend + hidden, "the Overview card")
+local function within(view, ancestor) while view do if view == ancestor then return true end; view = view.superview end; return false end
+t.expect(within(hero.lowSpace, hero.breakdownHeading) and not within(hero.lowSpace, hero.breakdown), "the low-space warning is in the heading, above the card")
 
 -- The "could not measure" card: its own symbol and each reason's symbol share
 -- one column, and the title, each reason's name and what is written under it
@@ -186,51 +188,6 @@ t.expect(topics > 0, "the guide has topics with details")
 local plain = xml.render('<DisclosureGroup label="Details"><Label text="Body" /></DisclosureGroup>', {}, ns)
 t.assertEqual(plain.subviews[1].subviews[1].frame.origin.x, 0, "without indicatorWidth the triangle stays at the leading edge")
 t.assertEqual(plain.subviews[2].subviews[1].frame.origin.x, 0, "and its content is not indented")
-
--- "Worth a look" marks with a native checkbox, not a worded button: a
--- title that changed from Mark to Marked widened the button and pushed its
--- row's size out of line. Checking a row must not move anything: the boxes
--- and the header symbol share one centre line, names start at one edge and
--- sizes end at one edge, before and after.
-app:show("map")
-local function centerX(view) local f = view.frameInWindow; return f.origin.x + f.size.width / 2 end
-local function marks(width, height, marked)
-	local page = app.page.refs.page
-	page.size = ns.Size(width, height)
-	page:layout(width)
-	local rows = {}
-	for index = 1, 3 do
-		local box = app.page.refs["worthMark_" .. index]
-		if box then
-			local row = box.superview.superview
-			table.insert(rows, {box = box, name = row.subviews[2], size = row.subviews[3], header = row.superview.subviews[1]})
-		end
-	end
-	t.expect(#rows > 0, "the map has suggestions to mark")
-	local first = rows[1]
-	local headerSymbol = first.header.subviews[1]
-	for index, row in ipairs(rows) do
-		local label = "row " .. index .. " at " .. width .. (marked and " marked" or "")
-		t.assertEqual(row.box.className, "NSButton", label .. " marks with a native checkbox")
-		t.assertEqual(row.box.title, "", label .. " has no word beside its box")
-		t.assertEqual(row.box.state, (index == 1 and marked) and 1 or 0, label .. " shows its marked state")
-		t.assertEqual(row.box.accessibilityLabel, "Mark " .. row.name.text .. " for cleanup", label .. " names its action for VoiceOver")
-		t.assertEqual(centerX(row.box), centerX(headerSymbol), label .. " centres its box on the header symbol")
-		t.assertEqual(row.name.frameInWindow.origin.x, first.header.subviews[2].frameInWindow.origin.x, label .. " starts its name at the header title")
-		local f, g = row.size.frameInWindow, first.size.frameInWindow
-		t.assertEqual(f.origin.x + f.size.width, g.origin.x + g.size.width, label .. " ends its size on the shared edge")
-	end
-	return rows[1].size.frameInWindow.origin.x
-end
-for _, size in ipairs({{width = 950, height = 580}, {width = 1400, height = 900}}) do
-	local before = marks(size.width, size.height, false)
-	app.page.refs.worthMark_1.state = 1
-	ns._invokeAction(app.page.refs.worthMark_1)
-	t.assertEqual(marks(size.width, size.height, true), before, "marking leaves the size where it was")
-	app.page.refs.worthMark_1.state = 0
-	ns._invokeAction(app.page.refs.worthMark_1)
-	t.assertEqual(marks(size.width, size.height, false), before, "and so does clearing it")
-end
 
 window:close()
 

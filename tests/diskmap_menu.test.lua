@@ -51,7 +51,7 @@ for _, page in ipairs(Navigation.destinations) do
 		t.assertEqual(entry.keyEquivalent, page.key or "", page.name .. " shortcut")
 	end
 end
-t.assertEqual(pages, 26, "every destination, including the Folder Map, each kind of work, macOS Folders and Diskmap Help")
+t.assertEqual(pages, 27, "every destination, including the Folder Map, each kind of work, macOS Folders and Diskmap Help")
 t.expect(find(go, "Overview").checked and not find(go, "Large Files").checked, "the current page is checked")
 bridge._performMainMenuItem("Go", "Large Files")
 t.assertEqual(app.destination, "files", "Go › Large Files opens the page")

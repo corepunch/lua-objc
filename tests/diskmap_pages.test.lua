@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 _G.__headless = true
 local t = require("TestKit")
 local Mock = require("apps.diskmap.services.Mock")
@@ -30,30 +31,11 @@ t.expect(app.page.refs.hiddenSpace ~= nil, "the overview lists hidden space")
 
 -- Map: rings by default, drill in and out, switch to rectangles.
 app:show("map")
-t.expect(page().sunburst ~= nil and page().sunburst.subviews[1].className == "LuaArcView",
+t.expect(page().breakdownChart ~= nil and page().breakdownChart.subviews[1].className == "LuaArcView",
 	"the map starts as flat rings")
-t.expect(page().sunburst.subviews[1].fitDiameter > 0, "which scale to their pane")
+t.expect(page().breakdownChart.subviews[1].fitDiameter > 0, "which scale to their pane")
 t.expect(page().mapList.rowCount > 5, "the map lists the focus's children")
--- The rings scale to their pane instead of scrolling inside it, and "Worth a
--- look" sits under the list so the rings keep the pane's height.
-local function inside(view, ancestor)
-	while view do
-		if view == ancestor then return true end
-		view = view.superview
-	end
-	return false
-end
-local function scrolled(view, stop)
-	while view and view ~= stop do
-		if view.className == "NSScrollView" then return true end
-		view = view.superview
-	end
-	return false
-end
-t.expect(inside(page().sunburst, page().mapChartPane) and not scrolled(page().sunburst, page().mapChartPane),
-	"the rings sit in their pane with no scroll view of their own")
-t.expect(page().worthMark_1 ~= nil and not inside(page().worthMark_1, page().mapChartPane),
-	"beside the rings, Worth a look sits under the list")
+t.expect(page().breakdown ~= nil and page().breakdownSummary ~= nil, "the map uses the shared chart and concise summary")
 -- Slivers fold into "Other" so every mark is wide enough to see and point at.
 local mapNodes, mapTotal = Categories:mapNodes("")
 for _, node in ipairs(mapNodes) do
@@ -73,16 +55,16 @@ for _, node in ipairs(mapNodes) do
 end
 app.page.actions.chartSelect("developer", 1)
 t.assertEqual(app.env:page("map").focusId, "developer", "clicking a group focuses it")
-t.expect(page().mapSummary.text:find("Developer", 1, true) == 1, "the focused map names Developer")
+t.assertEqual(page().breakdownTitle.text, "Developer", "the focused map names Developer")
 -- No Up button: the path's earlier steps are the way back. Each is a
 -- label, as before, that underlines its text while the pointer is over it.
 local crumbs = {}
-for _, view in ipairs(page().mapBar.subviews) do
+for _, view in ipairs(page().breakdownTrail.subviews) do
 	if view.className == "LuaLabel" and view.underlinesOnHover then table.insert(crumbs, view) end
 end
 t.assertEqual(#crumbs, 1, "the focused map offers one step back")
 t.assertEqual(crumbs[1].text, "All Storage", "named for the level it shows")
-t.assertEqual(#page().mapBar.subviews, 5, "the bar holds the two steps, a chevron, a spacer and the style picker, no Up button")
+t.assertEqual(#page().breakdownTrail.subviews, 1, "the trail holds only the level above, no Up button; the title names the level shown")
 t.expect(not crumbs[1].underlined, "at rest the step is plain text")
 crumbs[1].hovered = true
 t.expect(crumbs[1].underlined, "under the pointer it is underlined")
@@ -91,18 +73,15 @@ t.expect(not crumbs[1].underlined, "and plain again when the pointer leaves")
 app.page.actions.focus_1()
 t.assertEqual(app.env:page("map").focusId, "", "clicking the step goes back up")
 app.page.actions.chartSelect("developer", 1)
-app.page.actions.pickStyle(1)
-t.expect(page().treemap ~= nil and page().sunburst == nil, "rectangles replace the rings")
-t.assertEqual(page().mapList, nil, "rectangles name every item, so the list serves the rings only")
-local treemapWidth = page().mapChartPane.frame.size.width
-t.expect(inside(page().worthMark_1, page().mapChartPane), "without a list, Worth a look sits under the rectangles")
+app:toggleChartStyle()
+t.expect(page().breakdownRectangles ~= nil and page().breakdownChart == nil, "rectangles replace the rings")
+t.expect(page().mapList ~= nil, "the full list remains below rectangles")
 app.page.actions.chartHover("xcode")
-t.expect(page().mapHover.text:find("Developer › Xcode", 1, true) == 1, "hover describes a node in place")
+t.expect(page().breakdownRectangles.toolTip:find("Developer › Xcode", 1, true) == 1, "hover describes a node in its native tooltip")
 app.page.actions.up()
 t.assertEqual(app.env:page("map").focusId, "", "the center or breadcrumb goes back up")
-app.page.actions.pickStyle(0)
+app:toggleChartStyle()
 t.expect(page().mapList ~= nil and page().mapList.rowCount > 0, "the rings bring the list back")
-t.expect(page().mapChartPane.frame.size.width < treemapWidth, "the rectangles take the list's width")
 
 -- Applications: leftovers carry a confidence tier; High can be marked at once.
 app:show("applications")
@@ -126,9 +105,9 @@ local marked = app.env.basket:count()
 t.expect(marked >= 2, "every high-confidence leftover is marked")
 t.assertEqual(app.page.refs.decisionAction.title, "Review Marked Items…", "fully staged leftovers offer final review")
 t.expect(app.page.refs.decisionAction.enabled, "review stays accessible after staging")
-t.expect(perform(leftovers, 1, "Unmark"), "a marked row offers Unmark in its menu")
+t.expect(perform(leftovers, 1, "Remove Review Flag"), "a marked row offers Unmark in its menu")
 t.assertEqual(app.env.basket:count(), marked - 1, "unmarking removes the row from the basket")
-t.expect(perform(leftovers, 1, "Mark for Cleanup"), "a row is marked from its menu")
+t.expect(perform(leftovers, 1, "Flag for Review"), "a row is marked from its menu")
 t.assertEqual(app.env.basket:count(), marked, "marking adds the row again")
 
 -- Xcode: older device support and missing projects.
@@ -136,13 +115,13 @@ app:show("xcode")
 t.assertEqual(page().list_support.rowCount, 4, "device support lists each OS version")
 t.assertEqual(page().list_derived.rowCount, 2, "DerivedData lists each project")
 t.assertEqual(page().list_archives.rowCount, 2, "archives are listed")
-t.expect(page().bulk_support.enabled and page().bulk_derived.enabled, "bulk marks start enabled")
+t.expect(O(app, "bulk_support").enabled and O(app, "bulk_derived").enabled, "bulk marks start enabled")
 app.page.actions.bulk_support()
 app.page.actions.bulk_derived()
 t.assertEqual(app.env.basket:count(), marked + 3, "older device support and missing projects are marked")
-t.expect(not page().bulk_support.enabled, "marked sections disable their bulk action")
+t.expect(not O(app, "bulk_support").enabled, "marked sections disable their bulk action")
 local unmark
-for _, item in ipairs(bridge._tableRowMenu(page().list_support, 2)) do if item.title == "Unmark" then unmark = true end end
+for _, item in ipairs(bridge._tableRowMenu(page().list_support, 2)) do if item.title == "Remove Review Flag" then unmark = true end end
 t.expect(unmark, "marked rows say so in their menu")
 
 -- Projects: artifacts grouped with git state.
@@ -154,20 +133,21 @@ t.assertEqual(bridge._tableRowMenu(page().projects, 1)[1].title, "Mark Build Dat
 -- Updates: installers found in Downloads.
 app:show("updates")
 t.expect(page().installers ~= nil and page().installers.rowCount >= 1, "installers found on disk are listed")
-t.expect(perform(page().installers, 1, "Mark for Cleanup"), "an installer can be marked")
+t.expect(perform(page().installers, 1, "Flag for Review"), "an installer can be marked")
 local total = app.env.basket:count()
 t.assertEqual(total, marked + 4, "the installer joins the basket")
-t.expect(window.subtitle:find(total .. " marked for cleanup", 1, true) ~= nil, "the subtitle counts marked items")
+t.expect(not window.subtitle:find("flagged", 1, true), "the title does not repeat the toolbar review badge")
 
--- The collector marks what is dropped on it.
+-- Review receives files without a window status bar.
+app:openReview()
 local before = app.env.basket:count()
 local dropPath = app.env.model.home .. "/Downloads/Dropped Installer.dmg"
-t.expect(bridge._dropFiles(app.collector.collector, {dropPath}), "a file dropped on the collector is marked")
+t.expect(bridge._dropFiles(app.page.refs.pageContent, {dropPath}), "a file dropped onto Review is flagged")
 t.assertEqual(app.env.basket:count(), before + 1, "the dropped file joins the basket")
-t.expect(app.collector.collectorText.text:find((before + 1) .. " items", 1, true) ~= nil and app.collector.collectorReview.enabled,
-	"the collector counts marked items and offers Review")
-t.expect(not bridge._dropFiles(app.collector.collector, {"/System"}), "system locations are refused")
-t.assertEqual(shownErrors[#shownErrors], "Some items were not marked", "a refusal is explained")
+
+t.expect(bridge._dropFiles(app.page.refs.pageContent, {"/System"}), "system locations can be flagged for review")
+t.expect(require("apps.diskmap.models.Marks"):find("/System").reviewOnly, "a system flag is inspection only")
+app.env.basket:toggle({path = "/System"})
 app.env.basket:toggle({path = dropPath})
 total = app.env.basket:count()
 
@@ -182,15 +162,15 @@ service.measure = measure
 t.assertEqual(measured, 0, "moving marked items measures nothing again; they leave with their marked sizes")
 t.assertEqual(app.env.basket:count(), 0, "moved items leave the basket")
 t.assertEqual(service.diskSpace().freeKb, before, "moving to Trash frees nothing yet")
-t.expect(not app.env:page("basket").refs.emptyTrash.hidden, "emptying the Trash is offered next")
+t.expect(not O(app, "emptyTrash").hidden, "emptying the Trash is offered next")
 t.expect(app.env:page("basket"):emptyTrash(), "the Trash can be emptied")
 t.expect(service.diskSpace().freeKb > before, "emptying the Trash frees space")
 t.expect(app.env:page("basket").refs.reviewSummary.text:find("more free space", 1, true) ~= nil, "freed space is reported as measured")
 t.expect(app.navigation:back(), "Back leaves the basket page like any other")
 t.assertEqual(app.destination, "updates", "and returns to the page the marks were reviewed from")
-app.env.history:open(window)
+app:show("history")
 t.assertEqual(app.env.history.refs.entries.rowCount, total + 1, "every move and the empty are in the history")
-app.env.history:close()
+app.navigation:back()
 
 -- Back and forward follow visited pages.
 t.expect(app.navigation:back(), "back is available after navigating")
@@ -207,15 +187,15 @@ app.env:page("map"):setFocus("")
 app:show("overview")
 local hero = app.page
 local heroActions = hero.actions
-local usedTotal, usedCaption = hero.refs.chartCenter.subviews[1].text, hero.refs.chartCenter.subviews[2].text
-t.assertEqual(hero.refs.chart.subviews[#hero.refs.chart.subviews].className, "LuaPointerView", "the overview ring takes the pointer")
+local breakdownTotal, breakdownCaption = hero.refs.breakdownTotal.text, hero.refs.breakdownCaption.text
+t.assertEqual(hero.refs.breakdownChart.subviews[#hero.refs.breakdownChart.subviews].className, "LuaPointerView", "the overview ring takes the pointer")
 heroActions.chartHover("developer")
 t.assertEqual(hero.refs.chartDetail, nil, "hover has no redundant subtitle below the ring")
-t.assertEqual(hero.refs.usedTotal.text, "Developer", "the hole names the hovered sector, as Apple's SectorMark sample does")
-t.expect(hero.refs.usedCaption.text ~= usedCaption and hero.refs.usedCaption.text:find("B$") ~= nil, "with its size")
+t.assertEqual(hero.refs.breakdownTotal.text, "Developer", "the hole names the hovered sector, as Apple's SectorMark sample does")
+t.expect(hero.refs.breakdownCaption.text ~= breakdownCaption and hero.refs.breakdownCaption.text:find("B$") ~= nil, "with its size")
 heroActions.chartHover(nil)
-t.assertEqual(hero.refs.usedTotal.text, usedTotal, "and returns the hole to the used total")
-t.assertEqual(hero.refs.usedCaption.text, usedCaption, "and its caption")
+t.assertEqual(hero.refs.breakdownTotal.text, breakdownTotal, "and returns the hole to the used total")
+t.assertEqual(hero.refs.breakdownCaption.text, breakdownCaption, "and its caption")
 heroActions.chartSelect("free")
 t.assertEqual(app.destination, "overview", "free space has nothing inside to open")
 heroActions.chartSelect("developer")
@@ -230,34 +210,34 @@ t.assertEqual(app.env:page("map").focusId, "", "at the whole disk")
 -- SectorMark sample does, and returns to the measured total.
 app:show("map")
 local mapPage = app.env:page("map")
-local mapTitle, mapDetail = mapPage.refs.mapCenterTitle.text, mapPage.refs.mapCenterDetail.text
+local mapTitle, mapDetail = mapPage.refs.breakdownTotal.text, mapPage.refs.breakdownCaption.text
 local mapNode = mapPage.nodeById.developer
 app.page.actions.chartHover("developer")
-t.assertEqual(mapPage.refs.mapCenterTitle.text, mapNode.label, "the Map's hole names the hovered sector")
-t.assertEqual(mapPage.refs.mapCenterDetail.text, mapNode.detail, "with its size")
+t.assertEqual(mapPage.refs.breakdownTotal.text, mapNode.label, "the Map's hole names the hovered sector")
+t.assertEqual(mapPage.refs.breakdownCaption.text, mapNode.detail, "with its size")
 app.page.actions.chartHover(nil)
-t.assertEqual(mapPage.refs.mapCenterTitle.text, mapTitle, "leaving returns the hole to the total")
-t.assertEqual(mapPage.refs.mapCenterDetail.text, mapDetail, "and its caption")
+t.assertEqual(mapPage.refs.breakdownTotal.text, mapTitle, "leaving returns the hole to the total")
+t.assertEqual(mapPage.refs.breakdownCaption.text, mapDetail, "and its caption")
 
 -- The keyboard does the same: focus names a sector, Return opens it, and
 -- Delete, which has no level to go up to here, stays on the page.
 app:show("overview")
 hero = app.page
-local heroPointer = hero.refs.chart.subviews[#hero.refs.chart.subviews]
+local heroPointer = hero.refs.breakdownChart.subviews[#hero.refs.breakdownChart.subviews]
 t.expect(heroPointer.acceptsFirstResponder, "the overview ring takes keyboard focus")
 bridge._pointerSend(heroPointer, "key", "tab")
-t.expect(hero.refs.usedTotal.text ~= usedTotal, "and in the hole")
+t.expect(hero.refs.breakdownTotal.text ~= breakdownTotal, "and in the hole")
 bridge._pointerSend(heroPointer, "key", "delete")
 t.assertEqual(app.destination, "overview", "delete stays on the overview")
 -- Tab starts at the largest sector: on the synthetic disk, free space.
-t.expect(hero.refs.usedTotal.text == "Free", "tab focuses the largest sector")
+t.expect(hero.refs.breakdownTotal.text == "Free", "tab focuses the largest sector")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "overview", "which has nothing inside to open")
 for _ = 1, 8 do
-	if hero.refs.usedTotal.text == "Developer" then break end
+	if hero.refs.breakdownTotal.text == "Developer" then break end
 	bridge._pointerSend(heroPointer, "key", "right")
 end
-t.expect(hero.refs.usedTotal.text == "Developer", "arrows reach the categories")
+t.expect(hero.refs.breakdownTotal.text == "Developer", "arrows reach the categories")
 bridge._pointerSend(heroPointer, "key", "return")
 t.assertEqual(app.destination, "map", "return opens the Map inside the focused category")
 t.assertEqual(app.env:page("map").focusId, "developer", "focused on it")
@@ -265,12 +245,12 @@ app.env:page("map"):setFocus("")
 
 -- Drilling creates the new level directly.
 app:updateRows()
-local rings = app.page.refs.sunburst
+local rings = app.page.refs.breakdownChart
 app.page.actions.chartSelect("developer", 1)
-t.expect(app.page.refs.sunburst ~= rings, "drilling creates a new chart")
-local inside = app.page.refs.sunburst
+t.expect(app.page.refs.breakdownChart ~= rings, "drilling creates a new chart")
+local inside = app.page.refs.breakdownChart
 app.page.actions.up()
-t.expect(app.page.refs.sunburst ~= rings and app.page.refs.sunburst ~= inside, "going back creates another new chart")
+t.expect(app.page.refs.breakdownChart ~= rings and app.page.refs.breakdownChart ~= inside, "going back creates another new chart")
 
 
 os.exit(t.summary() and 0 or 1)

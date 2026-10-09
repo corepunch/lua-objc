@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 _G.__headless = true
 local Marks = require("apps.diskmap.models.Marks")
 local t = require('TestKit')
@@ -98,9 +99,8 @@ selected.name = string.rep('long-project-name-',12)
 selected.branch = string.rep('feature/branch/',12)
 selected.reasons = {string.rep('Complete local evidence that must stay accessible. ',60)}
 app:updateRows(); bridge._flushLayout()
-t.expect(page.refs.selectionEvidence.frame.size.height <= 144,'long evidence scrolls inside a bounded inspector')
-t.expect(page.refs.openOwner.frame.size.width > 0 and page.refs.openOwner.enabled,'owner action remains usable with long evidence')
-t.expect(page.refs.page.frame.size.height > 200,'long evidence leaves usable inventory space (' .. page.refs.page.frame.size.height .. ' page, ' .. page.refs.selectionSection.frame.size.height .. ' selection, ' .. page.refs.selectionEvidence.frame.size.height .. ' evidence)' )
+t.expect(page.refs.selectedDetail.superview ~= nil, 'long evidence belongs to the page scroller')
+t.expect(O(app, "openOwner").enabled,'owner action remains usable with long evidence')
 t.assertEqual(Worktrees.roleNames.recent,'Recent','compact recent label fits')
 t.assertEqual(Worktrees.roleNames.active,'In use','confirmed activity stays distinct')
 service.openOwner = function() return false,'Owner app unavailable' end

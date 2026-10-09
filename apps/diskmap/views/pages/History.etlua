@@ -1,0 +1,13 @@
+<TablePage id="page">
+
+  <%- partial("../components/PageHeader.etlua", {header = page, summaryId = "detail"}) %>
+
+  <List flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" id="entries" style="fullWidth" header="false" alternatingRows="false" rowHeight="44">
+    <Column id="name" title="Action" subtitleKey="subtitle" minWidth="220" />
+    <Column id="date" title="When" width="160" minWidth="130" />
+    <Column id="result" title="Result" width="110" minWidth="80" />
+    <Column id="size" title="Size" width="90" minWidth="70" alignment="trailing" />
+  </List>
+
+  <ContentUnavailable id="historyEmpty" title="No Actions Yet" systemImage="clock" description="Actions Diskmap takes appear here." flexGrow="1" flexBasis="0" maxHeight="infinity" />
+</TablePage>

@@ -1,4 +1,6 @@
 <VStack flexShrink="1" spacing="2" alignment="leading">
   <Label <% if titleId then %>id="<%= titleId %>" <% end %>text="<%= title %>" size="15" weight="semibold" />
-  <Label <% if detailId then %>id="<%= detailId %>" <% end %>text="<%= detail %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
+  <% if detailId or (detail and detail ~= "") then %>
+  <Label <% if detailId then %>id="<%= detailId %>" <% end %>text="<%= detail or "" %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
+  <% end %>
 </VStack>

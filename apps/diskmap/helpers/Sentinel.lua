@@ -31,7 +31,7 @@ function Sentinel.offer(appPath, bundleId, folders, bytes)
 	return {name = name, bundleId = bundleId, folders = folders, bytes = bytes,
 		notification = {id = "diskmap.sentinel." .. (bundleId or name), title = name .. " is in the Trash",
 			body = "It left " .. Format.size(bytes) .. " of data in your Library. Review it in Diskmap before you empty the Trash.",
-			action = "Mark for Cleanup"}}
+			action = "Flag for Review"}}
 end
 
 return Sentinel

@@ -40,6 +40,8 @@ PageController.__index = PageController
 -- (or a function that builds it when the page is first mounted),
 -- ns, viewsDir, resources, store }. `store` is bound before every request
 -- and action (lua/data/model.lua), so each window of an app reads its own.
+-- `presented(data)` explicitly hands the rendered request to the window
+-- coordinator, for native toolbar operations derived from that same data.
 function PageController.new(context)
 	return setmetatable({ context = context, page = context.page, request = context.request }, PageController)
 end
@@ -116,6 +118,7 @@ function PageController:update(state)
 	end
 	if request.rendered then request:rendered(refs) end
 	self.drawing = false
+	if self.context.presented then self.context.presented(data) end
 	if self.context.located then self.context.located(self:location()) end
 end
 

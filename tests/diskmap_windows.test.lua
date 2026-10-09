@@ -23,9 +23,10 @@ t.expect(seen == first.env.model, "a callback of the first window's service read
 -- A page action binds the store of the window it belongs to.
 Model.bind(second.env.model)
 first:show("map")
-first.page.actions.pickStyle(1)
+first.page.actions.chartHover("developer")
 t.expect(Model.db == first.env.model, "an action of the first window reads the first store")
-t.expect(first.env:page("map").style == "rectangles" and second.env:page("map").style == "rings", "and changes only its own page")
+first:toggleChartStyle()
+t.expect(first.env.context.chartStyle == "rectangles" and second.env.context.chartStyle == "rings", "the chart style is the window's own")
 
 -- A location one window discovers is not the other's.
 Model.bind(first.env.model)
@@ -48,7 +49,8 @@ local derived = Locations:find("derived")
 Model.bind(first.env.model)
 first.env.model.kept.derived = nil
 Model.bind(second.env.model)
-first.collectorController:dropToMark({derived.path})
+first:openReview()
+first.page.actions.drop({derived.path})
 t.expect(first.env.basket:count() == 1, "a drop marks in the window it landed on")
 Model.bind(second.env.model)
 t.expect(second.env.basket:count() == 0, "and not in the other window")

@@ -6,7 +6,7 @@ local Mock = require("apps.diskmap.services.Mock")
 local Controller = require("apps.diskmap.Controller")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
 
--- Every page sits in one frame (components/PageFrame): in a wide window
+-- Every page sits in one frame (the two standard shells): in a wide window
 -- its header is no wider than the readable column and starts at the same
 -- leading edge on every page, table pages and maps included.
 local FRAME = {width = 960}
@@ -33,13 +33,11 @@ for _, row in ipairs(Navigation.destinations) do
 	end
 end
 
--- The Folder Map's chart pane keeps a gap from its list, as the Storage
--- Map's panes do: a split view's divider is a hairline, not spacing.
 app:show("folder", {path = "/Users/appleseed/Downloads"})
 bridge._flushLayout()
 local refs = app.page.refs
-local list, chart = refs.folderList.frameInWindow, refs.folderChartHost.frameInWindow
-t.expect(chart.origin.x - (list.origin.x + list.size.width) >= 16, "the folder rings keep a gap from the list")
-
+local chart, summary = refs.breakdownChart.frameInWindow, refs.breakdownSummary.frameInWindow
+t.expect(summary.origin.x - (chart.origin.x + chart.size.width) >= 28, "the shared chart and summary keep their standard gap")
+t.expect(refs.folderList.frameInWindow.origin.y + refs.folderList.frameInWindow.size.height <= refs.breakdown.frameInWindow.origin.y, "the complete folder list is below the card")
 window:close()
 os.exit(t.summary() and 0 or 1)

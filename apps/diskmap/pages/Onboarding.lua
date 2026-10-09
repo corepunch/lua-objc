@@ -1,0 +1,94 @@
+
+-- First-launch access onboarding (#52, after Headroom's), shown before the
+-- first scan when the provider can tell that access is missing. It has two
+-- stages. "disk" comes first in the App Store build while Diskmap has no
+-- access to the startup disk: the App Sandbox shows it only what the person
+-- chooses in an open panel, whatever Full Disk Access says. It returns on
+-- every launch until the disk is chosen, as a scan without it measures
+-- nothing. "fullDisk" asks once for Full Disk Access; while it is open
+-- Diskmap checks access every second and, once it is granted, closes the
+-- page and starts the scan by itself. "Continue Without Access" is always
+-- there. `app.onboarded(granted)` starts the scan.
+local routes = {}
+
+local Onboarding = {view = "pages/Onboarding"}
+routes.onboarding = Onboarding
+
+Onboarding.interval = 1
+
+function Onboarding:init()
+	self.service = self.app.service
+end
+
+-- "disk" while a provider that can tell (the sandboxed Mac) has no access
+-- to the startup disk, otherwise "fullDisk".
+function Onboarding:stage()
+	if self.service.hasDiskAccess() == false then return "disk" end
+	return "fullDisk"
+end
+
+-- Needed when the provider reports access (a real Mac does; the synthetic
+-- disk does not) and it is missing: the disk on every launch, Full Disk
+-- Access until onboarding has been shown.
+function Onboarding:needed()
+	if self.service.hasFullDiskAccess() == nil then return false end
+	if self:stage() == "disk" then return true end
+	if self.service.loadFlag("onboarded") == true then return false end
+	return self.service.hasFullDiskAccess() ~= true
+end
+
+function Onboarding:data()
+	local waiting = self.openedSettings == true
+	return {stage = self:stage(), hidden = {waiting = not waiting, restart = not waiting}}
+end
+
+function Onboarding:activate()
+	self.active, self.openedSettings = true, false
+	self.generation = (self.generation or 0) + 1
+	self.app.awaitAccess(self)
+end
+function Onboarding:rendered(refs) self.refs = refs end
+function Onboarding:deactivate() self.active, self.refs = false, nil end
+
+-- Continues once Full Disk Access has been granted. Returns whether it did.
+function Onboarding:poll()
+	if not self.active or self:stage() ~= "fullDisk" then return false end
+	if self.service.hasFullDiskAccess() == true then self:finish(true); return true end
+	return false
+end
+
+-- The open panel for the startup disk. Once it is chosen the page moves on
+-- to Full Disk Access, or closes when that is already on.
+function Onboarding:chooseDisk()
+	if not self.service.requestDiskAccess() then return false end
+	if self.service.hasFullDiskAccess() == true or self.service.loadFlag("onboarded") == true then
+		self:finish(self.service.hasFullDiskAccess() == true)
+		return true
+	end
+	self.app.refresh()
+	return true
+end
+
+function Onboarding:openSettings()
+	self.service.openSettings("privacy")
+	self.openedSettings = true
+	self.app.refresh()
+end
+
+-- Starts a new instance and quits once it runs; the new one skips the
+-- page if access now works, or shows it again.
+function Onboarding:restart()
+	local relaunch = self.service.relaunch
+	relaunch(function(message) self.service.showError("Diskmap could not restart", message or "Quit and open Diskmap again.") end)
+	return true
+end
+
+function Onboarding:skip() self:finish(false) end
+
+function Onboarding:finish(granted)
+	if not self.active then return end
+	self.service.saveFlag("onboarded", true)
+	self.app.onboarded(granted)
+end
+
+return routes

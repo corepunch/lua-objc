@@ -31,10 +31,13 @@ app:show("folder", {path = "/Users/appleseed/Downloads"})
 local refs = app.page.refs
 for _ = 1, 2 do refs.page.size = ns.Size(900, 600); refs.page:layout(900) end
 local function centre(view) local f = view.frameInWindow; return f.origin.x + f.size.width / 2 end
-t.expect(refs.folderScanning ~= nil, "the folder is being measured")
-t.assertEqual(refs.folderScanning.frame.size.width, refs.folderScanning.superview.frame.size.width, "the measuring view spans the page")
-t.assertEqual(centre(refs.folderSpinner), centre(refs.folderScanning), "its spinner is centred")
-t.assertEqual(centre(refs.folderProgress), centre(refs.folderScanning), "and so is its progress")
+t.expect(refs.computing ~= nil, "the folder is being measured")
+t.assertEqual(refs.computing.frame.size.width, refs.computing.superview.frame.size.width, "the measuring view spans the page")
+t.assertEqual(centre(refs.computingSpinner), centre(refs.computing), "its spinner is centred")
+t.assertEqual(centre(refs.computingStatus), centre(refs.computing), "and so is its progress")
+t.expect(refs.computingStop ~= nil, "measuring a folder can be stopped where its progress shows")
+require("AppKitNative")._invokeAction(refs.computingStop)
+t.expect(app.env:page("folder").loading == nil, "Stop leaves nothing loading")
 window:close()
 
 os.exit(t.summary() and 0 or 1)

@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 _G.__headless = true
 local Marks = require("apps.diskmap.models.Marks")
 local t = require('TestKit')
@@ -42,20 +43,12 @@ app:show('projects'); bridge._flushLayout()
 local refs = app.page.refs
 t.expect(refs.projectRoots.frame.size.width > 400, 'project explanation keeps readable width at 950 points')
 t.expect(not refs.projectRoots.text:find('Searching', 1, true), 'completed discovery does not say Searching')
-t.assertEqual(refs.markStale.title, 'Mark Old Build Data', 'bulk action names the generated data')
-t.expect(refs.filter.superview ~= refs.projectRoots.superview, 'filters do not compress the heading')
+t.assertEqual(O(app, "markStale").title, 'Mark Old Build Data', 'toolbar action names the generated data')
+t.assertEqual(refs.markStale, nil, 'the bulk operation has no duplicate inline button')
 for _, width in ipairs({950, 1100, 1400}) do
 	window.size = ns.Size(width, 580); window:layout(); bridge._flushLayout()
-	local controls = refs.filter.superview
-	t.assertEqual(refs.markStale.superview, controls, 'project marking and filtering share a row at ' .. width)
-	t.assertEqual(refs.markStale.frame.origin.x, 0, 'project marking starts at the leading edge at ' .. width)
-	t.assertEqual(refs.filter.frame.origin.x + refs.filter.frame.size.width, controls.frame.size.width,
-		'project filters end at the trailing edge at ' .. width)
-	t.expect(refs.markStale.frame.origin.x + refs.markStale.frame.size.width <= refs.filter.frame.origin.x,
-		'project marking and filters do not overlap at ' .. width)
-	t.expect(math.abs(refs.markStale.frame.origin.y + refs.markStale.frame.size.height / 2
-		- refs.filter.frame.origin.y - refs.filter.frame.size.height / 2) < 0.01,
-		'project marking and filters share a center line at ' .. width)
+	t.expect(refs.filter.frame.size.width > 0, 'project filtering remains usable at ' .. width)
+	t.expect(ns.ToolbarItem(window, "operation_markStale") ~= nil, 'bulk marking is in the toolbar at ' .. width)
 end
 window.size = ns.Size(950, 580); window:layout()
 
@@ -65,9 +58,9 @@ app:show('worktrees'); refs = app.page.refs
 t.expect(refs.selectionSection.hidden, 'empty worktree inspector uses no space')
 refs.reviewList:selectRow(0); bridge._flushLayout(); refs = app.page.refs
 t.expect(not refs.selectionSection.hidden, 'selection exposes evidence')
-t.expect(refs.selectionSection.superview == refs.page.superview, 'evidence stays outside scrolling inventory')
+t.expect(refs.selectionSection.superview == refs.pageContent, 'evidence belongs to the shared page content')
 t.expect(refs.selectedDetail.text:find(app.env:page("worktrees").selected.path, 1, true), 'selection exposes complete path')
-t.expect(refs.openOwner.enabled, 'managed checkout exposes its owner action')
+t.expect(O(app, "openOwner").enabled, 'managed checkout exposes its owner action')
 local widths = bridge._tableColumnWidths(refs.reviewList)
 t.expect(widths[1].width > widths[2].width and widths[1].width > widths[3].width, 'name/branch gets more space than repeated status/date')
 
@@ -85,32 +78,6 @@ ns._invokeAction(lead.decisionAction)
 t.expect(app.env.basket:count() > before, 'marking stages visible installers')
 for _, row in ipairs(rows) do t.expect(app.env.basket:isMarked(row.path), 'each installer is staged') end
 Marks:clear(); app:basketChanged()
-t.expect(app.collector.collectorArea.hidden, 'empty collector collapses')
-local deferred, originalAsync, originalSleep = {}, ns.async, ns.sleep
-ns.async = function(fn) table.insert(deferred, fn) end
-ns.sleep = function() end
-app.collectorController:drag('page', true)
-t.expect(not app.collector.collectorArea.hidden, 'file drag reveals staging')
-app.collectorController:drag('collector', true); app.collectorController:drag('page', false)
-for _, fn in ipairs(deferred) do fn() end
-
-deferred = {}
-t.expect(not app.collector.collectorArea.hidden, 'moving from parent to collector retains staging')
-app.collectorController:drag('collector', false)
-for _, fn in ipairs(deferred) do fn() end
-
-deferred = {}
-t.expect(app.collector.collectorArea.hidden, 'drag exit collapses an empty collector')
-app.collectorController:drag('page', true); app.collectorController:drag('page', false)
-app.collectorController:drag('collector', true)
-for _, fn in ipairs(deferred) do fn() end
-
-deferred = {}
-t.expect(not app.collector.collectorArea.hidden, 'new drag supersedes queued exit')
-app.collectorController:drag('collector', false)
-for _, fn in ipairs(deferred) do fn() end
-ns.async, ns.sleep = originalAsync, originalSleep
-t.expect(app.collector.collectorArea.hidden, 'no drag and no staged items collapses collector')
 
 app:show('applications')
 local applicationLead = app.page.refs

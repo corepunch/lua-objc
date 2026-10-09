@@ -107,8 +107,9 @@ t.assertEqual(Paths.normalize("/tmpfiles"), "/tmpfiles", "a name that starts lik
 -- never stored, and a mark answers the location it stands for.
 local Marks = require("apps.diskmap.models.Marks")
 local stored, refusal = Marks:create({path = "/System"})
-t.expect(stored == nil and refusal == "System location.", "the marks table refuses a system location")
-t.assertEqual(Marks:count(), 0, "and stores nothing")
+t.expect(stored ~= nil, "system locations can be flagged for inspection")
+t.expect(not Verify.check(stored, nil, home, {}), "flagging system storage never authorizes deletion")
+Marks:clear()
 local derived = Locations:find("derived")
 t.expect(Marks:add({path = derived.path, resourceId = "derived"}), "a location can be marked")
 t.expect(Marks:find(derived.path):location() == derived, "a mark answers its location")

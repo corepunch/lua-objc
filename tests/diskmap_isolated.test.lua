@@ -26,7 +26,7 @@ local isolated = Controller.new(mock, launch)
 local window = isolated:createWindow()
 t.assertEqual(isolated.destination, "cleanup", "isolated launch selects its page")
 t.expect(isolated.navigation.refs == nil, "isolated launch has no sidebar")
-t.expect(isolated.env.onboarding.sheet == nil and isolated.env.tour.sheet == nil, "isolated launch skips onboarding and tour")
+t.expect(isolated.destination ~= "onboarding" and isolated.destination ~= "tour", "isolated launch skips onboarding and tour")
 t.assertEqual(#effects, 0, "isolated launch registers no process hooks and writes no history")
 local total = Suggestions:presentation(isolated.env:sources()).eligibleBytes
 local full = Controller.new(Mock.new({showcase = true}), {})

@@ -47,7 +47,6 @@ local LAYOUT = {
 	summary = "Reading Xcode's device support, build data and archives…", summaryId = "xcodeSummary",
 	buttons = {{id = "openOrganizer", title = "Open Xcode", action = "openXcode", help = "Manage archives in Xcode's Organizer"}},
 	sections = {},
-	footnote = {text = "Open a row's menu to mark it for cleanup. Marked items move to the Trash only after you review them in Marked Items."},
 }
 for _, section in ipairs(SECTIONS) do
 	table.insert(LAYOUT.sections, {id = section.id .. "Section", title = section.title, detail = section.detail,
@@ -80,6 +79,7 @@ routes.xcode = ListRoute.extend({layout = LAYOUT, statuses = STATUS,
 			local rows = Xcode.copies(page.stock.rows[section.id])
 			for _, row in ipairs(rows) do
 				row.section = section.id
+				row.source, row.consequence = "Xcode · " .. section.title, section.consequence
 				if section.status then
 					row.detail = row.status
 					Status.apply(row, STATUS[row.status])

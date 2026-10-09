@@ -1,0 +1,8 @@
+<ScrollView vertical="true" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity">
+  <%- partial("../views/layouts/PageResources.etlua") %>
+  <VStack padding="@pageMargin" alignment="center">
+    <VStack id="pageContent"<% if dropAction then %> onDrop="<%= dropAction %>" dropExternalOnly="true"<% end %> maxWidth="@pageWidth" spacing="@pageSpacing" alignment="leading">
+      <ContentPresenter />
+    </VStack>
+  </VStack>
+</ScrollView>

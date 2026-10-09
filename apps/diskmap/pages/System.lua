@@ -175,9 +175,16 @@ function UpdatesPage:data()
 	local data = Updates.presentation(self.plist, self.snapshotDates, self.installerFiles, disk and disk.freeKb and disk.freeKb * 1024 or nil,
 		{measured = Categories.measured, installers = Locations:installers()})
 	data.decision = self:decision(data)
-	if #data.installers > 0 then data.lists = {installers = self:flow("Rows"):annotate(data.installers, nil, "systemGray")} end
+	if #data.installers > 0 then
+		for _, row in ipairs(data.installers) do
+			row.source, row.consequence = "Installers", "An installer you can download again. Installed apps and macOS are not affected."
+		end
+		data.lists = {installers = self:flow("Rows"):annotate(data.installers, nil, "systemGray")}
+	end
 	return data
 end
+
+function UpdatesPage:markRow(_, _, row) self:flow("Rows"):toggleReview(row) end
 
 function UpdatesPage:openCleanup() self.app.show("cleanup") end
 function UpdatesPage:openSoftwareUpdate() self.service.openSettings("softwareupdate") end
@@ -185,8 +192,7 @@ function UpdatesPage:openTimeMachine() self.service.openSettings("timemachine") 
 function UpdatesPage:revealInstaller(_, _, row) if row then self.service.reveal(row.path) end end
 
 function UpdatesPage:installerMenu(_, _, row)
-	return self:flow("Rows"):folder(row, nil, {path = row.path, name = row.name, bytes = row.bytes, source = "Installers",
-		consequence = "An installer you can download again. Installed apps and macOS are not affected."})
+	return self:flow("Rows"):folder(row)
 end
 
 

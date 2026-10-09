@@ -8,7 +8,7 @@ local Notifications = {}; Notifications.__index = Notifications
 -- offer after an app is moved to the Trash (#14). Both need the app bundle's
 -- notification center; the reminder also needs storage history.
 -- `handlers.mark(items)` marks items for cleanup and `handlers.review()`
--- opens the Marked sheet; `handlers.show()` brings the window forward.
+-- opens the review page; `handlers.show()` brings the window forward.
 function Notifications.new(model, service, handlers)
 	return setmetatable({model = model, service = service, handlers = handlers}, Notifications)
 end

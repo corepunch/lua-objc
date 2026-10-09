@@ -190,12 +190,6 @@ function Locations:destination(id)
 	return location and location:destination()
 end
 
--- Whether opening the location `id` leaves its category's list.
-function Locations:opensElsewhere(id)
-	local location = self:find(id)
-	return location ~= nil and location:opensElsewhere()
-end
-
 function Location:parent()
 	local state = index(Model.db)
 	return state and state.parents[self] or nil
@@ -271,31 +265,17 @@ function Locations:folderBytes(path)
 	return measured and bytes or nil
 end
 
--- Where opening the location goes. Every list, menu and link in Diskmap
--- opens a location by its own id and asks here; no page decides for itself.
--- The catalog declares the exceptions on the location: `page` names the
--- sidebar page that presents it and everything under it (Developer projects
--- on Projects, Simulator devices on Simulators, DerivedData on Xcode, every
--- app on Applications), `sheet` its own sheet (the SDKs of an Xcode
--- installation). Everything else opens in its category's list: a group as
--- itself, a location in its group with its row selected. Returns
--- {page = pageId} | {sheet = name, id = id} | {category = groupId, select = leafId or nil}.
+-- A location opens its contents; catalog exceptions use dedicated pages.
+-- Groups without a filesystem path drill into the semantic Storage Map.
 function Location:destination()
-	if self.sheet then return {sheet = self.sheet, id = self.id} end
+	if self.page == "sdks" then return {page = "sdks", params = {id = self.id}} end
 	local row = self
 	while row do
-		if row.page then return {page = row.page, id = self.id} end
+		if row.page then return {page = row.page} end
 		row = row:parent()
 	end
-	if not self:isLeaf() then return {category = self.id} end
-	local parent = self:parent()
-	return {category = parent and parent.id or self.id, select = self.id}
-end
-
--- Whether opening the location leaves its category's list for a page or
--- sheet of its own; such rows show the "open" button in a category list.
-function Location:opensElsewhere()
-	return self:destination().category == nil
+	if self.path then return {page = "folder", params = {path = self.path}} end
+	return {page = "map", params = {focus = self.id}}
 end
 
 local function ancestry(row)

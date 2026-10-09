@@ -53,10 +53,5 @@
   <GroupBox>
     <InventoryList id="planDevices" onSelect="planSelect" kind="plan" />
   </GroupBox>
-  <HStack spacing="8" alignment="center">
-    <Button id="planKeepThis" title="Keep This One" action="planKeepThis" help="Make the selected device the one kept for its family" />
-    <Button id="planPreserve" title="<%= preserveTitle %>" action="planPreserve" help="Keep a specialised QA device out of the plan" />
-    <Spacer />
-  </HStack>
   <% end %>
 </VStack>

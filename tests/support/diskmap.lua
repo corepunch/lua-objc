@@ -21,19 +21,11 @@ function Harness.env(options)
 	router.refresh = function()
 		if host.page and host.page.template then host.page:update(host.env:state()) end
 	end
+	router.awaitAccess = function() end
 	router.changed = router.refresh
 	router.basketChanged = function() if host.page then host.page:marksChanged() end end
 	host.service = options.service or Mock.new({showcase = true, deferred = options.deferred})
 	host.env = Environment.new(host.service, {isolated = true}, router)
-	for _, sheet in pairs(host.env.context.sheets) do
-		local presenter = {}
-		function presenter:present() return {} end
-		function presenter:draw() end
-		function presenter:dismiss() end
-		function presenter:every() end
-		function presenter:slide() end
-		sheet.presenter = presenter
-	end
 	Model.bind(host.env.model)
 	host.env:prepare()
 	host.env.scan:start()

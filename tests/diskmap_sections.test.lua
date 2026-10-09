@@ -6,9 +6,10 @@ local xml = require("ui.xml")
 local bridge = require("AppKitNative")
 local Format = require("apps.diskmap.helpers.Format")
 local Store = require("apps.diskmap.Store")
-local FOLDERS = {Hero = "sections", Overview = "pages", Settings = "sheets", ResourceList = "components", Page = "pages"}
+local FOLDERS = {Breakdown = "sections", Settings = "pages", ResourceList = "components", Page = "pages", BreakdownPage = "pages"}
 local function render(name, data)
-	return xml.renderFile("apps/diskmap/views/" .. FOLDERS[name] .. "/" .. name .. ".etlua", data, ns)
+	local file = name == "BreakdownPage" and "Breakdown" or name
+	return xml.renderFile("apps/diskmap/views/" .. FOLDERS[name] .. "/" .. file .. ".etlua", data, ns)
 end
 local model = Store.new("/Users/test")
 model.scan.errors = 3
@@ -30,26 +31,31 @@ t.assertEqual(chart.legend[1].id, "applications", "largest category leads the le
 t.assertEqual(chart.legend[2].id, "developer", "next largest category follows")
 t.assertEqual(chart.legend[3].id, "ai-agents", "AI agents have their own storage segment")
 t.assertEqual(chart.marks[#chart.marks].label, "Free", "free space closes the ring")
-local chartActions = {reclaim = function() end,chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
-for _, item in ipairs(chart.legend) do chartActions["category_" .. item.id] = function() end end
-local hero, heroRefs = render("Hero", {summary = Scans:summary(disk), center = Overview.center(Scans:summary(disk)), chart = chart,
-	reclaim = Suggestions:reclaim(), volumeName = "Startup Disk", actions = chartActions,
-	hiddenSpace = Overview.hidden(disk, {important = 110e9}, 2, 3)})
+local chartActions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end}
+for _, item in ipairs(chart.legend) do item.action = "category_" .. item.id; chartActions[item.action] = function() end end
+-- The Overview's card, as its route builds it.
+local function card(summary, shown, notes)
+	local data = Overview.breakdown(summary, shown, "Startup Disk", "rings")
+	data.notes, data.actions = notes, chartActions
+	return render("Breakdown", data)
+end
+local hero, heroRefs = card(Scans:summary(disk), chart, Overview.hidden(disk, {important = 110e9}, 2, 3))
 t.assertEqual(chart.marks[1].id, chart.legend[1].id, "a mark carries its category, so its sector can open it")
 t.expect(heroRefs.hiddenSpace ~= nil, "the hero explains space no file scan can attribute")
 t.assertEqual(#heroRefs.hiddenSpace.subviews, 3, "purgeable space, snapshots and unreadable locations are listed")
-t.assertEqual(heroRefs.heroCard.className, "NSBox", "the hero uses the native rounded group")
-t.assertEqual(heroRefs.chartCenter.subviews[1].text, "100.0 GB", "the chart hole shows used capacity")
-t.expect(heroRefs.cleanUp.bezelColor ~= nil, "the cleanup call to action is the prominent button")
+t.assertEqual(heroRefs.breakdown.className, "NSBox", "the hero uses the native rounded group")
+t.assertEqual(heroRefs.breakdownTotal.text, "100.0 GB", "the chart hole shows used capacity")
+t.assertEqual(heroRefs.cleanUp, nil, "cleanup uses the native window toolbar")
 hero.size = ns.Size(760, 320); hero:layout(760)
 -- The total fits the chart's hole once laid out.
-t.expect(heroRefs.chartCenter.subviews[1].font.pointSize >= heroRefs.freeSpace.font.pointSize, "capacity stays readable beneath the cleanup action")
+t.expect(heroRefs.breakdownTotal.font.pointSize >= heroRefs.breakdownCaption.font.pointSize, "the used total leads the capacity beneath it")
+t.expect(heroRefs.breakdownTitle == nil, "the card has no title of its own: the page heading names it")
 local buttons = {}
 local function collect(view)
 	if view.className == "NSButton" and not view.bordered then table.insert(buttons, view) end
 	for _, child in ipairs(view.subviews or {}) do collect(child) end
 end
-collect(heroRefs.legend)
+collect(heroRefs.breakdownLegend)
 t.assertEqual(#buttons, #chart.legend, "every measured legend category is a native link")
 for _, button in ipairs(buttons) do
 	t.expect(button.enabled, "legend keeps native link interaction")
@@ -59,22 +65,24 @@ end
 -- the view, see sector_chart.test.lua), so it is taller than the old fixed 144.
 hero.size = ns.Size(900, 400)
 hero:layout(900)
-t.expect(heroRefs.chart.frame.size.height > 150, "the donut takes the height of the card: " .. heroRefs.chart.frame.size.height)
-local _, emptyRefs = render("Hero", {summary = Scans:summary({totalKb = 1, freeKb = 0}), center = Overview.center(Scans:summary({totalKb = 1, freeKb = 0})),
-	chart = Categories:chart({totalKb = 1, freeKb = 0}), reclaim = Suggestions:reclaim(), volumeName = "Startup Disk", actions = chartActions})
+t.expect(heroRefs.breakdownChart.frame.size.height > 150, "the donut takes the height of the card: " .. heroRefs.breakdownChart.frame.size.height)
+local _, emptyRefs = card(Scans:summary({totalKb = 1, freeKb = 0}), Categories:chart({totalKb = 1, freeKb = 0}))
 model.measurements.downloads = {status = "calculating"}
 -- While the scan runs the page draws its empty state: an empty ring, no legend, no cleanup offer.
-local _, busyRefs = render("Hero", {summary = Scans:summary(disk), center = Overview.center(Scans:summary(disk)), chart = {marks = {}, legend = {}, explanation = "Measuring"},
-	volumeName = "Startup Disk", actions = chartActions})
-t.expect(busyRefs.cleanUp == nil and heroRefs.cleanUp ~= nil, "cleanup is offered only once every size is known")
-t.expect(busyRefs.legend == nil and busyRefs.legendExplanation ~= nil, "a running scan draws no legend")
+local _, busyRefs = card(Scans:summary(disk), {marks = {}, legend = {}, explanation = "Measuring"})
+t.expect(busyRefs.cleanUp == nil and heroRefs.cleanUp == nil, "cleanup is offered only once every size is known")
+t.expect(busyRefs.breakdownLegend == nil and busyRefs.legendExplanation ~= nil, "a running scan draws no legend")
 model.measurements.downloads = {bytes = 5e9, status = "complete"}
 t.expect(emptyRefs.legendExplanation ~= nil, "an overcounted inventory explains why no partition is drawn")
-t.expect(emptyRefs.lowSpace ~= nil and heroRefs.lowSpace == nil, "only a nearly full disk shows the low-space warning")
-t.assertEqual(#emptyRefs.chart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
-local _, refs = render("Overview", {status = "Measured", measured = true, coverage = "", largestHidden = false, accessTitle = "Scan access…", accessHidden = false,
-	unmeasured = {items = {}}, hero = {summary = Scans:summary(disk), center = Overview.center(Scans:summary(disk)), chart = {marks = chart.marks, legend = {}, explanation = "Measured"}, volumeName = "Startup Disk"}, actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, reclaim = function() end, select = function() end, open = function() end,
-	largestMenu = function() return {} end, openLargest = function() end, showLargest = function() end, access = function() end}})
+local fullCard = Overview.breakdown(Scans:summary({totalKb = 1, freeKb = 0}), Categories:chart({totalKb = 1, freeKb = 0}), "Startup Disk", "rings")
+local _, fullHeading = xml.renderFile("apps/diskmap/views/components/BreakdownHeading.etlua", fullCard, ns)
+local _, heroHeading = xml.renderFile("apps/diskmap/views/components/BreakdownHeading.etlua", Overview.breakdown(Scans:summary(disk), chart, "Startup Disk", "rings"), ns)
+t.expect(fullHeading.lowSpace ~= nil and heroHeading.lowSpace == nil, "only a nearly full disk shows the low-space warning")
+t.assertEqual(#emptyRefs.breakdownChart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
+local overviewData = {sections = {{id = "categoriesSection", title = "Categories", detail = "", panelId = "categoriesPanel", view = "components/CategoryList", list = {id = "results"}}},
+	breakdown = Overview.breakdown(Scans:summary(disk), {marks = chart.marks, legend = {}, explanation = "Measured"}, "Startup Disk", "rings"),
+	actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, select = function() end, open = function() end, categoryButton = function() end}}
+local _, refs = render("BreakdownPage", overviewData)
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")
 t.expect(not refs.results.drawsBackground, "the category list lets its native group background show through")
@@ -88,7 +96,7 @@ local unmeasured = sizeCell.bar
 t.expect(not unmeasured.hidden and not unmeasured.enabled and unmeasured.doubleValue == 0,
 	"an unmeasured category keeps an empty, disabled bar under its state")
 
-local settings, settingsRefs = render("Settings", {monitoring = true, mediaEnabled = false, historyEnabled = false,
+local settings, settingsRefs = render("Settings", {page = {title = "Settings", icon = "gearshape", color = "systemBlue"}, monitoring = true, mediaEnabled = false, historyEnabled = false,
 	actions = {toggleMonitor = function() end, toggleMedia = function() end, toggleHistory = function() end, toggleReminder = function() end, toggleSentinel = function() end, openStorage = function() end, openPrivacy = function() end, close = function() end}})
 t.expect(settingsRefs ~= nil and settings ~= nil, "settings reorganized into concise groups still render")
 t.assertEqual(settingsRefs.monitor.className, "NSSwitch", "background checks use a switch")
@@ -103,7 +111,7 @@ t.expect(not dofile("tests/fixtures/meter.lua")(bridge._tableCell(refs.results, 
 -- Every ranking page shares one list: a non-scrolling table whose actions live
 -- in a row menu, so the page itself scrolls and no buttons sit under lists.
 local menuRows = 0
-local _, listRefs = render("ResourceList", {id = "items", menu = "rowMenu", activate = "open", detailColumn = true, actions = {
+local _, listRefs = render("ResourceList", {id = "items", menu = "rowMenu", activate = "open", detailColumn = true, actions = {markRow = function() end,
 	rowMenu = function(_, _, row) menuRows = menuRows + 1; return {{title = "Show " .. row.name, action = function() end}} end,
 	open = function() end}})
 local items = listRefs.items
@@ -111,7 +119,7 @@ t.expect(items.scrollDisabled, "shared lists never scroll inside a page")
 items:replaceRows({{id = "derived", name = "Xcode DerivedData", subtitle = "Developer › Xcode", detail = "Rebuildable", size = "4.9 GB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}})
 t.assertEqual(bridge._tableRowMenu(items, 1)[1].title, "Show Xcode DerivedData", "the row menu describes its row")
 t.assertEqual(menuRows, 1, "row menus are built when opened")
-local more = bridge._tableCell(items, 3, 0)
+local more = bridge._tableCell(items, 4, 0)
 t.expect(more.actionButton ~= nil and more.actionButton.accessibilityLabel == "More", "each row has a More button")
 -- 595 points is the list width in Diskmap's narrowest window (880 points).
 items.size = ns.Size(595, 200); items:layout(595)
@@ -119,11 +127,13 @@ local widths = bridge._tableColumnWidths(items)
 local total, named = 0, 0
 for _, column in ipairs(widths) do total = total + column.width; if column.id == "name" then named = column.width end end
 t.expect(total <= 595 + 1, "shared list columns fit the narrowest window")
+local cells = bridge._tableCellFrames(items, 0)
+t.expect(cells[#cells].maxX <= items.contentView.bounds.size.width, "review and More cells remain inside the native viewport")
 t.expect(named >= 170, "the name keeps 170 points in the narrowest window")
 -- Status lists show one colour-coded symbol per row; the status word stays
 -- available as tooltip and accessibility label instead of truncated text.
 local Status = require("apps.diskmap.helpers.Status")
-local _, statusRefs = render("ResourceList", {id = "statuses", menu = "rowMenu", status = true, actions = {rowMenu = function() return {} end}})
+local _, statusRefs = render("ResourceList", {id = "statuses", menu = "rowMenu", status = true, actions = {markRow = function() end, rowMenu = function() return {} end}})
 local statuses = statusRefs.statuses
 statuses:replaceRows({Status.apply({id = "derived", name = "Xcode DerivedData", detail = "Rebuildable", size = "≥ 999.9 MB", relative = 1, shareText = "", color = "systemBlue", icon = "hammer.fill"}),
 	Status.apply({id = "group", name = "Simulator runtimes", detail = "Group", size = "8.5 GB", relative = 0.5, shareText = "", color = "systemBlue", icon = "hammer.fill"})})
@@ -146,7 +156,7 @@ end
 
 -- A size that is a state is a short coloured word led by its symbol, in the
 -- spinner's place; measured rows in the same meter keep plain numbers.
-local _, sizeRefs = render("ResourceList", {id = "sizes", menu = "rowMenu", actions = {rowMenu = function() return {} end}})
+local _, sizeRefs = render("ResourceList", {id = "sizes", menu = "rowMenu", actions = {markRow = function() end, rowMenu = function() return {} end}})
 local sizes = sizeRefs.sizes
 sizes:replaceRows({
 	Format.sizeLabel({id = "mail", name = "Mail", shareText = "", color = "systemBlue", icon = "envelope"}, "denied"),
@@ -199,6 +209,8 @@ t.assertEqual(Status.styles[XcodeController.statuses.Missing].color, "systemGree
 -- out is left out of the page, and what it names gets a ref.
 local anyAction = setmetatable({}, {__index = function() return function() return {} end end})
 local header = {icon = "doc.fill", color = "systemTeal", title = "Example"}
+local onlyTitle = xml.renderFile("apps/diskmap/views/components/SectionHeader.etlua", {title = "All items"}, ns)
+t.assertEqual(#onlyTitle.subviews, 1, "a section without detail has no empty or nil subtitle")
 local bare, bareRefs = render("Page", {header = header, layout = {}, actions = anyAction})
 t.expect(bare ~= nil and bareRefs.page ~= nil and bareRefs.pageContent ~= nil, "an empty layout renders as one scrolling page")
 t.assertEqual(bareRefs.pageTitle.text, "Example", "the header shows the page's title")
@@ -220,34 +232,29 @@ local _, fullRefs = render("Page", {header = header, actions = anyAction, layout
 	footnote = {text = "Footnote"},
 }})
 t.assertEqual(fullRefs.exampleSummary.text, "Summary", "the summary takes the ref the layout names")
-for _, id in ipairs({"add", "stats", "oneTileValue", "firstSection", "firstTitle", "firstDetail", "firstSize", "clear", "bulk",
+for _, id in ipairs({"stats", "oneTileValue", "firstSection", "firstTitle", "firstDetail", "firstSize", "clear",
 	"firstEmpty", "firstPanel", "first", "second", "extra"}) do
 	t.expect(fullRefs[id] ~= nil, "the layout's " .. id .. " is on the page")
 end
 t.assertEqual(fullRefs.filter.className, "NSSegmentedControl", "filters are a segmented control")
-t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden and not fullRefs.bulk.enabled, "hidden and disabled come from the layout")
+t.expect(fullRefs.clear.hidden and fullRefs.firstEmpty.hidden, "hidden and disabled come from the layout")
 -- Actions lead and filters trail on one centered row below the heading.
 fullRefs.page.size = ns.Size(620, 600); fullRefs.page:layout(620)
 local filterRow, titleRow = fullRefs.filter.superview, fullRefs.firstTitle.superview.superview
 t.expect(filterRow ~= titleRow, "the filter is not on the heading's row")
-t.assertEqual(fullRefs.bulk.superview, filterRow, "section buttons share the filter's row")
-t.expect(fullRefs.bulk.frame.origin.x < fullRefs.filter.frame.origin.x, "the action precedes the trailing filter")
-t.expect(math.abs(fullRefs.bulk.frame.origin.y + fullRefs.bulk.frame.size.height / 2
-	- fullRefs.filter.frame.origin.y - fullRefs.filter.frame.size.height / 2) < 0.01, "actions and filters share a center line")
 t.assertEqual(fullRefs.filter.frame.origin.x + fullRefs.filter.frame.size.width, filterRow.frame.size.width,
 	"the filter ends at the row's trailing edge")
-t.expect(fullRefs.bulk.superview ~= titleRow, "section actions stay below the heading")
 t.expect(fullRefs.firstDetail.frame.size.width > 400, "the heading's detail keeps the section's width beside no controls")
 t.assertEqual(fullRefs.firstDetail.frame.size.height, fullRefs.firstDetail.intrinsicContentSize.height, "the detail stays on one line")
 -- The meter is no wider than its widest value and share, "≥ 999.9 MB" and
 -- "could recover", so the name and its subtitle keep the rest.
 local columns = {}
 for _, column in ipairs(bridge._tableColumnWidths(fullRefs.second)) do columns[column.id] = column end
-t.assertEqual(columns.shareText.minWidth, 200, "the meter column fits its widest value and share, no more")
+t.assertEqual(columns.shareText.minWidth, 190, "the meter leaves room for the review flag")
 local probe = xml.render('<Label text="≥ 999.9 MB" />', {}, ns)
 local shareProbe = xml.render('<Label text="could recover" />', {}, ns)
-t.expect(probe.fittingSize.width + shareProbe.fittingSize.width + 8 <= 200 - 16, "the meter's widest value and share fit inside the cell's insets")
+t.expect(probe.fittingSize.width + shareProbe.fittingSize.width + 8 <= columns.shareText.minWidth - 16, "the meter's widest value and share fit inside the cell's insets")
 local _, plainRefs = render("Page", {header = header, actions = anyAction, layout = {sections = {
 	{title = "Plain", titleId = "plainTitle", buttons = {{id = "open", title = "Open", action = "open"}}, list = {id = "plain", menu = "rowMenu"}}}}})
-t.expect(plainRefs.open.superview ~= plainRefs.plainTitle.superview.superview, "section actions keep their own row without a filter")
+t.assertEqual(plainRefs.open, nil, "section operations have no duplicate inline row")
 os.exit(t.summary() and 0 or 1)

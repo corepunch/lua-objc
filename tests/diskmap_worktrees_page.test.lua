@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
@@ -61,7 +62,7 @@ local decision = page.refs
 t.expect(decision.decisionAction.enabled and decision.decisionAction.title:find("2 Worktrees", 1, true), "the review button counts the removal set")
 t.assertEqual(decision.decisionAmount.stringValue, Format.size(model.worktreePlan.removalBytes), "beside the amount the removal could recover")
 t.assertEqual(decision.decisionCaption.stringValue, "could recover", "which says what it is")
-t.expect(refs.prune.enabled, "missing registrations can be pruned")
+t.expect(O(page, "prune").enabled, "missing registrations can be pruned")
 t.expect(refs.removeDetail.text:find("Source", 1, true) and refs.removeDetail.text:find("Git", 1, true), "storage is shown split: " .. refs.removeDetail.text)
 
 -- Selecting a row explains it; Keep protects it everywhere.
@@ -74,14 +75,14 @@ local function select(name)
 end
 select("coin-quest")
 t.expect(refs.selectedDetail.text:find("merged", 1, true) and refs.selectedDetail.text:find("Source", 1, true), "the details give the evidence and the storage split: " .. refs.selectedDetail.text)
-t.expect(refs.openOwner.enabled and refs.openOwner.title == "Open Claude…", "a managed worktree offers its owner's archive flow")
-t.expect(refs.keep.enabled, "Keep is available")
+t.expect(O(page, "openOwner").enabled and O(page, "openOwner").title == "Open Claude…", "a managed worktree offers its owner's archive flow")
+t.expect(O(page, "keep").enabled, "Keep is available")
 page.actions.keep()
 t.expect(saved and saved["worktree:" .. byName["coin-quest"].path], "Keep is saved with the other Keep choices")
 refs = page.refs
 t.assertEqual(model.worktreePlan.removalCount, 1, "a kept worktree leaves the plan")
 select("MockProject")
-t.expect(not refs.keep.enabled, "the primary cannot be kept or removed")
+t.expect(not O(page, "keep").enabled, "the primary cannot be kept or removed")
 
 -- Clean Up carries the same plan and does not count the tool's folder again.
 local data = Suggestions:presentation({})

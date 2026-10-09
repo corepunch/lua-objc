@@ -1,0 +1,6 @@
+<VStack flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" padding="@pageMargin" alignment="center">
+  <%- partial("../views/layouts/PageResources.etlua") %>
+  <VStack id="pageContent" flexGrow="1" flexBasis="0" flexShrink="1" maxWidth="@pageWidth" maxHeight="infinity" spacing="@pageSpacing" alignment="leading">
+    <ContentPresenter />
+  </VStack>
+</VStack>

@@ -52,13 +52,13 @@ end
 -- treemap cells are listed with them (the Reel package cuts pieces by id).
 local treemapPath = os.tmpname() .. ".xml"
 ok = os.execute(string.format("./lua-objc --dump-layout=%q --width=1440 --height=900 "
-	.. "apps/diskmap/init.lua --showcase --page=map --map-style=rectangles >/dev/null 2>&1", treemapPath))
+	.. "apps/diskmap/init.lua --showcase --page=map --chart-style=rectangles >/dev/null 2>&1", treemapPath))
 t.expect(ok == true or ok == 0, "Diskmap treemap layout dump exits successfully")
 file = io.open(treemapPath, "r")
 local treemap = file and file:read("*a") or ""
 if file then file:close() end
 os.remove(treemapPath)
-local windowX, windowY, width, height = treemap:match('identifier="treemap" frame="[^"]+" '
+local windowX, windowY, width, height = treemap:match('identifier="breakdownRectangles" frame="[^"]+" '
 	.. 'window="([%d.]+) ([%d.]+) ([%d.]+) ([%d.]+)"')
 width, height, windowX, windowY = tonumber(width), tonumber(height), tonumber(windowX), tonumber(windowY)
 t.expect(width ~= nil and windowX > 0 and windowY > 0 and windowY + height < 900,

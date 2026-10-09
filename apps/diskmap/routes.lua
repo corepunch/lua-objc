@@ -1,6 +1,4 @@
--- Every page and sheet of Diskmap by route name (lua/data/routes.lua), as
--- Lapis gathers an application's sub-applications. app.xml names the route
--- of each page; the root controller builds the sheets from pages/Sheets.lua.
+-- Every screen is a manifest route mounted in the window with page history.
 local Routes = require("data.routes")
 
 return Routes.include(
@@ -17,5 +15,11 @@ return Routes.include(
 	"apps.diskmap.pages.Developer",
 	"apps.diskmap.pages.Learn",
 	"apps.diskmap.pages.Search",
-	"apps.diskmap.pages.Basket"
+	"apps.diskmap.pages.Basket",
+	"apps.diskmap.pages.History",
+	"apps.diskmap.pages.Settings",
+	"apps.diskmap.pages.SnapshotChanges",
+	"apps.diskmap.pages.Sdks",
+	"apps.diskmap.pages.Tour",
+	"apps.diskmap.pages.Onboarding"
 )

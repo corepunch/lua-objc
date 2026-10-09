@@ -160,11 +160,11 @@ the height of AppKit's capacity cell.
   each with numbered steps and a button to the page or command it describes.
   The keyboard-shortcut topic is generated from the menu bar.
 
-**First launch** without Full Disk Access opens one sheet before the first
+**First launch** without Full Disk Access opens a setup page before the first
 scan: measure everything, move nothing without asking. Open System Settings
 goes straight to Full Disk Access (with the "Not in the list? Click +" note).
-While the sheet is open Diskmap checks access every second, and once it is on
-the sheet closes and the first scan starts by itself. After Settings opens, a
+While the access page is active Diskmap checks access every second. Once it is
+on, Diskmap returns to Overview and starts the first scan. After Settings opens, a
 Restart Diskmap link starts a new instance and quits only once it runs, for
 when macOS applies access only after a restart. Continue Without Access is
 always there. The Overview then lists up to six folders the scan could not
@@ -180,39 +180,37 @@ Help menu opens Diskmap Help (⌘?) and the Storage Guide, and its search field
 finds help and guide topics as well as menu items.
 
 Every ranking uses one list design: icon, name and location, a status column,
-a share bar, the size and a "More" (⋯) button. A row's actions — its primary
+a share bar, the size, a review flag and a "More" (⋯) button. A row's actions — its primary
 action, Show in Finder, the owning category, Keep and Copy Path — live in that
 menu and in the row's contextual menu. Clean Up also exposes the selected
 suggestion's full explanation and primary Open action beneath the scrolling page.
 
-**Mark, review, act, confirm.** Mark for Cleanup on the Map, Largest Items,
-Applications, Xcode, Projects, Duplicates, Disks and Updates pages, or a drop on
-the collector revealed during a drag or when items are marked, adds items to one basket;
-marking never touches the disk. The Marked toolbar sheet lists them with their
-consequences and full paths in a bounded selected-item inspector, starting with
-the first pending item. A file inside a marked folder is included through that
-folder: its action opens the enclosing mark for review, and unmarking a leaf
-never unmarks its whole folder. The sheet moves items to the Trash one at a time, checking each again
-first. Marking and moving both refuse the disk root, system folders, mount
-points, your home's standard folders, `/tmp` and `/private/var`, the shared
-folder and other users' homes, the iCloud Drive and cloud storage roots, Photos,
-Music and TV libraries, and anything in Keychains, Preferences, Mail, Messages,
-Accounts, Cookies or `~/.ssh`. Paths are compared without regard to case and
-through the root's links (`/tmp` is `/private/tmp`), and symlinks are never
-followed. Nothing is measured again: each item leaves the model with the
-size it was marked with, and each item is checked just before it moves: one whose app is
-running (Xcode for DerivedData, a browser for its cache, the parent app of a
-helper), whose project file has gone, that was replaced since it was marked
-(its inode changed), whose app is installed again (a leftover) or that lies in
-a protected system location is skipped with its reason. The sheet then reports
-what moved, the skips grouped by reason and free space before, now and after
-emptying the Trash. It then offers to empty the
-Trash and reports how much more free space macOS actually sees. Every action
-is appended to `~/Library/Logs/Diskmap/operations.log` and shown in History.
+**Flag, review, act, confirm.** Every storage location and file offers a native
+flag button and a Flag for Review menu action, independently of suggestions or
+removal policy. A category flags its individual locations; a project flags its
+generated artifacts. Dropping files onto the Review page also flags them. Flagging
+never touches the disk. The Flagged sidebar row, with its count, opens the Flagged for Review
+page, with consequences and full paths. A file inside a flagged folder is already
+included: its action opens the enclosing flag, and clearing a leaf never clears
+its whole folder.
 
-Categories open their resources in a sheet with Safe/rebuildable, Needs review
-and Essential to keep filters. Back, Forward, Refresh (Stop while
-measuring), Clean Up, Marked, Settings and Search live in the toolbar. Search is one page over the
+Protected or owner-managed storage can be flagged for inspection. It remains
+review-only and cannot enable Move to Trash. Filesystem changes retain the path,
+owner, complete-measurement and Keep checks: the disk root, system folders,
+mount points, standard home folders, cloud roots, libraries and private app data
+are never made removable by flagging them. Paths are compared without regard to
+case and through root links, and symlinks are never followed. Before each move,
+Diskmap checks whether its app is running, its project proof disappeared, its
+inode changed, or its app was installed again. The review page reports moved
+items, skips and measured free space. Empty Trash is a separate confirmed action.
+Every action is appended to `~/Library/Logs/Diskmap/operations.log` and shown in
+Action History.
+
+Double-clicking a location opens its contents or its dedicated management page.
+Categories drill into Storage Map. Settings, History, SDKs, snapshot comparisons,
+the tour and access setup are regular pages reached through Back and Forward.
+Scan progress stays inline above the page. Back, Forward, Refresh (Stop while
+measuring), Clean Up, Review, Settings and Search live in the toolbar. Search is one page over the
 whole store, as Spotlight is (`pages/Search.lua`): typing opens it with the
 matching pages, locations, large files, apps, leftovers, projects, simulators,
 worktrees, file types, guide and help topics and macOS folders, grouped by
@@ -222,7 +220,7 @@ filters by text.
 Large Files opens on All measured files; Yours narrows to documents eligible
 for review. Both maps offer Up for their parent level; Back and Forward visit
 pages. Storage Map and Largest Locations open the originating location
-through the same destination, retaining leaf selection in category sheets.
+through the same destination, retaining the exact folder path in navigation.
 Selected-item buttons name the destination without requiring a double-click.
 Page headers put more than two visible actions below the title. One or two
 actions stay inline only when their combined native width, including spacing,
@@ -252,7 +250,7 @@ honors Reduce Motion.
 
 Launch a page by itself with `--page=<id> --isolated`. Cross-page actions
 replace the content in that window; Back and Forward still work. The native
-toolbar, search, collector and page actions remain available. Isolated launches
+toolbar, search and page actions remain available. Isolated launches
 skip onboarding, the tour, process watchers, automatic refresh, Dock opens and
 storage-history writes. The default size is 1100×760; the minimum is 724×580
 (950×580 with the sidebar). Unknown page ids and `--isolated` without `--page`
@@ -272,7 +270,7 @@ search without results and a selection. Omit `--isolated` to capture the full ap
 
 `controllers/Environment.lua` owns one store, checked provider, scan, Keep
 choices, basket, operations, inventories and memoized requests. It loads
-preferences before constructing sheet requests. Inventories refresh when the
+preferences before constructing page requests. Inventories refresh when the
 scan finishes, independent of which page is visited. The window controller
 owns native presentation, navigation, search and process facilities; only the
 primary full window attaches those facilities. Pages receive a router and use
@@ -281,7 +279,7 @@ or `show("map", {focus = "developer"})`. Templates receive plain data and
 explicit actions; there are no field bindings or observation subscriptions.
 
 For tests, `tests/support/diskmap.lua` builds a finished environment with a
-recording router and scripted sheet presenters, and mounts any manifest page.
+recording router and mounts any manifest page.
 `Mock.new{deferred = true}` queues completions for `step()` or `settle()` so
 staleness can be checked without timers. Test providers use `Contract.stub{}`;
 System, Mock and showcase implement the same checked contract.
@@ -343,7 +341,8 @@ developer in it: photos, documents, games, device backups, mail and messages
 outweigh the Xcode data, simulators and package caches, and the Photos, Music
 and TV libraries are measured as if Settings included them. It never reads a
 personal export.
-`--map-style=rectangles` opens the Map as a treemap. The showreel in
+`--chart-style=rectangles` opens every breakdown page (Overview, Storage Map,
+File Types, Folder Map) as a treemap; the toolbar switches all of them at once. The showreel in
 [reels/diskmap](../../reels/diskmap/README.md) is captured this way.
 
 ### Changes since the snapshot
@@ -474,15 +473,14 @@ The app and framework changes are described in [DESIGN.md](DESIGN.md); the resea
 ## Component boundaries
 
 Diskmap follows Lapis ([docs/data-driven.md](../../docs/data-driven.md)): every
-sidebar destination is a page drawn from a route, and every sheet is a route plus a
-view. A route answers `data(state)`, the framework's page controller draws the etlua
+destination is a page drawn from a route and an etlua view. A route answers `data(state)`, the framework's page controller draws the etlua
 view with it, and an action in the view is a method of the route followed by the
 same request again. The seven kinds of work are one `workflow` route and the guide
 and help are one `topics` route, each page naming its argument in `app.xml`. The
 root controller is only the window's code-behind: it wires services, the scan and
-the shell (sidebar, menus, history, the cleanup collector). A running scan shows in
-one small progress window, which `controllers/ScanProgressController` renders once
-and then updates by setting the bar's value and the status text; the pages are
+the shell (sidebar, menus and history). A running scan shows in
+a small sheet, which `controllers/ScanProgressController` updates by
+setting the bar's value and progress text; the pages are
 drawn when it finishes. Pages mount retained templates into the content pane; the
 root disposes the previous page before mounting the next. The guide re-renders only
 when a scan starts or ends, so scan progress never collapses the topic being read.
@@ -498,19 +496,19 @@ independently.
 | `models/Files.lua`, `knowledge/FileKinds.lua` | Large and unused files, kinds by extension, file ages and per-file Trash eligibility |
 | `models/Applications.lua` | Installed apps, their data folders, last use and possible leftovers |
 | `models/Projects.lua` | Project build folders grouped by project, git state and age |
-| `models/Marks.lua` | Marked items, location refusals and parent/child de-duplication |
+| `models/Marks.lua` | Review flags, canonical paths and parent/child de-duplication |
 | `models/Workflows.lua`, `knowledge/Workflows.lua` | The kinds of work (Developer, Music Production, …): a page's ranked rows per section, totals, presence on this Mac and sidebar badge |
 | `models/Scans.lua` | The running or last scan and what it writes: each location's measurement, the ranked files, coverage, what could not be read |
 | `models/Categories.lua` | The location tree with measurements rolled up: category rows, the overview's chart and shares, the map's nodes, history of totals |
 | `models/Suggestions.lua` | Cleanup suggestions ranked by eligible bytes, confidence and effort; the Clean Up page's presentation |
 | `helpers/Simulators.lua`, `helpers/Worktrees.lua`, `services/Simulators.lua` | Device, runtime and worktree inventories: filters, summaries and validated commands over an inventory a service read |
 | `catalog/` | The dictionary: one entry per location with its path, nature, remover, review threshold and advice; `knowledge/Filesystem.lua` adds the leftovers |
-| `routes.lua`, `pages/` | Every page by route name, one route file per page or small group; `pages/ListRoute.lua` is the base route of the list pages. `pages/Sheets.lua` gathers the sheets in `pages/sheets/`, which extend `pages/SheetRoute.lua` |
+| `routes.lua`, `pages/` | Every page by route name, one route file per page or small group; `pages/ListRoute.lua` is the base route of the list pages. |
 | `flows/Rows.lua`, `flows/Keep.lua`, `flows/Manage.lua` | Row menus and marks, Keep, and acting on one location: action code every page shares |
 | `helpers/` | Pure computation and formatting over rows given as arguments: file kinds, path guards, the folder tree, the simulator plan, parsers of service output. No helper reads the store, a model or a file (`tests/diskmap_layers.test.lua`) |
 | `helpers/Constraints.lua` | Named validation results for registration, Keep and Watch changes and Trash mutations |
-| `controllers/` | The shell: sidebar navigation, menu commands, the scan's progress window, and `SheetController`, which presents every sheet |
-| `views/pages/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: header buttons, stat tiles, sections (title, filter, buttons, empty states, list) and a footnote |
+| `controllers/` | The shell: sidebar navigation, menu commands, environment services and inline scan progress |
+| `views/pages/Page.etlua` | The list page. Every page that ranks storage in lists is this template and a `layout` table: toolbar operations, stat tiles, sections (title, filter, empty states, list) and a footnote |
 | `services/Provider.lua`, `services/Mock.lua`, `services/System.lua`, `services/Scanner.lua`, `src/plugins/storage/StorageScan.m` | Provider selection, synthetic filesystem, actual system integration and native bulk metadata enumeration |
 | `views/` | All presentation, etlua loops and reusable partials |
 
@@ -549,10 +547,10 @@ Every list, menu and link opens a resource by its own id through
 The catalog declares the exceptions on the resource itself: `page` names the
 sidebar page that presents it and everything under it (Developer projects and
 build folders on Projects, Simulator devices on Simulators, DerivedData,
-device support and archives on Xcode, apps on Applications) and `sheet` a
-sheet of its own (an Xcode installation's SDKs). Anything else opens its
-category's list, largest first: a group as itself, a location in its group
-with its row selected. No page routes on its own.
+device support and archives on Xcode, apps on Applications, SDKs on their
+installation page). Other locations open Folder Map at their exact path;
+pathless groups open Storage Map focused on that group. Every destination is
+`{page, params}` and participates in navigation history.
 
 A kind of work is one entry in `knowledge/Workflows.lua`: its name and
 symbol, the sections of its page, and the catalog groups, roots or single
@@ -651,3 +649,19 @@ window presentation. Their views are etlua; controllers do not build view trees.
   concurrent scanner's benchmark.
 - Lists and the map drag as Finder items; the map takes keyboard navigation
   and type-to-filter; mouse back/forward buttons and ⌘[ ⌘] navigate.
+
+Pages use two standard shells: `ContentPage` for scrolling reading/sectioned
+pages and `TablePage` for a native inventory table that fills the available height. The shells own
+margins, the 960-point readable width and section spacing, all declared in
+`views/layouts/PageResources.etlua`. Page templates supply content; they never
+provide a second outer stack, page-height constant or window footer. Flagged
+counts appear in the sidebar row and the Flagged page header only.
+The breakdown pages are one template, `views/pages/Breakdown.etlua`: the
+breakdown card heads the page, the lists below it span the full width, and
+only the data each route presents differs.
+
+Overview, Storage Map, Folder Map and File Types share the `Breakdown` component:
+a compact chart on the left, a concise legend on the right, and the complete
+list below. Its icon button switches to rectangles spanning the whole widget, with no
+side legend. The complete list below remains visible. Page and selection operations use the native window toolbar;
+review flags and context menus remain on individual rows.

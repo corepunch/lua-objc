@@ -17,6 +17,12 @@ local Page = {view = "pages/Worktrees"}
 -- What only reads or leaves the page; every other action changes what it shows.
 Page.queries = {reveal = true, cleanup = true}
 
+function Page:markRow(_, _, row)
+	if not row then return end
+	row.reviewOnly = true
+	self:flow("Rows"):toggleReview(row)
+end
+
 function Page:init()
 	self.service = self.app.service
 	self.stock = Inventories:state("worktrees")
@@ -87,7 +93,7 @@ function Page:data()
 	self.lists = lists
 	local selected
 	for _, rows in pairs(lists) do
-		for _, row in ipairs(rows) do if self.selected and row.id == self.selected.id then selected = row end end
+		for _, row in ipairs(rows) do self:flow("Rows"):annotateReview(row); if self.selected and row.id == self.selected.id then selected = row end end
 	end
 	self.selected = selected
 	local idle = not self.busy

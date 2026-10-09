@@ -1,0 +1,52 @@
+<GroupBox>
+  <Resources>
+    <Number id="breakdownDiameter" value="260" />
+    <Number id="breakdownMinimum" value="120" />
+    <Number id="breakdownText" value="300" />
+    <Number id="breakdownPadding" value="20" />
+    <Number id="breakdownGap" value="28" />
+    <Number id="breakdownSymbolColumn" value="20" />
+    <Number id="breakdownSymbolGap" value="6" />
+  </Resources>
+  <% if style == "rectangles" then %>
+  <VStack padding="@breakdownPadding" alignment="leading">
+    <Treemap id="breakdownRectangles" maxWidth="infinity" height="@breakdownDiameter" <% if dragItem then %>dragItem="<%= dragItem %>" <% end %>onSelect="<%= onSelect %>" onHover="<%= onHover %>" onBack="<%= onCenter %>" accessibilityLabel="<%= accessibilityLabel %>">
+      <% for _, mark in ipairs(rectangles) do %>
+      <TreemapNode id="<%= mark.id %>"<% if mark.parent then %> parent="<%= mark.parent %>"<% end %> value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" detail="<%= mark.detail or "" %>" />
+      <% end %>
+    </Treemap>
+  </VStack>
+  <% else %>
+  <HStack padding="@breakdownPadding" spacing="@breakdownGap" alignment="center">
+    <SectorChart id="breakdownChart" scalable="true" diameter="@breakdownDiameter" minWidth="@breakdownMinimum" minHeight="@breakdownMinimum" flexGrow="0" flexShrink="1" fixedSize="vertical" innerRadius="0.618" angularInset="1" <% if dragItem then %>dragItem="<%= dragItem %>" <% end %>onSelect="<%= onSelect %>" onHover="<%= onHover %>" onCenter="<%= onCenter %>" accessibilityLabel="<%= accessibilityLabel %>">
+      <% for _, mark in ipairs(sectors) do %>
+      <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" cornerRadius="3.5" />
+      <% end %>
+      <ChartCenter titleId="breakdownTotal" detailId="breakdownCaption" total="<%= total %>" caption="<%= caption %>" totalSize="32" captionSize="14" totalScale="0.40625" captionScale="0.75" />
+    </SectorChart>
+    <VStack id="breakdownSummary" flexGrow="1" flexBasis="0" flexShrink="1" minWidth="@breakdownText" spacing="14" alignment="leading">
+      <% if #legend > 0 then %>
+      <VStack id="breakdownLegend" spacing="4" alignment="leading">
+        <% for _, item in ipairs(legend) do %>
+        <LegendRow key="legend-<%= item.id %>" label="<%= item.label %>" color="<%= item.color %>" sizeText="<%= item.sizeText %>" share="<%= item.share %>" linked="<%= item.action ~= nil and item.action ~= "" %>" action="<%= item.action or "" %>" column="@breakdownSymbolColumn" gap="@breakdownSymbolGap" />
+        <% end %>
+      </VStack>
+      <% else %>
+      <Label id="legendExplanation" text="<%= explanation or "No measured items" %>" size="12" color="secondary" maxWidth="infinity" lines="3" />
+      <% end %>
+      <% if #notes > 0 then %>
+      <VStack id="hiddenSpace" spacing="4" alignment="leading">
+        <% for _, row in ipairs(notes) do %>
+        <HStack spacing="@breakdownSymbolGap" alignment="center" help="<%= row.detail %>">
+          <SystemImage name="<%= row.icon %>" size="11" color="tertiary" width="@breakdownSymbolColumn" />
+          <Label text="<%= row.title %>" size="11" color="secondary" lines="1" flexShrink="1" />
+          <Spacer />
+          <Label text="<%= row.value %>" size="11" color="secondary" monospacedDigit="true" />
+        </HStack>
+        <% end %>
+      </VStack>
+      <% end %>
+    </VStack>
+  </HStack>
+  <% end %>
+</GroupBox>

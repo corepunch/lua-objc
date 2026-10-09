@@ -15,6 +15,7 @@ return {
 	files = {conclusion = "Your own large and old files, installers kept apart from system images, generated build output never offered file by file.", next = "cleanup"},
 	kinds = {conclusion = "Your installers and archives to review, with the total stored and the system-owned part stated apart; the chart follows.", next = "files"},
 	duplicates = {conclusion = "Identical files in folders you choose, or why none are listed yet.", next = "cleanup"},
+	basket = {conclusion = "The items you flagged, largest first, with what moving them to the Trash would recover; clear a flag to keep an item.", next = "review"},
 	cleanup = {conclusion = "What Diskmap clears now, what each app clears, what a restart or the pending update clears, then your decisions, all ranked by eligible bytes, confidence and effort; system-managed storage is context only.", next = "review"},
 	applications = {conclusion = "Leftover data of removed apps first, high confidence marked together; then apps with a known last use over six months. Unknown usage stays unknown.", next = "cleanup"},
 	disks = {none = "Volumes and capacity are system-managed; Diskmap explains them and offers no removal."},

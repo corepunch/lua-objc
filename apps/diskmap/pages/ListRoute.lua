@@ -68,6 +68,8 @@ end
 
 function ListRoute:open(_, _, row) self:activateRow(row) end
 
+function ListRoute:markRow(_, _, row) self.rowActions:toggleReview(row) end
+
 function ListRoute:select(_, _, row)
 	self.selectedRow, self.selectedId = row, row and row.id
 end
@@ -101,6 +103,9 @@ function ListRoute:data(state)
 	local presented = self:present(state or {})
 	local layout = self.layout
 	if type(layout) == "function" then layout = layout(self, presented) end
+	for _, rows in pairs(presented.lists or {}) do
+		for _, row in ipairs(rows) do self.rowActions:annotateReview(row) end
+	end
 	self.presented = presented
 	-- One row stays selected across the page's lists, named by its id.
 	self.selectedRow = nil

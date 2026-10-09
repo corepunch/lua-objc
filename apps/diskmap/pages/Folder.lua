@@ -5,31 +5,17 @@ local Model = require("data.model")
 local FolderTree = require("apps.diskmap.helpers.FolderTree")
 local Sectors = require("ui.sectors")
 local Format = require("apps.diskmap.helpers.Format")
+local Breakdown = require("apps.diskmap.helpers.Breakdown")
 local Selection = require("apps.diskmap.helpers.Selection")
-local Treemap = require("apps.diskmap.helpers.Treemap")
 
--- The Folder page: any folder or disk dropped on the window or the Dock icon,
--- or chosen with File › Open Folder…, measured in one scan and shown as
--- DaisyDisk and GrandPerspective show a disk: rings or rectangles beside a
--- list of the focused folder's contents, largest first. Clicking a folder
--- looks inside it, the center or the breadcrumb goes back up, and the map can
--- be colored by folder, by kind of file or by last use. Rows offer Quick Look,
--- Move to… and Move to Trash; a move or Trash updates the map at once.
--- Every row says whose it is, and the line under the map what the selected
--- or open folder is and whether it may go (helpers/Explain), so browsing
--- ~/Library answers "what is this?" in place.
--- Folders below the first scan's depth are measured when opened. The scan
--- counts its items on the line under the spinner, the one live thing here;
--- the rest is drawn when the scan has finished (`app.refresh()`).
-local Folder = {view = "pages/Folder"}
--- The caption under the chart keeps two lines; this must fit them whole in
--- the narrowest pane (tests/diskmap_issue102.test.lua).
-Folder.guidance = "Click a folder to look inside. Double-click a file to preview it."
+-- Any folder or disk opens as a shared breakdown above its complete list.
+-- Clicking a folder looks inside; the center and breadcrumb go back up.
+-- Files preview with Quick Look. Moves update the measured tree directly.
+local Folder = {view = "pages/Breakdown"}
 
-local STYLES = {"rings", "rectangles"}
 
 -- Pointing, row menus and drags only read; a move redraws through `changed`.
-Folder.queries = {chartHover = true, selectRow = true, rowMenu = true, dragPath = true}
+Folder.queries = {chartHover = true, rowMenu = true, dragPath = true}
 
 -- `/folder//Users/me?focus=/Users/me/Music`: the folder measured, and the
 -- one looked inside. Returning to the folder measured already looks inside
@@ -37,7 +23,6 @@ Folder.queries = {chartHover = true, selectRow = true, rowMenu = true, dragPath 
 function Folder:focus(params)
 	if params.path and (params.path ~= self.path or not self.tree) then self:open(params.path, params.focus)
 	elseif params.path or params.focus then self:setFocus(params.focus or self.path) end
-	if params.style then self.style = params.style end
 end
 function Folder:location()
 	return {path = self.path, focus = self.focusPath ~= self.path and self.focusPath or nil}
@@ -45,7 +30,7 @@ end
 
 function Folder:init()
 	self.service, self.rowActions = self.app.service, self:flow("Rows")
-	self.style, self.coloring, self.generation = STYLES[1], FolderTree.colorings[1].id, 0
+	self.coloring, self.generation = FolderTree.colorings[1].id, 0
 end
 
 -- The name a folder is shown by: its own, or the startup disk's for "/".
@@ -102,11 +87,7 @@ end
 function Folder:progress(generation, items)
 	if generation ~= self.generation or not self.loading then return end
 	self.loading.items = items
-	if self.refs and self.refs.folderProgress then self.refs.folderProgress.text = self:progressText() end
-end
-
-function Folder:rescan()
-	if self.path then self:open(self.path, self.focusPath) end
+	if self.refs and self.refs.computingStatus then self.refs.computingStatus.text = self:progressText() end
 end
 
 function Folder:stop()
@@ -152,16 +133,17 @@ function Folder:up()
 end
 
 -- The hole names the pointed item and its size, as Apple's SectorMark
--- sample does, and the line under the map its path.
+-- sample does, and the native tooltip gives its full path.
 -- (WWDC23 10037, StylesDetailsChart; see lua/ui/sectors.lua.)
 function Folder:describe(id)
-	if not self.refs or not self.refs.folderHover then return end
+	if not self.refs then return end
 	local node = id and self.nodeById and self.nodeById[id]
-	if self.refs.folderCenterTitle then
-		self.refs.folderCenterTitle.text = node and node.label or self.center.title
-		self.refs.folderCenterDetail.text = node and node.detail or self.center.detail
+	if self.refs.breakdownTotal then
+		self.refs.breakdownTotal.text = node and node.label or self.center.title
+		self.refs.breakdownCaption.text = node and node.detail or self.center.detail
 	end
-	self.refs.folderHover.text = id and self.tree and self.tree:describe(id) or self.hover or ""
+	local chart = self.refs.breakdownChart or self.refs.breakdownRectangles
+	if chart then chart.toolTip = id and self.tree and self.tree:describe(id) or "" end
 end
 
 -- Opens a folder, or previews a file with Quick Look.
@@ -175,10 +157,9 @@ function Folder:chartSelect(id, count)
 	local node = self.tree and self.tree:find(id)
 	if count and count > 1 then self:drill(id)
 	elseif node and node.directory and (node.children == nil or #node.children > 0) then self:setFocus(id)
-	else self.selected = node and id or self.selected; self:describe(id); self:showSelection() end
+	else self.selected = node and id or self.selected; self:describe(id) end
 end
 
-function Folder:openSelection() if self.selected then self:drill(self.selected) end end
 
 function Folder:selection()
 	local node = self.tree and self.tree:find(self.selected)
@@ -256,12 +237,7 @@ function Folder:askPackage(path)
 	end)
 end
 
-function Folder:showSelection()
-	if not self.refs or not self.refs.folderOpen then return end
-	local selection = self:selection()
-	self.refs.folderOpen.title, self.refs.folderOpen.enabled = selection.title, selection.enabled
-	self.refs.folderSelection.text = selection.detail
-end
+function Folder:showSelection() self.app.refresh() end
 
 function Folder:chartHover(id) self:describe(id) end
 
@@ -269,9 +245,10 @@ function Folder:selectRow(_, _, row)
 	if not row then return end
 	if not row.other then self.selected = row.path; self:askPackage(row.path) end
 	self:describe(row.id)
-	self:showSelection()
-	if self.refs.folderSunburst then Sectors.highlight(self.refs.folderSunburst, row.id) end
+	if self.refs.breakdownChart then Sectors.highlight(self.refs.breakdownChart, row.id) end
 end
+
+function Folder:markRow(_, _, row) self.rowActions:toggleReview(row) end
 
 function Folder:drillRow(_, _, row) if row and not row.other then self:drill(row.id) end end
 
@@ -289,12 +266,6 @@ end
 function Folder:dragPath(id)
 	local node = self.tree and self.tree:find(id)
 	return node and node.path
-end
-
-function Folder:pickStyle(index)
-	local style = STYLES[(index or 0) + 1]
-	if not style then error("unknown map style " .. tostring(index), 2) end
-	self.style = style
 end
 
 function Folder:pickColoring(index)
@@ -375,47 +346,62 @@ function Folder:badge()
 	return self.tree and Format.size(self.tree.root.bytes) or nil
 end
 
+local EMPTY = {id = "folderEmpty", title = "Open a Folder", systemImage = "folder.badge.plus",
+	description = "Drop a folder or disk onto this window, or choose File › Open Folder…"}
+
 function Folder:data()
 	local phase = self.failure and "failed" or self.tree and "loaded" or self.loading and "scanning" or "empty"
-	local data = {state = phase, style = self.style, summary = self:summary(), progress = self:progressText(),
-		failure = self.failure or "", colorings = FolderTree.colorings, colorIndex = 0, nodes = {}, rows = {}, trail = {}, legend = {},
-		title = self.tree and self.tree.root.name or (self.path and self:displayName(self.path)) or "Folder",
-		hasPath = self.path ~= nil, measuring = self.loading ~= nil, loadingDeeper = self.loading ~= nil and self.loading.deeper == true}
-	for index, coloring in ipairs(FolderTree.colorings) do if coloring.id == self.coloring then data.colorIndex = index - 1 end end
-	self.trail, self.rowsByPath = data.trail, {}
-	if phase ~= "loaded" then return data end
+	local data = {}
+	self.trail, self.rowsByPath = {}, {}
+	if phase == "empty" then data.waiting = EMPTY; return data end
+	if phase == "failed" then
+		data.waiting = {id = "folderFailed", title = "Could Not Measure This Folder", systemImage = "exclamationmark.triangle", description = self.failure}
+		return data
+	end
+	if phase == "scanning" then data.computing, data.stopAction = self:progressText(), "stop"; return data end
 	local now = os.time()
 	local nodes, total = self.tree:nodes(self.focusPath, self.coloring, now)
-	data.nodes = nodes
-	data.rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:owner(path) end)
-	self.rows = data.rows
-	data.trail = self.tree:trail(self.focusPath)
+	local rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:owner(path) end)
+	local trail = self.tree:trail(self.focusPath)
+	self.rows, self.trail = rows, trail
 	self.nodeById = {}
 	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
-	self.center = {title = Format.size(total), detail = #data.trail > 1 and "Click to go up" or "Measured"}
-	data.center = self.center
-	data.chartHeight = Treemap.height(nodes)
-	data.selection = self:selection()
-	data.legend = self.tree:legend(self.focusPath, self.coloring, now)
-	data.lists = self.style ~= "rectangles" and {folderList = data.rows} or nil
-	self.trail = data.trail
-	for _, row in ipairs(data.rows) do self.rowsByPath[row.id] = row end
-	self.hover = #nodes == 0 and "" or Folder.guidance
-	data.hover = self.hover
-	-- The breadcrumb buttons are named by position (`focus_2`).
+	self.center = {title = Format.size(total), detail = #trail > 1 and "Click to go up" or "Measured"}
+	for _, row in ipairs(rows) do self.rowActions:annotateReview(row); self.rowsByPath[row.id] = row end
+	-- The trail's buttons are named by position (`focus_2`).
 	data.handlers = {}
-	for index, step in ipairs(data.trail) do data.handlers["focus_" .. index] = function() self:setFocus(step.id) end end
-	data.accessibilityLabel = "Storage map of " .. data.trail[#data.trail].name .. ", " .. #nodes .. " areas"
-	data.incomplete = self.stats and (self.stats.errors or 0) > 0
+	local ancestors = {}
+	for index, step in ipairs(trail) do
+		data.handlers["focus_" .. index] = function() self:setFocus(step.id) end
+		if index < #trail then table.insert(ancestors, {name = step.name, action = "focus_" .. index}) end
+	end
+	local options, colorIndex = {}, 0
+	for index, coloring in ipairs(FolderTree.colorings) do
+		table.insert(options, coloring.title)
+		if coloring.id == self.coloring then colorIndex = index - 1 end
+	end
+	-- Colored by kind or by last use, the legend names the colors instead.
+	local marks, legend = Breakdown.rows(rows)
+	if self.coloring ~= "folders" then legend = self.tree:legend(self.focusPath, self.coloring, now) end
+	data.breakdown = {style = self.app.chartStyle, title = trail[#trail].name, detail = self:summary(), trail = ancestors,
+		picker = {id = "folderColoring", value = colorIndex, action = "pickColoring", options = options,
+			help = "Color the map by folder, by kind of file or by when files were last used"},
+		marks = marks, rectangles = nodes, legend = legend, dragItem = "dragPath", center = self.center, centerAction = "up",
+		accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas"}
+	data.lists = {folderList = rows}
+	data.sections = {{id = "folderSection", title = "Contents", list = {id = "folderList", menu = "rowMenu", selectAction = "selectRow", activate = "drillRow", fileIcons = true}}}
+	data.footnotes = {}
+	if self.stats and (self.stats.errors or 0) > 0 then table.insert(data.footnotes, {text = "Some folders could not be read, so sizes are a lower bound."}) end
 	local unreadable = self:unreadableBytes()
-	data.unreadable = unreadable and (Format.size(unreadable) .. " of used space is in no folder Diskmap could read: the macOS system volume, snapshots, purgeable space and protected folders.") or nil
+	if unreadable then
+		table.insert(data.footnotes, {text = Format.size(unreadable) .. " of used space is in no folder Diskmap could read: the macOS system volume, snapshots, purgeable space and protected folders."})
+	end
 	return data
 end
 
 function Folder:rendered(refs)
 	self.refs = refs
 	Selection.show(refs.folderList, self.rows or {}, self.selected)
-	self:showSelection()
 end
 
 function Folder:deactivate() self.refs = nil end

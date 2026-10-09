@@ -17,8 +17,8 @@ function Fixtures:get(name)
 	local request, view, data, all
 	if name == "hero" or name == "notMeasured" then
 		request = env:page("overview"); all = request:data(env:state())
-		view = name == "hero" and "sections/Hero" or "sections/NotMeasured"
-		data = name == "hero" and all.hero or all.unmeasured
+		view = name == "hero" and "sections/Breakdown" or "sections/NotMeasured"
+		data = name == "hero" and all.breakdown or all.context[1].data
 	elseif name == "decision" or name == "tips" then
 		request = env:page("cleanup"); all = request:data(env:state())
 		view = name == "decision" and "sections/Decision" or "sections/Tips"
@@ -27,13 +27,15 @@ function Fixtures:get(name)
 		request = env:page("kinds"); data = request:data(env:state()); view = request.view
 		data.page = env.manifest.pages.kinds
 	elseif name == "changes" then
-		request = env.session.changesSheet
+		request = env:page("snapshotChanges")
 		local before = Locations:totals()
 		for id, bytes in pairs(before) do before[id] = math.floor(bytes / 2) end
-		request.result = Locations:changesSince({createdAt = os.time({year = 2026, month = 9, day = 1, hour = 12}), totals = before})
+		env.snapshots = {dispose = function() end, result = Locations:changesSince({createdAt = os.time({year = 2026, month = 9, day = 1, hour = 12}), totals = before})}
 		data, view = request:data(), request.view
+		data.page = env.manifest.pages.snapshotChanges
 	elseif name == "settings" then
 		request = env.settings; data, view = request:data(), request.view
+		data.page = env.manifest.pages.settings
 	else error("Unknown Diskmap fixture: " .. tostring(name), 2) end
 	local handlers = all and all.handlers or data.handlers
 	data.actions = setmetatable({}, {__index = function(_, action)
@@ -49,7 +51,7 @@ function Fixtures:render(name)
 	local fixture = self:get(name)
 	local view, refs = xml.renderFile(fixture.view, fixture.data, ns)
 	for id, rows in pairs(fixture.data.lists or {}) do refs[id]:replaceRows(rows) end
-	if name == "settings" then fixture.request:sync(refs) end
+	if name == "settings" then fixture.request:rendered(refs) end
 	return view, refs
 end
 

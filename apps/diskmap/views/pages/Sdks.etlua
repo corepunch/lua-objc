@@ -1,0 +1,11 @@
+<TablePage id="page">
+  <%- partial("../components/PageHeader.etlua", {header = page, titleId = "title"}) %>
+  <SearchField id="search" placeholder="Search" accessibilityLabel="Search SDKs" onChange="search" defaultFocus="true" />
+  <ContentUnavailable id="noSdks" flexGrow="1" maxHeight="infinity" title="No SDKs" systemImage="shippingbox" description="No SDKs match this installation and search." />
+  <List onColumnButton="markRow" onActivate="openRow" flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" id="rows" style="fullWidth" header="false" alternatingRows="false" rowHeight="44">
+    <Column id="name" title="SDK" subtitleKey="platform" minWidth="180" />
+    <Column id="size" title="On disk" width="120" minWidth="100" alignment="trailing" />
+    <Column id="review" title="Review" width="32" minWidth="32" buttonSymbol="flag" enabledKey="markable" imageKey="markIcon" helpKey="markHelp" />
+  </List>
+
+</TablePage>

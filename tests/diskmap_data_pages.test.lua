@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 _G.__headless = true
 local Locations = require("apps.diskmap.models.Locations")
 local t = require("TestKit")
@@ -65,7 +66,7 @@ t.assertEqual(kinds.refs.kinds, nil, "File Types lists what the finished scan me
 kinds:dispose()
 model.scan = {running = true}
 kinds = open("kinds", nil, model)
-t.expect(kinds.refs.waiting ~= nil and kinds.refs.kindsChart == nil, "File Types draws the empty state while the scan runs")
+t.expect(kinds.refs.waiting ~= nil and kinds.refs.breakdownChart == nil, "File Types draws the empty state while the scan runs")
 kinds:dispose()
 
 -- Applications: the page's own requests keep one spinner.
@@ -107,7 +108,7 @@ local stock = require("apps.diskmap.models.Inventories"):state("projects")
 t.assertEqual(#answers, 1, "one project is asked at a time")
 answers[1].done({git = {branch = "main", changes = 0, ahead = 0, clean = true}, modified = os.time() - 200 * 86400})
 t.expect(projects.refs.computing == nil and projects.refs.projects.rowCount == 1, "the answer draws the project")
-t.expect(projects.refs.markStale.enabled, "a clean, old project can be marked in bulk")
+t.expect(O(projects, "markStale").enabled, "a clean, old project can be marked in bulk")
 t.assertEqual(require("apps.diskmap.models.Projects"):badge(), "2.0 GB", "the sidebar badge totals the build data")
 local projectModel = projects.request
 projects:dispose()

@@ -1,0 +1,56 @@
+<% --[[ The breakdown page: Overview, Storage Map, File Types and Folder Map are
+  this one template over different data. A heading names the level shown, with
+  its trail and picker; a decision the page leads with follows, then the
+  breakdown card and what explains it; then its lists, each the full
+  width of the page.
+
+    waiting      {id, title, systemImage, description}: in place of everything,
+                 while there is nothing to break down (not measured yet, no
+                 folder open, a folder that could not be read)
+    computing    a status line beside one native spinner, in place of the same;
+                 `stopAction` adds a Stop button under it
+    breakdown    the table of sections/Breakdown.etlua; absent when there is
+                 nothing to break down and no reason to wait (no files at all)
+    leads        {view, data}: the decision a page leads with, above the card
+                 (#102), by its path under views/ ("sections/Decision")
+    context      {view, data}: what explains the card, between it and the lists
+    sections     each {id, title, detail, detailId, panelId, link = {id, title, action},
+                 view (a partial under views/, components/ResourceList when
+                 absent), list (its arguments)}
+    footnotes    each {id, icon, text} of Footnote.etlua ]] %>
+<ContentPage id="page">
+  <% if waiting then %>
+  <ContentUnavailable id="<%= waiting.id or "waiting" %>" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
+  <% elseif computing then %>
+  <VStack id="computing" maxWidth="infinity" spacing="10" alignment="center">
+    <ProgressView id="computingSpinner" />
+    <Label id="computingStatus" text="<%= computing %>" size="13" color="secondary" lines="1" truncation="middle" />
+    <% if stopAction then %><Button id="computingStop" title="Stop" action="<%= stopAction %>" /><% end %>
+  </VStack>
+  <% else %>
+  <% if breakdown then %><%- partial("../components/BreakdownHeading.etlua", breakdown) %><% end %>
+  <% for _, lead in ipairs(leads or {}) do %>
+  <%- partial("../" .. lead.view .. ".etlua", lead.data) %>
+  <% end %>
+  <% if breakdown then %><%- partial("../sections/Breakdown.etlua", breakdown) %><% end %>
+  <% for _, part in ipairs(context or {}) do %>
+  <%- partial("../" .. part.view .. ".etlua", part.data) %>
+  <% end %>
+  <% for _, section in ipairs(sections or {}) do %>
+  <VStack id="<%= section.id %>" spacing="8" alignment="leading">
+    <HStack spacing="8" alignment="bottom">
+      <%- partial("../components/SectionHeader.etlua", {title = section.title, detail = section.detail, detailId = section.detailId}) %>
+      <% if section.link then %>
+      <Button id="<%= section.link.id %>" title="<%= section.link.title %>" style="link" action="<%= section.link.action %>" />
+      <% end %>
+    </HStack>
+    <GroupBox<% if section.panelId then %> id="<%= section.panelId %>"<% end %>>
+      <%- partial("../" .. (section.view or "components/ResourceList") .. ".etlua", section.list) %>
+    </GroupBox>
+  </VStack>
+  <% end %>
+  <% for _, note in ipairs(footnotes or {}) do %>
+  <%- partial("../components/Footnote.etlua", note) %>
+  <% end %>
+  <% end %>
+</ContentPage>

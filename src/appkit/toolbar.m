@@ -404,32 +404,56 @@ static LuaToolbarDelegate *window_install_toolbar(NSWindow *window, NSArray *ite
 	return delegate;
 }
 
-/* SwiftUI evaluates a toolbar's content again when state changes: Refresh
- * becomes Stop while a measurement runs. The window template is described
- * again (xml.toolbarFile) and each button item takes its new label, tooltip,
- * symbol and action in place, keeping its position and AppKit's glass group.
- * Which items the toolbar has is fixed when the window is made; an item with
- * a view of its own (a search field) keeps that view. */
+/* A retained toolbar description can change with the visible page. Keep
+ * matching items (especially a focused search field), and let NSToolbar
+ * insert/remove only the items whose identity or order changed. */
 static int bridge_NSWindow_updateToolbar(lua_State *L) {
 	NSWindow *window = lua_objc_check_object(L, 1, [NSWindow class], "Window");
 	LuaToolbarDelegate *delegate = objc_getAssociatedObject(window, &kKeys[kToolbarDelegateKey]);
 	if (!delegate) return luaL_error(L, "updateToolbar: the window has no toolbar");
 	NSArray<NSDictionary *> *described = toolbar_items_from_lua(L, 2);
-	NSMutableArray *items = [delegate.items mutableCopy];
-	if (described.count != items.count)
-		return luaL_error(L, "updateToolbar: a toolbar keeps its items; only their content changes");
-	for (NSUInteger index = 0; index < items.count; index++) {
-		NSDictionary *item = described[index];
-		if (![item[@"id"] isEqualToString:items[index][@"id"]])
-			return luaL_error(L, "updateToolbar: a toolbar keeps its items; only their content changes");
-		if (items[index][@"view"]) continue;
-		items[index] = item;
-		NSToolbarItemIdentifier identifier = toolbar_item_identifier(item[@"id"]);
-		for (NSToolbarItem *ti in window.toolbar.items)
-			if ([ti isKindOfClass:LuaToolbarItem.class] && [ti.itemIdentifier isEqualToString:identifier])
-				toolbar_button_apply(ti, item);
+	NSMutableArray *items = [NSMutableArray array];
+	NSMutableSet *seen = [NSMutableSet set];
+	for (NSDictionary *description in described) {
+		NSString *identifier = description[@"id"];
+		if (!identifier.length) return luaL_error(L, "updateToolbar: every item needs an id");
+		if ([seen containsObject:identifier] && ![identifier isEqualToString:@"flexibleSpace"])
+			return luaL_error(L, "updateToolbar: item ids must be unique");
+		[seen addObject:identifier];
+		NSMutableDictionary *item = [description mutableCopy];
+		for (NSDictionary *previous in delegate.items) {
+			if ([previous[@"id"] isEqualToString:identifier] && previous[@"view"]) {
+				item[@"view"] = previous[@"view"];
+				break;
+			}
+		}
+		[items addObject:item];
 	}
 	delegate.items = items;
+	NSArray *identifiers = [delegate toolbarDefaultItemIdentifiers:window.toolbar];
+	for (NSInteger index = (NSInteger)window.toolbar.items.count - 1; index >= 0; index--)
+		if (![identifiers containsObject:window.toolbar.items[index].itemIdentifier])
+			[window.toolbar removeItemAtIndex:index];
+	for (NSUInteger index = 0; index < identifiers.count; index++) {
+		NSString *identifier = identifiers[index];
+		if (index < window.toolbar.items.count && [window.toolbar.items[index].itemIdentifier isEqualToString:identifier]) continue;
+		for (NSUInteger later = index; later < window.toolbar.items.count; later++) {
+			if ([window.toolbar.items[later].itemIdentifier isEqualToString:identifier]) {
+				[window.toolbar removeItemAtIndex:(NSInteger)later];
+				break;
+			}
+		}
+		[window.toolbar insertItemWithItemIdentifier:identifier atIndex:(NSInteger)index];
+	}
+	while (window.toolbar.items.count > identifiers.count)
+		[window.toolbar removeItemAtIndex:(NSInteger)window.toolbar.items.count - 1];
+	for (NSDictionary *item in items) {
+		if (item[@"view"]) continue;
+		NSString *identifier = toolbar_item_identifier(item[@"id"]);
+		for (NSToolbarItem *installed in window.toolbar.items)
+			if ([installed isKindOfClass:LuaToolbarItem.class] && [installed.itemIdentifier isEqualToString:identifier])
+				toolbar_button_apply(installed, item);
+	}
 	return 0;
 }
 

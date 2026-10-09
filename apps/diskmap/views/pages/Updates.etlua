@@ -1,5 +1,4 @@
-<PageFrame id="page">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
+<ContentPage id="page">
     <%- partial("../components/PageHeader.etlua", {header = page,
       summary = "Storage macOS uses to download and install updates, and the restore points Time Machine keeps on this disk."}) %>
     <% if computing then %>
@@ -17,7 +16,7 @@
               <Label id="updateTitle" text="<%= softwareUpdate.title %>" size="13" weight="semibold" maxWidth="infinity" lines="1" />
               <Label id="updateDetail" text="<%= softwareUpdate.detail %>" size="11" color="secondary" maxWidth="infinity" lines="2" />
             </VStack>
-            <Button id="openSoftwareUpdate" title="Software Update…" action="openSoftwareUpdate" />
+
           </HStack>
           <% for _, stage in ipairs(stages) do %>
           <Divider />
@@ -44,7 +43,7 @@
     <VStack spacing="8" alignment="leading">
       <HStack spacing="8" alignment="center">
         <%- partial("../components/SectionTitle.etlua", {id = "snapshotTitle", icon = "clock.arrow.circlepath", title = snapshotTitle}) %>
-        <Button id="openTimeMachine" title="Time Machine Settings…" action="openTimeMachine" />
+
       </HStack>
       <GroupBox>
         <%- partial("../components/GroupedRowMetrics.etlua") %>
@@ -62,5 +61,4 @@
       </GroupBox>
     </VStack>
     <% end %>
-  </VStack>
-</PageFrame>
+</ContentPage>

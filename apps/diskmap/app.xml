@@ -1,6 +1,7 @@
 <App name="Diskmap" startup="overview" controller="Controller">
 	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" />
 	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" />
+	<Page id="basket" title="Flagged for Review" sidebar="Flagged" icon="flag.fill" color="systemOrange" />
 	<Section title="Free Up Space">
 		<Page id="applications" arg="filter" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" />
 		<Page id="files" arg="filter" title="Large Files" icon="doc.fill" color="systemTeal" key="4" />
@@ -39,7 +40,12 @@
 		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" />
 		<Page id="help" route="topics" arg="topic" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
 	</Section>
-	<Page id="basket" title="Marked for Cleanup" icon="tray.full" color="systemBlue" listed="false" />
 	<Page id="search" title="Search" icon="magnifyingglass" color="systemGray" listed="false" />
 
+	<Page id="settings" title="Settings" icon="gearshape" color="systemBlue" listed="false" />
+	<Page id="history" title="Action History" icon="clock" color="systemBlue" listed="false" />
+	<Page id="sdks" title="SDKs" icon="hammer" color="systemBlue" listed="false" />
+	<Page id="snapshotChanges" title="Snapshot Changes" icon="clock.arrow.circlepath" color="systemBlue" listed="false" />
+	<Page id="tour" title="Diskmap Tour" icon="book" color="systemBlue" listed="false" />
+	<Page id="onboarding" title="Storage Access" icon="lock.open" color="systemBlue" listed="false" />
 </App>

@@ -17,9 +17,9 @@ local Rows = Flow:extend()
 -- resource where its location sends it, `keep(id)` toggles Keep,
 -- `trashed(path, bytes)` and `removed(path, bytes, to)`
 -- take what left the disk out of the model, `openReview(path)` shows the
--- marked items, and `review` is the review sheet: "Mark for Cleanup" adds a
+-- marked items, and `review` is the review page: "Flag for Review" adds a
 -- row to the marks (models/Marks.lua), and nothing touches the disk until
--- that sheet.
+-- an explicit action on the review page.
 
 function Rows:isMarked(path) return self.app.basket ~= nil and self.app.basket:isMarked(path) end
 function Rows:covering(path)
@@ -38,10 +38,10 @@ function Rows:mark(item)
 		return {title = "Included through Marked Folder — Review…", systemImage = "folder.badge.checkmark",
 			action = function() self.app.openReview(parent.path) end}
 	end
-	return {title = marked and "Unmark" or "Mark for Cleanup", systemImage = marked and "minus.circle" or "plus.circle",
+	return {title = marked and "Remove Review Flag" or "Flag for Review", systemImage = marked and "flag.slash" or "flag",
 		action = function()
 			local _, reason = self.app.basket:toggle(item)
-			if reason and not marked then self.app.service.showError("Cannot mark for cleanup", reason) end
+			if reason and not marked then self.app.service.showError("Cannot flag for review", reason) end
 		end}
 end
 
@@ -66,7 +66,7 @@ function Rows:bulk(rows, eligible, toItem)
 end
 
 -- Prepares rows for ResourceList: share bars relative to the largest row,
--- the row's own icon and color, and a checkmark for rows in the basket so
+-- the row's own icon and color, and a flag for rows in the basket so
 -- marked items are recognisable in every list.
 function Rows:annotate(rows, icon, color)
 	local largest = 0
@@ -83,22 +83,77 @@ function Rows:annotate(rows, icon, color)
 		row.color = row.color or color
 		row.icon = row.icon or icon
 		if row.marked or self:isMarked(row.path) then
-			row.icon, row.color = "checkmark.circle.fill", "systemBlue"
-			row.subtitle = "Marked for cleanup · " .. (row.subtitle or "")
+			row.icon, row.color = "flag.fill", "systemBlue"
+			row.subtitle = "Flagged for review · " .. (row.subtitle or "")
 		elseif row.included or self:isIncluded(row.path) then
 			local parent = self:covering(row.path)
 			row.icon, row.color = "folder.badge.checkmark", "systemBlue"
 			row.subtitle = "Included through marked folder " .. (parent and (parent.name or parent.path) or "") .. " · " .. (row.subtitle or "")
 		end
+		self:annotateReview(row)
 		table.insert(presented, row)
 	end
 	return presented
 end
 
--- Only resources Diskmap has a verified Move to Trash recipe for can be
--- marked from a list; everything else is reviewed in its category.
-function Rows:markableResource(row)
-	return row ~= nil and row:isLeaf() and row.action == "trash" and row.path ~= nil and (row:validateTrash()) == true
+-- Review is available independently of removal policy. A category flags
+-- its real locations; a project flags only its generated artifacts.
+function Rows:reviewItems(row)
+	if not row then return {} end
+	if row.artifacts then return require("apps.diskmap.models.Projects").items(row) end
+	local location = Locations:find(row.resourceId or row.id)
+	if location and not location.path then
+		local items = {}
+		for _, child in ipairs(location:children()) do
+			for _, item in ipairs(self:reviewItems(child)) do table.insert(items, item) end
+		end
+		return items
+	end
+	local item = location or row
+	if not item.path or row.other then return {} end
+	local measurement = location and location:measurement()
+	return {{path = item.path, name = item.name, bytes = measurement and measurement.bytes or row.bytes,
+		resourceId = location and location.id, source = row.source or "Review", consequence = row.consequence or location and location.advice,
+		bundleId = row.bundleId, leftover = row.tier ~= nil, reviewOnly = row.reviewOnly}}
+end
+
+function Rows:markableResource(row) return #self:reviewItems(row) > 0 end
+
+function Rows:reviewState(row)
+	local items = self:reviewItems(row)
+	local checked = #items > 0
+	local exact, enclosing = false, nil
+	for _, item in ipairs(items) do
+		local parent, same = self:covering(item.path)
+		if not parent then checked = false end
+		if same then exact = true elseif parent then enclosing = enclosing or parent end
+	end
+	return checked, items, checked and not exact and enclosing or nil
+end
+
+function Rows:annotateReview(row)
+	local checked, items, enclosing = self:reviewState(row)
+	row.markIcon = checked and "flag.fill" or "flag"
+	row.markHelp = enclosing and ("Included through flagged folder: " .. (enclosing.name or enclosing.path) .. "; open review")
+		or (checked and "Remove review flag from " or "Flag for review: ") .. (row.name or "item")
+	row.markable = #items > 0
+	return row
+end
+
+function Rows:toggleReview(row)
+	if not row then return false end
+	local checked, items, enclosing = self:reviewState(row)
+	if checked then
+		if enclosing then self.app.openReview(enclosing.path); return end
+		self.app.basket:removeAll(items)
+	else self:markAll(items) end
+end
+
+function Rows:reviewAction(row)
+	local checked, items, enclosing = self:reviewState(row)
+	if #items == 0 then return nil end
+	return {title = enclosing and "Review Enclosing Flag…" or checked and "Remove Review Flag" or "Flag for Review", systemImage = checked and "flag.fill" or "flag",
+		action = function() self:toggleReview(row) end}
 end
 
 local function separator() return {separator = true} end
@@ -182,7 +237,7 @@ function Rows:item(row, handlers)
 	local ok, reason = validate(row.path)
 	table.insert(items, {title = ok and "Move to Trash…" or ("Move to Trash — " .. tostring(reason)), systemImage = "trash", disabled = not ok,
 		action = function() self:trashItem(row, validate, function() handlers.changed(row.path) end) end})
-	if ok then table.insert(items, self:mark({path = row.path, name = row.name, bytes = row.bytes, source = "Folder"})) end
+	table.insert(items, self:reviewAction(row))
 	table.insert(items, separator())
 	table.insert(items, self:copyPath(row.path))
 	return items
@@ -191,17 +246,11 @@ end
 -- Explicit destinations for selected locations, shared by map and ranking.
 function Rows:locationAction(id)
 	local row = Locations:find(id)
-	if not row then return {title = "Open Selection", detail = "Select an item to choose its destination."} end
+	if not row then return {title = "Open Selection"} end
 	local destination = row:destination()
 	local title = destination.page == "projects" and "Review Build Data"
 		or destination.page == "xcode" and "Review Xcode Data" or ("Open " .. row.name)
-	local measurement = row:measurement()
-	local detail = row.name .. " · " .. Format.size(measurement and measurement.bytes)
-	if destination.page == "projects" and row.path then
-		local bytes = require("apps.diskmap.models.Projects"):bytesWithin(row.path)
-		detail = row.name .. " · " .. Format.size(Locations:folderBytes(row.path)) .. " measured folder contents · " .. Format.size(bytes) .. " generated build data"
-	end
-	return {title = title, detail = detail, path = row.path}
+	return {title = title}
 end
 
 function Rows:inspect(path)
@@ -213,6 +262,7 @@ function Rows:resource(id)
 	local row = Locations:find(id)
 	if not row then return {} end
 	local items = {}
+	table.insert(items, self:reviewAction(row))
 	if row.path then table.insert(items, self:inspect(row.path)) end
 	if row:destination().page == "projects" then
 		local action = self:locationAction(id)
@@ -226,14 +276,8 @@ function Rows:resource(id)
 		if detail and detail.manageTitle and row:destination().page ~= "projects" then
 			table.insert(items, {title = detail.manageTitle, disabled = not detail.canManage,
 				action = function()
-					if Locations:opensElsewhere(id) then self.app.open(id); return end
 					Manage(self):manage(id)
 				end})
-		end
-		if self:markableResource(row) then
-			local measured = Model.db.measurements[id]
-			table.insert(items, self:mark({path = row.path, name = row.name, bytes = measured and measured.bytes, resourceId = id,
-				source = (row:parent() or row).name, consequence = row.advice}))
 		end
 		if row.path then
 			table.insert(items, self:quickLookItem(row.path))
@@ -259,7 +303,7 @@ function Rows:file(row, handlers)
 		{title = ok and "Move to Trash…" or ("Move to Trash — " .. (reason and reason.message or "unavailable")), systemImage = "trash", disabled = not ok,
 			action = function() self:trashFile(row) end},
 	}
-	if ok then table.insert(items, self:mark({path = row.path, name = row.name, bytes = row.bytes, source = "Large Files"})) end
+	table.insert(items, self:reviewAction(row))
 	table.insert(items, self:moveItem(row, function(path)
 		local allowed, why = Files:validateTrash(path)
 		return allowed, why and why.message
@@ -291,11 +335,10 @@ end
 -- possible leftover, Xcode data or a project's build folder. `trash(row)`
 -- performs a validated move when given; `mark` is the basket item for it.
 function Rows:folder(row, trash, mark)
-	local items = {self:inspect(row.path)}
+	local items = {mark and self:mark(mark) or self:reviewAction(row), self:inspect(row.path)}
 	if trash then
 		table.insert(items, {title = "Move to Trash…", systemImage = "trash", action = function() trash(row) end})
 	end
-	if mark then table.insert(items, self:mark(mark)) end
 	table.insert(items, self:quickLookItem(row.path))
 	table.insert(items, self:reveal(row.path))
 	table.insert(items, separator())
@@ -306,7 +349,7 @@ end
 
 -- An installed application: its bundle and the data folders it owns.
 function Rows:application(row)
-	local items = {self:reveal(row.path)}
+	local items = {self:reviewAction(row), self:reveal(row.path)}
 	for index, folder in ipairs(row.folders or {}) do
 		if index > 4 then break end
 		table.insert(items, {title = "Show " .. folder.label .. " (" .. Format.size(folder.bytes) .. ")", systemImage = "folder",

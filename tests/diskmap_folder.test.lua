@@ -81,28 +81,28 @@ t.assertEqual(app.destination, "folder", "a dropped folder shows the Folder Map"
 t.assertEqual(page.path, downloads, "the dropped folder is measured")
 pc = app.page
 local refs = pc.refs
-t.expect(refs.folderSunburst ~= nil and refs.folderList.rowCount >= 3, "the folder shows as rings beside its contents")
+t.expect(refs.breakdownChart ~= nil and refs.folderList.rowCount >= 3, "the folder shows as rings beside its contents")
 t.assertEqual(bridge._tableCell(refs.folderList, 0, 0).textField.stringValue, "Old macOS Installer.dmg", "the largest item comes first")
 local folderMeter = dofile("tests/fixtures/meter.lua")(bridge._tableCell(refs.folderList, 1, 0))
 t.expect(folderMeter.value.stringValue ~= "" and folderMeter.share.stringValue:find("%%$") ~= nil, "the folder meter shows the size and its share")
 t.expect(not folderMeter.bar.hidden, "the folder meter draws its bar")
-t.expect(refs.folderSummary.text:find("~/Downloads", 1, true) ~= nil, "the summary names the folder from the home folder")
+t.expect(refs.breakdownDetail.text:find("~/Downloads", 1, true) ~= nil, "the summary names the folder from the home folder")
 t.expect(app:badges().folder ~= nil, "the sidebar badge is the open folder's size")
 
 -- Colorings and chart styles.
 pc.actions.pickColoring(1)
 t.assertEqual(page.coloring, "kinds", "the map colors by kind of file")
-t.expect(pc.refs.folderLegend ~= nil, "kinds come with a legend")
+t.expect(pc.refs.breakdownLegend ~= nil, "kinds come with a legend")
 pc.actions.pickColoring(2)
 t.assertEqual(page.coloring, "age", "the map colors by last use")
 local ages = {}
 for _, row in ipairs(page.tree:legend(page.focusPath, "age")) do ages[row.name] = row end
 t.expect(ages["1–3 years ago"] ~= nil, "an installer untouched for two years is in the older band")
 pc.actions.pickColoring(0)
-pc.actions.pickStyle(1)
-t.expect(pc.refs.folderTreemap ~= nil and pc.refs.folderSunburst == nil, "Rectangles shows the folder as a treemap")
-t.expect(pc.refs.folderList == nil, "Rectangles needs no list of folders")
-pc.actions.pickStyle(0)
+app:toggleChartStyle()
+t.expect(pc.refs.breakdownRectangles ~= nil and pc.refs.breakdownChart == nil, "Rectangles shows the folder as a breakdownRectangles")
+t.expect(pc.refs.folderList ~= nil, "Rectangles retains the complete folder list")
+app:toggleChartStyle()
 t.expect(pc.refs.folderList ~= nil, "Rings bring the list back")
 
 -- Quick Look previews the selection with ⌘Y and steps through its folder.
@@ -127,7 +127,7 @@ local function perform(list, row, title)
 	return false
 end
 local menu = titles(pc.refs.folderList, 1)
-for _, title in ipairs({"Quick Look", "Show in Finder", "Move to…", "Move to Trash…", "Mark for Cleanup", "Copy Path"}) do
+for _, title in ipairs({"Quick Look", "Show in Finder", "Move to…", "Move to Trash…", "Flag for Review", "Copy Path"}) do
 	t.expect(menu[title], "a file's menu offers " .. title)
 end
 

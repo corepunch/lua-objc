@@ -38,7 +38,7 @@ for index = 1, page.refs.contents.rowCount do
 	for _, item in ipairs(items) do if item.title then titles[item.title] = true end end
 end
 t.expect(titles["Empty Trash…"] and titles["Spotlight Settings…"], "the disk's Trash and index offer their owners' actions")
-t.expect(titles["Mark for Cleanup"], "ordinary folders can be marked for cleanup")
+t.expect(titles["Flag for Review"], "ordinary folders can be flagged for review")
 
 -- The system volume is called sealed only when the measured state says so.
 local Volumes = require("apps.diskmap.helpers.Volumes")

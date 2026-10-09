@@ -6,21 +6,16 @@ local xml = require("ui.xml")
 -- A donut's center total must never wrap ("110.4" over "GB"): the hole is
 -- narrower than the total at its declared size, so every center label is one
 -- line and shrinks to fit.
-local _, refs = xml.renderFile("apps/diskmap/views/pages/Kinds.etlua", {
-	page = {icon = "square.grid.2x2.fill", color = "systemPink", title = "File Types"},
-	kinds = {{id = "other", bytes = 1, color = "systemBlue", name = "Other files"}},
-	extensionsDetail = "The twelve extensions that use the most space",
-	center = {title = "110.4 GB", detail = "in files"}, summary = "110.4 GB in files across 1 kinds",
-	headline = {id = "other", title = "Other files", advice = ""}, accessibilityLabel = "File types",
-	decision = {id = "decision", icon = "opticaldiscdrive.fill", color = "systemTeal", title = "Review", detail = "", amount = "0 KB", amountCaption = "could recover"},
-	actions = {openKind = function() end, kindMenu = function() return {} end, showHeadline = function() end,
-		selectKind = function() end, chartSelect = function() end, chartHover = function() end},
+local _, refs = xml.renderFile("apps/diskmap/views/sections/Breakdown.etlua", {
+	style = "rings", title = "File Types", detail = "110.4 GB in files",
+	marks = {{id = "other", value = 1, color = "systemBlue", label = "Other files"}},
+	legend = {}, center = {title = "110.4 GB", detail = "in files"},
+	actions = {toggleBreakdown = function() end, chartSelect = function() end, chartHover = function() end, chartCenter = function() end},
 }, ns)
-local chart = refs.kindsChart
+local chart = refs.breakdownChart
 chart:layout(chart.frame.size.width)
-local label = refs.kindsCenter.subviews[1]
-t.assertEqual(label.maximumNumberOfLines, 1, "the File Types total is a single line")
-t.expect(label.font.pointSize < 15, "a wide total shrinks rather than wrapping")
+local label = refs.breakdownTotal
+t.assertEqual(label.maximumNumberOfLines, 1, "the total is a single line")
 t.expect(label.frame.size.height < label.font.pointSize * 2, "the total occupies one line of height")
 
 -- Every label drawn inside a SectorChart in an app view declares lines="1"

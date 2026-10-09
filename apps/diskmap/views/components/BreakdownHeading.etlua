@@ -1,0 +1,30 @@
+<% --[[ The heading of a breakdown page, at the top of the page: the levels
+  above the one shown, the name of the level with the picker of the page
+  beside it, what it measures and a low-space warning. Takes the breakdown
+  table (sections/Breakdown.etlua). ]]
+  local HEADING = { symbolColumn = 20, symbolGap = 6 }
+  local picker = picker or {} %>
+<VStack id="breakdownHeading" maxWidth="infinity" spacing="2" alignment="leading">
+  <% if trail and #trail > 0 then %>
+  <Breadcrumb id="breakdownTrail">
+    <% for _, crumb in ipairs(trail) do %>
+    <Crumb name="<%= crumb.name %>" action="<%= crumb.action %>" current="false" />
+    <% end %>
+  </Breadcrumb>
+  <% end %>
+  <HStack maxWidth="infinity" spacing="12" alignment="center">
+    <Label id="breakdownTitle" text="<%= title %>" size="22" weight="semibold" flexGrow="1" flexShrink="1" lines="1" truncation="middle" />
+    <% if picker.id then %>
+    <Picker id="<%= picker.id %>" style="segmented" value="<%= picker.value or 0 %>" onChange="<%= picker.action %>" help="<%= picker.help or "" %>">
+      <% for _, option in ipairs(picker.options) do %><Option title="<%= option %>" /><% end %>
+    </Picker>
+    <% end %>
+  </HStack>
+  <Label id="breakdownDetail" text="<%= detail or "" %>" size="13" color="secondary" maxWidth="infinity" lines="0" monospacedDigit="true" />
+  <% if warning and warning ~= "" then %>
+  <HStack spacing="<%= HEADING.symbolGap %>" alignment="center">
+    <SystemImage name="exclamationmark.triangle.fill" size="12" color="systemOrange" width="<%= HEADING.symbolColumn %>" />
+    <Label id="lowSpace" text="<%= warning %>" size="12" color="systemOrange" flexShrink="1" lines="0" />
+  </HStack>
+  <% end %>
+</VStack>

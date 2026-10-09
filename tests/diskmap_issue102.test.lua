@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
@@ -100,7 +101,7 @@ local gauge = ns.Gauge {value = 0.4, tint = "systemBlue", thickness = 9}
 t.assertEqual(gauge.intrinsicContentSize.height, 9, "a gauge with a thickness is that tall")
 t.assertEqual(gauge.className, "LuaLevelIndicator", "and is still the native level indicator")
 t.assertEqual(ns.Gauge {value = 0.4}.intrinsicContentSize.height, 18, "without one it keeps AppKit's cell")
-for _, view in ipairs({"pages/Overview", "pages/Folder", "pages/Map", "components/ResourceList", "sheets/SnapshotChanges"}) do
+for _, view in ipairs({"components/CategoryList", "components/ResourceList", "pages/SnapshotChanges"}) do
 	t.expect(source("apps/diskmap/views/" .. view .. ".etlua"):find('levelKey="relative"', 1, true), view .. " draws sizes as the table's native meter")
 end
 
@@ -153,27 +154,9 @@ end
 t.expect(wraps("apps/diskmap/views/sections/Decision.etlua", "<%= id %>Title"), "a decision's title wraps")
 t.expect(wraps("apps/diskmap/views/sections/Decision.etlua", "<%= id %>Detail"), "a decision's detail wraps")
 t.expect(wraps("apps/diskmap/views/sections/SimulatorPlan.etlua", "planSummary"), "the plan's qualifications wrap")
--- The map captions keep two lines so the chart above never resizes, and
--- their guidance is short enough to wrap into them whole in the narrowest
--- pane (the Folder Map's minimum) rather than lose its end to an ellipsis.
-local function reserves(path, id)
-	local text = source(path)
-	local start = text:find('id="' .. id .. '"', 1, true)
-	local tag = start and text:sub(start, text:find("/>", start, true))
-	return tag ~= nil and tag:find('lines="2"', 1, true) ~= nil and tag:find('reservesSpace="true"', 1, true) ~= nil
-end
-t.expect(reserves("apps/diskmap/views/pages/Folder.etlua", "folderHover"), "the Folder Map's caption reserves two lines")
-t.expect(reserves("apps/diskmap/views/pages/Map.etlua", "mapHover"), "the Map's caption reserves two lines")
-local narrowest = 320
-for page, guidance in pairs({map = require("apps.diskmap.pages.Explore").map.guidance,
-		folder = require("apps.diskmap.pages.Folder").folder.guidance}) do
-	local root, probe = xml.render(([[<VStack><Label id="text" text="%s" size="12" monospacedDigit="true" maxWidth="%d" alignment="center" lines="0" /></VStack>]]):format(guidance, narrowest), {}, ns)
-	root:layout(narrowest)
-	local font = probe.text.font
-	local lineHeight = math.ceil(font.ascender - font.descender + font.leading)
-	t.expect(guidance ~= "" and probe.text.frame.size.height <= lineHeight * 2,
-		page .. " guidance fits its two lines at " .. narrowest .. " points")
-end
+-- Context stays in native chart tooltips; no caption consumes workspace height.
+t.expect(not source("apps/diskmap/views/pages/Breakdown.etlua"):find('reservesSpace="true"', 1, true), "breakdown pages have no reserved caption space")
+
 window:close()
 
 -- #100 P1: Simulators. The root reads the inventory when a scan finishes,
@@ -197,7 +180,7 @@ t.expect(not inventory.stock.busy and inventory.stock.loaded, "the read finishes
 t.expect(simulators.refs.summary.text:find("stored in", 1, true), "and the mounted page shows it: " .. simulators.refs.summary.text)
 t.expect(simulators.refs.planReview ~= nil and simulators.refs.planAmount.text ~= "—", "with the plan's amount beside its review button")
 t.expect(storage.simulatorPlan ~= nil, "and the plan is published for Clean Up")
-t.expect(simulators.refs.retry.enabled, "Retry is available again")
+t.expect(O(simulators, "retry").enabled, "Retry is available again")
 -- A read that completes while the page is closed still records the inventory.
 replies = {}
 local closedStorage = Store.new(delayed.home)

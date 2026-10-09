@@ -244,7 +244,7 @@ model.planSelected = {id = udid(5), family = "iPad", runtimeIdentifier = rtId, a
 page.actions.planPreserve()
 t.expect(saved and saved["simulator:" .. udid(5)], "Keep for a device is saved with the other Keep choices")
 t.assertEqual(#model:plan().removal, 2, "a protected device leaves the removal set")
-t.assertEqual(page.refs.planPreserve.title, "Remove Keep", "and the button offers to undo it")
+t.assertEqual(require("tests.support.diskmap_operations")(page, "planPreserve").title, "Remove Keep", "and the button offers to undo it")
 model.planSelected = nil
 model:planKeepThis()
 

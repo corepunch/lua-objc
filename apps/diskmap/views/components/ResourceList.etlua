@@ -10,11 +10,11 @@
   "≥ 999.9 MB" or a spinner with "Calculating…" beside a share as wide
   as "could recover", and no wider: every point it gives up goes to the name
   and its subtitle. The detail column fits "Used 11 months ago". Fixed
-  columns total at most 390 points so the name keeps 205 points in the
+  columns total at most 400 points so the name keeps 177 points in the
   narrowest window's 595-point list. ]]
-  local COLUMNS = { name = 170, detail = 150, status = 48, share = 200, more = 40, statusSymbol = 20 }
+  local COLUMNS = { name = 170, detail = 130, status = 48, share = 190, more = 40, review = 40, statusSymbol = 20 }
 %>
-<List id="<%= id %>" rowMenu="<%= menu %>" dragKey="path"<% if selectAction then %> onSelect="<%= selectAction %>"<% end %><% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
+<List id="<%= id %>" rowMenu="<%= menu %>"<% if review ~= false then %> onColumnButton="markRow"<% end %> dragKey="path"<% if selectAction then %> onSelect="<%= selectAction %>"<% end %><% if activate then %> onActivate="<%= activate %>"<% end %> scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
   <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" appIconKey="appIcon"<% if fileIcons then %> fileIconKey="fileIcon"<% end %> imageSize="28" minWidth="<%= COLUMNS.name %>" />
   <% if status then %>
   <Column id="detail" title="Status" width="<%= COLUMNS.status %>" minWidth="<%= COLUMNS.status %>" imageKey="statusIcon" imageColorKey="statusColor" imageSize="<%= COLUMNS.statusSymbol %>" labelStyle="iconOnly" />
@@ -23,5 +23,8 @@
   <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" lines="2" />
   <% end %>
   <Column id="shareText" title="On disk" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" imageKey="sizeIcon" imageColorKey="sizeColor" />
+  <% if review ~= false then %>
+  <Column id="review" title="Review" width="<%= COLUMNS.review %>" minWidth="<%= COLUMNS.review %>" buttonSymbol="flag" enabledKey="markable" imageKey="markIcon" helpKey="markHelp" />
+  <% end %>
   <Column id="more" title="" width="<%= COLUMNS.more %>" minWidth="<%= COLUMNS.more %>" buttonSymbol="ellipsis.circle" buttonMenu="true" />
 </List>

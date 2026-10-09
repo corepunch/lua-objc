@@ -2,7 +2,7 @@
 -- style of Apple's user guides (a question or task as the title, a one-line
 -- answer, short numbered steps, then a note). The Storage Guide explains
 -- macOS; these topics explain Diskmap. Features and their reasons come from
--- VISION.md. `show` names the page or sheet a topic's button opens;
+-- VISION.md. `show` names the page a topic's button opens;
 -- `keywords` widen the Help menu search. The keyboard shortcut topic is
 -- generated from the menu bar so it cannot drift from it.
 return {
@@ -108,7 +108,7 @@ return {
 			show = "cleanup", keywords = "clean up recommendations suggestions reclaim checklist",
 			summary = "Clean Up lists what you can remove and everything it checked and found fine.",
 			steps = {
-				"Choose Go › Clean Up or click Clean Up in the toolbar.",
+				"Choose Go › Clean Up or click Clean Up in the sidebar.",
 				"Start with Clear now, then what each app clears, then what a restart clears; your decisions come last, ranked by what they could recover.",
 				"Open a suggestion to see its locations, the consequence of removing it and how to do it.",
 			},

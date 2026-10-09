@@ -20,7 +20,6 @@ local Operations = require("apps.diskmap.flows.Operations")
 local Rows = require("apps.diskmap.flows.Rows")
 local Notifications = require("apps.diskmap.services.Notifications")
 local SnapshotComparison = require("apps.diskmap.services.SnapshotComparison")
-local Sheets = require("apps.diskmap.pages.Sheets")
 local InventoryService = require("apps.diskmap.services.Inventories")
 local Inventories = require("apps.diskmap.models.Inventories")
 local Environment = {}; Environment.__index = Environment
@@ -40,7 +39,8 @@ function Environment.new(service, launch, router)
 	self.session.historyEnabled = service.loadHistorySetting() == true
 	self.manifest = Manifest.load("apps/diskmap/app.xml")
 	self.routes = require("apps.diskmap.routes")
-	local context = {model = self.model, service = service, manifest = self.manifest, pages = self.manifest.pages, sheets = {}, mapStyle = self.launch.mapStyle}
+	local context = {model = self.model, service = service, manifest = self.manifest, pages = self.manifest.pages, -- Every breakdown page draws its chart in one style, the toolbar's.
+		chartStyle = self.launch.chartStyle == "rectangles" and "rectangles" or "rings"}
 	for name, value in pairs(router) do context[name] = value end
 	self.context = context
 	context.request = function(id) return self:page(id) end
@@ -52,11 +52,6 @@ function Environment.new(service, launch, router)
 	context.volumeName = function() return self:state().volumeName end
 	context.cleanupSources = function() return self:sources() end
 	context.workflowsPresent = function() return self:presentWorkflows() end
-	local function sheet(id)
-		local page = Routes.page(Sheets[id], {id = id}, context, "apps.diskmap")
-		context.sheets[id] = page
-		return page
-	end
 	self.basket = Basket({app = context})
 	self.basket.results, self.basket.done = {}, {}
 	context.basket = self.basket
@@ -69,9 +64,9 @@ function Environment.new(service, launch, router)
 	})
 	self.notifications.isolated = self.launch.isolated
 	context.notifications = self.notifications
-	self.settings, self.history = sheet("settings"), sheet("history")
-	self.sdks, self.management, self.session.changesSheet = sheet("sdks"), sheet("management"), sheet("snapshotChanges")
-	self.tour, self.onboarding = sheet("tour"), sheet("onboarding")
+	self.settings, self.history = self:page("settings"), self:page("history")
+	context.snapshotResult = function() return self.snapshots and self.snapshots.result end
+	self.tour, self.onboarding = self:page("tour"), self:page("onboarding")
 	self.scan = Scan.new(self.model, service, self.model.home, router.changed, function() self:scanFinished() end)
 	self.inventories = InventoryService.new(service, router.refresh, function() return self.scan.generation end)
 	context.inventories = self.inventories
@@ -188,7 +183,6 @@ function Environment:dispose()
 	for _, page in pairs(self.requests) do
 		if page.cancel then page:cancel() end
 	end
-	for _, sheet in pairs(self.context.sheets) do if sheet.presenter then sheet:close() end end
 	self.inventories:dispose()
 	if self.snapshots then self.snapshots:dispose() end
 	self.scan:dispose()

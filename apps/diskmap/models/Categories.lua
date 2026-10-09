@@ -149,27 +149,6 @@ function Categories:distribution(disk)
 	if model.scan.running then return segments, "Measurements are still arriving. The gray part includes storage Diskmap has not measured yet; it is not a cleanup estimate." end
 	return segments, "Not attributed can include inaccessible files, snapshots and filesystem accounting differences. Category measurements may be partial."
 end
--- Flat management rows retain their owner and exact path; totals stay in the ledger.
-function Categories:managementRows(rootId, query, filter)
-	local model = Model.db
-	local result, needle = {}, (query or ""):lower()
-	local function visit(row, owner)
-		if not row:isLeaf() then
-			for _, child in ipairs(row:children()) do visit(child, row.name) end
-		else
-			local m = model.measurements[row.id] or {}
-			local impact = row.policy == "Essential" and "Essential to keep" or row.policy == "Rebuildable" and "Safe/rebuildable" or "Needs review"
-			if (not filter or filter == "All" or filter == impact) and (row.name .. " " .. (owner or "") .. " " .. (row.path or "")):lower():find(needle, 1, true) then
-				table.insert(result, {id = row.id, name = row.name, subtitle = owner, path = row.path or "System managed", icon = row.icon, color = row.color, appIcon = row.appIcon, fileIcon = row.fileIcon, info = Locations:opensElsewhere(row.id), impact = impact,
-					bytes = m.bytes})
-				Format.sizeLabel(result[#result], m.status, m.bytes)
-			end
-		end
-	end
-	if rootId and Locations:find(rootId) then visit(Locations:find(rootId)) else for _, row in ipairs(Locations:roots()) do visit(row) end end
-	return result
-end
-
 -- The donut draws at most this many named categories, each in its own hue
 -- (Categories:hues), so most of the used space is in color; smaller measured
 -- categories share one "Other categories" sector so thin slivers stay legible,

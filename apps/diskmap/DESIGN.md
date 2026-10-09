@@ -52,8 +52,8 @@ become app features. Feature shutdown is not a promise of immediate asset remova
 The window has a native sidebar grouped by user goal: Storage (Overview, Map,
 Largest Items), Apps (App Leftovers), Tools (Developer, Xcode, Projects,
 Simulators), System (Updates & Snapshots) and Learn (Storage Guide). Choosing a category anywhere opens
-its resources in a sheet. Suggested cleanups open from the toolbar and from the
-overview's call to action, grouped by impact, with contextual tips. Settings
+its resource page in the same window. Suggested cleanups open from the toolbar,
+grouped by impact, with contextual tips. Settings
 opens from the toolbar. Largest Items ranks catalog resources; it is not a
 folder browser.
 
@@ -136,16 +136,21 @@ there. There is no separate folder-hunting workflow required to finish cleanup.
 
 ## Window and interaction design
 
-Use one native window with a source-list sidebar. Category management, SDKs
-and Diskmap settings are sheets; suggested cleanups are the Clean Up page.
+Use one native window with a source-list sidebar. SDKs, settings and review are ordinary pages reached through navigation.
+Suggested cleanups are the Clean Up page.
 All screens and partials are etlua.
 
-Every page scrolls as one surface. Lists inside a page are `scrollDisabled`
+Pages choose ContentPage or TablePage. ContentPage scrolls as one
+surface; TablePage fills the available height. Breakdowns share one compact
+chart-left, legend-right widget above the full item list. Rectangles fill the
+whole widget without a side legend.
+An icon button shows the alternate mode. Page and selection operations use
+the native toolbar. Sectioned lists are `scrollDisabled`
 and share one row design (`views/components/ResourceList.etlua`): icon, name and
 location, a status column, a meter (size and share on a line above the share
 bar, one native cell, as on every level list) and a "More" (⋯) button.
 Row actions live in that button's menu and the row's contextual menu, built
-by `RowMenus` from the same rules the sheets use, so the same data
+by `RowMenus` from the same rules the pages use, so the same data
 reads the same way on Largest Items, Large Files, Developer, Clean Up,
 Applications and Disks, and no action buttons sit beneath a list. Stat tiles
 summarize a page above its lists.
@@ -153,7 +158,7 @@ summarize a page above its lists.
 Alignment follows the rule in `AGENTS.md`: within a card, every symbol, dot
 and disclosure triangle is centered on one vertical line and every label
 starts at one edge. The Overview card has one symbol column for its warning,
-legend dots, hidden-space symbols and cleanup symbol (`HERO.symbol`); info
+legend dots and hidden-space symbols (`breakdownSymbolColumn`); info
 rows, tips, guide and help topics share a 26-point column with a 10-point
 gap; section titles with a symbol use `views/components/SectionTitle.etlua`. Optional
 trailing buttons sit in a fixed column so values keep one trailing edge.

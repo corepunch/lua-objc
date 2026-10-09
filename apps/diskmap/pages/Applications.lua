@@ -66,6 +66,8 @@ routes.applications = ListRoute.extend({layout = LAYOUT, children = {lead = "sec
 		page.visibleLeftovers = leftovers or {}
 		local unmarkedHigh, markedHigh = 0, 0
 		for _, row in ipairs(leftovers or {}) do
+			local item = Applications.leftoverItem(row)
+			row.source, row.consequence = item.source, item.consequence
 			if row.tier == "high" then
 				if page.rowActions:isIncluded(row.path) then markedHigh = markedHigh + 1 else unmarkedHigh = unmarkedHigh + 1 end
 			end

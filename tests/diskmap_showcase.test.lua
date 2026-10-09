@@ -2,6 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local Provider = require("apps.diskmap.services.Provider")
 local Controller = require("apps.diskmap.Controller")
+local Mock = require("apps.diskmap.services.Mock")
 
 -- `--showcase` is the synthetic disk with presentable names for screenshots
 -- and promotional captures: the same data, no "Mock" placeholders.
@@ -53,22 +54,22 @@ for _, id in ipairs({"documents", "games", "ios-files", "messages-library", "mai
 	t.expect(bytes[id] > 1e9, "the showcase has everyday " .. id)
 end
 
--- `--map-style` picks the Map's initial chart.
-local Routes = require("data.routes")
-local function routePage(id, app) return Routes.page(require("apps.diskmap.routes")[id], {id = id}, app, "apps.diskmap") end
-t.assertEqual(Provider.launch({[1] = "--map-style=rectangles"}).mapStyle, "rectangles", "the map style switch is read")
-t.assertEqual(routePage("map", {mapStyle = "rectangles"}).style, "rectangles", "the map can open as rectangles")
-t.assertEqual(routePage("map", {mapStyle = "hexagons"}).style, "rings", "unknown styles fall back to rings")
-t.assertEqual(routePage("map", {}).style, "rings", "rings stay the default")
+-- `--chart-style` picks the first chart of every breakdown page.
+t.assertEqual(Provider.launch({[1] = "--chart-style=rectangles"}).chartStyle, "rectangles", "the chart style switch is read")
+local function launched(style)
+	local launch = Provider.launch(style and {[1] = "--chart-style=" .. style} or {})
+	local window = Controller.new(Mock.new({showcase = true}), launch)
+	return window.env.context.chartStyle
+end
+t.assertEqual(launched("rectangles"), "rectangles", "the window can open as rectangles")
+t.assertEqual(launched("hexagons"), "rings", "unknown styles fall back to rings")
+t.assertEqual(launched(nil), "rings", "rings stay the default")
 
--- A capture plan switches the chart at runtime, as the segmented control does.
+-- A capture plan switches the chart at runtime, as the toolbar does.
 app:show("map")
-app:show("map", {style = "rectangles"})
-t.assertEqual(app.env:page("map").style, "rectangles", "setMapStyle switches the Map's chart")
-t.expect(app.page.refs.treemap ~= nil, "the Map page redraws as a treemap")
-app:show("map", {style = "rings"})
-t.expect(app.page.refs.treemap == nil and app.page.refs.sunburst ~= nil, "and back to rings")
-t.assertThrows(function() app:setMapStyle("hexagons") end, "an unknown map style is an error")
-t.assertEqual(app.env:page("map").style, "rings", "a rejected style leaves the chart alone")
+app:toggleChartStyle()
+t.expect(app.page.refs.breakdownRectangles ~= nil, "the Map page redraws as rectangles")
+app:toggleChartStyle()
+t.expect(app.page.refs.breakdownRectangles == nil and app.page.refs.breakdownChart ~= nil, "and back to rings")
 
 os.exit(t.summary() and 0 or 1)

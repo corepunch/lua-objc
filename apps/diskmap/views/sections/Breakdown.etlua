@@ -1,0 +1,28 @@
+<% --[[ The breakdown card of a breakdown page (pages/Breakdown.etlua), from the
+  `breakdown` table of the route:
+    style            "rings" or "rectangles", the chart style of the window
+    title, detail    the level shown and what it measures; `warning` beneath
+    trail            {name, action}: the levels above it, each going back up
+    picker           {id, value, action, help, options}: a segmented picker beside the title
+                     (these head the page above the card: components/BreakdownHeading.etlua)
+    center           {title, detail}: the hole of the ring
+    marks            {id, value, color, label, detail or size}: the sectors of the ring
+    rectangles       the nodes of the treemap ({id, parent, ...}); the marks when absent
+    legend           {id, name, color, size, share, action}
+    notes            {title, icon, value, detail}: space no sector shows
+    explanation      said in place of the legend when nothing is measured
+    dragItem, centerAction, accessibilityLabel ]] %>
+<Breakdown id="breakdown" style="<%= style or "rings" %>" explanation="<%= explanation or "No measured items" %>" total="<%= center.title %>" caption="<%= center.detail %>" accessibilityLabel="<%= accessibilityLabel or title %>" <% if dragItem then %>dragItem="<%= dragItem %>" <% end %>onSelect="chartSelect" onHover="chartHover" onCenter="<%= centerAction or "chartCenter" %>">
+  <% for _, mark in ipairs(marks) do %>
+  <BreakdownSector id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" detail="<%= mark.detail or mark.size or "" %>" />
+  <% end %>
+  <% for _, mark in ipairs(rectangles or marks) do %>
+  <BreakdownRectangle id="<%= mark.id %>"<% if mark.parent then %> parent="<%= mark.parent %>"<% end %> value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" detail="<%= mark.detail or mark.size or "" %>" />
+  <% end %>
+  <% for _, item in ipairs(legend) do %>
+  <BreakdownLegend id="<%= item.id %>" label="<%= item.name %>" color="<%= item.color %>" sizeText="<%= item.size %>" share="<%= item.share %>" action="<%= item.action or "" %>" />
+  <% end %>
+  <% for _, row in ipairs(notes or {}) do %>
+  <BreakdownNote title="<%= row.title %>" icon="<%= row.icon %>" value="<%= row.value %>" detail="<%= row.detail %>" />
+  <% end %>
+</Breakdown>

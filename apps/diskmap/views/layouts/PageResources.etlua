@@ -1,0 +1,5 @@
+<Resources>
+  <Number id="pageWidth" value="960" />
+  <Number id="pageMargin" value="24" />
+  <Number id="pageSpacing" value="16" />
+</Resources>

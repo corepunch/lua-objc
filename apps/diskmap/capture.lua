@@ -18,7 +18,7 @@ return function(capture, app)
 	end
 	-- Resizing and state variants use the same retained requests and actions.
 	shot("map", 1400, 900, "light", "-large")
-	app:show("map", {style = "rectangles"}); capture.shot(directory .. "/map-rectangles")
+	app:show("map"); app:toggleChartStyle(); capture.shot(directory .. "/map-rectangles"); app:toggleChartStyle()
 	app:search("Xcode"); capture.shot(directory .. "/search")
 	app:search("no-matching-file"); capture.shot(directory .. "/search-empty")
 	app:search(""); app:show("files"); app.page.refs.files:selectRow(0); capture.shot(directory .. "/files-selected")

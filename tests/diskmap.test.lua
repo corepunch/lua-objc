@@ -1,3 +1,4 @@
+local O = require("tests.support.diskmap_operations")
 local Locations = require("apps.diskmap.models.Locations")
 _G.__headless = true
 local t = require("TestKit")
@@ -118,7 +119,8 @@ t.assertEqual(window.subtitle, "5.1 MB free of 10.2 MB", "the window subtitle re
 local windowData = ui.commands:data()
 windowData.windowTitle, windowData.subtitle = "Diskmap", "1 TB free"
 windowData.navigation = true
-windowData.actions = setmetatable({search = function() end, reclaim = function() end}, {__index = ui.commandActions})
+windowData.charted, windowData.chartStyle = true, "rings"
+windowData.actions = setmetatable({search = function() end, chartStyle = function() end}, {__index = ui.commandActions})
 local config = xml.renderFile("apps/diskmap/views/layouts/Window.etlua", windowData, ns)
 t.assertEqual(bridge._tableCell(ui.navigation.refs.sidebar, 0, 0).badgeField.stringValue, "5.1 MB", "the overview row shows used capacity as a badge")
 t.assertEqual(config.width, 1100, "default window fits sidebar, chart and legend")
@@ -129,17 +131,20 @@ t.assertEqual(config.subtitle, "1 TB free", "the subtitle is part of the window 
 local toolbarIds = {}
 for _, item in ipairs(config.toolbar) do toolbarIds[item.id] = true end
 t.expect(toolbarIds.toggleSidebar, "the sidebar can be collapsed from the toolbar")
-t.expect(toolbarIds.settings and toolbarIds.reclaim and toolbarIds.measure and toolbarIds.search, "window-wide actions live in the toolbar")
-t.expect(toolbarIds.back and toolbarIds.forward and toolbarIds.review, "history and the cleanup review live in the toolbar")
+t.expect(toolbarIds.settings and toolbarIds.chartStyle and toolbarIds.measure and toolbarIds.search, "window-wide actions live in the toolbar")
+t.expect(not toolbarIds.reclaim, "Clean Up is a sidebar page, not a toolbar button")
+t.expect(toolbarIds.back and toolbarIds.forward, "history lives in the toolbar")
+t.expect(not toolbarIds.review, "flagged items are a sidebar row, not a toolbar button")
 t.assertEqual(ui.destination, "overview", "the overview is the first destination")
 local sidebar = ui.navigation.refs.sidebar
-t.assertEqual(sidebar.rowCount, 24, "sidebar lists sections and destinations")
+t.assertEqual(sidebar.rowCount, 25, "sidebar lists sections and destinations")
 t.assertEqual(sidebar.documentView.selectedRow, 0, "the overview row starts selected")
 t.assertEqual(bridge._tableCell(sidebar, 0, 1).textField.stringValue, "Clean Up", "Overview and Clean Up lead the sidebar without a header")
-t.assertEqual(bridge._tableCell(sidebar, 0, 2).textField.stringValue, "Free Up Space", "sidebar sections are native group headers")
+t.assertEqual(bridge._tableCell(sidebar, 0, 2).textField.stringValue, "Flagged", "flagged items follow Clean Up")
+t.assertEqual(bridge._tableCell(sidebar, 0, 3).textField.stringValue, "Free Up Space", "sidebar sections are native group headers")
 t.expect(ui.page.refs.results ~= nil and ui.page.refs.largest ~= nil, "overview shows categories and largest items")
-t.expect(ui.page.refs.chart ~= nil, "overview leads with the storage chart")
-t.expect(ui.page.refs.chart.subviews[1].className == "LuaArcView", "the overview chart uses calm flat sectors")
+t.expect(ui.page.refs.breakdownChart ~= nil, "overview leads with the storage chart")
+t.expect(ui.page.refs.breakdownChart.subviews[1].className == "LuaArcView", "the overview chart uses calm flat sectors")
 local categoryRows = ui.page.refs.results.rowCount
 t.expect(not ui.page.refs.results.hasVerticalScroller, "the category list has no scrollbar of its own")
 t.expect(ui.page.refs.results.scrollDisabled, "the category list is declared scrollDisabled")
@@ -157,35 +162,20 @@ t.expect(#bridge._tableRowMenu(ui.page.refs.list_now, 1) > 0, "each suggestion h
 ui:show("overview")
 t.assertEqual(ui.page.refs.results.rowCount, categoryRows, "category rows remain after returning from clean up")
 ui:openSettings()
-t.expect(ui.env.settings.sheet ~= nil and ui.env.settings.refs.monitor ~= nil, "settings open in a sheet")
-ui.env.settings:close()
-t.assertEqual(ui.page.refs.access.title, "Scan access…", "access settings are offered without implying Full Disk Access is required")
+t.expect(ui.destination == "settings" and ui.env.settings.refs.monitor ~= nil, "settings navigate to a page")
+ui:show("overview")
+t.assertEqual(O(ui, "access").title, "Scan access…", "access settings are offered without implying Full Disk Access is required")
 ui.env.model.scan.errors = 7; ui:updateRows()
-t.assertEqual(ui.page.refs.access.title, "Review scan access…", "access guidance becomes specific when scan issues exist")
+t.assertEqual(O(ui, "access").title, "Review scan access…", "access guidance becomes specific when scan issues exist")
 ui.env.model.scan.errors = 0; ui:updateRows()
 ui:open("developer")
-t.assertEqual(ui.env.management.rootId, "developer", "opening a category shows its sheet")
-t.assertEqual(ui.env.management.refs.categoryName.text, "Developer", "selected category appears in its sheet")
-local naturalSheetWidth = ui.env.management.sheet.size.width
-t.expect(naturalSheetWidth <= ui.window.size.width - 80, "category sheet fits 80 points inside a wide window")
-ui.env.management:close()
--- A window narrower than the sheet plus its margin clamps the sheet.
-local wideWindow = ui.window.size
--- A window is never resized below its minimum, so lower it to reach a
--- window narrower than the sheet.
-ui.window.contentMinSize = ns.Size(0, 0)
-ui.window.size = ns.Size(naturalSheetWidth, wideWindow.height)
-ui:open("developer")
-t.assertEqual(ui.env.management.sheet.size.width, ui.window.size.width - 80, "category sheet is 80 points narrower than a narrow window")
-ui.env.management:close()
-ui.window.size = wideWindow
+t.assertEqual(ui.destination, "map", "a category opens its Storage Map")
+t.assertEqual(ui.page.request.focusId, "developer", "focused on the category")
+t.expect(ui.window.attachedSheet == nil, "the category has no sheet")
+ui.navigation:back()
+t.assertEqual(ui.destination, "overview", "Back restores Overview")
+
 local meterOf = dofile("tests/fixtures/meter.lua")
-local sizeCell = meterOf(bridge._tableCell(ui.page.refs.results, 1, 0))
-t.expect(sizeCell.value ~= nil and sizeCell.bar ~= nil, "size, share and bar are one meter cell")
-t.expect(bridge._pressColumnButton(ui.page.refs.results, 2, 0), "category rows open with a trailing button")
-t.expect(ui.env.management.sheet ~= nil, "the row button opens that category")
-ui.env.management:close()
-t.expect(sizeCell.spinner.hidden, "loaded category has no spinner")
 t.expect(not meterOf(bridge._tableCell(ui.page.refs.results, 1, 0)).bar.hidden, "measured categories show a share bar")
 local _, loadingIds = Scans:plan()
 -- A running scan is shown by the app's progress window, not by half-filled lists:

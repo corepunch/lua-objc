@@ -20,6 +20,12 @@ Page.queries = {reveal = true, components = true}
 
 local FAMILY_IDS = {iPhone = "Phone", iPad = "Pad"}
 
+function Page:markRow(_, _, row)
+	if not row then return end
+	row.reviewOnly = true
+	self:flow("Rows"):toggleReview(row)
+end
+
 function Page:init()
 	self.service = self.app.service
 	self.stock, self.filterIndex = Inventories:state("simulators"), 1
@@ -113,6 +119,9 @@ function Page:data()
 	self.selected, self.selectedRuntime = pick(rows, self.selected), pick(runtimes, self.selectedRuntime)
 	self.planSelected = pick(plan.devices, self.planSelected)
 	self.lists = {devices = rows, runtimes = runtimes, planDevices = #plan.runtimes > 0 and plan.devices or nil}
+	for _, list in pairs(self.lists) do
+		for _, row in ipairs(list) do self:flow("Rows"):annotateReview(row) end
+	end
 	local selected, runtime, allowed = self.selected, self.selectedRuntime, not (self.busy or self.stock.busy)
 	local _, deviceReason = Simulators.validate("delete", selected, Locations.keeps)
 	local _, runtimeReason = Simulators.validateRuntime(runtime, Locations.keeps)

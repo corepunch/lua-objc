@@ -499,6 +499,19 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 	}
 	cell.imageWidth = [cellSpec[@"imageSize"] doubleValue];
 	if (cell.actionButton) {
+		NSString *symbolKey = cellSpec[@"image"];
+		NSString *symbol = symbolKey ? rowData[symbolKey] : nil;
+		if (![symbol isKindOfClass:NSString.class] || !symbol.length) symbol = cellSpec[@"button"];
+		NSImageSymbolConfiguration *configuration = [NSImageSymbolConfiguration configurationWithPointSize:kTableInfoButtonPointSize weight:NSFontWeightRegular];
+		cell.actionButton.image = [[NSImage imageWithSystemSymbolName:symbol accessibilityDescription:nil] imageWithSymbolConfiguration:configuration];
+		NSString *helpKey = cellSpec[@"help"];
+		NSString *help = helpKey ? rowData[helpKey] : nil;
+		BOOL opensMenu = [cellSpec[@"buttonMenu"] boolValue];
+		NSString *label = [help isKindOfClass:NSString.class] && help.length ? help : opensMenu ? @"More" : @"Info";
+		cell.actionButton.accessibilityLabel = label;
+		cell.actionButton.toolTip = label;
+		NSString *enabledKey = cellSpec[@"enabled"];
+		cell.actionButton.enabled = !enabledKey || [rowData[enabledKey] boolValue];
 		id info = rowData[@"info"];
 		BOOL showInfo = ![info respondsToSelector:@selector(boolValue)] || [(NSNumber *)info boolValue];
 		cell.actionButton.tag = rowIndex;

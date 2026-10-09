@@ -18,7 +18,7 @@ local routes = {}
 
 -- The list is as tall as its rows, between a few and a dozen, so the page
 -- scrolls beyond that rather than stretching the list.
-local LIST = {rowHeight = 44, minRows = 3, maxRows = 12}
+local LIST = {rowHeight = 44, minRows = 1, maxRows = 12}
 
 local Review = {view = "pages/Basket"}
 routes.basket = Review
@@ -51,22 +51,25 @@ function Review:data()
 	end
 	if not self.selected then self.selectedPath = nil end
 	local selected, pending, busy = self.selected, Marks:count(), self.busy == true
+	local removable = 0
+	for _, item in ipairs(Marks:all()) do if not item.reviewOnly then removable = removable + 1 end end
 	return {
 		rowHeight = LIST.rowHeight,
 		listHeight = math.max(LIST.minRows, math.min(LIST.maxRows, #rows)) * LIST.rowHeight,
 		-- Measuring again shows one progress state in place of the list.
 		lists = {items = busy and {} or rows}, loading = {items = busy},
 		texts = {
-			reviewSummary = self.status or (pending == 0 and "Nothing marked. Use Mark for Cleanup on any page."
+			reviewSummary = self.status or (pending == 0 and "Nothing marked. Use Flag for Review on any page."
 				or (pending .. (pending == 1 and " item · " or " items · ") .. Format.size(bytes) .. " on disk")),
 			selectedPath = selected and selected.path or "",
 			consequence = selected and (selected.consequence or "This item has already left the cleanup basket.") or "",
 			selectedResult = selected and selected.result or "",
 		},
 		hidden = {selectedDetails = selected == nil, emptyTrash = (self.movedBytes or 0) <= 0,
-			basketList = #rows == 0 and not busy, basketEmpty = #rows > 0 or busy},
-		disabled = {remove = busy or not (selected and Marks:contains(selected.path)),
-			trash = busy or pending == 0, clear = busy or pending == 0},
+			basketList = #rows == 0 and not busy, basketEmpty = #rows > 0 or busy,
+			revalidation = removable == 0, trash = removable == 0},
+		disabled = {inspect = selected == nil, reveal = selected == nil, remove = busy or not (selected and Marks:contains(selected.path)),
+			trash = busy or removable == 0, clear = busy or pending == 0},
 	}
 end
 
@@ -75,6 +78,11 @@ function Review:rendered(refs)
 	self.refs = refs
 	Selection.show(refs.items, self.rows, self.selectedPath)
 end
+
+function Review:drop(paths) return self:flow("Basket"):drop(paths) end
+
+function Review:inspect() if self.selected then self.app.show("folder", {path = self.selected.path}) end end
+function Review:reveal() if self.selected then self.service.reveal(self.selected.path) end end
 
 function Review:select(_, _, row) self.selectedPath = row and row.path end
 
@@ -103,7 +111,8 @@ end
 function Review:trash()
 	if Marks:count() == 0 or self.busy then return false end
 	local paths = {}
-	for _, mark in ipairs(Marks:all()) do table.insert(paths, mark.path) end
+	for _, mark in ipairs(Marks:all()) do if not mark.reviewOnly then table.insert(paths, mark.path) end end
+	if #paths == 0 then return false end
 	return self:moveAll(paths)
 end
 
@@ -113,7 +122,12 @@ function Review:probes()
 end
 
 function Review:moveAll(paths)
-	local rows, bytes = Marks:rows()
+	local all = Marks:rows()
+	local selected, rows, bytes = {}, {}, 0
+	for _, path in ipairs(paths) do selected[path] = true end
+	for _, row in ipairs(all) do
+		if selected[row.path] and not row.reviewOnly then table.insert(rows, row); bytes = bytes + (row.bytes or 0) end
+	end
 	if #rows == 0 then return false end
 	local names = {}
 	for index, row in ipairs(rows) do if index <= 12 then table.insert(names, "· " .. row.name .. " (" .. row.size .. ")") end end

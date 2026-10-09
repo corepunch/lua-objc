@@ -4,17 +4,16 @@ local Paths = require("apps.diskmap.helpers.Paths")
 
 -- Items marked for cleanup across every page, in the order they were marked:
 -- the store's `marks` table, one row per item {path, name, bytes, source,
--- consequence, resourceId}. Marking never changes the disk; the review sheet
+-- consequence, resourceId}. Marking never changes the disk; the review page
 -- moves items to the Trash one at a time, after checking each again.
 local Marks
-local function home() return Model.db.home or "/Users" end
 Marks = Model:extend("marks", {primaryKey = "path", relations = {
 	-- `mark:location()`: the catalog location a mark stands for, if it is one.
 	{"location", belongsTo = "locations", key = "resourceId"},
 }, constraints = {
-	-- A path a person could mean to throw away (helpers/Paths.lua).
+	-- Flags may refer to protected locations; only path identity is validated.
 	path = function(_, path)
-		local ok, reason = Paths.validate(path, home())
+		local ok, reason = Paths.validateReview(path)
 		if not ok then return reason end
 	end,
 }})
@@ -72,7 +71,7 @@ end
 
 function Marks:clear() Model.db.marks = {} end
 
--- The review sheet's rows and their total.
+-- The review page's rows and their total.
 function Marks:rows()
 	local rows, bytes = {}, 0
 	for _, item in ipairs(self:all()) do
@@ -80,14 +79,14 @@ function Marks:rows()
 		bytes = bytes + (item.bytes or 0)
 		table.insert(rows, {id = path, path = path, name = item.name or path:match("([^/]+)$"),
 			subtitle = item.source and (item.source .. " · " .. path) or path, bytes = item.bytes,
-			size = Format.size(item.bytes), consequence = item.consequence or "Moves to the Trash. Put it back from the Trash in Finder."})
+			size = Format.size(item.bytes), reviewOnly = item.reviewOnly, consequence = item.reviewOnly and "Flagged for inspection. Manage this item through its owning app or System Settings." or item.consequence or "Moves to the Trash only after confirmation."})
 	end
 	return rows, bytes
 end
 
 function Marks:summary()
 	local rows, bytes = self:rows()
-	if #rows == 0 then return "Nothing marked for cleanup" end
+	if #rows == 0 then return "Nothing flagged for review" end
 	return #rows .. (#rows == 1 and " item · " or " items · ") .. Format.size(bytes)
 end
 

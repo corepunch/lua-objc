@@ -64,7 +64,7 @@ end
 -- table and never repeats an export or opens the process's initial folder.
 function Provider.launch(arguments, service)
 	local launch = {page = argumentValue(arguments, "--page"), folder = argumentValue(arguments, "--folder"),
-		mapStyle = argumentValue(arguments, "--map-style"), exportPath = argumentValue(arguments, "--export-mock")}
+		chartStyle = argumentValue(arguments, "--chart-style"), exportPath = argumentValue(arguments, "--export-mock")}
 	for _, argument in ipairs(arguments or {}) do
 		if argument == "--isolated" then launch.isolated = true end
 	end

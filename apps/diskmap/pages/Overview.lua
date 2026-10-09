@@ -23,7 +23,7 @@ local PREVIEW = {largest = 6}
 -- the hole of the ring and no list row follows it; a selected category row
 -- points at its sector. Every action navigates or points, so none draws the
 -- page again.
-routes.overview = {view = "pages/Overview", queries = setmetatable({}, {__index = function() return true end})}
+routes.overview = {view = "pages/Breakdown", queries = setmetatable({}, {__index = function() return true end})}
 local overview = routes.overview
 
 function overview:access() self.app.access() end
@@ -36,13 +36,18 @@ function overview:exploreFolders() self.app.show("filesystem") end
 function overview:open(_, _, row) if row then self.app.open(row.id) end end
 overview.openLargest = overview.open
 
+function overview:markRow(_, _, row) self:flow("Rows"):toggleReview(row) end
+function overview:categoryButton(_, column, row)
+	if column == "review" then self:markRow(nil, column, row) else self:open(nil, column, row) end
+end
+
 function overview:largestMenu(_, _, row) return self:flow("Rows"):resource(row.id) end
 
 -- A selected category points at its sector, as hovering it would.
 function overview:select(_, _, row)
 	if not row then return end
 	self.selectedId = row.id
-	if self.refs then Sectors.highlight(self.refs.chart, row.id) end
+	if self.refs then Sectors.highlight(self.refs.breakdownChart, row.id) end
 end
 
 -- The ring leads into the Map: a category's sector opens the Map inside it,
@@ -65,8 +70,12 @@ function overview:chartCenter() self:showMap("") end
 function overview:chartHover(id)
 	local mark = id and self.marks[id]
 	if not self.refs then return end
-	self.refs.usedTotal.text = mark and mark.label or self.center.title
-	self.refs.usedCaption.text = mark and Format.size(mark.value) or self.center.detail
+	if self.refs.breakdownTotal then
+		self.refs.breakdownTotal.text = mark and mark.label or self.center.title
+		self.refs.breakdownCaption.text = mark and Format.size(mark.value) or self.center.detail
+	end
+	local chart = self.refs.breakdownChart or self.refs.breakdownRectangles
+	if chart then chart.toolTip = mark and (mark.label .. " · " .. Format.size(mark.value)) or "" end
 end
 
 function overview:data(state)
@@ -83,27 +92,34 @@ function overview:data(state)
 	-- A legend row's button is named for its category (`category_developer`).
 	local handlers = {}
 	for _, row in ipairs(chart.legend or {}) do
-		if row.id and row.id ~= Categories.folded then handlers["category_" .. row.id] = function() self.app.open(row.id) end end
+		if row.id and row.id ~= Categories.folded then row.action = "category_" .. row.id; handlers["category_" .. row.id] = function() self.app.open(row.id) end end
 	end
 	local summary = Scans:summary(disk, state.capacity)
-	self.center = Figures.center(summary)
+	local breakdown = Figures.breakdown(summary, chart, state.volumeName, self.app.chartStyle)
+	self.center = breakdown.center
 	local data = {status = state.status, accessHidden = state.mock == true, accessTitle = errors > 0 and "Review scan access…" or "Scan access…",
-		hero = {summary = summary, center = self.center, chart = chart, volumeName = state.volumeName}, handlers = handlers}
+		breakdown = breakdown, handlers = handlers}
 	if scanning then return data end
-	data.measured = true
-	self.categoryRows = Categories:shares(disk)
+	self.categoryRows = self:flow("Rows"):annotate(Categories:shares(disk))
 	if not Selection.index(self.categoryRows, self.selectedId) then self.selectedId = nil end
-	local largest = Locations:largest(disk, PREVIEW.largest)
+	local largest = self:flow("Rows"):annotate(Locations:largest(disk, PREVIEW.largest))
 	local cloudBytes, cloudFiles = Scans:cloud()
-	local hero = data.hero
-	hero.hiddenSpace = Figures.hidden(disk, state.capacity, state.snapshotCount, errors, cloudBytes, cloudFiles,
+	breakdown.notes = Figures.hidden(disk, state.capacity, state.snapshotCount, errors, cloudBytes, cloudFiles,
 		not storage.includeMedia, Scans:protected(state.fullDiskAccess))
-	hero.reclaim = Suggestions:reclaim(self.app.cleanupSources())
-	data.coverage, data.largestHidden, data.changes = Categories:coverage(disk), #largest == 0, state.changes
-	-- Everything no category holds, and why.
-	data.unmeasured = Categories:unmeasured(disk, {fullDiskAccess = state.fullDiskAccess, diskAccess = state.diskAccess,
+	-- Everything no category holds, and why; then what changed.
+	local unmeasured = Categories:unmeasured(disk, {fullDiskAccess = state.fullDiskAccess, diskAccess = state.diskAccess,
 		snapshotCount = state.snapshotCount, mediaExcluded = not storage.includeMedia})
-	data.lists = {results = self.categoryRows, largest = largest}
+	data.context = {}
+	if #unmeasured.items > 0 then table.insert(data.context, {view = "sections/NotMeasured", data = unmeasured}) end
+	if state.changes then table.insert(data.context, {view = "sections/Changes", data = {changes = state.changes}}) end
+	data.sections = {{id = "categoriesSection", title = "Categories", detail = Categories:coverage(disk), detailId = "coverage", panelId = "categoriesPanel",
+		view = "components/CategoryList", list = {id = "results"}}}
+	if #largest > 0 then
+		table.insert(data.sections, {id = "largestSection", title = "Largest items", detail = "Individual resources across every category",
+			link = {id = "showLargest", title = "Show All", action = "showLargest"},
+			list = {id = "largest", menu = "largestMenu", activate = "openLargest", status = true}})
+	end
+	data.lists = {results = self.categoryRows, largest = #largest > 0 and largest or nil}
 	return data
 end
 

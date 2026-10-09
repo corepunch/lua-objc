@@ -19,8 +19,8 @@ return function(capture, app)
 			capture.shot(here .. "captures/" .. page .. "-" .. appearance)
 		end
 		app:show("map")
-		app:show("map", {style = "rectangles"})
+		app:toggleChartStyle()
 		capture.shot(here .. "captures/treemap-" .. appearance)
-		app:show("map", {style = "rings"})
+		app:toggleChartStyle()
 	end
 end

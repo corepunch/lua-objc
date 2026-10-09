@@ -10,7 +10,7 @@ local function lowered(list, prefix)
 	return result
 end
 
-function Paths.within(path, folder) return path == folder or path:sub(1, #folder + 1) == folder .. "/" end
+function Paths.within(path, folder) return folder == "/" and path:sub(1, 1) == "/" or path == folder or path:sub(1, #folder + 1) == folder .. "/" end
 
 -- The path as the guards compare it: without trailing slashes, through the
 -- root's links to /private, and in lower case.
@@ -24,13 +24,19 @@ function Paths.normalize(path)
 	return trimmed
 end
 
--- Checks a path is something a person could mean to throw away. Returns ok
--- and a reason for refusal.
-function Paths.validate(path, home)
+-- Review accepts any canonical location; removal has additional guards.
+function Paths.validateReview(path)
 	if type(path) ~= "string" or path:sub(1, 1) ~= "/" then return false, "Not an absolute path." end
 	if path:find("/%.%./") or path:find("/%.%.$") or path:find("/%./") or path:find("/%.$") or path:find("//", 1, true) then
 		return false, "The path is not canonical."
 	end
+	if path:find("%z") then return false, "The path contains a NUL character." end
+	return true
+end
+
+function Paths.validate(path, home)
+	local valid, reason = Paths.validateReview(path)
+	if not valid then return false, reason end
 	local key = Paths.normalize(path)
 	home = Paths.normalize(home or "")
 	if home == "/" then home = "" end

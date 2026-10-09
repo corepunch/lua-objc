@@ -20,7 +20,7 @@ function OperationLog.parse(line)
 	return {time = time, action = action, ok = result == "ok", bytes = tonumber(bytes) or 0, target = target, detail = detail}
 end
 
--- Rows for the History sheet, newest first.
+-- Rows for the History page, newest first.
 function OperationLog.rows(lines)
 	local rows = {}
 	for _, line in ipairs(lines or {}) do

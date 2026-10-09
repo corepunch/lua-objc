@@ -169,6 +169,10 @@ return {
   the page appears and `deactivate` when it goes (start and cancel a service request),
   `rendered(refs)` after a draw. Work that finishes later asks the app to draw again;
   nothing observes the page.
+- **Window presentation.** A page controller's optional `context.presented(data)`
+  receives the explicitly rendered request after each draw. A window coordinator
+  can derive native toolbar operations from that data. Queries and disposed pages
+  do not invoke it; there is no observation or background refresh.
 - **Shared behaviour.** A route inherits another with `Routes.extend(base, route)`
   (Diskmap's list pages extend `pages/ListRoute.lua`). An app's routes are one
   module; `Routes.include(...)` gathers route files, as Lapis includes

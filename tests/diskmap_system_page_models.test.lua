@@ -56,10 +56,10 @@ local duplicates = app.page
 duplicates.actions.addFolder()
 duplicates.actions.search()
 t.expect(duplicates.refs.computing ~= nil and duplicates.refs.computingStatus.text:find("Comparing", 1, true), "a running search is one status line")
-t.assertEqual(duplicates.refs.search.title, "Stop", "whose button stops it")
-t.expect(not duplicates.refs.addFolder.enabled, "and nothing else starts meanwhile")
+t.assertEqual(require("tests.support.diskmap_operations")(app, "search").title, "Stop", "whose button stops it")
+t.expect(not require("tests.support.diskmap_operations")(app, "addFolder").enabled, "and nothing else starts meanwhile")
 duplicates.actions.search()
-t.expect(cancelled and duplicates.refs.search.title == "Find Duplicates", "stopping returns the page to ready")
+t.expect(cancelled and require("tests.support.diskmap_operations")(app, "search").title == "Find Duplicates", "stopping returns the page to ready")
 
 -- The Guide and Help are asked again only when a scan starts or ends.
 app:show("guide")

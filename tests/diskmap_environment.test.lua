@@ -90,10 +90,10 @@ folders.env:dispose()
 
 local marked = Harness.env()
 local mapPage = Harness.mount("map", marked)
-local item = mapPage.request.worth[1]
-mapPage.actions.worth_1()
+local item = require("apps.diskmap.models.Locations"):find("derived")
+mapPage.actions.markRow(nil, nil, item)
 t.expect(marked.env.basket:isMarked(item.path), "Map's visible Mark action stages through the basket")
-mapPage.actions.worth_1()
+mapPage.actions.markRow(nil, nil, item)
 t.expect(not marked.env.basket:isMarked(item.path), "Map's visible Mark action toggles the same item")
 local copy = marked.env.model.home .. "/Downloads/copy.iso"
 marked.env.basket:toggle({path = copy, name = "copy.iso", bytes = 7000000, source = "Duplicates"})

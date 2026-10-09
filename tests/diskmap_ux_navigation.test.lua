@@ -15,12 +15,7 @@ app:createWindow()
 local function refs() return app.page.refs end
 local function mapLeaf(id)
 	app:show("map", {focus = Locations:find(id):parent().id})
-	app.page.actions.chartSelect(id, 1)
-	t.expect(refs().mapOpen.enabled, id .. " has an explicit action")
-	local title = refs().mapOpen.title
-	app.page.actions.chartHover(nil)
-	t.assertEqual(refs().mapOpen.title, title, "hover exit preserves the selected action")
-	app.page.actions.openSelection()
+	app.page.actions.chartSelect(id, 2)
 end
 
 -- The same originating leaf takes the same destination from either entry.
@@ -29,17 +24,10 @@ for _, id in ipairs({"projects", "derived", "devices", "downloads"}) do
 	if not location then error("missing fixture location " .. id) end
 	local destination = location:destination()
 	mapLeaf(id)
-	if destination.page then t.assertEqual(app.destination, destination.page, id .. " reaches its dedicated page")
-	else
-		t.assertEqual(app.env.management.selectedId, id, id .. " arrives selected in its sheet")
-		t.assertEqual(app.env.management.rootId, destination.category, "the category matches its destination")
-	end
-	app.env.management:close()
+	t.assertEqual(app.destination, destination.page, id .. " reaches its destination")
 	app:show("largest")
 	app.page.actions.open(nil, nil, {id = id})
-	if destination.page then t.assertEqual(app.destination, destination.page, "Largest Locations agrees")
-	else t.assertEqual(app.env.management.selectedId, id, "Largest Locations preserves the same selection") end
-	app.env.management:close()
+	t.assertEqual(app.destination, destination.page, "Largest Locations agrees")
 end
 
 -- Search is one page over the whole store; a refresh keeps its results.
@@ -72,8 +60,8 @@ t.assertEqual(app.destination, "files", "clearing the field returns to the page"
 local projects = Locations:find("projects")
 app:show("map", {focus = projects:parent().id})
 app.page.actions.chartSelect("projects", 1)
-t.assertEqual(refs().mapOpen.title, "Review Build Data", "the narrower destination names its scope")
-t.expect(refs().mapSelection.text:find(Format.size(Projects:bytesWithin(projects.path)) .. " generated build data", 1, true) ~= nil, "build bytes are separate from the full location")
+t.assertEqual(app.env.rowActions:locationAction("projects").title, "Review Build Data", "the narrower destination names its scope")
+t.expect(refs().mapSelection == nil, "the redundant selection caption is removed")
 -- Map levels are locations, as a browser's pages are: Up is a visit and
 -- Back returns down to the group that was open.
 local inside = app:location()
@@ -83,7 +71,7 @@ app.navigation:back()
 t.assertEqual(app:location(), inside, "Back returns to the level Up left")
 app.page.actions.chartSelect("developer", 1)
 app.page.actions.chartSelect("projects", 1)
-app.page.actions.inspectSelection()
+app:show("folder", {path = projects.path})
 t.assertEqual(app.destination, "folder", "Inspect goes to Folder Map")
 t.assertEqual(app.env:page("folder").path, projects.path, "the full location's path survives")
 t.expect(app.searchField.enabled, "Search is available from Folder Map too")
@@ -99,17 +87,17 @@ t.assertEqual(app.destination, "projects", "build review keeps its dedicated des
 inspect.action()
 t.assertEqual(app.env:page("folder").path, projects.path, "menu inspection keeps the exact path")
 t.expect(Locations:folderBytes(projects.path) >= Projects:bytesWithin(projects.path), "full folder contents include separately catalogued build folders")
-t.expect(refs().folderSummary.text:find(Format.size(Locations:folderBytes(projects.path)), 1, true) ~= nil, "folder scan and combined catalog bytes agree")
+t.expect(refs().breakdownDetail.text:find(Format.size(Locations:folderBytes(projects.path)), 1, true) ~= nil, "folder scan and combined catalog bytes agree")
 t.assertEqual(Projects:bytesWithin("/no-artifacts"), nil, "missing measurements are not shown as zero build bytes")
 
 app:openFolder(service.home .. "/Downloads")
 local folder = app.env:page("folder")
 local selected
-for _, row in ipairs(folder:data().rows) do if row.directory == false and not row.other then selected = row; break end end
+for _, row in ipairs(folder:data().lists.folderList) do if row.directory == false and not row.other then selected = row; break end end
 t.expect(selected ~= nil, "the fixture has a file to preview")
 app.page.actions.selectRow(nil, nil, selected)
-t.assertEqual(refs().folderOpen.title, "Preview File", "folder file selection names Quick Look")
-app.page.actions.openSelection()
+t.assertEqual(folder:selection().title, "Preview File", "folder file selection names Quick Look")
+app.page.actions.drillRow(nil, nil, selected)
 t.assertEqual(previewed, selected.path, "the explicit preview keeps the path")
 app:show("overview")
 t.expect(refs().findLargest == nil and refs().inspectFolder == nil, "Overview does not duplicate the sidebar's discovery navigation")

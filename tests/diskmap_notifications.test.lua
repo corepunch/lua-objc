@@ -95,5 +95,5 @@ t.expect(not app.env.session.historyEnabled, "history starts off")
 app.env.settings.refs.reminder.state = 1
 app.env.settings:toggleNotification("reminder")
 t.expect(app.env.session.historyEnabled and mock.loadFlag("reminder"), "turning the reminder on turns history on")
-app.env.settings:close()
+app.navigation:back()
 os.exit(t.summary() and 0 or 1)

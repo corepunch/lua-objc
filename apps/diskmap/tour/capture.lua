@@ -14,7 +14,7 @@
 -- Elements are found by their template ids in the layout dump written with
 -- each shot.
 local here = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
--- BOX matches TOUR in views/sheets/Tour.etlua; tests/diskmap_tour.test.lua checks
+-- BOX matches TOUR in views/pages/Tour.etlua; tests/diskmap_tour.test.lua checks
 -- every image against it.
 local BOX = { width = 524, height = 290, scale = 2 }
 local CROP = { margin = 12, quality = 92 }
@@ -28,13 +28,13 @@ local SEARCH = { minWidth = 780, maxWidth = 1560, height = 900, steps = 9, toler
 -- height for pages whose content fills it.
 local function page(id) return function(app) app:show(id) end end
 local SHOTS = {
-	{name = "overview", ids = {"heroCard"}, show = page("overview")},
-	{name = "map", ids = {"mapBody"}, height = 645, show = page("map")},
+	{name = "overview", ids = {"breakdown"}, show = page("overview")},
+	{name = "map", ids = {"breakdown"}, show = page("map")},
 	{name = "largest", ids = {"pageHeader", "largest"}, maxHeight = 330, show = page("largest")},
 	{name = "files", ids = {"stats", "filesPanel"}, maxHeight = 400, show = page("files")},
-	{name = "kinds", ids = {"kindsCard", "kinds"}, maxHeight = 400, show = page("kinds")},
+	{name = "kinds", ids = {"breakdown", "kinds"}, maxHeight = 400, show = page("kinds")},
 	{name = "applications", ids = {"lead", "leftoversSection"}, maxHeight = 330, show = page("applications")},
-	{name = "cleanup", ids = {"lead", "section_rebuildable"}, maxHeight = 421, show = page("cleanup")},
+	{name = "cleanup", ids = {"lead", "section_now"}, maxHeight = 421, show = page("cleanup")},
 	{name = "developer", ids = {"section_xcode"}, show = page("developer")},
 	{name = "disks", ids = {"stats", "volumesSection"}, maxHeight = 380, show = page("disks")},
 	{name = "guide", ids = {"topic_assets"}, show = function(app) app:show("guide", {topic = "assets"}) end},
@@ -56,7 +56,7 @@ local function elementRect(layoutPath, shot)
 		left, top = math.min(left or x, x), math.min(top or y, y)
 		right, bottom = math.max(right or x + w, x + w), math.max(bottom or y + h, y + h)
 	end
-	-- A list that fills the page runs on under the status bar; only what the
+	-- A list that fills the page can extend beyond the viewport; only what the
 	-- page shows counts.
 	local _, pageY, _, pageH = dump:match('identifier="page"[^>]-window="([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+)"')
 	if pageY then bottom = math.min(bottom, tonumber(pageY) + tonumber(pageH)) end

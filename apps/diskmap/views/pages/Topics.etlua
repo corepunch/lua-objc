@@ -1,7 +1,6 @@
 <% --[[ Chapters of topics to read (controllers/TopicsController.lua): the
   Storage Guide and Diskmap Help. `topic` names the template of one topic. ]] %>
-<PageFrame id="page">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
+<ContentPage id="page">
     <%- partial("../components/PageHeader.etlua", {header = page, summary = summary}) %>
     <% for _, chapter in ipairs(chapters) do %>
     <VStack spacing="8" alignment="leading">
@@ -16,5 +15,4 @@
       </GroupBox>
     </VStack>
     <% end %>
-  </VStack>
-</PageFrame>
+</ContentPage>

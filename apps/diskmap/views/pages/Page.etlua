@@ -10,7 +10,7 @@
     computing            while a request of the page's own is running: its status
                          line beside one native spinner, in place of the same
     summary, summaryId   the header's second line and its ref ("summary")
-    buttons              header buttons: {id, title, systemImage, action, help, disabled}
+    buttons              toolbar operations: {id, title, systemImage, action, help, disabled}
     tiles                stat tiles: {id, icon, color, title, value, detail, actionTitle, action}
     empty                {id, title, systemImage, description}, in place of the sections
     sections             each {
@@ -21,7 +21,7 @@
       links                leading link actions beside the filter
       filters              {id, options}: a segmented picker calling `filter`
       controlsId           optional ref for the filters/actions row
-      buttons              leading buttons beside the trailing filter
+      buttons              section operations promoted to the window toolbar
       empties              {id, title, systemImage, description, hidden}
       panelId              ref of the box around the list
       list                 ResourceList.etlua's arguments: {id, menu, activate, …}
@@ -33,9 +33,8 @@
     contextDisclosure    optional collapsed title for that accounting context
     scopeNote            initial text of the note stating what the totals cover (helpers/Scope.lua)
     footnote             {text, icon} ]] %>
-<PageFrame id="page">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
-    <%- partial("../components/PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId, buttons = layout.buttons}) %>
+<ContentPage id="page">
+    <%- partial("../components/PageHeader.etlua", {header = header or page, summary = layout.summary, summaryId = layout.summaryId}) %>
     <% if waiting then %>
     <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
     <% elseif computing then %>
@@ -65,10 +64,9 @@
         <% end %>
       </HStack>
       <% end %>
-      <% if section.links or section.filters or section.buttons then %>
+      <% if section.links or section.filters then %>
       <HStack <% if section.controlsId then %>id="<%= section.controlsId %>" <% end %> spacing="12" alignment="center">
         <%- partial("../components/Buttons.etlua", {buttons = section.links}) %>
-        <%- partial("../components/Buttons.etlua", {buttons = section.buttons}) %>
         <Spacer />
         <% if section.filters then %>
         <Picker id="<%= section.filters.id %>" style="segmented" value="<%= (filterIndex or 1) - 1 %>" onChange="filter">
@@ -105,5 +103,4 @@
     <%- partial("../components/Footnote.etlua", layout.footnote) %>
     <% end %>
     <% end %>
-  </VStack>
-</PageFrame>
+</ContentPage>

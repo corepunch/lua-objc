@@ -1,7 +1,5 @@
-<PageFrame id="page">
-  <VStack id="pageContent" maxWidth="infinity" spacing="24" alignment="leading">
-    <%- partial("../components/PageHeader.etlua", {header = page, summary = summary, summaryId = "summary",
-      buttons = {{id = "retry", title = "Retry", action = "retry", help = "Read simulator state and runtime information again"}, {id = "components", title = "Xcode Components…", action = "components", help = "Manage runtimes in Xcode › Settings › Components"}}}) %>
+<ContentPage id="page">
+    <%- partial("../components/PageHeader.etlua", {header = page, summary = summary, summaryId = "summary"}) %>
     <% if computing then %>
     <%- partial("../components/Computing.etlua", {status = computing}) %>
     <% else %>
@@ -22,13 +20,6 @@
       <GroupBox>
         <InventoryList id="devices" onSelect="select" kind="devices" />
       </GroupBox>
-      <HStack spacing="8" alignment="center">
-        <Button id="reveal" title="Show in Finder" action="reveal" />
-        <Button id="erase" title="Erase…" action="erase" />
-        <Button id="delete" title="Delete…" action="delete" />
-        <Spacer />
-        <Button id="deleteUnavailable" title="Delete Unavailable…" action="unavailable" help="Delete every device whose runtime is gone" />
-      </HStack>
       <Label id="status" text="<%= status %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
     <VStack id="runtimesSection" spacing="8" alignment="leading">
@@ -36,13 +27,8 @@
       <GroupBox>
         <InventoryList id="runtimes" onSelect="selectRuntime" kind="runtimes" />
       </GroupBox>
-      <HStack spacing="8" alignment="center">
-        <Button id="deleteRuntime" title="Delete Runtime…" action="deleteRuntime" />
-        <Spacer />
-      </HStack>
       <Label id="runtimeStatus" text="<%= runtimeStatus %>" size="11" color="secondary" maxWidth="infinity" lines="0" />
     </VStack>
     </Disclosure>
     <% end %>
-  </VStack>
-</PageFrame>
+</ContentPage>

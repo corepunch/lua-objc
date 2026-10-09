@@ -65,6 +65,9 @@ local withToolbar = ns.Window { visible = false, width = 600, height = 400, cont
 t.assertEqual(identifiers(withToolbar), "refresh", "window items stand alone at the root")
 workspaceRefs.nav:push((xml.render(PAGE, { actions = actions }, ns)))
 t.expect(identifiers(withToolbar):find("refresh", 1, true) ~= nil, "window items stay while a page is shown")
+local beforeUpdate = identifiers(withToolbar)
+withToolbar:updateToolbar({{id = "refresh", label = "Updated", icon = "arrow.clockwise", action = function() end}})
+t.assertEqual(identifiers(withToolbar), beforeUpdate, "window updates preserve the navigation page's toolbar items")
 workspaceRefs.nav:pop()
 t.assertEqual(identifiers(withToolbar), "refresh", "popping restores exactly the window's items")
 
