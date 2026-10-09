@@ -77,6 +77,6 @@ If the user asks for a strict review or "enforce HIG", walk the generated or pro
 
 ## Related project docs
 
-- [AGENTS.md](../../../AGENTS.md)
-- [docs/agents/apple-ui-checklist.md](../../../docs/agents/apple-ui-checklist.md)
-- [docs/PROJECT_REFERENCE.md](../../../docs/PROJECT_REFERENCE.md)
+- [AGENTS.md](../../AGENTS.md)
+- [docs/agents/apple-ui-checklist.md](../../docs/agents/apple-ui-checklist.md)
+- [docs/PROJECT_REFERENCE.md](../../docs/PROJECT_REFERENCE.md)
