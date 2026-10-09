@@ -152,7 +152,6 @@ local Controller = require("apps.studio.Controller")
 local recorded = {}
 local controller = setmetatable({
 	model = { files = files },
-	refs = { previewStatus = {} },
 	versions = { record = function(_, message)
 		table.insert(recorded, message)
 		if message == "fail" then return nil, "locked" end
@@ -162,17 +161,16 @@ local controller = setmetatable({
 }, Controller)
 t.expect(controller:commitProject("Update project"), "commit records the saved project")
 t.assertEqual(recorded[1], "Update project", "the commit message is passed through")
-t.assertEqual(controller.refs.previewStatus.text, "Committed 0123456", "a commit shows its short id")
+t.assertEqual(controller.status, "Committed 0123456", "a commit shows its short id")
 t.assertEqual(controller:commitProject("same"), false, "an unchanged project is not an error")
-t.assertEqual(controller.refs.previewStatus.text, "No changes to commit", "an unchanged project says so")
+t.assertEqual(controller.status, "No changes to commit", "an unchanged project says so")
 t.expect(controller:commitProject("fail") == nil, "a failed commit is reported")
-t.assertEqual(controller.refs.previewStatus.text, "Commit failed: locked", "the failure is shown")
+t.assertEqual(controller.status, "Commit failed: locked", "the failure is shown")
 controller.versions, controller.versionsError = nil, "no repository"
 t.expect(controller:commitProject("x") == nil, "commit without a repository fails")
-t.assertEqual(controller.refs.previewStatus.text, "Git unavailable: no repository", "the open error is shown")
+t.assertEqual(controller.status, "Git unavailable: no repository", "the open error is shown")
 
-local source = require("ui.xml").describeFile("apps/studio/views/Window.etlua", {
-	canvas = require("apps.studio.models.Theme").canvas,
+local source = require("ui.xml").describeFile("apps/studio/views/Workspace.etlua", {
 	rail = require("apps.studio.models.Rail").presentation(),
 	preview = require("apps.studio.models.Preview").presentation({}),
 	chat = require("apps.studio.models.Chat").presentation(),

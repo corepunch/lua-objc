@@ -93,7 +93,6 @@ function Controller:viewData()
 		sceneIndex = self.visuals.pinned and self.visuals.pinned + 1 or 0,
 		program = Visualizers.program(),
 		nowPlaying = self:nowPlaying(),
-		controlGroups = self:controlGroups(),
 		actions = self:actions(),
 	}
 end
@@ -126,10 +125,15 @@ function Controller:views()
 	return views
 end
 
+-- The control panel is drawn from the model: a fader's label, and every
+-- fader when a style brings its own ranges and defaults.
+function Controller:showControls()
+	if self.controls then self.controls:update({controlGroups = self:controlGroups(), actions = self:actions()}) end
+end
+
 function Controller:setControl(id, value)
 	self.model:setValue(id, value)
-	local label = self.refs and self.refs["value_" .. id]
-	if label then label.text = self.model:formatted(id) end
+	self:showControls()
 	if id == "pitch" and not self.playing then self:showIdle() end
 end
 
@@ -142,16 +146,9 @@ function Controller:selectStyle(index)
 	self.model:setStyle(style)
 	self.composer = Styles:create(style.id, self.model.seed)
 	self.synth:setComposer(self.composer, style)
-	local refs = self.refs
-	if not refs then return end
+	if not self.window then return end
 	self.window.title, self.window.subtitle = style.title, style.summary
-	for _, group in ipairs(self:controlGroups()) do
-		for _, control in ipairs(group.controls) do
-			local slider = refs["control_" .. control.id]
-			slider.minValue, slider.maxValue, slider.doubleValue = control.min, control.max, control.value
-			refs["value_" .. control.id].text = control.text
-		end
-	end
+	self:showControls()
 	if not self.playing then self:showIdle() end
 end
 
@@ -400,6 +397,8 @@ function Controller:createWindow()
 	self:present(refs)
 	self.window = ns.Window(config)
 	self.timeline = Template.new(refs.timeline, VIEWS .. "Timeline.etlua", ns)
+	self.controls = Template.new(refs.controlPanel, VIEWS .. "ControlPanel.etlua", ns)
+	self:showControls()
 	self:showIdle()
 	self:setTransport(false)
 	-- The display loop lives as long as the window's Lua state; closing the

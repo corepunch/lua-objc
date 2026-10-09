@@ -1,10 +1,13 @@
 <%
   -- Type-ahead chips: Liquid Glass buttons that merge as they slide together.
+  -- With nothing to suggest the bar above the keyboard is empty.
 %>
-<GlassEffectContainer spacing="8">
-  <HStack spacing="8" paddingHorizontal="4" paddingVertical="2">
-    <% for index, suggestion in ipairs(suggestions) do %>
-    <Button id="suggestion_<%= index %>" title="<%= suggestion.title %>" action="suggest_<%= index %>" style="glass" size="15" accessibilityLabel="<%= suggestion.submit and ('Do: ' .. suggestion.title) or ('Complete: ' .. suggestion.title) %>" />
-    <% end %>
-  </HStack>
-</GlassEffectContainer>
+<ScrollView id="suggestionScroll" horizontal="true" vertical="false" maxWidth="infinity" clipsToBounds="false" hidden="<%= tostring(#suggestions == 0) %>">
+  <GlassEffectContainer spacing="8">
+    <HStack spacing="8" paddingHorizontal="4" paddingVertical="2">
+      <% for index, suggestion in ipairs(suggestions) do %>
+      <Button id="suggestion_<%= index %>" title="<%= suggestion.title %>" action="suggest_<%= index %>" style="glass" size="15" accessibilityLabel="<%= suggestion.submit and ('Do: ' .. suggestion.title) or ('Complete: ' .. suggestion.title) %>" />
+      <% end %>
+    </HStack>
+  </GlassEffectContainer>
+</ScrollView>

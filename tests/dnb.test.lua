@@ -1252,10 +1252,10 @@ t.expect(app.refs.detail.text:find(opener.key, 1, true) ~= nil, "the header name
 t.assertEqual(app.refs.tempo.text, tostring(opener.tempo), "and the first track's tempo")
 for _, group in ipairs(Model.controlGroups) do
 	for _, control in ipairs(group.controls) do
-		t.expect(app.refs["control_" .. control.id] ~= nil, control.id .. " renders from the model tables")
+		t.expect(app.controls.refs["control_" .. control.id] ~= nil, control.id .. " renders from the model tables")
 	end
 end
-t.expect(app.refs.control_tempo == nil, "a track, not the listener, sets the tempo")
+t.expect(app.controls.refs.control_tempo == nil, "a track, not the listener, sets the tempo")
 t.expect(not app.refs.stop.enabled, "stop is disabled while stopped")
 t.assertEqual(loops, 1, "the window starts one display loop")
 t.assertEqual(#app.refs.visualizer.values, Visuals.header + 2 * 40, "the shader receives header values, bands and peaks")
@@ -1281,9 +1281,9 @@ t.assertEqual(app.refs.position.text, "Bar 1 of " .. opener.length, "and shows t
 
 app.actions(app).control_cutoff(0.25)
 t.assertEqual(app.model:value("cutoff"), 0.25, "a slider moves its model value")
-t.assertEqual(app.refs.value_cutoff.text, "25%", "and its value label")
+t.assertEqual(app.controls.refs.value_cutoff.text, "25%", "and its value label")
 app:setControl("pitch", 4.2)
-t.assertEqual(app.refs.value_pitch.text, "+4.0%", "pitch shows the snapped value")
+t.assertEqual(app.controls.refs.value_pitch.text, "+4.0%", "pitch shows the snapped value")
 output:consume(4096)
 app:tick(1 / 60)
 for _ = 1, 40 do -- past the next bar line, where the fader lands
@@ -1295,7 +1295,7 @@ app:tick(1 / 60)
 t.assertEqual(app.refs.tempo.text, tostring(math.floor(opener.tempo * 1.04 + 0.5)), "the header shows the tempo as played")
 app:setControl("pitch", 0)
 app:actions().control_drums(0.5)
-t.assertEqual(app.refs.value_drums.text, "50%", "a Mix fader shows its level")
+t.assertEqual(app.controls.refs.value_drums.text, "50%", "a Mix fader shows its level")
 t.assertEqual(app.model:value("cutoff"), 0.25, "moving a fader leaves other sliders alone")
 
 local seed = app.model.seed

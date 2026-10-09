@@ -1,8 +1,8 @@
 <%
 	local CODE = { inset = 14, sidebarWidth = 220, titleSize = 15, captionSize = 11, rowHeight = 42 }
 %>
-<HStack id="codePane" hidden="true" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity" background="background">
-	<VStack id="treePane" width="<%= CODE.sidebarWidth %>" maxHeight="infinity" alignment="leading" background="secondaryBackground">
+<HStack id="codePane" hidden="<%= tostring(not shown) %>" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity" background="background">
+	<VStack id="treePane" hidden="<%= tostring(treeHidden == true) %>" width="<%= CODE.sidebarWidth %>" maxHeight="infinity" alignment="leading" background="secondaryBackground">
 		<HStack paddingHorizontal="<%= CODE.inset %>" paddingVertical="12" spacing="8" maxWidth="infinity" alignment="center">
 			<SystemImage name="folder.fill" size="15" color="secondary" />
 			<Label text="Habit Tracker" size="<%= CODE.captionSize %>" weight="semibold" color="secondary" lines="1" />
@@ -13,13 +13,13 @@
 			<Column id="display" title="" minWidth="160" />
 		</List>
 	</VStack>
-	<Divider id="treeDivider" orientation="vertical" />
+	<Divider id="treeDivider" hidden="<%= tostring(treeHidden == true) %>" orientation="vertical" />
 	<VStack spacing="0" flexGrow="1" flexBasis="0" maxWidth="infinity" maxHeight="infinity" alignment="leading">
 		<HStack paddingHorizontal="<%= CODE.inset %>" paddingVertical="12" spacing="10" maxWidth="infinity" alignment="center">
 			<SystemImage name="doc.text" size="16" color="accent" />
 			<Label id="codeFileTitle" text="<%= code.name %>" size="<%= CODE.titleSize %>" weight="semibold" lines="1" flexShrink="1" />
 			<Spacer />
-			<Button id="treeToggle" title="Hide" accessibilityLabel="Hide project tree" systemImage="sidebar.left" action="toggleTree" style="plain" controlSize="small" />
+			<Button id="treeToggle" title="<%= treeHidden and "Show" or "Hide" %>" accessibilityLabel="<%= treeHidden and "Show project tree" or "Hide project tree" %>" systemImage="sidebar.left" action="toggleTree" style="plain" controlSize="small" />
 			<Label id="codeLanguage" text="<%= code.language:upper() %>" size="<%= CODE.captionSize %>" weight="semibold" color="secondary" />
 		</HStack>
 		<Divider />

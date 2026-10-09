@@ -1,8 +1,9 @@
 <%
   -- A running head: the book’s title over the room, as printed books carry
-  -- the title on one page and the section on the facing one.
+  -- the title on one page and the section on the facing one. It takes the
+  -- page’s colour scheme, so a Night page has a light running head.
 %>
-<VStack spacing="1" alignment="center" width="230">
+<VStack spacing="1" alignment="center" width="230" colorScheme="<%= colorScheme %>">
   <Label id="sessionTitle" text="<%= gameTitle %>" size="15" weight="semibold" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />
   <Label id="sessionPlace" text="<%= roomTitle %>" size="11" color="secondary" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />
 </VStack>

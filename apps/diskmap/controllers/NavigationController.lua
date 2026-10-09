@@ -84,12 +84,12 @@ end
 
 function Controller:render()
 	local view, refs = xml.renderFile("apps/diskmap/views/layouts/Sidebar.etlua", {actions = {
-		navigate = function(_, _, row) if not self.selecting and row and row.id then self.show(row.id) end end,
+		-- The selected row is the page being shown: selecting it again, or the
+		-- list showing where navigation went, asks for nothing.
+		navigate = function(_, _, row) if row and row.id and row.id ~= self.current then self.show(row.id) end end,
 	}}, ns)
 	self.refs = refs
-	self.selecting = true
 	refs.sidebar:replaceRows(self:rows())
-	self.selecting = false
 	return view
 end
 
@@ -110,17 +110,13 @@ function Controller:visit(location, restoring)
 	self.position = #self.history
 end
 
--- Keeps the sidebar selection in step with navigation that starts elsewhere,
--- such as "Show All" on the overview.
+-- The sidebar shows the current page as its selected row, wherever the
+-- navigation started (a row, "Show All" on the overview, Back).
 function Controller:select(id)
 	self.current = id
 	-- A page without a row (Search) leaves no row selected.
 	local index = self:index(id)
-	if self.refs and self.refs.sidebar.documentView.selectedRow ~= (index or -1) then
-		self.selecting = true
-		self.refs.sidebar:selectRow(index)
-		self.selecting = false
-	end
+	if self.refs and self.refs.sidebar.documentView.selectedRow ~= (index or -1) then self.refs.sidebar:selectRow(index) end
 end
 
 function Controller:canGoBack() return self.position > 1 end
@@ -155,12 +151,10 @@ end
 
 function Controller:reload()
 	if not self.refs then return end
-	-- Native row replacement and selection restoration are not new visits.
-	self.selecting = true
+	-- Replacing rows drops the native selection; the current page restores it.
 	self.refs.sidebar:replaceRows(self:rows())
 	local index = self.current and self:index(self.current)
 	if self.refs.sidebar.documentView.selectedRow ~= (index or -1) then self.refs.sidebar:selectRow(index) end
-	self.selecting = false
 end
 
 return Controller

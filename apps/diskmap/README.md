@@ -99,8 +99,8 @@ the height of AppKit's capacity cell.
 - **Storage Map** — the same semantic tree as a sunburst or a squarified
   treemap (segmented Rings / Rectangles), beside a list of the focused node's
   children. Click a group to look inside, click the center or the breadcrumb
-  to go back, hover for the path, size and share; the hovered sector brightens in place, and
-  selecting a row in the list highlights its sector. Colors are muted category
+  to go back, hover for the path, size and share; the hovered sector brightens in place.
+  The chart and the list are separate widgets. Colors are muted category
   colors that lighten with depth; hatching marks rebuildable data. "Worth a
   look" lists the largest rebuildable resources under the focus.
 - **Xcode** — Device Support per OS version (the newest per platform is

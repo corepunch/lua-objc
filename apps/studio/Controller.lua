@@ -1,5 +1,6 @@
 local ns = require("ns")
 local xml = require("ui.xml")
+local Template = require("ui.template")
 local Model = require("apps.studio.Model")
 local Workspace = require("apps.studio.services.Workspace")
 local Preview = require("apps.studio.services.Preview")
@@ -48,40 +49,73 @@ function Controller:renderPreview()
 end
 
 function Controller:selectFile(path)
-	if type(path) ~= "string" then return end
-	local content = self.model.files["demo/playground/" .. path]
-	if not content then return end
+	if type(path) ~= "string" or not self.model.files["demo/playground/" .. path] then return end
 	self.selectedFile = path
-	self.refs.codeFileTitle.text = path:match("[^/]+$")
-	self.refs.codeLanguage.text = Code.language(path):upper()
-	self.refs.sourceCode.language = Code.language(path)
-	self.refs.sourceCode.text = content
+	self:render()
 end
 
+-- The running preview is a hosted controller, not a description: it is
+-- handed to the Preview view whenever the workspace draws a new one.
 function Controller:reloadPreview()
 	local controller, err = self:renderPreview()
 	if controller then
-		self.refs.preview.content = controller
-		self.refs.previewStatus.text = "Ready"
-		return true
+		self.previewContent, self.status = controller, "Ready"
+	else
+		self.status = "Preview failed: " .. tostring(err)
 	end
-	self.refs.previewStatus.text = "Preview failed: " .. tostring(err)
+	self:render()
+	if controller then return true end
 	return nil, err
 end
 
 -- Commits the current project; the result replaces the status line.
 function Controller:commitProject(message)
+	local id, err
 	if not self.versions then
-		self.refs.previewStatus.text = "Git unavailable: " .. tostring(self.versionsError)
-		return nil, self.versionsError
+		err = self.versionsError
+		self.status = "Git unavailable: " .. tostring(err)
+	else
+		id, err = self.versions:record(message)
+		if id == nil then self.status = "Commit failed: " .. tostring(err)
+		else self.status = id and "Committed " .. id:sub(1, 7) or "No changes to commit" end
 	end
-	local id, err = self.versions:record(message)
-	if id == nil then
-		self.refs.previewStatus.text = "Commit failed: " .. tostring(err)
-		return nil, err
-	end
-	self.refs.previewStatus.text = id and "Committed " .. id:sub(1, 7) or "No changes to commit"
+	self:render()
+	if id == nil then return nil, err end
 	return id
+end
+
+-- What the workspace shows: the rail's mode, the stage, and the agent card
+-- with the code pane, from the workspace state.
+function Controller:workspaceData()
+	local preview = self.previewPane:presentation(self.projects, self:iconChoices())
+	preview.status = self.status or preview.status
+	if self.showcase and self.showcase.conversation.status then preview.status = self.showcase.conversation.status end
+	preview.chatHidden = self.chatHidden
+	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
+	self.selectedFile = code.selected
+	local chat = self.chat:presentation(self.showcase and self.showcase.conversation, code)
+	chat.mode, chat.hidden, chat.treeHidden = self.mode, self.chatHidden, self.treeHidden
+	return {
+		rail = self.rail:presentation(self.mode),
+		preview = preview,
+		chat = chat,
+		-- XML data bindings resolve against the root template context, even
+		-- when the controls are declared in a nested partial.
+		code = code,
+		codeFiles = code.files,
+		syntaxRules = Code.rules,
+		actions = self.actions,
+	}
+end
+
+function Controller:render()
+	if not self.workspace then return end
+	local _, refs = self.workspace:update(self:workspaceData())
+	self.refs = refs
+	if self.previewContent and refs.preview ~= self.previewView then
+		refs.preview.content = self.previewContent
+		self.previewView = refs.preview
+	end
 end
 
 function Controller:createWindow()
@@ -119,87 +153,62 @@ function Controller:createWindow()
 		if project.id then project.imagePath = ns._documentPath(project.id .. "/AppIcon.png") end
 	end
 
-	local refs
-	local config
-	local iconChoices = {}
-	local actions = {}
-	for _, choice in ipairs(Projects.iconChoices) do
-		local selectedChoice = choice
-		local action = "selectProjectIcon_" .. selectedChoice.id
-		table.insert(iconChoices, {
-			title = selectedChoice.title,
-			symbol = selectedChoice.symbol,
-			imagePath = ns._documentPath(activeProject.id .. "/ProjectIcons/" .. selectedChoice.file),
-			selected = activeProject.projectIcon == selectedChoice.id,
-			action = action,
-		})
-		actions[action] = function()
-			local ok, err = workspace.selectIcon(selectedChoice.id)
-			if not ok then
-				refs.previewStatus.text = "Icon update failed: " .. tostring(err)
-				return
-			end
-			activeProject.projectIcon = selectedChoice.id
-			activeProject.appIcon = selectedChoice.symbol
-			activeProject.icon = selectedChoice.symbol
-			refs.previewStatus.text = "Project icon: " .. selectedChoice.title
-		end
-	end
-	local preview = self.previewPane:presentation(projects, iconChoices)
-	if self.showcase and self.showcase.conversation.status then preview.status = self.showcase.conversation.status end
-	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
-	self.selectedFile = code.selected
-	-- The rail switches the agent card between its modes and carries the
-	-- highlight to the one showing.
-	local function setMode(index)
-		if not self.rail:select(refs, index) then return end
-		local showingCode = index ~= 0
-		refs.transcriptScroll.hidden = showingCode
-		refs.codePane.hidden = not showingCode
-		refs.composerPane.hidden = showingCode
-	end
-	actions.toggleChat = function()
-		local focus = not refs.chatPane.hidden
-		refs.chatPane.hidden = focus
-		-- The stage is sized to the device beside the chat; alone,
-		-- it takes the whole window.
-		refs.previewPane.fixedWidth = not focus and preview.stageWidth or nil
-		refs.chatVisibility.accessibilityLabel = focus and "Show Chat" or "Focus Preview"
-	end
-	actions.reloadPreview = function() self:reloadPreview() end
-	actions.commitProject = function() self:commitProject("Update project") end
-	actions.showChat = function() setMode(0) end
-	actions.showCode = function() setMode(1) end
-	actions.toggleTree = function()
-		self.treeHidden = not self.treeHidden
-		refs.treePane.hidden = self.treeHidden
-		refs.treeDivider.hidden = self.treeHidden
-		refs.treeToggle.accessibilityLabel = self.treeHidden and "Show project tree" or "Hide project tree"
-	end
-	actions.selectFile = function(_, _, row)
-		if row and row.id then self:selectFile(row.id) end
-	end
-	config, refs = xml.renderFile(VIEWS .. "Window.etlua", {
-		canvas = Theme.canvas,
-		rail = self.rail:presentation(),
-		preview = preview,
-		chat = self.chat:presentation(self.showcase and self.showcase.conversation, code),
-		-- XML data bindings resolve against the root template context, even
-		-- when the controls are declared in a nested partial.
-		code = code,
-		codeFiles = code.files,
-		syntaxRules = Code.rules,
-		actions = actions,
-	}, ns)
+	self.projects, self.activeProject, self.projectWorkspace = projects, activeProject, workspace
+	self.mode = "chat"
+	self.actions = self:workspaceActions()
+	local config, refs = xml.renderFile(VIEWS .. "Window.etlua", {canvas = Theme.canvas}, ns)
 	local controller, err = self:renderPreview()
-	if controller then
-		refs.preview.content = controller
-	else
-		error("Could not render starter preview: " .. tostring(err))
-	end
-	self.refs = refs
+	if not controller then error("Could not render starter preview: " .. tostring(err)) end
+	self.previewContent = controller
+	self.workspace = Template.new(refs.workspace, VIEWS .. "Workspace.etlua", ns)
+	self:render()
 	self:showLatestTurn()
 	return ns.Window(config)
+end
+
+-- The project menu's icon choices; the active project's is checked.
+function Controller:iconChoices()
+	local choices = {}
+	local project = self.activeProject
+	for _, choice in ipairs(Projects.iconChoices) do
+		table.insert(choices, {
+			title = choice.title,
+			symbol = choice.symbol,
+			imagePath = project and ns._documentPath(project.id .. "/ProjectIcons/" .. choice.file) or "",
+			selected = project ~= nil and project.projectIcon == choice.id,
+			action = "selectProjectIcon_" .. choice.id,
+		})
+	end
+	return choices
+end
+
+function Controller:selectProjectIcon(choice)
+	local ok, err = self.projectWorkspace.selectIcon(choice.id)
+	if ok then
+		local project = self.activeProject
+		project.projectIcon, project.appIcon, project.icon = choice.id, choice.symbol, choice.symbol
+		self.status = "Project icon: " .. choice.title
+	else
+		self.status = "Icon update failed: " .. tostring(err)
+	end
+	self:render()
+end
+
+-- Each action changes the workspace state and draws the workspace again.
+function Controller:workspaceActions()
+	local actions = {
+		reloadPreview = function() self:reloadPreview() end,
+		commitProject = function() self:commitProject("Update project") end,
+		showChat = function() self.mode = "chat"; self:render() end,
+		showCode = function() self.mode = "code"; self:render() end,
+		toggleChat = function() self.chatHidden = not self.chatHidden; self:render() end,
+		toggleTree = function() self.treeHidden = not self.treeHidden; self:render() end,
+		selectFile = function(_, _, row) if row and row.id then self:selectFile(row.id) end end,
+	}
+	for _, choice in ipairs(Projects.iconChoices) do
+		actions["selectProjectIcon_" .. choice.id] = function() self:selectProjectIcon(choice) end
+	end
+	return actions
 end
 
 -- A conversation opens at its latest turn, as SwiftUI's

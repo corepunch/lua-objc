@@ -13,7 +13,7 @@
     turnSpacing = 10, captionSize = 12,
   }
 %>
-<VStack id="chatPane" tint="<%= tint %>" paddingVertical="<%= CHAT.margin %>" paddingTrailing="<%= CHAT.margin %>" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity">
+<VStack id="chatPane" hidden="<%= tostring(hidden == true) %>" tint="<%= tint %>" paddingVertical="<%= CHAT.margin %>" paddingTrailing="<%= CHAT.margin %>" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity">
 	<VStack id="chatCard" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background" cornerRadius="<%= CHAT.radius %>" clipsToBounds="true">
 		<HStack paddingHorizontal="<%= CHAT.inset %>" paddingVertical="<%= CHAT.inset - 4 %>" spacing="<%= CHAT.headerSpacing %>" maxWidth="infinity" alignment="center">
 			<%- partial("Avatar.etlua", { size = CHAT.avatar, colors = brand, icon = agent.icon, label = agent.name }) %>
@@ -33,7 +33,7 @@
 			</Menu>
 		</HStack>
 		<Divider />
-		<ScrollView id="transcriptScroll" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+		<ScrollView id="transcriptScroll" hidden="<%= tostring(mode == "code") %>" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
 			<VStack spacing="0" maxWidth="infinity" alignment="center">
 			<VStack padding="<%= CHAT.inset %>" spacing="<%= CHAT.spacing %>" maxWidth="<%= CHAT.column %>" alignment="leading">
 				<% for _, message in ipairs(messages) do %>
@@ -70,8 +70,8 @@
 			</VStack>
 			</VStack>
 		</ScrollView>
-		<%- partial("CodePane.etlua", { code = code, syntaxRules = syntaxRules }) %>
-		<VStack id="composerPane" spacing="0" maxWidth="infinity" alignment="center">
+		<%- partial("CodePane.etlua", { code = code, syntaxRules = syntaxRules, shown = mode == "code", treeHidden = treeHidden }) %>
+		<VStack id="composerPane" hidden="<%= tostring(mode == "code") %>" spacing="0" maxWidth="infinity" alignment="center">
 			<%- partial("Composer.etlua", { suggestions = suggestions, draft = draft, listening = listening, inset = CHAT.inset, column = CHAT.column }) %>
 		</VStack>
 	</VStack>

@@ -12,11 +12,14 @@
 	</ZStack>
 	<Spacer height="<%= RAIL.spacing %>" />
 	<% for _, mode in ipairs(modes) do %>
-	<ZStack id="rail/<%= mode.id %>/on" width="<%= RAIL.item %>" height="<%= RAIL.item %>" hidden="<%= tostring(not mode.selected) %>">
+	<% if mode.selected then %>
+	<ZStack id="rail/<%= mode.id %>/on" width="<%= RAIL.item %>" height="<%= RAIL.item %>" accessibilityLabel="<%= mode.title %>, selected">
 		<LinearGradient colors="<%= brand.colors %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= RAIL.itemRadius %>" />
 		<SystemImage name="<%= mode.icon %>" size="<%= RAIL.symbol %>" weight="semibold" color="white" label="<%= mode.title %>, selected" />
 	</ZStack>
-	<Button id="rail/<%= mode.id %>/off" systemImage="<%= mode.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= mode.title %>" action="<%= mode.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" hidden="<%= tostring(mode.selected) %>" />
+	<% else %>
+	<Button id="rail/<%= mode.id %>/off" systemImage="<%= mode.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= mode.title %>" action="<%= mode.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<% end %>
 	<% end %>
 	<Divider width="<%= RAIL.rule %>" />
 	<% for _, item in ipairs(destinations) do %>

@@ -12,10 +12,6 @@
 	<ZStack id="canvas" maxWidth="infinity" maxHeight="infinity" background="secondaryBackground">
 		<LinearGradient colors="<%= canvas.wash %>" startPoint="topLeading" endPoint="bottomTrailing" opacity="<%= CANVAS.wash %>" ignoresSafeArea="top" />
 		<LinearGradient colors="<%= canvas.glow %>" startPoint="bottomLeading" endPoint="topTrailing" opacity="<%= CANVAS.glow %>" ignoresSafeArea="top" />
-		<HStack id="workspace" spacing="0" maxWidth="infinity" maxHeight="infinity" alignment="top">
-			<%- partial("Rail.etlua", rail) %>
-			<%- partial("PreviewPane.etlua", preview) %>
-			<%- partial("ChatPane.etlua", chat) %>
-		</HStack>
+		<VStack id="workspace" maxWidth="infinity" maxHeight="infinity" />
 	</ZStack>
 </Window>

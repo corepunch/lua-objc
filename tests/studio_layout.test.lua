@@ -4,15 +4,14 @@ local xml = require("ui.xml")
 local Preview = require("apps.studio.models.Preview")
 local Chat = require("apps.studio.models.Chat")
 local Rail = require("apps.studio.models.Rail")
-local RailController = require("apps.studio.controllers.RailController")
 local Theme = require("apps.studio.models.Theme")
 
 local projects = {
 	{ id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true },
 	{ id = "HabitTracker", title = "Habit Tracker", icon = "checklist" },
 }
-local source = xml.describeFile("apps/studio/views/Window.etlua", {
-	canvas = Theme.canvas,
+local window = xml.describeFile("apps/studio/views/Window.etlua", {canvas = Theme.canvas}).source
+local source = xml.describeFile("apps/studio/views/Workspace.etlua", {
 	rail = Rail.presentation(),
 	preview = Preview.presentation(projects, {
 		{ title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", imagePath = "/Documents/StarterApp/ProjectIcons/rocket-sketch.png", selected = false, action = "selectProjectIcon_rocket-sketch" },
@@ -22,7 +21,7 @@ local source = xml.describeFile("apps/studio/views/Window.etlua", {
 
 t.expect(not source:find("nil", 1, true), "partials render instead of inserting nil")
 t.expect(source:find("Use Rocket Sketch Icon", 1, true) ~= nil, "the project menu renders icon choices")
-local canvas = assert(source:match('(<ZStack id="canvas".-)<HStack id="workspace"'))
+local canvas = assert(window:match('(<ZStack id="canvas".-)<VStack id="workspace"'))
 t.expect(canvas:find('id="canvas" maxWidth="infinity" maxHeight="infinity" background="secondaryBackground"', 1, true) ~= nil,
 	"the canvas washes over the system background, so it follows light and dark")
 local _, washes = canvas:gsub('<LinearGradient colors="[%w,]+" startPoint="%a+" endPoint="%a+" opacity="0%.%d+" ignoresSafeArea="top"', "")
@@ -31,7 +30,7 @@ t.expect(canvas:find('colors="' .. Theme.canvas.wash .. '"', 1, true) and canvas
 	"the canvas takes its colors from the theme")
 t.expect(not canvas:find('tint=', 1, true), "the canvas sets no tint, so the previewed app keeps its accent")
 
-local workspace = assert(source:match('(<HStack id="workspace".-</Window>)'))
+local workspace = source
 local railAt = workspace:find('id="rail"', 1, true)
 local previewAt = workspace:find('id="previewPane"', 1, true)
 local chatAt = workspace:find('id="chatPane"', 1, true)
@@ -45,35 +44,21 @@ local rail = assert(workspace:match('(<VStack id="rail".-)<VStack id="previewPan
 t.expect(rail:find('id="rail" tint="systemIndigo" width="68"', 1, true) ~= nil, "the rail is a narrow icon column")
 t.expect(not rail:find('background=', 1, true), "the rail rests on the canvas")
 t.expect(not rail:find('title=', 1, true), "rail items are icon-only")
-for _, name in ipairs({ "Lua Studio", "Chat", "Code", "Templates", "Examples", "Plugins", "Settings" }) do
+for _, name in ipairs({ "Lua Studio", "Chat, selected", "Code", "Templates", "Examples", "Plugins", "Settings" }) do
 	t.expect(rail:find('accessibilityLabel="' .. name .. '"', 1, true) ~= nil, "icon-only " .. name .. " keeps an accessible name")
 end
 t.expect(rail:find('<LinearGradient colors="' .. Theme.brand .. '" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="12" />', 1, true) ~= nil,
 	"the brand mark is a gradient tile")
-t.expect(rail:find('<ZStack id="rail/chat/on" width="44" height="44" hidden="false">', 1, true) ~= nil,
+t.expect(rail:find('<ZStack id="rail/chat/on" width="44" height="44" accessibilityLabel="Chat, selected">', 1, true) ~= nil,
 	"the selected mode shows its gradient highlight")
-t.expect(rail:find('id="rail/chat/off"[^>]-action="showChat"[^>]-hidden="true"') ~= nil,
-	"the selected mode hides its plain button")
-t.expect(rail:find('<ZStack id="rail/code/on" width="44" height="44" hidden="true">', 1, true) ~= nil,
-	"an unselected mode hides its highlight")
-t.expect(rail:find('id="rail/code/off"[^>]-action="showCode"[^>]-hidden="false"') ~= nil,
+t.expect(not rail:find('id="rail/chat/off"', 1, true), "and no plain button")
+t.expect(not rail:find('id="rail/code/on"', 1, true), "an unselected mode has no highlight")
+t.expect(rail:find('id="rail/code/off"[^>]-action="showCode"') ~= nil,
 	"an unselected mode is a plain button that selects it")
 t.expect(rail:find('id="rail/plugins"', 1, true) < rail:find('<Spacer />', 1, true)
 	and rail:find('<Spacer />', 1, true) < rail:find('id="rail/settings"', 1, true),
 	"settings sits at the foot of the rail")
 
--- The rail highlight follows the mode: exactly one of each pair is visible.
-local railController = RailController.new()
-railController:presentation()
-local refs = {}
-for _, id in ipairs({ "rail/chat/on", "rail/chat/off", "rail/code/on", "rail/code/off" }) do refs[id] = {} end
-t.assertEqual(railController:select(refs, 1), "code", "mode index 1 is the code")
-t.expect(refs["rail/code/on"].hidden == false and refs["rail/code/off"].hidden == true, "code takes the highlight")
-t.expect(refs["rail/chat/on"].hidden == true and refs["rail/chat/off"].hidden == false, "chat gives the highlight up")
-t.assertEqual(railController:select(refs, 0), "chat", "mode index 0 is the chat")
-t.expect(refs["rail/chat/on"].hidden == false and refs["rail/code/on"].hidden == true, "the highlight returns to chat")
-t.assertEqual(railController:select(refs, 7), nil, "an unknown mode is refused")
-t.expect(refs["rail/chat/on"].hidden == false, "a refused mode leaves the highlight alone")
 t.assertEqual(Rail.presentation("code").modes[2].selected, true, "the rail can open on the code")
 t.assertEqual(Rail.presentation("code").modes[1].selected, false, "only one mode is selected")
 
@@ -111,8 +96,8 @@ local statusEnd = assert(stageBar:find('/>', statusAt, true))
 t.expect(stageBar:sub(statusAt, statusEnd):find('systemImage=', 1, true) == nil,
 	"the status ref points to a text label instead of a composite layout view")
 
-local chat = assert(source:match('(<VStack id="chatPane".-)</HStack>%s*</ZStack>%s*</Window>'))
-t.expect(chat:find('id="chatPane" tint="systemIndigo" paddingVertical="12" paddingTrailing="12" spacing="0" flexGrow="1"', 1, true) ~= nil,
+local chat = assert(source:match('(<VStack id="chatPane".-)</HStack>%s*$'))
+t.expect(chat:find('id="chatPane" hidden="false" tint="systemIndigo" paddingVertical="12" paddingTrailing="12" spacing="0" flexGrow="1"', 1, true) ~= nil,
 	"the chat takes the remaining width, inset from the window edge")
 t.expect(chat:find('id="chatCard"[^>]-background="background" cornerRadius="28" clipsToBounds="true"') ~= nil,
 	"the agent lives in a rounded card that clips its panes")
@@ -120,7 +105,7 @@ t.expect(chat:find('maxWidth="720"', 1, true) ~= nil, "the conversation keeps a 
 t.expect(chat:find('title="Share"', 1, true) and chat:find('title="Deploy"', 1, true),
 	"Share and Deploy live in the chat header")
 t.expect(not chat:find('<Picker', 1, true), "the rail switches modes; the header has no mode picker")
-t.expect(chat:find('<ScrollView id="transcriptScroll" flexGrow="1"', 1, true) ~= nil,
+t.expect(chat:find('<ScrollView id="transcriptScroll" hidden="false" flexGrow="1"', 1, true) ~= nil,
 	"the transcript scrolls independently of the composer")
 t.expect(chat:find('id="codePane" hidden="true"', 1, true) and chat:find('syntaxRules="syntaxRules"', 1, true),
 	"Code mode starts hidden and binds Lua supplied syntax rules")
@@ -143,11 +128,34 @@ t.expect(chat:find('accessibilityLabel="Send" style="glassProminent"', 1, true) 
 local composerAt = chat:find('id="composer"', 1, true)
 t.expect(composerAt > chat:find('</ScrollView>', 1, true), "the composer stays below the transcript")
 
-local empty = xml.describeFile("apps/studio/views/Window.etlua", {
-	canvas = Theme.canvas,
+local empty = xml.describeFile("apps/studio/views/Workspace.etlua", {
 	rail = Rail.presentation(),
 	preview = Preview.presentation({}),
 	chat = Chat.presentation(),
 }).source
 t.expect(empty:find('title="No Project"', 1, true) ~= nil, "an empty workspace still renders a project menu")
+-- The workspace is drawn from its state: the code mode, a hidden chat and a
+-- hidden project tree are attributes of the description, not later edits.
+local Code = require("apps.studio.models.Code")
+local function workspaceWith(state)
+	local code = Code.presentation({ ["demo/playground/Controller.lua"] = "return {}" }, "Controller.lua")
+	local chat = Chat.presentation(nil, code)
+	chat.mode, chat.hidden, chat.treeHidden = state.mode, state.chatHidden, state.treeHidden
+	local preview = Preview.presentation(projects)
+	preview.chatHidden = state.chatHidden
+	return xml.describeFile("apps/studio/views/Workspace.etlua", {
+		rail = Rail.presentation(state.mode), preview = preview, chat = chat,
+		code = code, codeFiles = code.files, syntaxRules = Code.rules,
+	}).source
+end
+local coding = workspaceWith({ mode = "code", treeHidden = true })
+t.expect(coding:find('id="codePane" hidden="false"', 1, true) and coding:find('id="transcriptScroll" hidden="true"', 1, true)
+	and coding:find('id="composerPane" hidden="true"', 1, true), "code mode shows the code pane in place of the conversation")
+t.expect(coding:find('id="rail/code/on"', 1, true) and coding:find('id="rail/chat/off"', 1, true), "the rail highlights the code mode")
+t.expect(coding:find('id="treePane" hidden="true"', 1, true) and coding:find('id="treeDivider" hidden="true"', 1, true)
+	and coding:find('accessibilityLabel="Show project tree"', 1, true), "a hidden tree hides its divider and offers to show it")
+local focused = workspaceWith({ mode = "chat", chatHidden = true })
+t.expect(focused:find('id="chatPane" hidden="true"', 1, true), "focusing the preview hides the chat")
+t.expect(not focused:match('id="previewPane"[^>]-width="440"') and focused:find('accessibilityLabel="Show Chat"', 1, true),
+	"and the stage drops its fixed width")
 os.exit(t.summary() and 0 or 1)

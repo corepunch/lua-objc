@@ -1,0 +1,49 @@
+<%
+  -- Everything that is not the story floats in one Liquid Glass group at the
+  -- foot of the page: quick actions and the command field, with the status
+  -- line set small like a book’s folio. The page takes the reader’s theme:
+  -- its paper, its ink, and a Night page is dark whatever the system says.
+  -- The transcript is a section of its own, mounted in `transcript`.
+  local BAR = { height = 52, radius = 26, merge = 14, minSize = 15, maxSize = 20 }
+  local fieldSize = math.max(BAR.minSize, math.min(reading.fontSize, BAR.maxSize))
+%>
+<ZStack id="session" maxWidth="infinity" maxHeight="infinity" alignment="top" tint="<%= ink %>" background="<%= reading.page %>" colorScheme="<%= reading.colorScheme %>">
+  <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
+    <ScrollView id="transcriptScroll" flexGrow="1" scrollOnKeyboard="true" scrollDismissesKeyboard="interactively">
+      <VStack id="transcript" maxWidth="infinity" />
+    </ScrollView>
+
+    <VStack spacing="8" maxWidth="infinity">
+      <Label id="progress" text="<%= progress %>" size="12" color="<%= reading.secondary %>" monospacedDigit="true" alignment="center" maxWidth="infinity" lines="1" />
+      <Label id="dictationStatus" text="<%= dictation.status %>" size="13" color="<%= reading.secondary %>" paddingHorizontal="20" lines="2" hidden="<%= tostring(dictation.status == "") %>" />
+      <GlassEffectContainer spacing="<%= BAR.merge %>">
+        <HStack spacing="8" alignment="center" maxWidth="infinity">
+          <Menu id="quickActions" title="" systemImage="plus" symbolSize="22" style="glass" accessibilityLabel="More commands" width="<%= BAR.height %>" height="<%= BAR.height %>">
+            <MenuItem title="Look Around" systemImage="eye" action="look" />
+            <MenuItem title="Inventory" systemImage="bag" action="inventory" />
+            <MenuItem title="Close Book" systemImage="book.closed" action="close" />
+          </Menu>
+          <GlassEffect style="regular" cornerRadius="<%= BAR.radius %>" maxWidth="infinity">
+            <HStack paddingLeading="18" paddingTrailing="5" spacing="4" minHeight="<%= BAR.height %>">
+              <TextField id="input" text="<%= draft %>" placeholder="What do you do?" accessibilityLabel="Command" style="plain" size="<%= fieldSize %>" design="<%= reading.font %>" color="<%= reading.primary %>" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
+              <% if composer.dictate then %>
+              <Button id="dictate" title="" systemImage="mic" symbolSize="20" accessibilityLabel="Dictate command" action="dictate" style="plain" width="40" height="44" />
+              <% else %>
+              <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="30" weight="semibold" foregroundStyle="accent" tint="<%= tint %>" accessibilityLabel="Send command" action="submit" style="plain" width="40" height="44" disabled="<%= tostring(not composer.canSend) %>" />
+              <% end %>
+            </HStack>
+          </GlassEffect>
+        </HStack>
+      </GlassEffectContainer>
+    </VStack>
+  </SafeAreaInset>
+
+  <VStack id="toastLayer" paddingTop="8" allowsHitTesting="false" maxWidth="infinity" alignment="center">
+    <GlassEffect id="scoreToast" style="regular" hidden="<%= tostring(toast == nil) %>" accessibilityLabel="Score">
+      <HStack paddingHorizontal="16" paddingVertical="10" spacing="8" alignment="center">
+        <SystemImage name="sparkles" size="15" color="<%= ink %>" label="Points" />
+        <Label id="scoreToastText" text="<%= toast or "" %>" size="15" weight="semibold" monospacedDigit="true" />
+      </HStack>
+    </GlassEffect>
+  </VStack>
+</ZStack>

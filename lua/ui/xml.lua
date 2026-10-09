@@ -402,7 +402,7 @@ local function layoutProps(attrs)
         "spacing", "alignment", "maxRows", "fixedSize",
         "flexGrow", "flexShrink", "flexBasis",
         "containerRelativeWidth", "trailingMaxWidthFraction", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe", "onScroll",
-        "opacity", "offsetX", "offsetY",
+        "opacity", "offsetX", "offsetY", "colorScheme",
         "help", "dropExternalOnly",
     }
     local props = {}
@@ -1023,6 +1023,7 @@ local TAG_SCHEMA = {
             bordered    = "bool",
             size        = "num",
 			design      = "str",
+			color       = "str",
 			disabled    = "bool",
 			accessibilityLabel = "str",
 			defaultFocus = "bool",
@@ -2270,6 +2271,7 @@ local OUTER = {
     opacity = setter("opacity", number(1)),
     offsetX = setter("offsetX", number(0)),
     offsetY = setter("offsetY", number(0)),
+    colorScheme = setter("colorScheme", function(v) return v or "system" end),
     cornerRadius = setter("cornerRadius", number(0)),
     background = function(view, v, ns)
         local color = v and ns.Color(v) or nil

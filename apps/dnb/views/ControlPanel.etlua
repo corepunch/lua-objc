@@ -1,0 +1,5 @@
+<HStack padding="18" spacing="24" alignment="top" maxWidth="infinity" maxHeight="infinity">
+	<% for _, group in ipairs(controlGroups) do -%>
+	<%- partial("Controls.etlua", group) %>
+	<% end -%>
+</HStack>

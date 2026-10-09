@@ -38,16 +38,16 @@ local child = {}
 local root = setmetatable({
 	model = { files = {} },
 	preview = { render = function() return child end },
-	refs = { preview = {}, previewStatus = {} },
+	status = "Building",
 }, Root)
 t.expect(root:reloadPreview(), "Run reloads the embedded controller")
-t.assertEqual(root.refs.preview.content, child, "successful reload replaces preview content")
-t.assertEqual(root.refs.previewStatus.text, "Ready", "successful reload clears the prior status")
+t.assertEqual(root.previewContent, child, "successful reload replaces preview content")
+t.assertEqual(root.status, "Ready", "successful reload clears the prior status")
 root.preview.render = function() return nil, "bad project" end
 t.expect(not root:reloadPreview(), "failed reload is reported")
-t.assertEqual(root.refs.preview.content, child, "failed reload preserves the prior preview")
-t.expect(root.refs.previewStatus.text:find("bad project", 1, true) ~= nil,
-	"failed reload displays its error")
+t.assertEqual(root.previewContent, child, "failed reload preserves the prior preview")
+t.expect(root.status:find("bad project", 1, true) ~= nil, "failed reload displays its error")
+root.refs = {}
 local anchored
 root.refs.transcriptScroll = { scrollTo = function(_, target, animated) anchored = { target, animated } end }
 root:showLatestTurn()

@@ -42,8 +42,17 @@ function Controller.new(options)
 		speech = nil,
 		dictationActive = false,
 		dictationPrefix = "",
+		-- What the reader shows besides the story: the command being typed,
+		-- the dictation status line and the score capsule.
+		draft = "",
+		dictationStatus = "",
+		toast = nil,
 	}, Controller)
 end
+
+-- Reading settings name an appearance as UIKit does; the page takes it as
+-- a colour scheme.
+local COLOR_SCHEMES = { [1] = "light", [2] = "dark" }
 
 -- Opens a story at its last page when it has an autosave, or from its title
 -- page when `fresh` is set or nothing is saved.
@@ -67,11 +76,11 @@ function Controller:show(id, fresh)
 		end)
 	end
 	local actions = {
-		submit = function() self:submitCommand(self.refs.input.text) end,
+		submit = function() self:submitCommand(self.draft) end,
 		inputChanged = function(text) self:updateComposer(text) end,
 		inputCommand = function(command)
 			if command ~= "submit" then return false end
-			self:submitCommand(self.refs.input.text)
+			self:submitCommand(self.draft)
 			return true
 		end,
 		inputFocused = function() self:scrollTranscript(true) end,
@@ -82,30 +91,67 @@ function Controller:show(id, fresh)
 		readingSettings = function() self:showReadingSettings() end,
 	}
 	local presentation = self.model:presentation()
-	presentation.speechAvailable = speechAvailable
 	actions.disappear = function() self:onDisappear() end
-	presentation.actions = actions
-	self.page, self.refs = self.push("pages/Session", presentation)
+	self.actions = actions
+	self.draft, self.dictationStatus, self.toast = "", "", nil
+	local pageRefs
+	self.page, pageRefs = self.push("pages/Session", { gameTitle = presentation.gameTitle, actions = actions })
+	self.reader = self.mountTemplate(pageRefs.reader, "sections/Reader")
+	self.heading = self.mountTemplate(pageRefs.heading, "sections/SessionTitle")
+	self.suggestions = self.mountTemplate(pageRefs.suggestions, "sections/Suggestions")
+	self:render()
 	self.transcript = self.mountTemplate(self.refs.transcript, "sections/Transcript")
-	self.suggestions = self.mountTemplate(self.refs.suggestions, "sections/Suggestions")
 	-- A new story types its opening; a resumed one opens at its last line.
 	if not saved then self:beginTyping(1, TYPING.openingDelay) end
 	self:applyReadingSettings()
-	self:updateComposer(self.refs.input.text)
+	self:renderSuggestions(self.draft)
 	-- A new story is read from its title page; a resumed one from its last line.
-	self.refs.transcriptScroll:scrollTo(saved and "bottom" or "top", false)
+	self:scrollPage(saved and "bottom" or "top", false)
 	self.onProgress()
 	return true
+end
+
+-- The page, its running head and its composer, drawn from the session, the
+-- reading settings and the composer state. Every change to them draws again.
+function Controller:readerData()
+	local data = self.model:presentation()
+	local settings = ReadingSettings:current():presentation()
+	data.reading = {
+		page = settings.pageColor, primary = settings.primaryTextColor, secondary = settings.secondaryTextColor,
+		font = settings.font, fontSize = settings.fontSize,
+		colorScheme = COLOR_SCHEMES[settings.appearance] or "system",
+	}
+	local hasText = self.draft:find("%S") ~= nil
+	data.draft = self.draft
+	data.dictation = { status = self.dictationStatus }
+	-- With speech available the microphone stands where Send would, until
+	-- there is something typed to send.
+	data.composer = { dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
+	data.toast = self.toast
+	data.actions = self.actions
+	return data
+end
+
+function Controller:render()
+	if not self.reader or self.reader:isDisposed() then return end
+	local data = self:readerData()
+	self.refs = select(2, self.reader:update(data))
+	self.heading:update({ gameTitle = data.gameTitle, roomTitle = data.roomTitle, colorScheme = data.reading.colorScheme })
 end
 
 function Controller:isOpen()
 	return self.refs ~= nil
 end
 
-function Controller:scrollTranscript(animated)
+-- Every scroll of the page goes through here: the native scroll view
+-- scrolls, to a named place, at the request of a command or the keyboard.
+function Controller:scrollPage(target, animated, anchor)
 	local scroll = self.refs and self.refs.transcriptScroll
-	if not scroll then return end
-	scroll:scrollTo("bottom", animated == true)
+	if scroll then scroll:scrollTo(target, animated, anchor) end
+end
+
+function Controller:scrollTranscript(animated)
+	self:scrollPage("bottom", animated == true)
 end
 
 -- The page already holds the whole answer (see “Typing”), so one smooth
@@ -113,21 +159,16 @@ end
 -- the screen, and otherwise no further than the command that asked for it,
 -- so a long answer is read from its first line.
 function Controller:scrollToEntry(entry)
-	local scroll = self.refs and self.refs.transcriptScroll
-	if not scroll then return end
 	local id = "entry_" .. (entry - (self.transcriptEarlier or 0))
 	if not (self.transcript and self.transcript.refs[id]) then return self:scrollTranscript(true) end
-	scroll:scrollTo(id, not self.reduceMotion(), "top")
+	self:scrollPage(id, not self.reduceMotion(), "top")
 end
 
 function Controller:updateComposer(text)
 	if not self.refs then return end
-	local hasText = type(text) == "string" and text:find("%S") ~= nil
-	local showSend = not self.refs.dictate or (hasText and not self.dictationActive)
-	self.refs.send.hidden = not showSend
-	self.refs.send.enabled = hasText
-	if self.refs.dictate then self.refs.dictate.hidden = showSend end
-	self:renderSuggestions(text)
+	self.draft = type(text) == "string" and text or ""
+	self:render()
+	self:renderSuggestions(self.draft)
 end
 
 -- Suggestions follow every keystroke. A whole command ("north", "open
@@ -142,13 +183,11 @@ function Controller:renderSuggestions(text)
 	end
 	self.currentSuggestions = suggestions
 	self.suggestions:update({ suggestions = suggestions, actions = actions })
-	self.refs.suggestionScroll.hidden = #suggestions == 0
 end
 
 function Controller:applySuggestion(suggestion)
 	if not self.refs or type(suggestion) ~= "table" then return false end
 	if suggestion.submit then return self:submitCommand(suggestion.text) end
-	self.refs.input.text = suggestion.text
 	self:updateComposer(suggestion.text)
 	return true
 end
@@ -292,45 +331,52 @@ function Controller:typeNext(generation)
 	self.after(TYPING.tick, function() self:typeNext(generation) end)
 end
 
+local DICTATION = {
+	listening = "Listening… Tap the microphone to finish.",
+	starting = "Waiting for microphone access…",
+	processing = "Transcribing…",
+	unavailable = "Dictation is unavailable. Check microphone and speech access in Settings.",
+}
+
 function Controller:onSpeechEvent(state, text, message)
 	if not self.refs then return end
-	self.refs.dictationStatus.hidden = state == "idle" or state == "finished"
+	local draft = self.draft
 	if state == "listening" then
 		self.dictationActive = true
-		self.refs.dictationStatus.text = "Listening… Tap the microphone to finish."
+		self.dictationStatus = DICTATION.listening
 	elseif state == "partial" or state == "finished" then
 		local separator = self.dictationPrefix ~= ""
 			and not self.dictationPrefix:match("%s$") and " " or ""
-		self.refs.input.text = self.dictationPrefix .. separator .. (text or "")
+		draft = self.dictationPrefix .. separator .. (text or "")
 		if state == "finished" then
 			self.dictationActive = false
-			self.refs.dictationStatus.text = ""
+			self.dictationStatus = ""
 		end
 	elseif state == "starting" then
-		self.refs.dictationStatus.text = "Waiting for microphone access…"
+		self.dictationStatus = DICTATION.starting
 	elseif state == "processing" then
-		self.refs.dictationStatus.text = "Transcribing…"
+		self.dictationStatus = DICTATION.processing
 	elseif state == "error" then
 		self.dictationActive = false
-		self.refs.dictationStatus.text = message or "Dictation is unavailable. Check microphone and speech access in Settings."
+		self.dictationStatus = message or DICTATION.unavailable
 	elseif state == "idle" then
 		self.dictationActive = false
-		self.refs.dictationStatus.text = ""
+		self.dictationStatus = ""
 	end
-	self:updateComposer(self.refs.input.text)
+	self:updateComposer(draft)
 end
 
 function Controller:toggleDictation()
 	if not self.speech then return end
 	if self.dictationActive then
 		self.speech:stop()
-		self.refs.dictationStatus.text = "Transcribing…"
+		self.dictationStatus = DICTATION.processing
 	else
-		self.dictationPrefix = self.refs.input.text or ""
+		self.dictationPrefix = self.draft
 		self.dictationActive = true
 		self.speech:start()
 	end
-	self:updateComposer(self.refs.input.text)
+	self:updateComposer(self.draft)
 end
 
 function Controller:cancelDictation()
@@ -346,12 +392,13 @@ end
 function Controller:onDisappear()
 	self:cancelDictation()
 	self:finishTyping()
-	if self.transcript then self.transcript:dispose() end
-	if self.suggestions then self.suggestions:dispose() end
+	for _, name in ipairs({ "transcript", "suggestions", "heading", "reader" }) do
+		if self[name] then self[name]:dispose() end
+	end
 	self.speech = nil
 	self.refs = nil
 	self.page = nil
-	self.transcript, self.suggestions, self.currentSuggestions = nil, nil, nil
+	self.transcript, self.suggestions, self.heading, self.reader, self.currentSuggestions = nil, nil, nil, nil, nil
 	self.onProgress()
 end
 
@@ -364,16 +411,11 @@ function Controller:submitCommand(command)
 	local firstNew = self.model:entryCount() + 1
 	local ok, err = self.model:submit(command)
 	self:beginTyping(firstNew)
-	local presentation = self.model:presentation()
-	self.refs.progress.text = presentation.progress
-	self.refs.sessionPlace.text = presentation.roomTitle
-	self.refs.input.text = ""
-	self.refs.dictationStatus.text = ""
-	self.refs.dictationStatus.hidden = true
+	self.dictationStatus = ""
+	self:updateComposer("")
 	self:renderTranscript()
 	self:scrollToEntry(firstNew)
-	self:updateComposer("")
-	self:announceScore(presentation.scoreChange)
+	self:announceScore(self.model:presentation().scoreChange)
 	SavedGames:record(self.model:snapshot())
 	self.onProgress()
 	return ok, err
@@ -384,15 +426,15 @@ end
 function Controller:announceScore(change)
 	if not self.refs or type(change) ~= "number" or change == 0 then return end
 	local points = math.abs(change) == 1 and "point" or "points"
-	self.refs.scoreToastText.text = string.format("%s%d %s", change > 0 and "+" or "−", math.abs(change), points)
-	self.refs.scoreToast.hidden = false
+	self.toast = string.format("%s%d %s", change > 0 and "+" or "−", math.abs(change), points)
+	self:render()
 	if self.haptics then
 		if change > 0 then self.haptics.notification("success") else self.haptics.notification("warning") end
 	end
 	self.toastGeneration = (self.toastGeneration or 0) + 1
 	local generation = self.toastGeneration
 	self.after(TOAST.seconds, function()
-		if self.refs and self.toastGeneration == generation then self.refs.scoreToast.hidden = true end
+		if self.refs and self.toastGeneration == generation then self.toast = nil; self:render() end
 	end)
 end
 
@@ -408,25 +450,16 @@ function Controller:showReadingSettings()
 	return true
 end
 
--- Page colour, ink, face, size and leading belong to the transcript's
--- description, so a change re-renders the page rather than restyling labels.
+-- Page colour, ink, face, size and leading belong to the page's
+-- description, so a change draws the page again rather than restyling views.
+-- The page's view controller is not a view: it takes a Night page's
+-- appearance itself, so the status bar turns light.
 function Controller:applyReadingSettings()
 	if not self.refs then return end
-	local settings = ReadingSettings:current():presentation()
-	self.refs.session.backgroundColor = self.ns.Color(settings.pageColor)
-	self.refs.progress.textColor = self.ns.Color(settings.secondaryTextColor)
-	self.refs.dictationStatus.textColor = self.ns.Color(settings.secondaryTextColor)
-	self.refs.input.font = self.ns.Font { size = math.max(15, math.min(settings.fontSize, 20)), design = settings.font }
-	self.refs.input.textColor = self.ns.Color(settings.primaryTextColor)
-	if self.ns.platform == "UIKit" then
-		-- A Night page is dark whatever the system says: the page, its view
-		-- controller (so the status bar turns light) and the running head
-		-- in the navigation bar all take the page's appearance.
-		self.refs.session.overrideUserInterfaceStyle = settings.appearance
-		if self.page then self.page.overrideUserInterfaceStyle = settings.appearance end
-		self.refs.sessionTitle.overrideUserInterfaceStyle = settings.appearance
-		self.refs.sessionPlace.overrideUserInterfaceStyle = settings.appearance
+	if self.ns.platform == "UIKit" and self.page then
+		self.page.overrideUserInterfaceStyle = ReadingSettings:current():presentation().appearance
 	end
+	self:render()
 	self:renderTranscript()
 end
 

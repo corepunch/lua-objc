@@ -1,11 +1,10 @@
 local Theme = require("apps.studio.models.Theme")
 local Model = {}
 
--- Modes switch what the agent card shows; selecting one moves the rail's
--- highlight. `mode` is the index the workspace's setMode action takes.
+-- Modes switch what the agent card shows; the rail highlights the one showing.
 local MODES = {
-	{ id = "chat", title = "Chat", icon = "bubble.left.and.bubble.right.fill", action = "showChat", mode = 0 },
-	{ id = "code", title = "Code", icon = "chevron.left.forwardslash.chevron.right", action = "showCode", mode = 1 },
+	{ id = "chat", title = "Chat", icon = "bubble.left.and.bubble.right.fill", action = "showChat" },
+	{ id = "code", title = "Code", icon = "chevron.left.forwardslash.chevron.right", action = "showCode" },
 }
 
 -- Workspace destinations live on the rail, as in an editor's activity bar,
@@ -26,7 +25,7 @@ function Model.presentation(selected)
 	local modes = {}
 	for _, mode in ipairs(MODES) do
 		table.insert(modes, { id = mode.id, title = mode.title, icon = mode.icon, action = mode.action,
-			mode = mode.mode, selected = mode.id == selected })
+			selected = mode.id == selected })
 	end
 	return {
 		tint = Theme.tint,
@@ -35,14 +34,6 @@ function Model.presentation(selected)
 		destinations = DESTINATIONS,
 		footer = FOOTER,
 	}
-end
-
--- The id of the mode at `index`, as setMode receives it.
-function Model.modeAt(index)
-	for _, mode in ipairs(MODES) do
-		if mode.mode == index then return mode.id end
-	end
-	return nil
 end
 
 return Model

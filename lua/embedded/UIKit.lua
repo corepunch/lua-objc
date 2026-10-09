@@ -46,6 +46,7 @@ local layout_properties = {
 	"opacity",
 	"offsetX",
 	"offsetY",
+	"colorScheme",
 	"ignoresSafeArea",
 	"contentModeName",
 	"background",
@@ -725,6 +726,7 @@ end
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop accessibilityLabel value optional. Component-specific setting passed to the native control.
 --- @prop bezeled boolean optional. Shows the native bezel when true.
+--- @prop color string optional. Text color: a semantic color name or a `#light|#dark` hex pair.
 --- @prop disabled boolean optional. Component-specific setting passed to the native control.
 --- @prop editable boolean optional. Allows text editing when true.
 --- @prop onChange function optional. Callback invoked when the value changes.
@@ -748,6 +750,7 @@ function UIKit.TextField(props)
 	field.secureTextEntry = props.secure == true
 	field.enabled = props.disabled ~= true and props.editable ~= false
 	if props.size then field.font = bridge._font(props.size, props.weight, false, props.design) end
+	if props.color then field.textColor = bridge._systemColor(props.color) end
 	if props.accessibilityLabel then field.accessibilityLabel = props.accessibilityLabel end
 	bridge._textFieldCallbacks(field, props.onChange, props.onCommand, props.onFocus)
 	field:sizeToFit()

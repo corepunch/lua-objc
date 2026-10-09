@@ -57,6 +57,7 @@ local layout_properties = {
 	"opacity",
 	"offsetX",
 	"offsetY",
+	"colorScheme",
 	"onClick",
 	"onTap",
 	"onDrag",
@@ -1134,6 +1135,7 @@ end
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
 --- @prop accessibilityLabel value optional. Component-specific setting passed to the native control.
 --- @prop bezeled boolean optional. Shows the native bezel when true.
+--- @prop color string optional. Text color: a semantic color name or a `#light|#dark` hex pair.
 --- @prop bordered boolean optional. Shows the native border when true.
 --- @prop defaultFocus boolean optional. Receives keyboard focus when its sheet is presented (SwiftUI `.defaultFocus`).
 --- @prop disabled boolean optional. Component-specific setting passed to the native control.
@@ -1170,6 +1172,7 @@ function AppKit.TextField(props)
 	field.drawsBackground = not plain and props.drawsBackground ~= false
 	if props.focusRing == false then field.focusRingType = 1 end
 	if props.size then field.font = bridge._font(props.size, props.weight, false, props.design) end
+	if props.color then field.textColor = bridge._systemColor(props.color) end
 	if props.accessibilityLabel then
 		field.accessibilityLabel = props.accessibilityLabel
 	end

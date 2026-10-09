@@ -89,6 +89,7 @@ static int bridge_push_transition(lua_State *L) {
 @property(nonatomic) CGFloat opacity;
 @property(nonatomic) CGFloat offsetX;
 @property(nonatomic) CGFloat offsetY;
+@property(nonatomic, copy) NSString *colorScheme;
 @end
 
 static char kOffsetKey;
@@ -129,6 +130,31 @@ static CGPoint tree_offset(TreeView *view) {
 - (void)setOffsetX:(CGFloat)value { tree_apply_offset(self, value, tree_offset(self).y); }
 - (CGFloat)offsetY { return tree_offset(self).y; }
 - (void)setOffsetY:(CGFloat)value { tree_apply_offset(self, tree_offset(self).x, value); }
+/* SwiftUI `.environment(\.colorScheme, _)`: "light" or "dark" fixes the
+ * appearance of the view and its subtree; "system" follows its window. */
+- (NSString *)colorScheme {
+#if TARGET_OS_IPHONE
+	switch (self.overrideUserInterfaceStyle) {
+	case UIUserInterfaceStyleLight: return @"light";
+	case UIUserInterfaceStyleDark: return @"dark";
+	default: return @"system";
+	}
+#else
+	NSAppearanceName name = self.appearance.name;
+	if ([name isEqualToString:NSAppearanceNameDarkAqua]) return @"dark";
+	if ([name isEqualToString:NSAppearanceNameAqua]) return @"light";
+	return @"system";
+#endif
+}
+- (void)setColorScheme:(NSString *)value {
+	BOOL dark = [value isEqualToString:@"dark"], light = [value isEqualToString:@"light"];
+#if TARGET_OS_IPHONE
+	self.overrideUserInterfaceStyle = dark ? UIUserInterfaceStyleDark : light ? UIUserInterfaceStyleLight : UIUserInterfaceStyleUnspecified;
+#else
+	self.appearance = dark ? [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]
+		: light ? [NSAppearance appearanceNamed:NSAppearanceNameAqua] : nil;
+#endif
+}
 @end
 
 #define LUA_OBJC_VIEW_TREE_FUNCTIONS \

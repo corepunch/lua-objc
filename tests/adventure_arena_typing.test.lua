@@ -58,20 +58,17 @@ local function build()
 		after = function(seconds, callback) table.insert(timers, { seconds = seconds, due = now + seconds, callback = callback }) end,
 		reduceMotion = function() return reduceMotion end,
 	}
-	-- Record what the page is asked to scroll to; the native scroll still runs.
-	local show = controller.show
+	-- Record what the open page is asked to scroll to; the native scroll
+	-- still runs. Opening sets the page without counting as a scroll.
+	local scrollPage, show, recording = controller.scrollPage, controller.show, false
+	controller.scrollPage = function(self, target, animated, anchor)
+		if recording then table.insert(scrolls, { target = target, animated = animated, anchor = anchor }) end
+		return scrollPage(self, target, animated, anchor)
+	end
 	controller.show = function(self, ...)
+		recording = false
 		local shown = show(self, ...)
-		local scroll = self.refs and self.refs.transcriptScroll
-		if scroll then
-			self.refs.transcriptScroll = setmetatable({}, { __index = function(_, key)
-				if key ~= "scrollTo" then return scroll[key] end
-				return function(_, target, animated, anchor)
-					table.insert(scrolls, { target = target, animated = animated, anchor = anchor })
-					return scroll:scrollTo(target, animated, anchor)
-				end
-			end })
-		end
+		recording = true
 		return shown
 	end
 	return controller

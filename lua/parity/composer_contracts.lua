@@ -5,14 +5,18 @@ local M = {}
 
 function M.run(ns)
 	local xml = require("ui.xml")
-	local _, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", {
-		gameTitle = "Zork I", roomTitle = "West of House",
-		progress = "Score 0 · 0 moves", tint = "#4338CA", ink = "#4338CA|#A5B4FC",
-		speechAvailable = true,
-		actions = { disappear = function() end, readingSettings = function() end, look = function() end, inventory = function() end, close = function() end, inputChanged = function() end, inputCommand = function() end, inputFocused = function() end, submit = function() end, dictate = function() end },
-	}, ns)
-	-- Session.etlua is a <Page>; measure its content view.
-	local root = refs.session
+	local actions = { look = function() end, inventory = function() end, close = function() end, inputChanged = function() end, inputCommand = function() end, inputFocused = function() end, submit = function() end, dictate = function() end }
+	-- The reader's page is drawn from its composer state: with text there is
+	-- Send, without it the microphone.
+	local function render(hasText)
+		return select(2, xml.renderFile("apps/adventure-arena/views/sections/Reader.etlua", {
+			progress = "Score 0 · 0 moves", tint = "#4338CA", ink = "#4338CA|#A5B4FC",
+			reading = { page = "systemBackground", primary = "label", secondary = "secondaryLabel", font = "default", fontSize = 17, colorScheme = "system" },
+			draft = hasText and "look north" or "", dictation = { status = "" },
+			composer = { dictate = not hasText, canSend = hasText },
+			actions = actions,
+		}, ns))
+	end
 	local count = 0
 	local function expect(value, message)
 		assert(value, message)
@@ -29,9 +33,8 @@ function M.run(ns)
 	end
 	for _, width in ipairs({ 320, 402, 430, 320 }) do
 		for _, hasText in ipairs({ false, true, false, true }) do
-			refs.input.text = hasText and "look north" or ""
-			refs.send.hidden, refs.dictate.hidden = not hasText, hasText
-			refs.send.enabled = hasText
+			local refs = render(hasText)
+			local root = refs.session
 			local active = hasText and refs.send or refs.dictate
 			local json = ns._parityMeasure(root, {
 				{ id = "action", view = active }, { id = "field", view = refs.input },

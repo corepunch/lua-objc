@@ -49,7 +49,7 @@ local function open(speech)
 		speech = speech,
 	}
 	t.expect(controller:show("zork"), "the story opens")
-	return controller, refs
+	return controller, controller.refs
 end
 
 local _, quiet = open(nil)
@@ -72,10 +72,10 @@ controller:toggleDictation()
 t.assertEqual(calls[1], "start", "the microphone starts the recognizer")
 events("listening", "", "")
 events("partial", "open the", "")
-t.assertEqual(refs.input.text, "open the", "partial text fills the command field")
+t.assertEqual(controller.refs.input.text, "open the", "partial text fills the command field")
 controller:toggleDictation()
 t.assertEqual(calls[2], "stop", "tapping again finishes")
 events("finished", "open the mailbox", "")
-t.assertEqual(refs.input.text, "open the mailbox", "the final text replaces it")
+t.assertEqual(controller.refs.input.text, "open the mailbox", "the final text replaces it")
 
 os.exit(t.summary() and 0 or 1)

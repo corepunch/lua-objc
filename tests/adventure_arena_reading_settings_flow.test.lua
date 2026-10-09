@@ -96,13 +96,13 @@ controller = SessionController.new {
 }
 
 t.expect(controller:show(game.id), "session screen opens for the selected game")
-t.assertEqual(sessionRefs.sessionTitle.text, game.title, "the running head names the story")
-t.assertEqual(sessionRefs.sessionPlace.text, "Sanitarium Gate", "the running head names the room")
+t.assertEqual(controller.heading.refs.sessionTitle.text, game.title, "the running head names the story")
+t.assertEqual(controller.heading.refs.sessionPlace.text, "Sanitarium Gate", "the running head names the room")
 local function page() return controller.transcript.refs end
 t.assertEqual(page().gameTitle.text, game.title, "the page opens on the title")
 t.assertEqual(page().gameDescription.text, game.shortDescription, "the tagline is the title page's epigraph")
 t.assertEqual(page().sceneTitle_1.text, "Sanitarium Gate", "the first scene identifies the active room")
-t.assertEqual(sessionRefs.progress.text, "Score 2 of 10 · 3 moves", "the folio shows score and moves")
+t.assertEqual(controller.refs.progress.text, "Score 2 of 10 · 3 moves", "the folio shows score and moves")
 t.assertEqual(page().paragraph_1_1.font.pointSize, 18, "the story is set at the default 18pt")
 
 local openSettings = toolbarActions.readingSettings
@@ -133,9 +133,11 @@ t.assertEqual(controller.readingSettingsOptions.refs.fontPicker.selectedSegment,
 
 buttonActions[controller.readingSettingsOptions.refs.theme_night]()
 t.assertEqual(settings.theme, "night", "the Night swatch selects the night page")
-t.expect(math.abs(sessionRefs.session.backgroundColor.redComponent) < 0.01, "the page turns black")
+t.expect(math.abs(controller.refs.session.backgroundColor.redComponent) < 0.01, "the page turns black")
+t.assertEqual(controller.refs.session.colorScheme, "dark", "a Night page is dark whatever the system says")
+t.assertEqual(controller.heading.refs.sessionTitle.superview.colorScheme, "dark", "and so is its running head")
 t.assertEqual(page().paragraph_1_1.text, "The rusted gate stands open.", "re-setting the page preserves the story")
-t.assertEqual(sessionRefs.progress.text, "Score 2 of 10 · 3 moves", "re-setting the page preserves progress")
+t.assertEqual(controller.refs.progress.text, "Score 2 of 10 · 3 moves", "re-setting the page preserves progress")
 toggleNamed("Justify Text").onChange(true)
 t.expect(settings.justified, "the justify toggle updates reading preferences")
 t.assertEqual(page().paragraph_1_1.textAlignment, 3, "the open book is justified")

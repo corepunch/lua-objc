@@ -12,6 +12,10 @@ local Controller = require("apps.adventure-arena.Controller")
 local renderFile, button, menu = xml.renderFile, ns.Button, ns.Menu
 local addDrag = ns._addDrag
 local rendered, callbacks, menus, drags = {}, {}, {}, {}
+local controller
+-- The open book's page and running head are retained sections.
+local function reader() return controller.sessionController.refs end
+local function heading() return controller.sessionController.heading.refs end
 
 -- Capture the callbacks actually supplied by the XML renderer to native buttons.
 ns.Button = function(props)
@@ -31,12 +35,13 @@ xml.renderFile = function(path, data, ...)
 	return view, refs
 end
 local function click(ref)
-	local callback = callbacks[rendered.refs[ref]]
+	local view = rendered.refs[ref] or (controller.sessionController.refs or {})[ref]
+	local callback = callbacks[view]
 	t.expect(type(callback) == "function", ref .. " has a bound action")
 	if callback then callback() end
 end
 local function chooseMenu(title)
-	local items = menus[rendered.refs.quickActions] or {}
+	local items = menus[reader().quickActions] or {}
 	for _, item in ipairs(items) do
 		if item.title == title then
 			t.expect(type(item.action) == "function", title .. " has a bound menu action")
@@ -59,7 +64,7 @@ end })
 -- In-memory stores: headless tests never read or write the reader's real saves.
 local function memoryStore() local value return { load = function() return value end, save = function(v) value = v end } end
 local haptics = {}
-local controller = Controller.new {
+controller = Controller.new {
 	sessionModel = sessionModel, ns = ns,
 	documents = { saves = memoryStore(), reading = memoryStore() },
 	haptics = { notification = function(kind) table.insert(haptics, kind) end },
@@ -95,10 +100,9 @@ t.assertEqual(rendered.refs.cover.clipsToBounds, true, "detail cover clips aspec
 t.assertEqual(rendered.refs.description.text, catalog:all()[1].description, "detail preserves full description")
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
-t.assertEqual(rendered.refs.sessionTitle.text, catalog:all()[1].title, "session header retains the game title")
+t.assertEqual(heading().sessionTitle.text, catalog:all()[1].title, "session header retains the game title")
 t.expect(rendered.refs.back == nil and rendered.refs.sessionHeader == nil,
 	"the system navigation owns the back button; the screen draws no header")
-t.expect(rendered.refs.compassControl == nil, "the reader's command bar carries no compass")
 t.assertEqual(page().gameTitle.text, catalog:all()[1].title, "the title page names the game")
 t.assertEqual(page().gameDescription.text, catalog:all()[1].shortDescription,
 	"the title page carries the tagline as its epigraph")
@@ -106,29 +110,36 @@ t.assertEqual(page().sceneTitle_1.text, catalog:all()[1].title, "the opening sce
 t.assertEqual(page().paragraph_1_1.text, "Opening <&>", "transcript escapes XML characters")
 t.expect(page().paragraph_1_1.figureView ~= nil, "the opening room's icon sits beside its first lines")
 t.expect(page().paragraph_1_1.figureLines == 3, "the room icon is three lines tall")
-t.expect(rendered.refs.backdrop == nil, "the page is paper, not blurred cover art")
-t.assertEqual(rendered.refs.progress.text, "Score 0 · Time 0", "Planetfall's folio shows its clock")
-t.expect(chips().suggestion_1 == nil and rendered.refs.suggestionScroll.hidden, "no suggestion strip before typing")
-t.assertEqual(rendered.refs.input.accessibilityLabel, "Command", "composer retains accessibility label")
-t.assertEqual(rendered.refs.input.bezeled, false, "glass composer owns the visible border")
-t.assertEqual(rendered.refs.input.bordered, false, "plain input has no inner border")
-local composerAncestor, composerHorizontalInset = rendered.refs.quickActions.superview, false
-while composerAncestor and composerAncestor ~= rendered.refs.sessionContent do
+t.expect(reader().backdrop == nil, "the page is paper, not blurred cover art")
+t.assertEqual(reader().progress.text, "Score 0 · Time 0", "Planetfall's folio shows its clock")
+t.expect(chips().suggestion_1 == nil and chips().suggestionScroll.hidden, "no suggestion strip before typing")
+t.assertEqual(reader().input.accessibilityLabel, "Command", "composer retains accessibility label")
+t.assertEqual(reader().input.bezeled, false, "glass composer owns the visible border")
+t.assertEqual(reader().input.bordered, false, "plain input has no inner border")
+local composerAncestor, composerHorizontalInset = reader().quickActions.superview, false
+while composerAncestor and composerAncestor ~= reader().sessionContent do
 	if composerAncestor.paddingHorizontal == 12 then composerHorizontalInset = true end
 	composerAncestor = composerAncestor.superview
 end
 t.expect(composerHorizontalInset, "composer horizontal clearance is owned by the safe-area inset")
-t.assertEqual(rendered.refs.send.enabled, false, "empty composer disables sending")
-ns._textFieldTestInput(rendered.refs.input, "inv")
+t.assertEqual(reader().send.enabled, false, "empty composer disables sending")
+ns._textFieldTestInput(reader().input, "inv")
 t.assertEqual(controller.sessionController.currentSuggestions[1].title, "inventory", "typing narrows the suggestions")
 t.expect(chips().suggestion_1 ~= nil and chips().suggestion_2 == nil, "the chip strip shows only the narrowed suggestion")
-ns._textFieldTestInput(rendered.refs.input, "inventory")
-t.assertEqual(rendered.refs.send.enabled, true, "typing enables sending")
+ns._textFieldTestInput(reader().input, "inventory")
+t.assertEqual(reader().send.enabled, true, "typing enables sending")
 click("send")
 t.assertEqual(page().command_2.text, "inventory", "the command appears on the page")
 t.assertEqual(page().paragraph_3_1.text, 'Response <&> "inventory"', "send updates transcript")
-t.assertEqual(rendered.refs.input.text, "", "send clears input")
-t.assertEqual(rendered.refs.progress.text, "Score 0 · Time 1", "session refreshes progress after a command")
+t.assertEqual(reader().input.text, "", "send clears input")
+t.assertEqual(reader().progress.text, "Score 0 · Time 1", "session refreshes progress after a command")
+-- The score capsule is part of the page's state: shown with its text, then
+-- drawn away again.
+controller.sessionController:announceScore(5)
+t.expect(not reader().scoreToast.hidden and reader().scoreToastText.text == "+5 points", "a score change shows its capsule")
+controller.sessionController.toast = nil
+controller.sessionController:render()
+t.expect(reader().scoreToast.hidden, "and the capsule goes once the page is drawn without it")
 t.assertEqual(SavedGames:latest().gameId, catalog:all()[1].id, "a played story is saved")
 t.expect(controller.tabs.accessoryHidden, "the tab accessory stays hidden while the book is open")
 chooseMenu("Look Around")
@@ -142,7 +153,7 @@ local callbackBefore = lastEntry()
 controller.sessionController:applySuggestion({ title = "look", text = "look", submit = true })
 t.assertEqual(lastEntry(), callbackBefore + 2, "a one-tap suggestion plays the command")
 transcript = lastEntry()
-t.expect(not ns._textFieldTestCommand(rendered.refs.input, "cancel"), "unhandled keys retain native behavior")
+t.expect(not ns._textFieldTestCommand(reader().input, "cancel"), "unhandled keys retain native behavior")
 chooseMenu("Close Book")
 t.assertEqual(controller.navigation.depth, 2, "close returns to detail")
 t.assertEqual(lastEntry(), transcript, "navigation preserves session state")

@@ -23,10 +23,20 @@ function Controller:actions()
 	}
 end
 
+-- The list shows the model's selected note as its selected row; reloading
+-- rows drops the native selection, so each render restores it.
 function Controller:render()
 	local actions = self:actions()
-	self.content:update({notes = self.model:visible(), favorites = self.model:favorites(), actions = actions})
-	if self.detail then self.detail:update({note = self.model:note(), actions = actions}) end
+	local notes = self.model:visible()
+	self.content:update({notes = notes, favorites = self.model:favorites(), actions = actions})
+	if self.detail then
+		self.detail:update({note = self.model:note(), actions = actions})
+		for index, note in ipairs(notes) do
+			if note.id == self.model.selected and self.content.refs.notes.documentView.selectedRow ~= index - 1 then
+				self.content.refs.notes:selectRow(index - 1, false)
+			end
+		end
+	end
 end
 
 function Controller:select(id)
@@ -50,7 +60,6 @@ function Controller:createWindow()
 		self.detail = Template.new(detailRefs.pane, VIEWS .. "Note.etlua", ns)
 	end
 	self:render()
-	if ns.platform == "AppKit" then self.content.refs.notes:selectRow(0, false) end
 	self.window = ns.Window(config)
 	return self.window
 end

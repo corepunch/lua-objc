@@ -57,11 +57,11 @@ t.expect(controller:show("zork"), "new session opens")
 t.expect(controller:isTyping(), "a new story types its opening")
 finishTimers()
 t.expect(not controller:isTyping(), "the opening finishes typing")
-local scroll = rendered.refs.transcriptScroll
+local scroll = controller.refs.transcriptScroll
 -- The page owns the transcript's frame, as the window does in the app.
 local function resizePage(height)
-	rendered.refs.session.size = ns.Size(320, height)
-	rendered.refs.session:layout(320)
+	rendered.refs.reader.size = ns.Size(320, height)
+	rendered.refs.reader:layout(320)
 end
 local function fromTop()
 	return scroll.documentView.frame.size.height - scroll.contentSize.height - scroll.contentView.bounds.origin.y
@@ -72,12 +72,12 @@ t.expect(scroll.contentSize.height > 0 and scroll.documentView.frame.size.height
 t.assertEqual(fromTop(), 0, "a new story opens at its title page")
 t.expect(scroll.scrollOnKeyboard == true, "the transcript follows the keyboard")
 
-ns._textFieldTestFocus(rendered.refs.input)
+ns._textFieldTestFocus(controller.refs.input)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "showing the keyboard goes to the latest line")
 scroll:scrollTo("top", false)
 t.expect(scroll.contentView.bounds.origin.y > 0, "the reader can leave the latest line")
 
-rendered.refs.input.text = "look"
+controller.refs.input.text = "look"
 controller:submitCommand("look")
 local offset = scroll.contentView.bounds.origin.y
 t.expect(offset > 0, "an answer taller than the screen rests on its command's line, not the foot of the page")
@@ -95,8 +95,6 @@ t.expect(controller.transcript.refs.entry_5.frame.origin.y >= 80,
 	"the last line keeps clear of the command field")
 t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted command is in the transcript")
 t.assertEqual(controller.transcript.refs.paragraph_3_1.text, "Response look", "the response follows the command")
-t.expect(rendered.refs.compassControl == nil and rendered.refs.compassExit_north == nil,
-	"the reader's page shows no compass")
 t.expect(model:hasExit("north") and not model:hasExit("south"), "the session still knows its exits")
 t.expect(controller.transcript.refs.chapter_1 == nil, "a scene carries no chapter line above its title")
 t.assertEqual(controller.transcript.refs.sceneTitle_1.text, "Zork", "a scene opens with its title")
@@ -112,10 +110,10 @@ t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
 
 -- The command field takes the width the compass left: it ends at the bar's
 -- trailing edge, and the bar holds only the menu and the field.
-local bar = rendered.refs.quickActions.superview
-rendered.refs.session.size = ns.Size(390, 700)
-rendered.refs.session:layout(390)
-local field = rendered.refs.input
+local bar = controller.refs.quickActions.superview
+rendered.refs.reader.size = ns.Size(390, 700)
+rendered.refs.reader:layout(390)
+local field = controller.refs.input
 local glass = field.superview
 while glass.superview ~= bar do glass = glass.superview end
 t.assertEqual(#bar.subviews, 2, "the command bar holds the menu and the field")
@@ -153,7 +151,7 @@ local loaded = SessionController.new {
 }
 t.expect(loaded:show("zork"), "loading a session opens the transcript")
 t.expect(not loaded:isTyping(), "a resumed story opens already set, without typing")
-scroll = rendered.refs.transcriptScroll
+scroll = loaded.refs.transcriptScroll
 scroll.frameSize = ns.Size(320, 120)
 scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "loading a session shows the latest line")

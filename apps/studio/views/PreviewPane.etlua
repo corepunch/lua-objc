@@ -3,11 +3,12 @@
   -- device, like iPadOS 26 toolbars over content. The bars sit in the
   -- stack rather than over the device so the phone never hides beneath them.
   -- The stage is only as wide as the device needs; the chat takes the rest,
-  -- and focusing the preview clears the fixed width so the stage grows.
+  -- and focusing the preview (`chatHidden`) drops the fixed width so the
+  -- stage grows.
   -- The stage has no background: the device stands on the workspace canvas.
   local STAGE = { inset = 16, spacing = 12, barSpacing = 10, statusSize = 13, zoomSize = 13 }
 %>
-<VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="<%= STAGE.spacing %>" width="<%= stageWidth %>" flexGrow="1" flexBasis="0" maxHeight="infinity">
+<VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="<%= STAGE.spacing %>" <% if not chatHidden then %>width="<%= stageWidth %>" <% end %>flexGrow="1" flexBasis="0" maxHeight="infinity">
 	<GlassEffectContainer spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" tint="<%= tint %>">
 		<HStack id="stageBar" spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" alignment="center">
 			<Menu id="projectMenu" title="<%= project.title %>" systemImage="<%= project.icon %>" imagePath="<%= project.imagePath or "" %>" style="glass" accessibilityLabel="Project: <%= project.title %>">
@@ -29,7 +30,7 @@
 			</HStack>
 			<Spacer />
 			<Button id="runButton" title="<%= runLabel %>" systemImage="play.fill" action="reloadPreview" style="glassProminent" />
-			<Button id="chatVisibility" systemImage="sidebar.trailing" accessibilityLabel="Focus Preview" action="toggleChat" style="glass" />
+			<Button id="chatVisibility" systemImage="sidebar.trailing" accessibilityLabel="<%= chatHidden and "Show Chat" or "Focus Preview" %>" action="toggleChat" style="glass" />
 		</HStack>
 	</GlassEffectContainer>
 	<Preview id="preview" background="clear" flexGrow="1" maxWidth="infinity" maxHeight="infinity" />
