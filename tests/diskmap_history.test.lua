@@ -1,71 +1,47 @@
 _G.__headless = true
--- Back and Forward follow locations as a browser follows URLs: a page's
--- argument and its moves within the page are visits, and returning to one
--- shows the page as it was.
 local t = require("TestKit")
-local Mock = require("apps.diskmap.services.Mock")
-local Controller = require("apps.diskmap.Controller")
+local Harness = require("tests.support.diskmap")
 local Provider = require("apps.diskmap.services.Provider")
+local OperationLog = require("apps.diskmap.helpers.OperationLog")
+local Location = require("data.location")
 
-local service = Mock.new()
-local folderScans = 0
-local scanFolder = service.scanFolder
-service.scanFolder = function(...) folderScans = folderScans + 1; return scanFolder(...) end
-local app = Controller.new(service)
-local window = app:createWindow()
-local nav = app.navigation
-local function history() return table.concat(nav.history, " ") end
+-- Browser-like history: every page and every folder looked inside is a
+-- visit Back and Forward return to, as locations.
+local app, service = Harness.app()
+t.assertEqual(app:location(), "/overview", "the app opens on the Overview")
+app:show("xcode")
+app:show("folder", {path = service.home .. "/Developer"})
+app:show("folder", {path = service.home .. "/Developer", focus = service.home .. "/Developer/rustle"})
+t.expect(app:location():find("/folder/" .. service.home .. "/Developer?focus=", 1, true) == 1 and app:location():find("rustle", 1, true), "looking inside is a visit")
+t.expect(app.navigation:back(), "Back")
+t.assertEqual(app:location(), "/folder/" .. service.home .. "/Developer", "returns to the folder")
+t.expect(app.navigation:back(), "Back again")
+t.assertEqual(app.destination, "xcode", "returns to the page before")
+t.expect(app.navigation:forward(), "Forward")
+t.assertEqual(app.destination, "folder", "returns forward")
+app:show("system")
+t.expect(not app.navigation:canGoForward(), "a new visit drops the forward history")
+t.expect(app.navigation:canGoBack(), "and can go back")
+app:go("/history")
+t.assertEqual(app.destination, "history", "a location opens its page")
+t.expect(app.window.title == "Action History", "the window is titled by the page")
+app:dispose()
 
-t.assertEqual(app:location(), "/overview", "the window opens on the overview")
-app:show("help", {topic = "shortcuts"})
-t.assertEqual(app:location(), "/help/shortcuts", "a page's argument is in its location")
-app:show("files", {kind = "installers"})
-app:show("map", {focus = "developer"})
-app.page.actions.up()
-t.assertEqual(history(), "/overview /help/shortcuts /files/installers /map/developer /map",
-	"moving within a page is a visit too")
+-- Launch flags.
+t.assertEqual(Provider.launch({"--showcase", "--page=xcode"}).page, "/xcode", "a page id is its location")
+t.assertEqual(Provider.launch({"--showcase", "--page=/folder//Users/me"}).page, "/folder//Users/me", "--page takes a location")
+t.assertThrows(function() Provider.launch({"--showcase", "--page=/nowhere"}) end, "an unknown page is refused")
+t.assertThrows(function() Provider.launch({"--showcase", "--isolated"}) end, "--isolated needs a page")
+t.expect(Provider.launch({"--showcase"}).service.mock, "--showcase is the synthetic Mac")
+t.assertEqual(Provider.launch({"--showcase", "--folder=/tmp"}).folder, "/tmp", "--folder opens a folder")
 
-nav:back()
-t.assertEqual(app:location(), "/map/developer", "Back returns inside the map")
-t.assertEqual(app.env:page("map").focusId, "developer", "with the group focused again")
-nav:back()
-t.assertEqual(app.destination, "files", "Back returns to the previous page")
-t.assertEqual(app:location(), "/files/installers", "on the filter it showed")
-nav:back()
-t.assertEqual(app.env:page("help").opened, "shortcuts", "Back reopens the topic that was open")
-t.expect(nav:canGoForward(), "Forward is possible after Back")
-nav:forward()
-t.assertEqual(app:location(), "/files/installers", "Forward returns where Back left")
-t.assertEqual(#nav.history, 5, "Back and Forward add no visits")
+-- The action log: one line per action, read back newest first.
+local line = OperationLog.format({action = "Move to Trash", ok = true, bytes = 1.5e9, target = "/Users/me/x\ty", detail = "a\nb"}, 0)
+t.assertEqual(line, "1970-01-01T00:00:00Z\tMove to Trash\tok\t1500000000\t/Users/me/x y\ta b", "fields are tab separated and cleaned")
+local rows = OperationLog.rows({line, OperationLog.format({action = "Delete", ok = false, bytes = 0, target = "/x", detail = "no"}, 60)})
+t.assertEqual(rows[1].name, "Delete", "newest first")
+t.assertEqual(rows[1].result, "Failed: no", "a failure carries its detail")
+t.assertEqual(rows[2].size, "1.5 GB", "sizes are formatted")
+t.expect(Location.parse("/folder//Users/me?focus=/Users/me/x", require("data.manifest").load("apps/diskmap/app.xml").pages), "folder locations parse")
 
-app:go("/files/video")
-t.assertEqual(app.env:page("files").kind, "video", "a location opens its page on its argument")
-t.expect(not nav:canGoForward(), "a new visit drops the visits ahead, as in a browser")
-t.assertEqual(history(), "/overview /help/shortcuts /files/installers /files/video",
-	"the dropped visits are gone")
-
--- Showing the page and argument already showing is not a visit.
-local count = #nav.history
-app:show("files", {kind = "video"})
-t.assertEqual(#nav.history, count, "the same location is one visit")
-
--- Inside a measured folder, Back looks out again without measuring again.
-app:show("folder", {path = "/"})
-local folder = app.env:page("folder")
-local child
-for _, node in ipairs(folder.tree.root.children or {}) do if node.directory then child = node.path; break end end
-t.expect(child ~= nil, "the mock disk has a folder to look inside")
-local scans = folderScans
-app.page.actions.drill(child)
-t.assertEqual(app:location(), "/folder//?focus=" .. child:gsub("/", "%%2F"), "looking inside is a location")
-nav:back()
-t.assertEqual(folder.focusPath, "/", "Back looks out to the folder measured")
-t.assertEqual(folderScans, scans, "without measuring it again")
-
--- --page takes a location; a bare id is that page.
-t.assertEqual(Provider.launch({"--mock", "--page=files"}).page, "/files", "a page id is its location")
-t.assertEqual(Provider.launch({"--mock", "--page=/help/shortcuts"}).page, "/help/shortcuts", "--page takes a location")
-t.assertThrows(function() Provider.launch({"--mock", "--page=/overview/x"}) end, "a launch location is checked")
-
-app.env.scan:dispose(); window:close()
 os.exit(t.summary() and 0 or 1)

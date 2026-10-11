@@ -1,35 +1,16 @@
 -- Every fixed folder name the app's code itself relies on, in one place:
--- what a scan skips, what a cleanup may never touch, what the worktree
--- search does not descend into. `knowledge/Filesystem` describes the
--- locations a person browses; this file holds the paths that rules and
--- walks compare against. Paths starting with "/" under `home` are relative
--- to the home folder; the rest are absolute.
+-- what a cleanup may never touch, what the worktree search does not
+-- descend into. `knowledge/Filesystem` describes the locations a person
+-- browses; this file holds the paths that rules compare against. Paths
+-- starting with "/" under `home` are relative to the home folder; the rest
+-- are absolute.
 local Paths = {}
-
--- Never walked by a scan: other volumes, devices and the system volumes.
-Paths.scanExclusions = {"/Volumes", "/dev", "/System/Volumes"}
-
--- Walked by neither a scan nor a size total unless "include media" is on:
--- the Photos and Music libraries and their containers.
-Paths.mediaLibraries = {
-	"/Library/Photos", "/Library/Music", "/Library/MediaLibrary",
-	"/Library/Containers/com.apple.Photos", "/Library/Containers/com.apple.Music",
-	"/Library/Containers/com.apple.AMPArtworkAgent",
-	"/Library/Group Containers/group.com.apple.Photos", "/Library/Group Containers/group.com.apple.Music",
-}
-
--- The roots a mock snapshot of the startup disk is exported from.
-Paths.snapshotRoots = {
-	"/", "/Users", "/Applications", "/Library", "/private", "/opt", "/usr/local",
-	"/System/Volumes/Data", "/System/Volumes/Preboot", "/System/Volumes/Recovery",
-	"/System/Volumes/Update", "/System/Volumes/xarts", "/System/Volumes/Hardware", "/System/Volumes/iSCPreboot",
-}
 
 -- The startup disk's files live on this Data volume, joined to "/" by firmlinks.
 Paths.startupData = "/System/Volumes/Data"
 
 -- Locations that are never cleanup targets themselves, however they were
--- marked: the disk, system folders and mount points. Items inside are allowed.
+-- flagged: the disk, system folders and mount points. Items inside are allowed.
 Paths.refused = {"/", "/System", "/Library", "/Applications", "/Users", "/Volumes", "/private", "/usr", "/bin",
 	"/sbin", "/opt", "/cores", "/nix", "/Network", "/Users/Shared", "/Library/Application Support", "/Library/Caches",
 	"/private/etc", "/private/tmp", "/private/var", "/private/var/folders", "/private/var/tmp", "/private/var/vm",

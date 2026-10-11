@@ -1,367 +1,78 @@
-local Model = require("data.model")
 local Flow = require("data.flow")
-local Locations = require("apps.diskmap.models.Locations")
-local Format = require("apps.diskmap.helpers.Format")
-local Files = require("apps.diskmap.models.Files")
-local FolderTree = require("apps.diskmap.helpers.FolderTree")
-local Manage = require("apps.diskmap.flows.Manage")
+local Keeps = require("apps.diskmap.models.Keeps")
+local Verdict = require("apps.diskmap.helpers.Verdict")
+local Categories = require("apps.diskmap.models.Categories")
+local Remove = require("apps.diskmap.flows.Remove")
 local Rows = Flow:extend()
 
--- Row menus for every list in Diskmap. A row's actions live in its "More"
--- button and its contextual menu instead of buttons under the list, so a
--- page can scroll as one surface and every list offers the same verbs in the
--- same order: the primary action, Finder, the owning category, Keep, Copy.
---
--- A flow (lua/data/flow.lua) over a page: `self:flow("Rows"):resource(id)`.
--- It acts through the app's services, `self.app`: `open(id)` opens a
--- resource where its location sends it, `keep(id)` toggles Keep,
--- `trashed(path, bytes)` and `removed(path, bytes, to)`
--- take what left the disk out of the model, `openReview(path)` shows the
--- marked items, and `review` is the review page: "Flag for Review" adds a
--- row to the marks (models/Marks.lua), and nothing touches the disk until
--- an explicit action on the review page.
+-- Row actions for every list in Diskmap: the remove button, and the row's
+-- menu with the same verbs in the same order on every page (Look Inside,
+-- Show in Finder, Remove, Keep, Copy Path). A flow (lua/data/flow.lua)
+-- over a page: `self:flow("Rows"):menu(row)`.
 
-function Rows:isMarked(path) return self.app.basket ~= nil and self.app.basket:isMarked(path) end
-function Rows:covering(path)
-	if self.app.basket then return self.app.basket:covering(path) end
-end
-function Rows:isIncluded(path) return self:covering(path) ~= nil end
-
--- The Mark/Unmark item for an item {path, name, bytes, source, consequence,
--- resourceId}. A refusal (a system folder, a parent already marked) is
--- shown as an alert rather than failing silently.
-function Rows:mark(item)
-	if not self.app.basket or not item or not item.path then return nil end
-	local marked = self.app.basket:isMarked(item.path)
-	local parent, exact = self:covering(item.path)
-	if parent and not exact then
-		return {title = "Included through Marked Folder — Review…", systemImage = "folder.badge.checkmark",
-			action = function() self.app.openReview(parent.path) end}
-	end
-	return {title = marked and "Remove Review Flag" or "Flag for Review", systemImage = marked and "flag.slash" or "flag",
-		action = function()
-			local _, reason = self.app.basket:toggle(item)
-			if reason and not marked then self.app.service.showError("Cannot flag for review", reason) end
-		end}
-end
-
--- Marks every item in `items` that is not marked yet; returns how many.
-function Rows:markAll(items)
-	return self.app.basket and self.app.basket:markAll(items) or 0
-end
-
--- Bulk actions receive the current visible rows, so searching and marking
--- use one population. Composite rows (Projects) supply several items; the
--- basket validates all of them and publishes one change and one refusal.
-function Rows:bulk(rows, eligible, toItem)
-	local items = {}
-	for _, row in ipairs(rows) do
-		if eligible(row) then
-			local item = toItem(row)
-			if item.path then table.insert(items, item)
-			else for _, child in ipairs(item) do table.insert(items, child) end end
-		end
-	end
-	return self:markAll(items)
-end
-
--- Prepares rows for ResourceList: share bars relative to the largest row,
--- the row's own icon and color, and a flag for rows in the basket so
--- marked items are recognisable in every list.
-function Rows:annotate(rows, icon, color)
+-- Presents rows for a list: the verdict's symbol, the remove button's
+-- state and the share meter, with Keep applied.
+function Rows:present(rows, now)
 	local largest = 0
 	for _, row in ipairs(rows) do largest = math.max(largest, row.bytes or 0) end
 	local presented = {}
 	for _, source in ipairs(rows) do
-		local row = setmetatable({}, getmetatable(source))
+		local row = {}
 		for key, value in pairs(source) do row[key] = value end
-		-- An unmeasured row has no fraction: its meter draws an empty,
-		-- disabled bar under its state rather than a measured zero.
-		if row.bytes == nil then row.relative = nil
-		else row.relative = largest > 0 and row.bytes / largest or 0 end
-		row.shareText = row.shareText or ""
-		row.color = row.color or color
-		row.icon = row.icon or icon
-		if row.marked or self:isMarked(row.path) then
-			row.icon, row.color = "flag.fill", "systemBlue"
-			row.subtitle = "Flagged for review · " .. (row.subtitle or "")
-		elseif row.included or self:isIncluded(row.path) then
-			local parent = self:covering(row.path)
-			row.icon, row.color = "folder.badge.checkmark", "systemBlue"
-			row.subtitle = "Included through marked folder " .. (parent and (parent.name or parent.path) or "") .. " · " .. (row.subtitle or "")
-		end
-		self:annotateReview(row)
+		if Keeps:contains(row.id) then row.verdict, row.action, row.reason = "keep", "none", "Marked Keep." end
+		Verdict.present(row, now)
+		row.relative = row.bytes and largest > 0 and row.bytes / largest or 0
+		row.shareText = ""
+		-- The symbol wears its source's colour; the meter the verdict's.
+		local category = Categories:find(row.category)
+		row.levelColor = Verdict.styles[row.verdict] and Verdict.styles[row.verdict].color or "systemGray"
+		row.color = category and category.color or "systemGray"
+		row.icon = row.icon or (row.directory == false and "doc" or "folder.fill")
+		local allowed, why = Remove.allowed(row)
+		row.removable = allowed
+		row.removeHelp = allowed and (Remove.verbs[row.action or "trash"] .. "…") or why
 		table.insert(presented, row)
 	end
 	return presented
 end
 
--- Review is available independently of removal policy. A category flags
--- its real locations; a project flags only its generated artifacts.
-function Rows:reviewItems(row)
-	if not row then return {} end
-	if row.artifacts then return require("apps.diskmap.models.Projects").items(row) end
-	local location = Locations:find(row.resourceId or row.id)
-	if location and not location.path then
-		local items = {}
-		for _, child in ipairs(location:children()) do
-			for _, item in ipairs(self:reviewItems(child)) do table.insert(items, item) end
-		end
-		return items
+-- Removes one row after confirmation.
+function Rows:remove(row)
+	return self:flow("Remove"):rows({row})
+end
+
+-- Removes every row with a safe verdict, after one confirmation.
+function Rows:removeSafe(rows)
+	local safe = {}
+	for _, row in ipairs(rows) do
+		if row.verdict == "safe" and Remove.allowed(row) then table.insert(safe, row) end
 	end
-	local item = location or row
-	if not item.path or row.other then return {} end
-	local measurement = location and location:measurement()
-	return {{path = item.path, name = item.name, bytes = measurement and measurement.bytes or row.bytes,
-		resourceId = location and location.id, source = row.source or "Review", consequence = row.consequence or location and location.advice,
-		bundleId = row.bundleId, leftover = row.tier ~= nil, reviewOnly = row.reviewOnly}}
+	if #safe == 0 then return false end
+	return self:flow("Remove"):rows(safe)
 end
 
-function Rows:markableResource(row) return #self:reviewItems(row) > 0 end
-
-function Rows:reviewState(row)
-	local items = self:reviewItems(row)
-	local checked = #items > 0
-	local exact, enclosing = false, nil
-	for _, item in ipairs(items) do
-		local parent, same = self:covering(item.path)
-		if not parent then checked = false end
-		if same then exact = true elseif parent then enclosing = enclosing or parent end
-	end
-	return checked, items, checked and not exact and enclosing or nil
-end
-
-function Rows:annotateReview(row)
-	local checked, items, enclosing = self:reviewState(row)
-	row.markIcon = checked and "flag.fill" or "flag"
-	row.markHelp = enclosing and ("Included through flagged folder: " .. (enclosing.name or enclosing.path) .. "; open review")
-		or (checked and "Remove review flag from " or "Flag for review: ") .. (row.name or "item")
-	row.markable = #items > 0
-	return row
-end
-
-function Rows:toggleReview(row)
-	if not row then return false end
-	local checked, items, enclosing = self:reviewState(row)
-	if checked then
-		if enclosing then self.app.openReview(enclosing.path); return end
-		self.app.basket:removeAll(items)
-	else self:markAll(items) end
-end
-
-function Rows:reviewAction(row)
-	local checked, items, enclosing = self:reviewState(row)
-	if #items == 0 then return nil end
-	return {title = enclosing and "Review Enclosing Flag…" or checked and "Remove Review Flag" or "Flag for Review", systemImage = checked and "flag.fill" or "flag",
-		action = function() self:toggleReview(row) end}
-end
-
-local function separator() return {separator = true} end
-
-function Rows:reveal(path)
-	return {title = "Show in Finder", systemImage = "folder", action = function() self.app.service.reveal(path) end}
-end
-
-function Rows:copyPath(path)
-	return {title = "Copy Path", systemImage = "doc.on.doc", action = function() self.app.service.copy(path) end}
-end
-
--- Quick Look, as the Finder's Space bar: `paths` are the neighbours the
--- panel's arrow keys step through, starting at `path`. A provider without
--- Quick Look offers none.
-function Rows:quickLookItem(path, paths)
-	return {title = "Quick Look", systemImage = "eye", action = function() self:quickLook(path, paths) end}
-end
-
-function Rows:quickLook(path, paths)
-	if not path then return false end
-	paths = paths and #paths > 0 and paths or {path}
-	local index = 1
-	for position, candidate in ipairs(paths) do if candidate == path then index = position; break end end
-	self.app.service.quickLook(paths, index)
-	return true
-end
-
--- "Move to…": offloads a file or folder to another folder or disk, as
--- Nektony's Disk Space Analyzer and the Finder do. `validate(path)` is the
--- page's own policy for what may leave its place; `moved(destination)`
--- updates the page once the move finished. Nothing is ever replaced.
-function Rows:moveItem(row, validate, moved)
-	local ok, reason = validate(row.path)
-	return {title = ok and "Move to…" or ("Move to… — " .. tostring(reason)), systemImage = "folder.badge.plus", disabled = not ok,
-		action = function() self:move(row, validate, moved) end}
-end
-
-function Rows:move(row, validate, moved)
-	local ok, reason = validate(row.path)
-	if not ok then self.app.service.showError("Cannot move " .. (row.name or "this item"), reason); return end
-	local folder = self.app.service.pickFolder("Move “" .. (row.name or row.path) .. "” to")
-	if not folder then return end
-	local allowed, why = FolderTree.validateDestination(row.path, folder)
-	if not allowed then self.app.service.showError("Cannot move " .. (row.name or "this item"), why); return end
-	self.app.service.moveItem(row.path, folder, function(done, message, destination)
-		if self.app.basket then self.app.log("Move", done, row.bytes, row.path, done and destination or message) end
-		if not done then self.app.service.showError("Could not move " .. (row.name or "this item"), message or "Check permissions."); return end
-		if moved then moved(destination) end
-		self.app.removed(row.path, row.bytes, destination)
-	end)
-end
-
--- Move to Trash for an item outside the catalog, checked by `validate`
--- first; `trashed()` updates the page.
-function Rows:trashItem(row, validate, trashed)
-	local ok, reason = validate(row.path)
-	if not ok then self.app.service.showError("Cannot move to Trash", reason); return end
-	if not self.app.service.confirmTrashPath("Move " .. (row.name or row.path) .. " to Trash?", row.path,
-		Format.size(row.bytes) .. ". Moving to Trash does not free space until you empty it.") then return end
-	local moved, message = self.app.service.trash(row.path)
-	self.app.log("Move to Trash", moved, row.bytes, row.path, message)
-	if not moved then self.app.service.showError("Could not move to Trash", message or "Check permissions."); return end
-	if trashed then trashed() end
-	self.app.trashed(row.path, row.bytes)
-end
-
--- A file or folder on the Folder page. `handlers.open(row)` looks inside a
--- folder, `handlers.changed(path)` follows a move or Trash, and
--- `handlers.siblings` are the paths Quick Look steps through.
-function Rows:item(row, handlers)
+function Rows:menu(row)
+	if not row or not row.path then return {} end
+	local app, service = self.app, self.app.service
 	local items = {}
-	if row.directory then
-		table.insert(items, {title = "Open", systemImage = "arrow.right.circle", action = function() handlers.open(row) end})
+	if row.state == "measured" and row.directory ~= false then
+		table.insert(items, {title = "Look Inside", systemImage = "folder", action = function() app.show("folder", {path = row.path}) end})
 	end
-	table.insert(items, self:quickLookItem(row.path, handlers.siblings))
-	table.insert(items, self:reveal(row.path))
-	table.insert(items, separator())
-	local validate = function(path) return FolderTree.validateChange(path, Model.db.home, Locations:owner(path)) end
-	table.insert(items, self:moveItem(row, validate, function() handlers.changed(row.path) end))
-	local ok, reason = validate(row.path)
-	table.insert(items, {title = ok and "Move to Trash…" or ("Move to Trash — " .. tostring(reason)), systemImage = "trash", disabled = not ok,
-		action = function() self:trashItem(row, validate, function() handlers.changed(row.path) end) end})
-	table.insert(items, self:reviewAction(row))
-	table.insert(items, separator())
-	table.insert(items, self:copyPath(row.path))
-	return items
-end
-
--- Explicit destinations for selected locations, shared by map and ranking.
-function Rows:locationAction(id)
-	local row = Locations:find(id)
-	if not row then return {title = "Open Selection"} end
-	local destination = row:destination()
-	local title = destination.page == "projects" and "Review Build Data"
-		or destination.page == "xcode" and "Review Xcode Data" or ("Open " .. row.name)
-	return {title = title}
-end
-
-function Rows:inspect(path)
-	return {title = "Inspect Folder Contents", systemImage = "chart.pie", action = function() self.app.show("folder", {path = path}) end}
-end
-
--- A catalog resource (leaf or group).
-function Rows:resource(id)
-	local row = Locations:find(id)
-	if not row then return {} end
-	local items = {}
-	table.insert(items, self:reviewAction(row))
-	if row.path then table.insert(items, self:inspect(row.path)) end
-	if row:destination().page == "projects" then
-		local action = self:locationAction(id)
-		table.insert(items, {title = action.title .. "…", systemImage = "folder.badge.gearshape",
-			action = function() self.app.open(id) end})
+	table.insert(items, {title = "Show in Finder", systemImage = "arrow.up.forward.square", action = function() service.reveal(row.path) end})
+	if row.settings then
+		table.insert(items, {title = "Open System Settings", systemImage = "gearshape", action = function() service.openSettings(row.settings) end})
 	end
-	if not row:isLeaf() then
-		table.insert(items, {title = "Open " .. row.name .. "…", systemImage = "list.bullet", action = function() self.app.open(id) end})
-	else
-		local detail = Locations:details(id)
-		if detail and detail.manageTitle and row:destination().page ~= "projects" then
-			table.insert(items, {title = detail.manageTitle, disabled = not detail.canManage,
-				action = function()
-					Manage(self):manage(id)
-				end})
-		end
-		if row.path then
-			table.insert(items, self:quickLookItem(row.path))
-			table.insert(items, self:reveal(row.path))
-		end
-		local parent = row:parent()
-		if parent then
-			table.insert(items, {title = "Open " .. parent.name .. "…", systemImage = "list.bullet", action = function() self.app.open(parent.id) end})
-		end
+	local function separator() if items[#items] and not items[#items].separator then table.insert(items, {separator = true}) end end
+	separator()
+	if Remove.allowed(row) then
+		table.insert(items, {title = Remove.verbs[row.action or "trash"] .. "…", systemImage = "trash", action = function() self:remove(row) end})
 	end
-	table.insert(items, separator())
-	table.insert(items, {title = Model.db.kept[id] and "Stop Keeping" or "Keep", systemImage = "checkmark.shield",
-		action = function() self.app.keep(id) end})
-	if row.path then table.insert(items, self:copyPath(row.path)) end
-	return items
-end
-
--- An individual file from Large Files. Trash is offered only for ordinary
--- documents in the home folder; the menu says why otherwise.
-function Rows:file(row, handlers)
-	local ok, reason = Files:validateTrash(row.path)
-	local items = {
-		{title = ok and "Move to Trash…" or ("Move to Trash — " .. (reason and reason.message or "unavailable")), systemImage = "trash", disabled = not ok,
-			action = function() self:trashFile(row) end},
-	}
-	table.insert(items, self:reviewAction(row))
-	table.insert(items, self:moveItem(row, function(path)
-		local allowed, why = Files:validateTrash(path)
-		return allowed, why and why.message
-	end))
-	table.insert(items, self:quickLookItem(row.path, handlers and handlers.siblings))
-	table.insert(items, self:reveal(row.path))
-	if row.ownerId then
-		local owner = Locations:find(row.ownerId)
-		table.insert(items, {title = "Open " .. (owner and owner.name or "Category") .. "…", systemImage = "list.bullet",
-			action = function() self.app.open(row.ownerId) end})
+	if row.id and row.verdict ~= "system" then
+		local kept = Keeps:contains(row.id)
+		table.insert(items, {title = kept and "Stop Keeping" or "Keep", systemImage = kept and "pin.slash" or "pin", action = function() app.keep(row.id) end})
 	end
-	table.insert(items, separator())
-	table.insert(items, self:copyPath(row.path))
-	return items
-end
-
-function Rows:trashFile(row)
-	local ok, reason = Files:validateTrash(row.path)
-	if not ok then self.app.service.showError("Cannot move to Trash", reason.message); return end
-	if not self.app.service.confirmTrashPath("Move " .. row.name .. " to Trash?", row.path,
-		Format.size(row.bytes) .. " · last used " .. (row.lastUse or "unknown"):lower() .. ". Moving to Trash does not free space until you empty it.") then return end
-	local moved, message = self.app.service.trash(row.path)
-	self.app.log("Move to Trash", moved, row.bytes, row.path, message)
-	if not moved then self.app.service.showError("Could not move to Trash", message or "Check permissions."); return end
-	self.app.trashed(row.path, row.bytes)
-end
-
--- A folder that is not itself a catalog resource: an app's container, a
--- possible leftover, Xcode data or a project's build folder. `trash(row)`
--- performs a validated move when given; `mark` is the basket item for it.
-function Rows:folder(row, trash, mark)
-	local items = {mark and self:mark(mark) or self:reviewAction(row), self:inspect(row.path)}
-	if trash then
-		table.insert(items, {title = "Move to Trash…", systemImage = "trash", action = function() trash(row) end})
-	end
-	table.insert(items, self:quickLookItem(row.path))
-	table.insert(items, self:reveal(row.path))
-	table.insert(items, separator())
-	-- Folders only: a single file's size is not worth a sidebar row.
-	table.insert(items, self:copyPath(row.path))
-	return items
-end
-
--- An installed application: its bundle and the data folders it owns.
-function Rows:application(row)
-	local items = {self:reviewAction(row), self:reveal(row.path)}
-	for index, folder in ipairs(row.folders or {}) do
-		if index > 4 then break end
-		table.insert(items, {title = "Show " .. folder.label .. " (" .. Format.size(folder.bytes) .. ")", systemImage = "folder",
-			action = function() self.app.service.reveal(folder.path) end})
-	end
-	table.insert(items, separator())
-	table.insert(items, {title = Model.db.kept[row.resourceId] and "Stop Keeping" or "Keep", systemImage = "checkmark.shield",
-		action = function() self.app.keep(row.resourceId) end})
-	if row.bundleId then
-		table.insert(items, {title = "Copy Bundle Identifier", systemImage = "doc.on.doc", action = function() self.app.service.copy(row.bundleId) end})
-	end
-	table.insert(items, self:copyPath(row.path))
+	separator()
+	table.insert(items, {title = "Copy Path", systemImage = "doc.on.doc", action = function() service.copy(row.path) end})
 	return items
 end
 

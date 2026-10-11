@@ -43,10 +43,9 @@ local function appName(bundleId, probes)
 	return path and path:match("([^/]+)%.app/?$") or bundleId
 end
 
--- Returns true, or false with {code, reason}. `item` is a basket item
--- {path, resourceId, bundleId, leftover, identity}; `resource` its catalog
--- row when it has one.
-function Verify.check(item, resource, home, probes)
+-- Returns true, or false with {code, reason}. `item` is a flagged item
+-- {path, bundleId, leftover, identity, marker}.
+function Verify.check(item, home, probes)
 	if item.reviewOnly then return false, {code = "review", reason = "it was flagged for inspection and must be managed by its owner"} end
 	probes = probes or {}
 	local path = item.path
@@ -65,7 +64,7 @@ function Verify.check(item, resource, home, probes)
 		end
 		if now.symlink then return false, {code = "symlink", reason = "it is a symbolic link now"} end
 	end
-	local marker = resource and resource.marker
+	local marker = item.marker
 	if marker and probes.exists and not probes.exists(marker) then
 		return false, {code = "marker", reason = "the project file that identified it is gone"}
 	end
@@ -73,7 +72,7 @@ function Verify.check(item, resource, home, probes)
 	if leftoverId and probes.appPath and probes.appPath(leftoverId) then
 		return false, {code = "reinstalled", reason = "its app is installed again"}
 	end
-	local owner = item.bundleId or resource and resource.appIcon or Verify.bundleId(path)
+	local owner = item.bundleId or Verify.bundleId(path)
 	local blocking = Verify.blockingApp(owner, probes.running)
 	if blocking then return false, {code = "running", reason = appName(blocking, probes) .. " was open"} end
 	return true

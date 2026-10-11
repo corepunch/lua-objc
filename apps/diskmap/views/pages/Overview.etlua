@@ -1,0 +1,39 @@
+<% --[[ The front page: what can go now, the disk as one bar with a segment
+  per source, and the sources ranked by size. The bar is a CapacityBar, the
+  one System Settings › Storage draws. ]]
+  local BAR = {height = 14}
+%>
+<ContentPage id="page">
+  <VStack id="lead" spacing="6" alignment="leading" maxWidth="infinity">
+    <Label id="headline" text="<%= headline %>" size="26" weight="bold" design="rounded" lines="1" />
+    <Label id="detail" text="<%= detail %>" size="13" color="secondary" maxWidth="infinity" lines="0" />
+    <HStack spacing="12" alignment="center" paddingTop="4">
+      <Button id="removeSafe" title="Remove Everything Safe…" style="borderedProminent" action="removeSafe" help="Remove every item marked safe, after one confirmation that lists them" />
+    </HStack>
+    <%- partial("../components/Notice.etlua", {id = "notice", text = notice}) %>
+  </VStack>
+  <VStack id="bar" spacing="8" alignment="leading" maxWidth="infinity">
+    <CapacityBar id="capacity" total="<%= total %>" height="<%= BAR.height %>" accessibilityLabel="<%= accessibility %>">
+      <% for _, segment in ipairs(segments) do -%>
+      <CapacitySegment value="<%= segment.value %>" color="<%= segment.color %>" label="<%= segment.label %>" />
+      <% end -%>
+    </CapacityBar>
+    <Label id="barLegend" text="<%= page and subtitle or "" %>" size="11" color="secondary" />
+  </VStack>
+  <VStack id="accessRow" spacing="8" alignment="leading" hidden="<%= tostring(accessNote == "") %>">
+    <%- partial("../components/Warning.etlua", {id = "accessWarning", text = accessNote}) %>
+    <Button id="access" title="Open Full Disk Access Settings…" style="link" action="access" />
+  </VStack>
+  <VStack id="sources" spacing="8" alignment="leading" maxWidth="infinity">
+    <%- partial("../components/SectionHeader.etlua", {title = "Sources", detail = "Where developers lose space, largest first. Open one to see every item with its owner and whether it can go."}) %>
+    <GroupBox>
+      <List id="categories" onActivate="open" onColumnButton="open" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="52">
+        <Column id="name" title="Source" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="30" minWidth="220" />
+        <Column id="safe" title="Safe" width="130" minWidth="110" alignment="trailing" />
+        <Column id="shareText" title="Size" width="150" minWidth="130" levelKey="relative" levelColorKey="color" valueKey="size" loadingKey="calculating" />
+        <Column id="more" title="" width="40" minWidth="40" buttonSymbol="chevron.right.circle" />
+      </List>
+    </GroupBox>
+  </VStack>
+  <%- partial("../components/Footnote.etlua", {id = "promise", icon = "hand.raised", text = "Nothing moves until you confirm. Each removal names what goes and why, and every item is checked again just before it goes; folders go to the Trash, not away."}) %>
+</ContentPage>

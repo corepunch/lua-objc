@@ -613,12 +613,11 @@ image's pixels per point. A dump rect times `scale` is a pixel rect.
 returns `function(capture, app)`; `app` is the instance the framework created,
 so the plan navigates with the app's own methods, then calls
 `capture.appearance("dark")` and `capture.shot(prefix)`. See
-`lua/ui/capture.lua` and `reels/diskmap/capture.lua`:
+`lua/ui/capture.lua`:
 
 ```sh
-./lua-objc --capture=/tmp/map --width=1280 --height=800 apps/diskmap/init.lua --showcase --page=map
-./lua-objc --capture-plan=reels/diskmap/capture.lua --width=1280 --height=800 \
-  apps/diskmap/init.lua --showcase
+./lua-objc --capture=/tmp/xcode --width=1280 --height=800 apps/diskmap/init.lua --showcase --page=xcode
+./lua-objc --capture-plan=plan.lua --width=1280 --height=800 apps/diskmap/init.lua --showcase
 ```
 
 For UI changes, completion requires actual visual QA:

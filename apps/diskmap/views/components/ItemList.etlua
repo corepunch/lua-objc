@@ -1,0 +1,20 @@
+<% --[[ The one list every source page uses: the item's symbol, its name
+  and a line saying whose it is and when it was written; the verdict as one
+  symbol with the verdict word as its tooltip; a detail column for rows that
+  have one (a device's state, a worktree's role); the size over a share bar;
+  the remove button; and the "More" button that opens the row's menu. There are no
+  column headers, as in SwiftUI's List: the section title says what the
+  rows are. Fixed columns total 358 points so the name keeps its width in
+  the narrowest window. ]]
+  local COLUMNS = {name = 180, status = 28, statusSymbol = 20, detail = 120, share = 150, review = 40, more = 40}
+%>
+<List id="<%= id %>" rowMenu="rowMenu" dragKey="path" onColumnButton="removeRow" onActivate="open" scrollDisabled="true" drawsBackground="false" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44"<% if height then %> height="<%= height %>"<% end %>>
+  <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" helpKey="help" minWidth="<%= COLUMNS.name %>" />
+  <Column id="status" title="Status" width="<%= COLUMNS.status %>" minWidth="<%= COLUMNS.status %>" imageKey="statusIcon" imageColorKey="statusColor" imageSize="<%= COLUMNS.statusSymbol %>" labelStyle="iconOnly" helpKey="status" />
+  <% if detail then %>
+  <Column id="detail" title="Detail" width="<%= COLUMNS.detail %>" minWidth="<%= COLUMNS.detail %>" lines="2" />
+  <% end %>
+  <Column id="shareText" title="Size" width="<%= COLUMNS.share %>" minWidth="<%= COLUMNS.share %>" levelKey="relative" levelColorKey="levelColor" valueKey="size" loadingKey="calculating" />
+  <Column id="remove" title="Remove" width="<%= COLUMNS.review %>" minWidth="<%= COLUMNS.review %>" buttonSymbol="trash" enabledKey="removable" helpKey="removeHelp" />
+  <Column id="more" title="" width="<%= COLUMNS.more %>" minWidth="<%= COLUMNS.more %>" buttonSymbol="ellipsis.circle" buttonMenu="true" />
+</List>

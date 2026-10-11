@@ -48,25 +48,20 @@ for _, name in ipairs({ "frame", "window", "intrinsic", "fitting", "width", "x" 
 		"layout dump writes whole " .. name .. " points without a trailing .0")
 end
 
--- Window frames are top-left window points, matching a window capture, and
--- treemap cells are listed with them (the Reel package cuts pieces by id).
-local treemapPath = os.tmpname() .. ".xml"
+-- Window frames are top-left window points, matching a window capture.
+local overviewPath = os.tmpname() .. ".xml"
 ok = os.execute(string.format("./lua-objc --dump-layout=%q --width=1440 --height=900 "
-	.. "apps/diskmap/init.lua --showcase --page=map --chart-style=rectangles >/dev/null 2>&1", treemapPath))
-t.expect(ok == true or ok == 0, "Diskmap treemap layout dump exits successfully")
-file = io.open(treemapPath, "r")
-local treemap = file and file:read("*a") or ""
+	.. "apps/diskmap/init.lua --showcase >/dev/null 2>&1", overviewPath))
+t.expect(ok == true or ok == 0, "Diskmap overview layout dump exits successfully")
+file = io.open(overviewPath, "r")
+local overview = file and file:read("*a") or ""
 if file then file:close() end
-os.remove(treemapPath)
-local windowX, windowY, width, height = treemap:match('identifier="breakdownRectangles" frame="[^"]+" '
+os.remove(overviewPath)
+local windowX, windowY, width, height = overview:match('identifier="capacity" frame="[^"]+" '
 	.. 'window="([%d.]+) ([%d.]+) ([%d.]+) ([%d.]+)"')
 width, height, windowX, windowY = tonumber(width), tonumber(height), tonumber(windowX), tonumber(windowY)
 t.expect(width ~= nil and windowX > 0 and windowY > 0 and windowY + height < 900,
 	"a view inside unflipped stacks reports a top-left window origin")
-local cellX, cellY = treemap:match('<TreemapCell id="[^"]+" depth="0" window="([%d.]+) ([%d.]+) ')
-local margin = require("ui.treemap").metrics.margin
-t.expect(cellX ~= nil and tonumber(cellX) == windowX + margin and tonumber(cellY) == windowY + margin,
-	"the first top-level treemap cell starts one margin inside the treemap's window origin")
 
 local rects = {}
 for _, isolated in ipairs({false, true}) do

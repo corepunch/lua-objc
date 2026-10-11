@@ -1,3 +1,0 @@
-<DisclosureGroup indicatorWidth="<%= symbol.column %>" indicatorSpacing="<%= symbol.gap %>">
-  <ContentPresenter />
-</DisclosureGroup>

@@ -1,1 +1,0 @@
-return {props = {titleId = "str", detailId = "str", total = "str", caption = "str", totalSize = {type = "num", default = 24}, captionSize = {type = "num", default = 12}, totalScale = {type = "num", default = 0.5}, captionScale = {type = "num", default = 0.77}}}

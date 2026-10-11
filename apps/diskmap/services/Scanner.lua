@@ -1,20 +1,11 @@
 local App = require("App")
+-- The native StorageScan plugin (src/plugins/storage): bulk metadata
+-- enumeration of a list of roots, and asynchronous commands such as simctl
+-- and git. Only services/System.lua calls it.
 local native = App.loadNativePlugin(assert(package.searchpath("StorageScan", package.cpath)), "StorageScan")
 local Scanner = {}
 function Scanner.start(paths, exclusions, options)
 	return {handle = native.start(paths, exclusions or {}, options)}
-end
-function Scanner.startExport(paths, exclusions, outputPath, metadata)
-	return {handle = native.exportStart(paths, exclusions or {}, outputPath, metadata)}
-end
--- Decoded record chunks of a Mock HDD snapshot, then nil.
-function Scanner.snapshotRecords(path)
-	return native.snapshotRecords(path)
-end
--- Writes a snapshot from `{path, allocatedBytes, countedBytes}` items in
--- path order; `metadata` holds capacityBytes, availableBytes and createdAt.
-function Scanner.writeSnapshot(path, metadata, items)
-	native.snapshotWrite(path, metadata, items)
 end
 function Scanner.cancel(job)
 	if not job then return end
@@ -36,15 +27,6 @@ function Scanner.poll(job)
 	if result and not done and result.completed == job.completed and seconds == job.seconds then return false end
 	if result then job.completed, job.seconds = result.completed, seconds end
 	return done, result
-end
-function Scanner.startDuplicates(roots, options) return {handle = native.duplicatesStart(roots, options)} end
-function Scanner.pollDuplicates(job)
-	if not job.handle then return true, {failure = "Search cancelled.", groups = {}} end
-	return native.duplicatesPoll(job.handle)
-end
-function Scanner.cancelDuplicates(job)
-	job.cancelled = true
-	if job.handle then native.duplicatesCancel(job.handle); job.handle = nil end
 end
 Scanner.commandStart = native.commandStart
 Scanner.commandPoll = native.commandPoll

@@ -5,27 +5,14 @@
   <Number id="isolatedMinWidth" value="724" />
   <Number id="windowMinHeight" value="580" />
   <Number id="sidebarWidth" value="226" />
-  <Number id="searchWidth" value="210" />
 </Resources>
 <Window title="<%= windowTitle or "Diskmap" %>" subtitle="<%= subtitle or "" %>" hideTitle="false" width="@windowWidth" height="@windowHeight" minWidth="<%= navigation and "@windowMinWidth" or "@isolatedMinWidth" %>" minHeight="@windowMinHeight" <% if navigation then %>sidebarWidth="@sidebarWidth"<% end %> onBack="back" onForward="forward">
   <Commands appName="Diskmap">
-    <CommandGroup replacing="appSettings">
-      <MenuItem title="Settings…" keyEquivalent="," action="settings" />
-    </CommandGroup>
     <CommandGroup replacing="importExport">
       <MenuItem title="Open Folder…" keyEquivalent="o" action="openFolder" />
-      <MenuItem title="Open Scan…" keyEquivalent="o" modifiers="command,shift" action="openScan" />
-      <MenuItem title="Compare with Scan…" action="compareScan" validate="canCompareScan" />
-      <Separator />
-      <MenuItem title="Export Scan…" keyEquivalent="e" modifiers="command,shift" action="exportScan" validate="canExportScan" />
     </CommandGroup>
     <CommandGroup after="importExport">
       <MenuItem title="Quick Look" keyEquivalent="y" action="quickLook" validate="canQuickLook" />
-    </CommandGroup>
-    <CommandGroup replacing="textEditing">
-      <MenuItem title="Find">
-        <MenuItem title="Find…" keyEquivalent="f" action="find" />
-      </MenuItem>
     </CommandGroup>
     <CommandMenu title="Go">
       <MenuItem title="Back" systemImage="chevron.left" keyEquivalent="[" action="back" validate="canGoBack" />
@@ -39,62 +26,25 @@
       <% end %>
     </CommandMenu>
     <CommandMenu title="Storage">
-      <MenuItem title="Refresh" keyEquivalent="r" action="refresh" validate="canRefresh" />
+      <MenuItem title="Measure Again" keyEquivalent="r" action="refresh" validate="canRefresh" />
       <MenuItem title="Stop Measuring" keyEquivalent="." action="cancel" validate="canCancel" />
       <Separator />
-      <MenuItem title="Show Flagged Items" keyEquivalent="m" modifiers="command,shift" action="review" />
-      <MenuItem title="Cleanup History…" action="history" />
-      <MenuItem title="Empty Trash…" keyEquivalent="delete" modifiers="command,shift" action="emptyTrash" validate="canEmptyTrash" />
+      <MenuItem title="Action History" action="history" />
       <Separator />
       <MenuItem title="Storage Settings…" action="storageSettings" />
       <MenuItem title="Full Disk Access Settings…" action="privacy" />
-      <MenuItem title="Open Disk Utility" action="diskUtility" />
     </CommandMenu>
-    <CommandGroup replacing="help">
-      <MenuItem title="Diskmap Help" keyEquivalent="?" action="help" />
-      <MenuItem title="Keyboard Shortcuts" action="shortcuts" />
-      <MenuItem title="Diskmap Tour" action="tour" />
-      <Separator />
-      <MenuItem title="Storage Guide" action="guide" />
-      <MenuItem title="macOS Folders" action="filesystem" />
-    </CommandGroup>
-    <% for _, topic in ipairs(helpTopics) do %>
-    <HelpTopic title="<%= topic.title %>" keywords="<%= topic.keywords %>" action="<%= topic.action %>" />
-    <% end %>
   </Commands>
   <Toolbar>
     <% if navigation then %><ToolbarItem id="toggleSidebar" /><% end %>
     <ToolbarItem id="back" label="Back" icon="chevron.left" tooltip="Show the previous page" action="back" validate="canGoBack" placement="navigation" />
     <ToolbarItem id="forward" label="Forward" icon="chevron.right" tooltip="Show the next page" action="forward" validate="canGoForward" placement="navigation" />
     <ToolbarSpacer />
-    <% if picker then %>
-    <ToolbarItem id="pagePicker" label="<%= picker.label or "" %>">
-      <Picker id="<%= picker.id %>" style="segmented" value="<%= picker.value or 0 %>" onChange="pagePicker" help="<%= picker.help or "" %>">
-        <% for _, option in ipairs(picker.options) do %><Option title="<%= option %>" /><% end %>
-      </Picker>
-    </ToolbarItem>
-    <% end %>
-    <% if charted then %>
-    <% -- Rings or rectangles for every breakdown page, as the view buttons of Finder serve every folder. %>
-    <% if chartStyle == "rectangles" then %>
-    <ToolbarItem id="chartStyle" label="Rings" icon="chart.pie" tooltip="Show breakdowns as rings" action="chartStyle" />
-    <% else %>
-    <ToolbarItem id="chartStyle" label="Rectangles" icon="rectangle.split.2x2" tooltip="Show breakdowns as rectangles" action="chartStyle" />
-    <% end %>
-    <% end %>
-    <% if scanning then %>
+    <% if measuring then %>
     <ToolbarItem id="measure" label="Stop" icon="stop.circle" tooltip="Stop measuring" action="cancel" />
     <% else %>
-    <ToolbarItem id="measure" label="Refresh" icon="arrow.clockwise" tooltip="Measure all storage again" action="refresh" />
+    <ToolbarItem id="measure" label="Measure Again" icon="arrow.clockwise" tooltip="Measure every source again" action="refresh" />
     <% end %>
-    <% for _, item in ipairs(operations or {}) do %>
-    <% if not item.hidden then %>
-    <ToolbarItem id="operation_<%= item.id %>" label="<%= item.title %>" icon="<%= item.icon %>" tooltip="<%= item.title %>" action="operation_<%= item.id %>" validate="enabled_<%= item.id %>" />
-    <% end %>
-    <% end %>
-    <ToolbarItem id="settings" label="Settings" icon="gearshape" tooltip="Settings" action="settings" />
-    <ToolbarItem id="search" label="Search">
-      <SearchField id="search" placeholder="Search" width="@searchWidth" accessibilityLabel="Search everything Diskmap measured and explains" onChange="search" />
-    </ToolbarItem>
+    <ToolbarItem id="openFolder" label="Open Folder" icon="folder" tooltip="Look inside any folder" action="openFolder" />
   </Toolbar>
 </Window>
