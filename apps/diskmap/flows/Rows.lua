@@ -31,6 +31,7 @@ function Rows:present(rows, now)
 		local allowed, why = Remove.allowed(row)
 		row.removable = allowed
 		row.removeHelp = allowed and (Remove.verbs[row.action or "trash"] .. "…") or why
+		row.hasMenu = row.path ~= nil
 		table.insert(presented, row)
 	end
 	return presented

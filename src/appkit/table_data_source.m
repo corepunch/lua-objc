@@ -512,10 +512,11 @@ static NSView *table_cell_view(NSTableView *tableView, NSTableColumn *column, NS
 		cell.actionButton.toolTip = label;
 		NSString *enabledKey = cellSpec[@"enabled"];
 		cell.actionButton.enabled = !enabledKey || [rowData[enabledKey] boolValue];
-		id info = rowData[@"info"];
-		BOOL showInfo = ![info respondsToSelector:@selector(boolValue)] || [(NSNumber *)info boolValue];
+		NSString *visibleKey = cellSpec[@"visible"];
+		id visible = visibleKey ? rowData[visibleKey] : nil;
+		BOOL showButton = !visibleKey || ([visible respondsToSelector:@selector(boolValue)] && [visible boolValue]);
 		cell.actionButton.tag = rowIndex;
-		cell.actionButton.hidden = !showInfo;
+		cell.actionButton.hidden = !showButton;
 		objc_setAssociatedObject(cell.actionButton, &kKeys[kButtonContentKey], rowData, OBJC_ASSOCIATION_RETAIN);
 		cell.textField.hidden = YES;
 		cell.imageView.hidden = YES;

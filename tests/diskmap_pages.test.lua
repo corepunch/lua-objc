@@ -37,12 +37,14 @@ t.assertEqual(host.presented.hidden.addFolder, false, "Projects can add a folder
 Harness.mount("system", host)
 local volumes = host.lists.list_volumes
 t.expect(volumes[1].removable == false and volumes[1].status == "Managed by macOS", "a volume cannot be removed and says why")
+t.expect(volumes[1].hasMenu == false, "a volume without row actions does not offer More")
 t.assertEqual(#host.env:page("system"):flow("Rows"):menu(require("apps.diskmap.models.Items"):find("volume:Preboot")), 0, "a volume has no path and no menu")
 local menuSystem = host.env:page("system"):flow("Rows"):menu(require("apps.diskmap.models.Items"):byPath("/System/Library/AssetsV2/com_apple_MobileAsset_UAF_LinguisticData"))
 local systemTitles = {}
 for _, item in ipairs(menuSystem) do if item.title then table.insert(systemTitles, item.title) end end
 t.assertEqual(table.concat(systemTitles, ", "), "Look Inside, Show in Finder, Copy Path", "a system folder's menu offers no removal and no Keep")
 t.assertEqual(#menuSystem, 4, "with one separator")
+t.expect(host.lists.list_assets[1].hasMenu == true, "a system asset with a path offers More")
 
 -- The Overview opens a source; Remove Everything Safe is offered only when something is safe.
 local overview = Harness.mount("overview", host)
@@ -55,6 +57,14 @@ t.assertEqual(host.presented.hidden.notice, true, "no notice before a removal")
 -- Alignment (AGENTS.md): in every list the symbols share one column and the
 -- names one edge, whatever the symbol.
 local app = Harness.app()
+app:show("system")
+bridge._flushLayout()
+local volumeList = app.page.refs.list_volumes
+local assetList = app.page.refs.list_assets
+t.expect(bridge._tableCell(volumeList, 5, 0).actionButton.hidden, "More is absent where the row has no menu")
+t.expect(not bridge._tableCell(assetList, 5, 0).actionButton.hidden, "More is visible where row actions exist")
+t.expect(not bridge._tableCell(volumeList, 4, 0).actionButton.enabled, "macOS volume removal stays disabled")
+t.assertEqual(bridge._tableRowMenu(assetList, 1)[1].title, "Look Inside", "the visible More button has a native row menu")
 app:show("simulators")
 bridge._flushLayout()
 local list = app.page.refs.list_devices

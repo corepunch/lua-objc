@@ -176,7 +176,7 @@ binding syntax: rows are data.
 | `lines="2"` | Text that wraps onto that many lines before it truncates |
 | `loadingKey` | A native spinner beside the text while the field is true |
 | `labelStyle="iconOnly"` | The row's symbol alone; the text is its tooltip and VoiceOver label |
-| `buttonSymbol`, `buttonMenu` | A row button, or one that opens the row's menu |
+| `buttonSymbol`, `buttonMenu`, `enabledKey`, `visibleKey` | A row button, or one that opens the row's menu; boolean row fields control its enabled and visible states |
 | `levelKey`, `levelColorKey`, `valueKey` | A meter (below) |
 
 The cell is built once per reusable `NSTableCellView` and filled from the
