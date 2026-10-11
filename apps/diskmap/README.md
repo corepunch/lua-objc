@@ -5,7 +5,8 @@ Overview and Clean Up lead the sidebar without a header (Clean Up's badge is
 what it could recover); then Free Up Space (Applications, Large Files,
 Duplicates and, on a developer's Mac, Simulators, Worktrees and Projects),
 Explore (the maps, Largest Locations, File Types), System, the kinds of work
-and Learn, with one question per destination. Diskmap is for everyone, so the
+and Learn, with one question per destination. Diskmap is disk cleanup for
+Mac developers that tells you what is safe ([VISION.md](VISION.md)); the
 developer pages appear only on a Mac with developer data: Xcode or
 `~/Library/Developer` present, or at least 500 MB measured in the Developer
 category.
@@ -468,7 +469,7 @@ Applications reads each bundle's Info.plist and one `mdls` query for last-used
 dates; leftovers compare against `mdfind`'s list of every installed app.
 Disks & Volumes runs `diskutil info -plist /` and `diskutil apfs list -plist`.
 
-The app and framework changes are described in [DESIGN.md](DESIGN.md); the research behind the features and their sources are in [VISION.md](VISION.md). What people ask about the Library folders, and how Diskmap tells whose a folder is, is in [the Library research](../../docs/research/DISKMAP_LIBRARY_QUESTIONS.md).
+The app and framework changes are described in [DESIGN.md](DESIGN.md); what Diskmap is for, what it promises and what it is not is in [VISION.md](VISION.md). What people ask about the Library folders, and how Diskmap tells whose a folder is, is in [the Library research](../../docs/research/DISKMAP_LIBRARY_QUESTIONS.md).
 
 ## Component boundaries
 
