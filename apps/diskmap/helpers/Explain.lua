@@ -13,11 +13,15 @@ local Leftovers = require("apps.diskmap.helpers.Leftovers")
 --    services; the inside of an app's sandbox mirrors ~/Library;
 -- 4. anything else inside a sandbox belongs to the sandbox's app.
 --
+-- Preboot's folder for each macOS installation, named by a UUID, is known
+-- by its place (knowledge/Library `volumeGroup`) before any of these.
+--
 -- `facts` are what the caller knows: `home`, `apps` (Leftovers.index of the
 -- installed apps, nil until Spotlight answers; then nothing is called
 -- unclaimed) and `container(path)`, the bundle identifier the container
 -- metadata names for a folder named by a random UUID, or nil.
--- Answers {owner, kind, what, unclaimed} or nil.
+-- Answers {owner, kind, what, note, unclaimed} or nil; `note` is the few
+-- words a folder list shows under the name.
 local Explain = {}
 
 local function tilde(path, home)
@@ -78,15 +82,18 @@ local function byRule(rule, name, facts, path, fallback)
 	-- "com_apple_MobileAsset_UAF_FM_GenerativeModels" is the asset type
 	-- com.apple.MobileAsset.UAF.FM.GenerativeModels.
 	local asset = name:match("^com_apple_MobileAsset_(.+)$")
-	if asset then return {owner = "macOS", kind = rule.kind, what = fill(rule.what, (asset:gsub("_", " ")))} end
+	if asset then
+		asset = asset:gsub("_", " ")
+		return {owner = "macOS", kind = rule.kind, what = fill(rule.what, asset), note = fill(rule.note, asset)}
+	end
 	local owner = ownerOf(name, rule, facts, path) or fallback
-	if owner then return {owner = owner, kind = rule.kind, what = fill(rule.what, owner)} end
-	if rule.system then return {owner = "macOS", kind = rule.kind, what = rule.unknown} end
+	if owner then return {owner = owner, kind = rule.kind, what = fill(rule.what, owner), note = fill(rule.note, owner)} end
+	if rule.system then return {owner = "macOS", kind = rule.kind, what = rule.unknown, note = rule.unknownNote} end
 	-- Only an identifier no installed app claims is evidence of a removed
 	-- app; "vscode-cpptools" may belong to a tool, a helper or a plug-in.
 	local identified = Leftovers.identifier((name:gsub("%.plist$", ""))) or name:match("^%x+%-%x+%-%x+%-%x+%-%x+$")
-	if not facts.apps or not identified then return {kind = rule.kind} end
-	return {kind = rule.kind, what = rule.unknown, unclaimed = true}
+	if not facts.apps or not identified then return {kind = rule.kind, note = rule.kind} end
+	return {kind = rule.kind, what = rule.unknown, note = rule.unknownNote, unclaimed = true}
 end
 
 function Explain.path(path, facts)
@@ -94,11 +101,14 @@ function Explain.path(path, facts)
 	facts = facts or {}
 	local short = tilde(path, facts.home)
 	local location = Map.find(short) or Map.find(path)
-	if location then return {owner = location.owner, kind = location.name, what = location.what} end
+	if location then return {owner = location.owner, kind = location.name, what = location.what, note = location.note} end
+	local inGroup = path:match("^/System/Volumes/Preboot/%x+%-%x+%-%x+%-%x+%-%x+(.*)$")
+	local group = inGroup == "" and Library.volumeGroup or inGroup and Library.volumeGroup.children[inGroup:match("^/([^/]+)$") or ""]
+	if group then return {owner = "macOS", kind = group.kind, what = group.what, note = group.note} end
 	local name = short:match("([^/]+)$")
 	if not name then return nil end
 	local named = Library.names[name:lower()]
-	if named then return {owner = named.owner, kind = named.kind, what = named.what} end
+	if named then return {owner = named.owner, kind = named.kind, what = named.what, note = named.note} end
 	local parent = short:match("^(.*)/[^/]+$")
 	local container, inside = short:match("^~/Library/Containers/([^/]+)/(.+)$")
 	if container then
@@ -108,7 +118,7 @@ function Explain.path(path, facts)
 		local sub = inside:match("^Data/Library/([^/]+)/[^/]+$")
 		local inner = sub and Library.parents["~/Library/" .. sub]
 		if inner then return byRule(inner, name, facts, path, owner) end
-		if owner then return {owner = owner, kind = "Sandbox", what = "Part of " .. owner .. "'s sandbox. Manage its data from inside the app."} end
+		if owner then return {owner = owner, kind = "Sandbox", what = "Part of " .. owner .. "'s sandbox. Manage its data from inside the app.", note = "Part of " .. owner .. "'s sandbox"} end
 	end
 	local rule = parent and Library.parents[parent]
 	if rule then return byRule(rule, name, facts, path) end

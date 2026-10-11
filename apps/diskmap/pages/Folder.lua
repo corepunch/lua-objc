@@ -193,12 +193,17 @@ function Folder:explain(path)
 	return cached or nil
 end
 
--- A row's owner: the catalog's name for the location, or whose it is.
-function Folder:owner(path)
+-- The few words under a row's name: what the folder is and whether it may
+-- go, when the knowledge of macOS has a note for it; otherwise the catalog's
+-- name for the location, or whose it is. A note that only repeats the kind
+-- ("Cache") yields to the catalog's name.
+function Folder:note(path)
+	local answer = self:explain(path)
+	if answer and answer.note and answer.note ~= answer.kind then return answer.note end
 	local named = self:catalogName(path)
 	if named then return named end
-	local answer = self:explain(path)
 	if not answer then return nil end
+	if answer.note then return answer.note end
 	if answer.owner then return answer.owner end
 	return answer.unclaimed and "No installed app" or nil
 end
@@ -362,27 +367,37 @@ function Folder:data()
 	if phase == "scanning" then data.computing, data.stopAction = self:progressText(), "stop"; return data end
 	local now = os.time()
 	local nodes, total = self.tree:nodes(self.focusPath, self.coloring, now)
-	local rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:owner(path) end)
+	local rows = self.tree:rows(self.focusPath, self.coloring, now, function(path) return self:note(path) end)
 	local trail = self.tree:trail(self.focusPath)
 	self.rows, self.trail = rows, trail
 	self.nodeById = {}
 	for _, node in ipairs(nodes) do self.nodeById[node.id] = node end
 	self.center = {title = Format.size(total), detail = #trail > 1 and "Click to go up" or "Measured"}
-	for _, row in ipairs(rows) do self.rowActions:annotateReview(row); self.rowsByPath[row.id] = row end
+	for _, row in ipairs(rows) do
+		self.rowActions:annotateReview(row)
+		self.rowsByPath[row.id] = row
+		-- The whole explanation is the name's tooltip; the note is its summary.
+		if not row.other then row.help = self:about(row.path) end
+	end
 	local options, colorIndex = {}, 0
 	for index, coloring in ipairs(FolderTree.colorings) do
 		table.insert(options, coloring.title)
 		if coloring.id == self.coloring then colorIndex = index - 1 end
 	end
 	-- Colored by kind or by last use, the legend names the colors instead.
-	local marks, legend = Breakdown.rows(rows)
+	-- The ring shows the same three levels as the rectangles, as a sunburst.
+	local _, legend = Breakdown.rows(rows)
 	if self.coloring ~= "folders" then legend = self.tree:legend(self.focusPath, self.coloring, now) end
 	-- The coloring is a view option of the page, in the toolbar like Finder's view buttons.
 	data.picker = {id = "folderColoring", label = "Color By", value = colorIndex, action = "pickColoring", options = options,
 		help = "Color the map by folder, by kind of file or by when files were last used"}
 	data.breakdown = {style = self.app.chartStyle,
-		marks = marks, rectangles = nodes, legend = legend, dragItem = "dragPath", center = self.center, centerAction = "up",
+		marks = nodes, rectangles = nodes, legend = legend, dragItem = "dragPath", center = self.center, centerAction = "up",
 		accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas"}
+	-- What the open folder is, between its map and its contents.
+	local focus = trail[#trail]
+	local about = self:about(self.focusPath)
+	if about then data.context = {{view = "components/GuideParagraph", data = {id = "folderAbout", heading = "About " .. focus.name, text = about}}} end
 	data.lists = {folderList = rows}
 	data.sections = {{id = "folderSection", title = "Contents", list = {id = "folderList", menu = "rowMenu", selectAction = "selectRow", activate = "drillRow", fileIcons = true}}}
 	data.footnotes = {}

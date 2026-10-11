@@ -20,7 +20,7 @@
   <HStack padding="@breakdownPadding" spacing="@breakdownGap" alignment="center">
     <SectorChart id="breakdownChart" scalable="true" diameter="@breakdownDiameter" minWidth="@breakdownMinimum" minHeight="@breakdownMinimum" flexGrow="0" flexShrink="1" fixedSize="vertical" innerRadius="0.618" angularInset="1" <% if dragItem then %>dragItem="<%= dragItem %>" <% end %>onSelect="<%= onSelect %>" onHover="<%= onHover %>" onCenter="<%= onCenter %>" accessibilityLabel="<%= accessibilityLabel %>">
       <% for _, mark in ipairs(sectors) do %>
-      <SectorMark id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" cornerRadius="3.5" />
+      <SectorMark id="<%= mark.id %>"<% if mark.parent then %> parent="<%= mark.parent %>"<% end %> ring="<%= mark.ring or 1 %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" cornerRadius="3.5" />
       <% end %>
       <ChartCenter titleId="breakdownTotal" detailId="breakdownCaption" total="<%= total %>" caption="<%= caption %>" totalSize="32" captionSize="14" totalScale="0.40625" captionScale="0.75" />
     </SectorChart>

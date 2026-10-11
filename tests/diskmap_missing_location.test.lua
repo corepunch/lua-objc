@@ -22,7 +22,8 @@ t.expect(not table.concat(names, ","):find("jetbrains", 1, true), "Editors & IDE
 t.expect(table.concat(names, ","):find("vscode-extensions", 1, true), "and still lists what is there")
 
 -- While a folder is measured, its spinner and progress sit in the middle of
--- the page, not at its leading edge.
+-- the page, not at its leading edge or its top: centered like "Nothing
+-- Flagged", in the height the page offers.
 local service = Mock.new({showcase = true})
 service.scanFolder = function() return {} end
 local app = Controller.new(service)
@@ -35,6 +36,9 @@ t.expect(refs.computing ~= nil, "the folder is being measured")
 t.assertEqual(refs.computing.frame.size.width, refs.computing.superview.frame.size.width, "the measuring view spans the page")
 t.assertEqual(centre(refs.computingSpinner), centre(refs.computing), "its spinner is centred")
 t.assertEqual(centre(refs.computingStatus), centre(refs.computing), "and so is its progress")
+local spinner = refs.computingSpinner.frameInWindow
+t.expect(refs.computing.frame.size.height > 400, "the measuring view takes the page's height")
+t.expect(spinner.origin.y > 200, "so the spinner is not at the top of the page")
 t.expect(refs.computingStop ~= nil, "measuring a folder can be stopped where its progress shows")
 require("AppKitNative")._invokeAction(refs.computingStop)
 t.expect(app.env:page("folder").loading == nil, "Stop leaves nothing loading")

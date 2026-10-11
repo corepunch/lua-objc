@@ -205,7 +205,34 @@ function Categories:chart(disk)
 		mark.size = Format.size(mark.value)
 		table.insert(summary, mark.label .. " " .. mark.size)
 	end
-	return {marks = marks, legend = legend, explanation = explanation,
+	-- Inside each drawn category, the levels the Storage Map shows, as the
+	-- outer rings of a sunburst in the category's color (`sunburst`; `marks`
+	-- stays the categories alone). Free and unattributed space have nothing
+	-- inside: their sectors run on through the outer rings so the whole
+	-- volume stays one closed track. The rectangles nest the same levels
+	-- without those continuations.
+	local colorOf, rectangles, sunburst, rings = {}, {}, {}, 1
+	for _, mark in ipairs(marks) do colorOf[mark.id] = mark.color; table.insert(rectangles, mark); table.insert(sunburst, mark) end
+	for _, node in ipairs(#marks > 0 and Categories:mapNodes("") or {}) do
+		if node.ring > 1 and node.parent and colorOf[node.parent] then
+			colorOf[node.id] = colorOf[node.parent]
+			local child = {id = node.id, parent = node.parent, ring = node.ring, value = node.value,
+				color = node.other and node.color or colorOf[node.parent], label = node.label, size = node.detail, other = node.other}
+			table.insert(sunburst, child)
+			table.insert(rectangles, child)
+			rings = math.max(rings, node.ring)
+		end
+	end
+	for _, id in ipairs({"unreconciled", "free"}) do
+		local mark
+		for _, candidate in ipairs(rectangles) do if candidate.id == id then mark = candidate end end
+		local parent = id
+		for ring = 2, mark and rings or 1 do
+			table.insert(sunburst, {id = id .. "#ring" .. ring, parent = parent, ring = ring, value = mark.value, color = mark.color, label = mark.label, size = mark.size})
+			parent = id .. "#ring" .. ring
+		end
+	end
+	return {marks = marks, sunburst = sunburst, rectangles = rectangles, legend = legend, explanation = explanation,
 		residual = residual and residual.bytes > 0 and residual.size or nil,
 		accessibilityLabel = #summary > 0 and ("Storage by category: " .. table.concat(summary, ", ")) or explanation}
 end
@@ -320,32 +347,35 @@ function Categories:mapNodes(focus, depth)
 	for _, row in ipairs(top) do if measured(row) then total = total + row.bytes end end
 	local nodes = {}
 	local hues = Categories:hues(top)
-	local function visit(rows, parent, ring, color)
-		local other, otherBytes, shown = 0, 0, 0
+	local function visit(rows, parent, ring, color, whole)
+		local other, shownBytes = 0, 0
 		for _, row in ipairs(rows) do
 			if measured(row) then
 				if (total > 0 and row.bytes / total < Categories.mapMinimumShare) or (ring == 1 and not hues[row.id]) then
-					other, otherBytes = other + 1, otherBytes + row.bytes
+					other = other + 1
 				else
-					shown = shown + 1
+					shownBytes = shownBytes + row.bytes
 					local resource = Locations:find(row.id)
 					local leaf = resource and resource:isLeaf()
 					local rowColor = ring == 1 and hues[row.id] or color
 					table.insert(nodes, {id = row.id, parent = parent, value = row.bytes, color = rowColor,
 						label = row.name, detail = row.size, ring = ring, leaf = leaf,
 						hatched = leaf and resource.policy == "Rebuildable" or false})
-					if row.children and ring < depth then visit(row.children, row.id, ring + 1, rowColor) end
+					if row.children and ring < depth then visit(row.children, row.id, ring + 1, rowColor, row.bytes) end
 				end
 			end
 		end
-		if other > 0 and (ring == 1 or (shown > 0 and otherBytes / total >= Categories.mapMinimumShare)) then
-			-- Nested smaller items are more of their parent, so they keep its
-			-- hue (the view fades them); only the top level has no family.
-			table.insert(nodes, {id = (parent or "top") .. "#other", parent = parent, value = otherBytes, color = color or "systemGray",
-				label = other .. " smaller", detail = Format.size(otherBytes), ring = ring, leaf = true, other = true})
+		-- The top level gathers its smaller rows into one gray mark the
+		-- legend names. Deeper, slivers are left out and the chart scales the
+		-- drawn rows up to fill their parent's angle (ui/sectors.lua), so no
+		-- ring ends before its parent does.
+		local rest = whole - shownBytes
+		if ring == 1 and rest > 0 then
+			table.insert(nodes, {id = (parent or "top") .. "#other", parent = parent, value = rest, color = "systemGray",
+				label = other > 0 and (other .. " smaller") or "Other data", detail = Format.size(rest), ring = ring, leaf = true, other = true})
 		end
 	end
-	visit(top, nil, 1, nil)
+	visit(top, nil, 1, nil, total)
 	return nodes, total
 end
 

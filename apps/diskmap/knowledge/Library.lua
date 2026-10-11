@@ -15,7 +15,13 @@
 -- · `services`: Apple's background services and the feature a person knows
 --   them by, so "com.apple.bird" reads as iCloud Drive. Apple's own apps
 --   need no entry: their bundles are installed, so they resolve like any app;
--- · `names`: folder names that mean the same wherever they appear.
+-- · `names`: folder names that mean the same wherever they appear;
+-- · `volumeGroup`: the folder Preboot keeps per macOS installation, named by
+--   its APFS volume group's identifier, and the folders inside it.
+--
+-- `note` is the line a folder list shows under the name: what it is in a few
+-- words and whether it may go ("%s" is the owner); `unknownNote` goes with
+-- `unknown`.
 --
 -- Statements were checked against Apple's File System Programming Guide,
 -- Eclectic Light Company articles and Apple Support Communities threads
@@ -24,6 +30,7 @@ local Library = {}
 
 local function cache(where)
 	return {kind = "Cache", byId = true, byName = true,
+		note = "%s's cache · rebuilt when needed", unknownNote = "Cache no installed app claims",
 		what = "%s's cache: data it downloads or rebuilds by itself. Clear it from %s's settings, or quit %s before moving the folder to the Trash.",
 		unknown = "A cache no installed app claims; it may belong to an app you removed. Caches are rebuilt, so it can go once nothing uses it." .. (where or "")}
 end
@@ -32,51 +39,67 @@ Library.parents = {
 	["~/Library/Caches"] = cache(),
 	["/Library/Caches"] = cache(" An administrator's password is needed to remove it."),
 	["~/Library/Application Support"] = {kind = "App data", byId = true, byName = true,
+		note = "%s's data · manage it in %s", unknownNote = "Data no installed app claims",
 		what = "Data %s keeps: libraries, databases, downloads and state it cannot always rebuild. Manage it from %s; removing it may lose your work in it.",
 		unknown = "Data no installed app claims; it may be left from an app you removed. Look inside before removing it: it may hold documents or downloads."},
 	["/Library/Application Support"] = {kind = "Shared app data", byId = true, byName = true,
+		note = "%s's shared data · use its uninstaller", unknownNote = "Installer data no app claims",
 		what = "Data %s installed for every account: plug-ins, licenses, sound libraries or helpers. Remove it with %s's own uninstaller.",
 		unknown = "Data an installer put here for every account; no installed app claims it by name. Check the developer's uninstall instructions before removing it."},
 	["~/Library/Containers"] = {kind = "Sandbox", byId = true,
+		note = "%s's sandbox · removing resets the app", unknownNote = "Sandbox no installed app claims",
 		what = "%s's sandbox: its private settings, caches and documents. Removing it resets %s completely; manage its data from inside the app.",
 		unknown = "The sandbox of an app that is no longer installed, or of an extension. macOS never removes containers by itself. Check Data/Documents inside before removing it."},
 	["~/Library/Group Containers"] = {kind = "Shared container", byId = true,
+		note = "Data %s's apps share", unknownNote = "Shared data no installed app claims",
 		what = "Data %s shares between its apps, widgets and extensions. Several apps from one developer may rely on it; manage it from the apps.",
 		unknown = "Data shared by apps of one developer, none of which declares it now. The prefix is the developer's team ID. Remove it only when you no longer use that developer's apps."},
 	["~/Library/Daemon Containers"] = {kind = "Service sandbox", system = true,
+		note = "%s service storage · macOS's", unknownNote = "macOS service storage · macOS's",
 		what = "The private storage of a macOS background service (%s). macOS manages it.",
 		unknown = "The private storage of a macOS background service. macOS manages it."},
 	["~/Library/Preferences"] = {kind = "Settings", byId = true,
+		note = "%s's settings · tiny", unknownNote = "Settings of an app no longer installed",
 		what = "%s's settings. Deleting it resets %s to its defaults; quit %s first, since apps rewrite their settings as they quit.",
 		unknown = "Settings of an app that is no longer installed. A few kilobytes; it does no harm."},
 	["/Library/Preferences"] = {kind = "Shared settings", byId = true,
+		note = "%s's settings for everyone", unknownNote = "Settings of software no longer installed",
 		what = "Settings %s keeps for every account.",
 		unknown = "Settings kept for every account by software that is no longer installed."},
 	["~/Library/Saved Application State"] = {kind = "Saved windows", byId = true,
+		note = "%s's reopened windows · safe to remove", unknownNote = "Saved windows · safe to remove",
 		what = "The windows %s reopens when it launches. Safe to remove: %s simply opens fresh.",
 		unknown = "Saved windows of an app that is no longer installed. Safe to remove."},
 	["~/Library/HTTPStorages"] = {kind = "Network storage", byId = true,
+		note = "%s's cookies and web cache", unknownNote = "Cookies of an app no longer installed",
 		what = "Cookies and cached responses from %s's network requests. Removing it may sign %s out of web services.",
 		unknown = "Cookies and cached responses of an app that is no longer installed. Safe to remove."},
 	["~/Library/WebKit"] = {kind = "Web data", byId = true,
+		note = "%s's website data", unknownNote = "Website data of an app no longer installed",
 		what = "Website data of the web pages %s shows in its windows. Removing it may sign %s out of web services.",
 		unknown = "Website data of an app that is no longer installed. Safe to remove."},
 	["~/Library/Logs"] = {kind = "Logs", byId = true, byName = true,
+		note = "%s's logs · old ones can go", unknownNote = "Logs · old ones can go",
 		what = "%s's logs. They help diagnose problems; old logs can go to the Trash.",
 		unknown = "Logs. They help diagnose problems; old logs can go to the Trash."},
 	["~/Library/LaunchAgents"] = {kind = "Login agent", byId = true,
+		note = "%s's login agent", unknownNote = "Login agent of an app no longer installed",
 		what = "A background program launchd starts for %s when you log in. Turn it off in System Settings › General › Login Items & Extensions.",
 		unknown = "A background program launchd starts when you log in, from an app that is no longer installed. Check the program it names, then remove it and log out and back in."},
 	["/Library/LaunchAgents"] = {kind = "Login agent", byId = true,
+		note = "%s's login agent for everyone", unknownNote = "Login agent of software no longer installed",
 		what = "A background program launchd starts for %s when anyone logs in. Turn it off in System Settings › General › Login Items & Extensions.",
 		unknown = "A background program launchd starts at every login, from software that is no longer installed. Removing it needs an administrator; use the developer's uninstaller if there is one."},
 	["/Library/LaunchDaemons"] = {kind = "Startup daemon", byId = true,
+		note = "%s's startup daemon", unknownNote = "Startup daemon of software no longer installed",
 		what = "A background program launchd starts for %s at startup, before anyone logs in. Remove it with %s's uninstaller.",
 		unknown = "A background program launchd starts at startup, from software that is no longer installed. Removing it needs an administrator; use the developer's uninstaller if there is one."},
 	["/Library/PrivilegedHelperTools"] = {kind = "Privileged helper", byId = true,
+		note = "%s's admin helper", unknownNote = "Admin helper of software no longer installed",
 		what = "A helper %s runs as an administrator. Remove it with %s's uninstaller.",
 		unknown = "A helper an app installed to run as an administrator; the app is no longer installed. Use the developer's uninstaller, or remove it together with its startup daemon."},
 	["/System/Library/AssetsV2"] = {kind = "System asset", system = true,
+		note = "macOS download: %s", unknownNote = "macOS download · managed by macOS",
 		what = "Components macOS downloaded for %s. macOS manages them and System Integrity Protection keeps them from being deleted by hand.",
 		unknown = "Components macOS downloaded for one of its features. macOS manages them and System Integrity Protection keeps them from being deleted by hand."},
 }
@@ -104,16 +127,41 @@ Library.services = {
 
 -- Folder names (lowercased) that mean the same wherever they appear.
 Library.names = {
-	["precache"] = {kind = "Not Apple's", what = "Not part of macOS: no Apple folder is called precache. An app or script made it to download something ahead of time, often updates for Content Caching. What macOS itself downloads ahead of time, staged updates, lives in /System/Library/AssetsV2 and is removed by macOS."},
-	[".spotlight-v100"] = {kind = "Spotlight index", owner = "Spotlight", what = "Spotlight's search index for this disk. Rebuild it from Spotlight's Privacy settings rather than deleting it."},
-	[".fseventsd"] = {kind = "File change log", owner = "macOS", what = "The record of file changes Time Machine and Spotlight read. macOS trims it."},
-	[".documentrevisions-v100"] = {kind = "Document versions", owner = "macOS", what = "Earlier versions of documents apps save with Versions. Browse them with File › Revert To in the app."},
-	[".temporaryitems"] = {kind = "Temporary items", owner = "macOS", what = "Files apps save to this disk temporarily. macOS clears it."},
-	[".trashes"] = {kind = "Trash", owner = "Finder", what = "This disk's Trash. Empty the Trash in Finder to free it."},
-	["__macosx"] = {kind = "Archive leftovers", what = "Finder metadata left by extracting a zip made on a Mac. Safe to remove."},
-	[".ds_store"] = {kind = "Finder view settings", owner = "Finder", what = "How Finder shows this folder: icon positions and view options. Tiny; Finder recreates it."},
-	["node_modules"] = {kind = "Packages", what = "JavaScript packages a project installed. npm install or a similar command restores them from the project's lockfile."},
-	["__pycache__"] = {kind = "Compiled Python", what = "Bytecode Python compiles from source files. Safe to remove; Python recreates it."},
+	["precache"] = {note = "Not Apple's · made by an app or script", kind = "Not Apple's", what = "Not part of macOS: no Apple folder is called precache. An app or script made it to download something ahead of time, often updates for Content Caching. What macOS itself downloads ahead of time, staged updates, lives in /System/Library/AssetsV2 and is removed by macOS."},
+	[".spotlight-v100"] = {note = "Spotlight index · rebuilt by macOS", kind = "Spotlight index", owner = "Spotlight", what = "Spotlight's search index for this disk. Rebuild it from Spotlight's Privacy settings rather than deleting it."},
+	[".fseventsd"] = {note = "File change log · trimmed by macOS", kind = "File change log", owner = "macOS", what = "The record of file changes Time Machine and Spotlight read. macOS trims it."},
+	[".documentrevisions-v100"] = {note = "Earlier versions of documents", kind = "Document versions", owner = "macOS", what = "Earlier versions of documents apps save with Versions. Browse them with File › Revert To in the app."},
+	[".temporaryitems"] = {note = "Temporary files · cleared by macOS", kind = "Temporary items", owner = "macOS", what = "Files apps save to this disk temporarily. macOS clears it."},
+	[".trashes"] = {note = "This disk's Trash · empty it in Finder", kind = "Trash", owner = "Finder", what = "This disk's Trash. Empty the Trash in Finder to free it."},
+	["__macosx"] = {note = "Zip extraction leftovers · safe to remove", kind = "Archive leftovers", what = "Finder metadata left by extracting a zip made on a Mac. Safe to remove."},
+	[".ds_store"] = {note = "Finder view settings · tiny", kind = "Finder view settings", owner = "Finder", what = "How Finder shows this folder: icon positions and view options. Tiny; Finder recreates it."},
+	["node_modules"] = {note = "JavaScript packages · reinstalled by npm", kind = "Packages", what = "JavaScript packages a project installed. npm install or a similar command restores them from the project's lockfile."},
+	[".git"] = {note = "Git history of this repository · keep", kind = "Git repository", what = "The repository's whole history, branches and stashes. Removing it turns the folder into plain files; git gc shrinks it."},
+	[".build"] = {note = "Swift build output · rebuilt by swift build", kind = "Build output", what = "What swift build produced for this package: objects, products and resolved dependencies. Safe to remove; the next build makes it again."},
+	[".docker"] = {note = "Docker's settings and contexts · small", kind = "Docker settings", what = "Docker's command-line settings, contexts and credentials helpers. Images and containers live in Docker's own disk image, managed from Docker Desktop."},
+	[".swiftpm"] = {note = "Swift package manager settings", kind = "Swift packages", what = "Swift Package Manager's settings and, inside a package, the Xcode workspace it generates. Safe to remove inside a package; it is made again."},
+	[".config"] = {note = "Command-line tools' settings · small", kind = "Settings", what = "Settings of command-line tools that follow the XDG convention: git, gh, fish and many more. Rarely large."},
+	[".gem"] = {note = "Ruby gems · reinstalled by bundler", kind = "Ruby gems", what = "Ruby gems installed for your account. A project's bundle install restores the ones it needs."},
+	[".conda"] = {note = "Conda environments and packages", kind = "Conda", what = "Conda's environments and package cache. conda clean --all clears the cache; remove environments with conda env remove."},
+	[".cursor"] = {note = "Cursor's extensions and settings", kind = "Editor data", what = "Cursor's extensions and settings. Remove extensions from inside Cursor."},
+	["__pycache__"] = {note = "Compiled Python · rebuilt automatically", kind = "Compiled Python", what = "Bytecode Python compiles from source files. Safe to remove; Python recreates it."},
 }
+
+-- Preboot keeps one folder per macOS installation on the disk, named by the
+-- installation's APFS volume group. Statements checked by listing Preboot on
+-- macOS 27; `cryptex1` holds clones of the cryptexes, so its blocks are
+-- largely the same ones Preboot/Cryptexes counts.
+Library.volumeGroup = {note = "Boot files of this macOS install · not junk", kind = "macOS installation",
+	what = "The boot files of one macOS installation on this disk, named by its volume group's identifier: what the Mac reads before macOS is unlocked, the FileVault login screen and a copy of the cryptexes. Every installed macOS has one; an all-zero name is the placeholder for the startup firmware. macOS manages it and System Integrity Protection keeps it from being changed.",
+	children = {
+		cryptex1 = {note = "This install's cryptexes · counted twice", kind = "Cryptexes", what = "The cryptexes this installation boots with, and while an update is staged the next ones too. They are clones of Preboot's Cryptexes, so adding both folders counts the same blocks twice; the Preboot volume's own size is the true one."},
+		boot = {note = "Kernel and boot loader files", kind = "Boot files", what = "The kernel collection and the files the boot loader checks before starting macOS."},
+		restore = {note = "Manifest to verify or restore macOS", kind = "Restore files", what = "The build manifest and firmware macOS uses to verify this installation and to restore it."},
+		PreLoginData = {note = "FileVault login screen · small", kind = "Login screen", what = "What the FileVault login screen shows before the disk is unlocked: account pictures, keyboard layouts and accessibility settings."},
+		System = {note = "Boot-time system files · small", kind = "Boot files", what = "System files needed before the system volume is mounted."},
+		usr = {note = "Boot-time tools · small", kind = "Boot files", what = "Tools and libraries used before the system volume is mounted."},
+		var = {note = "Boot-time state · small", kind = "Boot files", what = "State macOS keeps across startups before the Data volume is unlocked."},
+		Library = {note = "Boot-time settings · tiny", kind = "Boot files", what = "Settings read before the Data volume is unlocked."},
+	}}
 
 return Library

@@ -2,7 +2,8 @@
   `breakdown` table of the route:
     style            "rings" or "rectangles", the chart style of the window
     center           {title, detail}: the hole of the ring
-    marks            {id, value, color, label, detail or size}: the sectors of the ring
+    marks            {id, value, color, label, detail or size}: the sectors of the ring;
+                     with {parent, ring} a sunburst, its rings splitting the donut's width;
     rectangles       the nodes of the treemap ({id, parent, ...}); the marks when absent
     legend           {id, name, color, size, share, action}
     notes            {title, icon, value, detail}: space no sector shows
@@ -10,7 +11,7 @@
     dragItem, centerAction, accessibilityLabel ]] %>
 <Breakdown id="breakdown" style="<%= style or "rings" %>" explanation="<%= explanation or "No measured items" %>" total="<%= center.title %>" caption="<%= center.detail %>" accessibilityLabel="<%= accessibilityLabel or title %>" <% if dragItem then %>dragItem="<%= dragItem %>" <% end %>onSelect="chartSelect" onHover="chartHover" onCenter="<%= centerAction or "chartCenter" %>">
   <% for _, mark in ipairs(marks) do %>
-  <BreakdownSector id="<%= mark.id %>" value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" detail="<%= mark.detail or mark.size or "" %>" />
+  <BreakdownSector id="<%= mark.id %>"<% if mark.parent then %> parent="<%= mark.parent %>" ring="<%= mark.ring %>"<% end %> value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" detail="<%= mark.detail or mark.size or "" %>" />
   <% end %>
   <% for _, mark in ipairs(rectangles or marks) do %>
   <BreakdownRectangle id="<%= mark.id %>"<% if mark.parent then %> parent="<%= mark.parent %>"<% end %> value="<%= mark.value %>" color="<%= mark.color %>" label="<%= mark.label %>" detail="<%= mark.detail or mark.size or "" %>" />

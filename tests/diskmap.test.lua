@@ -176,7 +176,7 @@ ui.navigation:back()
 t.assertEqual(ui.destination, "overview", "Back restores Overview")
 
 local meterOf = dofile("tests/fixtures/meter.lua")
-t.expect(not meterOf(bridge._tableCell(ui.page.refs.results, 1, 0)).bar.hidden, "measured categories show a share bar")
+t.expect(not meterOf(bridge._tableCell(ui.page.refs.results, 2, 0)).bar.hidden, "measured categories show a share bar")
 local _, loadingIds = Scans:plan()
 -- A running scan is shown by the app's progress window, not by half-filled lists:
 -- the Overview draws its empty state and is drawn again when the scan finishes.
@@ -187,7 +187,7 @@ Scans:cancel(); ui:updateRows()
 t.assertEqual(ui.page.refs.results.rowCount, 23, "the categories return with the scan's end")
 window:layout()
 t.expect(ui.page.refs.page.documentView.frame.size.height > ui.page.refs.page.contentView.bounds.size.height, "the overview scrolls past the category list")
-t.expect(dofile("tests/fixtures/meter.lua")(bridge._tableCell(ui.page.refs.results, 1, 0)).spinner.hidden, "a finished scan leaves no category spinner")
+t.expect(dofile("tests/fixtures/meter.lua")(bridge._tableCell(ui.page.refs.results, 2, 0)).spinner.hidden, "a finished scan leaves no category spinner")
 ui.query = "no match"; ui:updateRows()
 t.assertEqual(ui.page.refs.results.rowCount, 23, "the Overview never filters by text; Search does")
 ui.query = ""; ui:updateRows()

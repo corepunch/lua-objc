@@ -78,22 +78,46 @@ t.expect(Scans:summary({totalKb = 1, freeKb = 0}).lowSpace and not Scans:summary
 local _, warning = xml.renderFile("apps/diskmap/views/components/Warning.etlua", {id = "lowSpace", text = "Less than 10% of this disk is free"}, ns)
 t.assertEqual(warning.lowSpaceText.text, "Less than 10% of this disk is free", "the warning says it in one sentence")
 t.assertEqual(#emptyRefs.breakdownChart.subviews, 3, "an empty chart keeps its track ring and centered total under the pointer view")
-local overviewData = {sections = {{id = "categoriesSection", title = "Categories", detail = "", panelId = "categoriesPanel", view = "components/CategoryList", list = {id = "results"}}},
+local categoryButtons = {}
+local overviewData = {sections = {
+	{id = "categoriesSection", title = "Categories", detail = "", panelId = "categoriesPanel", list = {id = "results", category = true}},
+	{id = "largestSection", title = "Largest items", detail = "", list = {id = "largest", menu = "largestMenu", activate = "openLargest", status = true}}},
 	breakdown = Overview.breakdown(Scans:summary(disk), {marks = chart.marks, legend = {}, explanation = "Measured"}, "rings"),
-	actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, select = function() end, open = function() end, categoryButton = function() end}}
+	actions = {chartSelect = function() end, chartHover = function() end, chartCenter = function() end, select = function() end,
+		open = function() end, categoryButton = function(_, column, row) table.insert(categoryButtons, column .. ":" .. row.id) end,
+		markRow = function() end, largestMenu = function() return {} end,
+		openLargest = function() end}}
 local _, refs = render("BreakdownPage", overviewData)
 t.assertEqual(refs.categoriesPanel.className, "NSBox", "category rows share a native rounded section")
 t.assertEqual(refs.opportunities, nil, "the overview does not repeat reclaim content")
 t.expect(not refs.results.drawsBackground, "the category list lets its native group background show through")
-refs.results:replaceRows({{id = "apps", name = "Applications", size = "Calculating…", calculating = true}})
+refs.results:replaceRows({{id = "apps", name = "Applications", size = "Calculating…", calculating = true, markable = true}})
+refs.largest:replaceRows({{id = "derived", name = "DerivedData", size = "4.9 GB", relative = 0.5, shareText = "8%"}})
 local nameCell = bridge._tableCell(refs.results, 0, 0)
 local meterOf = dofile("tests/fixtures/meter.lua")
-local sizeCell = meterOf(bridge._tableCell(refs.results, 1, 0))
+local sizeCell = meterOf(bridge._tableCell(refs.results, 2, 0))
 t.assertEqual(nameCell.textField.font.pointSize, 13, "category title uses the regular system font")
 t.assertEqual(sizeCell.value.font.pointSize, 13, "size and loading text use the regular system font")
 local unmeasured = sizeCell.bar
 t.expect(not unmeasured.hidden and not unmeasured.enabled and unmeasured.doubleValue == 0,
 	"an unmeasured category keeps an empty, disabled bar under its state")
+refs.page.size = ns.Size(900, 1000); refs.page:layout(900)
+local categoryColumns, largestColumns = bridge._tableColumnWidths(refs.results), bridge._tableColumnWidths(refs.largest)
+t.assertEqual(#categoryColumns, #largestColumns, "Overview tables use one column layout")
+for index, column in ipairs(categoryColumns) do
+	t.assertEqual(column.id, largestColumns[index].id, "Overview column " .. index .. " has the same purpose")
+	t.assertEqual(column.width, largestColumns[index].width, "Overview column " .. index .. " has the same width")
+end
+local categoryMeter = meterOf(bridge._tableCell(refs.results, 2, 0))
+local largestMeter = meterOf(bridge._tableCell(refs.largest, 2, 0))
+t.assertEqual(categoryMeter.bar.frame.size.width, largestMeter.bar.frame.size.width, "Overview fill bars have the same track width")
+t.assertEqual(bridge._tableCellFrames(refs.results, 0)[3].x, bridge._tableCellFrames(refs.largest, 0)[3].x,
+	"Overview fill bars start in the same column")
+t.expect(bridge._tableCell(refs.results, 4, 0).actionButton ~= nil, "category rows retain their navigation button")
+bridge._pressColumnButton(refs.results, 3, 0)
+bridge._pressColumnButton(refs.results, 4, 0)
+t.assertEqual(categoryButtons[1], "review:apps", "the shared row routes the category review action")
+t.assertEqual(categoryButtons[2], "more:apps", "the shared row routes the category navigation action")
 
 local settings, settingsRefs = render("Settings", {page = {title = "Settings", icon = "gearshape", color = "systemBlue"}, monitoring = true, mediaEnabled = false, historyEnabled = false,
 	actions = {toggleMonitor = function() end, toggleMedia = function() end, toggleHistory = function() end, toggleReminder = function() end, toggleSentinel = function() end, openStorage = function() end, openPrivacy = function() end, close = function() end}})
@@ -106,7 +130,7 @@ refs.results.fixedHeight = 44
 refs.page.size = ns.Size(400, 500); refs.page:layout(400)
 t.expect(refs.results.frame.size.height < 80, "category rows keep their height instead of filling the window")
 t.expect(refs.results.frame.size.width <= 400, "category list stays within the page width")
-t.expect(not dofile("tests/fixtures/meter.lua")(bridge._tableCell(refs.results, 1, 0)).spinner.hidden, "section background preserves per-row loading")
+t.expect(not dofile("tests/fixtures/meter.lua")(bridge._tableCell(refs.results, 2, 0)).spinner.hidden, "section background preserves per-row loading")
 -- Every ranking page shares one list: a non-scrolling table whose actions live
 -- in a row menu, so the page itself scrolls and no buttons sit under lists.
 local menuRows = 0
@@ -147,7 +171,8 @@ t.expect(bar.bar.frameInWindow.origin.x - bar.cell.frameInWindow.origin.x <= 8, 
 statuses.size = ns.Size(560, 200); statuses:layout(560)
 local statusWidths = {}
 for _, column in ipairs(bridge._tableColumnWidths(statuses)) do statusWidths[column.id] = column.width end
-t.expect(statusWidths.detail <= 48, "the status column is one symbol wide")
+t.assertEqual(statusWidths.detail, 28, "the status column fits its 20-point symbol with 4-point sides")
+t.assertEqual(statusCell.imageView.frame.origin.x, 4, "the status symbol is centered in its compact column")
 t.expect(statusWidths.shareText >= 180, "the meter fits a lower-bound size such as ≥ 999.9 MB beside its share")
 for status, style in pairs(Status.styles) do
 	t.expect(style.icon:find("%.fill$") ~= nil and style.color ~= nil, status .. " has a filled, coloured symbol")

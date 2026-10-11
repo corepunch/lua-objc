@@ -6,7 +6,7 @@ local Breakdown = {
 	props = {style = {type = "str", default = "rings"}, explanation = "str",
 		total = "str", caption = "str", accessibilityLabel = "str", dragItem = "str", onSelect = "str", onHover = "str", onCenter = "str"},
 	records = {
-		BreakdownSector = {id = "str", value = "num", color = "str", label = "str", detail = "str"},
+		BreakdownSector = {id = "str", parent = "str", ring = "num", value = "num", color = "str", label = "str", detail = "str"},
 		BreakdownRectangle = {id = "str", parent = "str", value = "num", color = "str", label = "str", detail = "str"},
 		BreakdownLegend = {id = "str", label = "str", color = "str", sizeText = "str", share = "str", action = "str"},
 		BreakdownNote = {title = "str", icon = "str", value = "str", detail = "str"},

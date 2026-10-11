@@ -199,13 +199,13 @@ function FolderTree:nodes(focus, coloring, now, depth)
 	local nodes = {}
 	local palette = Palette.new()
 	local function visit(node, parentId, ring, inherited)
-		local other, otherBytes, shown = node.otherCount, node.otherBytes, 0
+		local other, shownBytes = node.otherCount, 0
 		for _, child in ipairs(node.children or {}) do
 			if child.bytes > 0 then
 				if total > 0 and child.bytes / total < FolderTree.minimumShare then
-					other, otherBytes = other + 1, otherBytes + child.bytes
+					other = other + 1
 				else
-					shown = shown + 1
+					shownBytes = shownBytes + child.bytes
 					local branch = inherited
 					if ring == 1 then
 						branch = palette:take(nil)
@@ -218,12 +218,15 @@ function FolderTree:nodes(focus, coloring, now, depth)
 				end
 			end
 		end
-		-- Smaller items are more of their parent, so they keep its hue, as
-		-- on the Map; an outer sliver is left out and the arc ends early.
-		if other > 0 and otherBytes > 0 and (ring == 1 or (total > 0 and otherBytes / total >= FolderTree.minimumShare)) then
-			table.insert(nodes, {id = (parentId or node.path) .. "#other", parent = parentId, value = otherBytes,
-				color = ring == 1 and "systemGray" or inherited, label = Format.count(other) .. " smaller items",
-				detail = Format.size(otherBytes), ring = ring, leaf = true, other = true})
+		-- The top level gathers its smaller items into one gray mark the
+		-- legend names. Deeper, slivers are left out and the chart scales the
+		-- drawn children up to fill their parent's angle (ui/sectors.lua), so
+		-- no ring ends before its parent does.
+		local rest = node.bytes - shownBytes
+		if ring == 1 and rest > 0 then
+			table.insert(nodes, {id = (parentId or node.path) .. "#other", parent = parentId, value = rest,
+				color = "systemGray", label = other > 0 and (Format.count(other) .. " smaller items") or "Other files",
+				detail = Format.size(rest), ring = ring, leaf = true, other = true})
 		end
 	end
 	visit(root, nil, 1, nil)

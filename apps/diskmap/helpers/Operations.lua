@@ -18,10 +18,6 @@ function Operations.forPage(id, data)
 	-- with a double-click and flags with its own button.
 	if id == "basket" then
 		add("history", "Action History", "clock")
-		add("inspect", "Open Contents", "folder")
-		add("reveal", "Show in Finder", "arrow.up.forward.square")
-		add("remove", "Remove Flag", "flag.slash")
-		add("clear", "Clear All Flags", "flag.slash.fill")
 		add("emptyTrash", "Empty Trash…", "trash.fill")
 		add("trash", "Move to Trash", "trash")
 	elseif id == "worktrees" then

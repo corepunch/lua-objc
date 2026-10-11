@@ -162,7 +162,9 @@ local grantedRows = {}
 for _, area in ipairs(Filesystem.presentation(sizes, true, Categories:facts()).areas) do for _, row in ipairs(area.rows) do grantedRows[row.id] = row end end
 t.assertEqual(grantedRows["/Library/Trial"].size, "Not readable", "and is protected once access is on")
 t.assertEqual(rows["/System/Volumes/Data/MobileSoftwareUpdate"].size, "Not measured", "a leftover still measuring says so: a scan shows no row-level progress")
-t.assertEqual(#Filesystem.search("rosetta"), 1, "Search finds a location by what it holds")
+local found = {}
+for _, location in ipairs(Filesystem.search("translated")) do found[location.path] = true end
+t.expect(found["/private/var/db/oah"], "Search finds a location by what it holds")
 t.assertEqual(#Filesystem.search("no such folder"), 0, "a search with no match finds nothing")
 
 -- A volume APFS has not sized reads Not measured, never a spinner.

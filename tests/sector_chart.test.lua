@@ -120,6 +120,13 @@ local overflow = Sectors.layout({{id = "a", value = 1}, {id = "b", value = 1},
 local over = {}
 for _, sector in ipairs(overflow) do over[sector.id] = sector end
 t.expect(math.abs(over.a2.endAngle - over.a.endAngle) < 1e-9, "overflowing children end at their parent's edge")
+-- Children worth less than their parent are scaled up to fill its angle: an
+-- outer ring never ends early.
+local partial = {}
+for _, sector in ipairs(Sectors.layout({{id = "a", value = 10}, {id = "b", value = 10},
+	{id = "a1", parent = "a", ring = 2, value = 3}, {id = "a2", parent = "a", ring = 2, value = 5}}, 200, 0.5, 0)) do partial[sector.id] = sector end
+t.expect(math.abs(partial.a2.spanEnd - partial.a.spanEnd) < 1e-9, "children short of their parent still reach its edge")
+t.expect(math.abs((partial.a2.spanEnd - partial.a2.spanStart) / (partial.a1.spanEnd - partial.a1.spanStart) - 5 / 3) < 1e-9, "and keep their proportions")
 
 -- Interactive charts keep the hovered sector, fade the others, and report
 -- selection.

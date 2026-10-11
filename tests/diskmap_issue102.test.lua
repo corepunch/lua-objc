@@ -101,7 +101,7 @@ local gauge = ns.Gauge {value = 0.4, tint = "systemBlue", thickness = 9}
 t.assertEqual(gauge.intrinsicContentSize.height, 9, "a gauge with a thickness is that tall")
 t.assertEqual(gauge.className, "LuaLevelIndicator", "and is still the native level indicator")
 t.assertEqual(ns.Gauge {value = 0.4}.intrinsicContentSize.height, 18, "without one it keeps AppKit's cell")
-for _, view in ipairs({"components/CategoryList", "components/ResourceList", "pages/SnapshotChanges"}) do
+for _, view in ipairs({"components/ResourceList", "pages/SnapshotChanges"}) do
 	t.expect(source("apps/diskmap/views/" .. view .. ".etlua"):find('levelKey="relative"', 1, true), view .. " draws sizes as the table's native meter")
 end
 

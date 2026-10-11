@@ -137,9 +137,9 @@ page:data()
 t.assertEqual(Model.db.installedApplications, installed, "opening a folder asks which apps are installed")
 local subtitles = {}
 for _, row in ipairs(page.rows) do subtitles[row.name] = row.subtitle end
-t.expect(subtitles["com.apple.bird"]:find("^iCloud Drive · ") ~= nil, "an Apple service's row names its feature")
-t.expect(subtitles["com.tinyspeck.slackmacgap"]:find("^Slack · ") ~= nil, "an app's cache names the app")
-t.expect(subtitles["com.removed.App"]:find("^No installed app · ") ~= nil, "an unclaimed cache says so")
+t.expect(subtitles["com.apple.bird"]:find("^iCloud Drive transfers in progress · ") ~= nil, "an Apple service's row says what it is")
+t.expect(subtitles["com.tinyspeck.slackmacgap"]:find("^Slack's cache · rebuilt when needed · ") ~= nil, "an app's cache names the app")
+t.expect(subtitles["com.removed.App"]:find("^Cache no installed app claims · ") ~= nil, "an unclaimed cache says so")
 t.expect(page:selection().detail:find("^Caches: ") ~= nil, "with nothing selected the line explains the open folder")
 page.selected = mockHome .. "/Library/Caches/com.tinyspeck.slackmacgap"
 local detail = page:selection().detail

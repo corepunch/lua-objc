@@ -46,16 +46,20 @@ function overview:select(_, _, row)
 	if row then self.selectedId = row.id end
 end
 
--- The ring leads into the Map: a category's sector opens the Map inside it,
--- the folded categories and the center open the whole map. Free and
+-- The ring leads into what it shows: a category's or group's sector opens
+-- the Map inside it, a single location (Preboot, DerivedData) opens where
+-- that location goes, its folder in the Folder Map, as its row would. The
+-- folded categories and the center open the whole map. Free and
 -- unattributed space have nothing inside to show.
 function overview:showMap(id)
 	self.app.show("map", {focus = id})
 end
 
 function overview:chartSelect(id)
+	local location = Locations:find(id)
 	if id == Categories.folded then self:showMap("")
-	elseif Locations:find(id) then self:showMap(id) end
+	elseif location and location:isLeaf() then self.app.open(id)
+	elseif location then self:showMap(id) end
 end
 
 function overview:chartCenter() self:showMap("") end
@@ -84,7 +88,7 @@ function overview:data(state)
 	local chart = scanning and {marks = {}, legend = {}, explanation = "Diskmap is measuring your storage. Sizes appear when it finishes."}
 		or Categories:chart(disk)
 	self.marks, self.categoryRows = {}, {}
-	for _, mark in ipairs(chart.marks) do self.marks[mark.id] = mark end
+	for _, mark in ipairs(chart.sunburst or chart.marks) do self.marks[mark.id] = mark end
 	-- A legend row's button is named for its category (`category_developer`).
 	local handlers = {}
 	for _, row in ipairs(chart.legend or {}) do
@@ -110,7 +114,7 @@ function overview:data(state)
 	if #unmeasured.items > 0 then table.insert(data.context, {view = "sections/NotMeasured", data = unmeasured}) end
 	if state.changes then table.insert(data.context, {view = "sections/Changes", data = {changes = state.changes}}) end
 	data.sections = {{id = "categoriesSection", title = "Categories", detail = Categories:coverage(disk), detailId = "coverage", panelId = "categoriesPanel",
-		view = "components/CategoryList", list = {id = "results"}}}
+		list = {id = "results", category = true}}}
 	if #largest > 0 then
 		table.insert(data.sections, {id = "largestSection", title = "Largest items", detail = "Individual resources across every category",
 			link = {id = "showLargest", title = "Show All", action = "showLargest"},

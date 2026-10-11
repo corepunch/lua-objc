@@ -36,22 +36,13 @@ t.expect(page().breakdownChart ~= nil and page().breakdownChart.subviews[1].clas
 t.expect(page().breakdownChart.subviews[1].fitDiameter > 0, "which scale to their pane")
 t.expect(page().mapList.rowCount > 5, "the map lists the focus's children")
 t.expect(page().breakdown ~= nil and page().breakdownSummary ~= nil, "the map uses the shared chart and concise summary")
--- Slivers fold into "Other" so every mark is wide enough to see and point at.
+-- Slivers fold into the top level's gray "Other" or are left out deeper, so
+-- every mark is wide enough to see and point at.
 local mapNodes, mapTotal = Categories:mapNodes("")
 for _, node in ipairs(mapNodes) do
 	t.expect(node.value / mapTotal >= Categories.mapMinimumShare or (node.other and node.ring == 1),
 		"map node " .. node.id .. " is not a sliver")
-end
-local mapById, childCount = {}, {}
-for _, node in ipairs(mapNodes) do
-	mapById[node.id] = node
-	if node.parent then childCount[node.parent] = (childCount[node.parent] or 0) + 1 end
-end
-for _, node in ipairs(mapNodes) do
-	if node.other and node.parent then
-		t.expect(childCount[node.parent] > 1, node.id .. " is never its parent's only child")
-		t.assertEqual(node.color, mapById[node.parent].color, node.id .. " keeps its parent's hue")
-	end
+	if node.other then t.assertEqual(node.color, "systemGray", node.id .. " is gray") end
 end
 app.page.actions.chartSelect("developer", 1)
 t.assertEqual(app.env:page("map").focusId, "developer", "clicking a group focuses it")

@@ -30,13 +30,25 @@ t.expect(Marks:find(container.path).reviewOnly, "owner-managed data is flagged f
 t.expect(not Verify.check(Marks:find(container.path), container, service.home, {}), "inspection never authorizes deletion")
 app:openReview(container.path)
 t.expect(not O(app, "trash").enabled, "review-only items cannot enable bulk Trash")
-t.expect(O(app, "inspect").enabled and O(app, "reveal").enabled, "inspection and Finder are available on the review page")
-app.page.actions.inspect()
+local function inToolbar(id) return (pcall(O, app, id)) end
+t.expect(not inToolbar("inspect") and not inToolbar("reveal") and not inToolbar("remove") and not inToolbar("clear") and inToolbar("trash"),
+	"row actions are on the rows, not in the toolbar")
+local reviewRow = app.page.request.rows[1]
+local titles = {}
+for _, entry in ipairs(app.page.actions.rowMenu(nil, 0, reviewRow)) do table.insert(titles, entry.title or "-") end
+t.assertEqual(table.concat(titles, ","), "Inspect Folder Contents,Show in Finder,Copy Path,-,Remove Flag", "a flagged row's menu carries its actions")
+t.expect(reviewRow.flagged, "a flagged row's flag button is enabled")
+bridge._pressColumnButton(app.page.refs.items, 3, 0)
+t.assertEqual(Marks:count(), 0, "the row's flag button removes its flag")
+app.env.basket:toggle({path = container.path, name = container.name, resourceId = container.id})
+app:openReview(container.path)
+t.expect(not app.page.refs.clear.hidden and app.page.refs.clear.enabled, "Clear All sits beside the list's title")
+app.page.actions.inspect(nil, 0, app.page.request.rows[1])
 t.assertEqual(app.destination, "folder", "inspection opens the actual folder contents")
 t.assertEqual(app.page.request.path, container.path, "the precise selected folder opens")
 app.navigation:back()
 t.assertEqual(app.destination, "basket", "Back returns to review")
-app.page.actions.remove()
+app.page.actions.unflag(nil, 0, app.page.request.rows[1])
 t.assertEqual(Marks:count(), 0, "unflagging changes no other state")
 app:show("map", {focus = "system-data"})
 app.page.actions.drillRow(nil, nil, {id = container.id})

@@ -51,7 +51,7 @@ end
 -- categories of `chart` around the used space.
 function Overview.breakdown(summary, chart, style)
 	return {style = style, explanation = chart.explanation, center = Overview.center(summary),
-		marks = chart.marks, legend = chart.legend, accessibilityLabel = chart.accessibilityLabel}
+		marks = chart.sunburst or chart.marks, rectangles = chart.rectangles, legend = chart.legend, accessibilityLabel = chart.accessibilityLabel}
 end
 
 return Overview

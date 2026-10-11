@@ -222,7 +222,7 @@ static int bridge_tableview(lua_State *L) {
 		col.width = requestedWidth;
 		if (hasExplicitWidth) objc_setAssociatedObject(col, &kKeys[kColumnWidthKey],
 			@(requestedWidth), OBJC_ASSOCIATION_RETAIN);
-		col.minWidth = MAX(kTableColumnMinWidth, requestedMinWidth);
+		col.minWidth = MAX(0, requestedMinWidth);
 		NSTextAlignment alignment = colAlignment
 			? (NSTextAlignment)lookupNameValue(colAlignment,
 				AlignmentMap, NSTextAlignmentLeft)

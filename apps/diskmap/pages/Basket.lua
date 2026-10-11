@@ -20,7 +20,7 @@ local routes = {}
 -- scrolls beyond that rather than stretching the list.
 local LIST = {rowHeight = 44, minRows = 1, maxRows = 12}
 
-local Review = {view = "pages/Basket"}
+local Review = {view = "pages/Basket", queries = {rowMenu = true}}
 routes.basket = Review
 
 function Review:init()
@@ -41,7 +41,7 @@ end
 
 function Review:data()
 	local rows, bytes = Marks:rows()
-	for _, row in ipairs(rows) do row.result = self.results[row.path] or "" end
+	for _, row in ipairs(rows) do row.result, row.flagged, row.flagHelp = self.results[row.path] or "", true, "Remove Flag" end
 	for path, result in pairs(self.done) do
 		table.insert(rows, {id = path, path = path, name = path:match("([^/]+)$"), subtitle = path, size = "", result = result})
 	end
@@ -68,8 +68,7 @@ function Review:data()
 		hidden = {selectedDetails = selected == nil, emptyTrash = (self.movedBytes or 0) <= 0,
 			basketList = #rows == 0 and not busy, basketEmpty = #rows > 0 or busy,
 			revalidation = removable == 0, trash = removable == 0},
-		disabled = {inspect = selected == nil, reveal = selected == nil, remove = busy or not (selected and Marks:contains(selected.path)),
-			trash = busy or removable == 0, clear = busy or pending == 0},
+		disabled = {trash = busy or removable == 0, clear = busy or pending == 0},
 	}
 end
 
@@ -81,14 +80,25 @@ end
 
 function Review:drop(paths) return self:flow("Basket"):drop(paths) end
 
-function Review:inspect() if self.selected then self.app.show("folder", {path = self.selected.path}) end end
-function Review:reveal() if self.selected then self.service.reveal(self.selected.path) end end
-
 function Review:select(_, _, row) self.selectedPath = row and row.path end
 
-function Review:remove()
-	if self.selected then Marks:remove(self.selected.path) end
+-- A row's actions act on that row, not on the selection.
+function Review:inspect(_, _, row) if row then self.app.show("folder", {path = row.path}) end end
+
+function Review:unflag(_, _, row)
+	if row and Marks:contains(row.path) then Marks:remove(row.path) end
 	self.app.basketChanged()
+end
+
+function Review:rowMenu(_, _, row)
+	if not row then return {} end
+	local rows = self:flow("Rows")
+	local items = {rows:inspect(row.path), rows:reveal(row.path), rows:copyPath(row.path)}
+	if Marks:contains(row.path) then
+		table.insert(items, {separator = true})
+		table.insert(items, {title = "Remove Flag", systemImage = "flag.slash", action = function() self:unflag(nil, nil, row) end})
+	end
+	return items
 end
 
 function Review:clear()

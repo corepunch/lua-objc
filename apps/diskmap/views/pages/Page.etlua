@@ -35,10 +35,7 @@
     <% if waiting then %>
     <ContentUnavailable id="waiting" title="<%= waiting.title %>" systemImage="<%= waiting.systemImage %>" description="<%= waiting.description %>" />
     <% elseif computing then %>
-    <HStack id="computing" spacing="10" alignment="center">
-      <ProgressView controlSize="small" />
-      <Label id="computingStatus" text="<%= computing %>" size="13" color="secondary" lines="1" />
-    </HStack>
+    <%- partial("../components/Computing.etlua", {status = computing}) %>
     <% else %>
     <% for _, slot in ipairs(layout.leads or {}) do %>
     <VStack id="<%= slot %>" spacing="0" alignment="leading">

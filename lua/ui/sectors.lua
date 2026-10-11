@@ -93,9 +93,10 @@ end
 -- an inset of 1.5 makes a 3pt gap); the gap is converted to degrees at each
 -- ring's inner edge. https://developer.apple.com/documentation/charts/sectormark Non-positive values occupy
 -- no angle; a lone first-ring sector is a closed ring without a gap. Child
--- marks share their parent's angle by value; a remainder stays empty, and
--- children worth more than their parent are scaled down to fit its angle
--- rather than spilling into a neighbour's.
+-- marks share their whole parent's angle by value: whatever their sum, they
+-- are scaled to fill it exactly, so an outer ring never ends before or
+-- spills past its parent. Children too small to draw are left to the caller
+-- to leave out; the rest fill the angle.
 function Sectors.layout(marks, diameter, innerRadius, angularInset)
 	local rings, byRing = 1, {}
 	for _, mark in ipairs(marks or {}) do
@@ -139,8 +140,7 @@ function Sectors.layout(marks, diameter, innerRadius, angularInset)
 			local span = parent.spanEnd - parent.spanStart
 			local children = 0
 			for _, mark in ipairs(groups[parentId]) do children = children + math.max(0, tonumber(mark.value) or 0) end
-			local share = math.max(parent.value, children)
-			for _, sector in ipairs(spread(groups[parentId], parent.spanStart, span, share, gapFor(band), ring, band)) do
+			for _, sector in ipairs(spread(groups[parentId], parent.spanStart, span, children, gapFor(band), ring, band)) do
 				table.insert(result, sector)
 				if sector.id then next[sector.id] = sector end
 			end

@@ -136,7 +136,8 @@ function map:data(state)
 	-- what Diskmap measured. Saying both keeps the two pages reconcilable.
 	local disk = state.disk
 	local used = disk and disk.totalKb and disk.totalKb > 0 and (disk.totalKb - disk.freeKb) * 1024 or nil
-	local marks, legend = Breakdown.rows(rows)
+	-- The ring shows the same three levels as the rectangles, as a sunburst.
+	local _, legend = Breakdown.rows(rows)
 	local detail = Format.size(total) .. " measured"
 		.. (self.focusId == "" and (used and used >= total and (" of " .. Format.size(used) .. " used · shares are of what was measured")
 			or " across every category") or "")
@@ -144,7 +145,7 @@ function map:data(state)
 	-- name, as Finder titles a window by its folder. Back returns up a level.
 	return {lists = {mapList = rows}, title = #trail > 1 and trail[#trail].name or nil, subtitle = detail,
 		breakdown = {style = self.app.chartStyle,
-			marks = marks, rectangles = nodes, legend = legend, dragItem = "dragPath", center = self.center, centerAction = "up",
+			marks = nodes, rectangles = nodes, legend = legend, dragItem = "dragPath", center = self.center, centerAction = "up",
 			accessibilityLabel = "Storage map of " .. trail[#trail].name .. ", " .. #nodes .. " areas"},
 		sections = {{id = "mapSection", title = "Contents", list = {id = "mapList", menu = "rowMenu", selectAction = "selectRow", activate = "drillRow"}}}}
 end

@@ -39,4 +39,20 @@ t.assertEqual(wide.role, 110, "wide again: the declared width comes back")
 t.assertEqual(wide.date, 150, "wide again: every declared width comes back")
 t.expect(wide.name > 180, "wide: the flexible column takes the rest")
 
+-- A declared icon-only column can be narrower than the default text-column
+-- minimum. Unspecified columns still get the native table's default minimum.
+local _, compactRefs = xml.render([[<List id="compact" style="fullWidth" header="false">
+	<Column id="name" title="Name" />
+	<Column id="status" title="Status" width="28" minWidth="28" imageKey="statusIcon" imageSize="20" labelStyle="iconOnly" />
+</List>]], {}, ns)
+local compact = compactRefs.compact
+compact:replaceRows({{name = "Example", status = "Review", statusIcon = "eye.fill"}})
+compact.size = ns.Size(300, 100); compact:layout(300)
+local compactWidths = bridge._tableColumnWidths(compact)
+t.assertEqual(compactWidths[1].minWidth, 40, "a column without a minimum keeps the default")
+t.assertEqual(compactWidths[2].minWidth, 28, "an explicit icon column minimum is honored")
+t.assertEqual(compactWidths[2].width, 28, "an icon column uses its declared width")
+local iconCell = bridge._tableCell(compact, 1, 0)
+t.assertEqual(iconCell.imageView.frame.origin.x, 4, "the 20-point symbol is centered in the 28-point cell")
+
 os.exit(t.summary() and 0 or 1)
