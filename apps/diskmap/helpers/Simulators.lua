@@ -1,12 +1,12 @@
 local Format = require("apps.diskmap.helpers.Format")
 local Simulators = {}
 local UUID = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
--- Devices unused for this long are worth a look; the threshold is a review
--- hint, never a deletion rule, and devices without a recorded use never match.
+-- Devices not booted for this long are worth a look; the threshold is a
+-- review hint, never a deletion rule, and devices without a recorded boot
+-- never match.
 Simulators.staleDays = 90
 
--- Days since an ISO 8601 timestamp ("2026-09-20T16:20:00Z"), or nil when the
--- date is missing or unreadable.
+-- Days since an ISO 8601 timestamp ("2026-09-20T16:20:00Z"), or nil.
 function Simulators.age(timestamp, now)
 	if type(timestamp) ~= "string" then return nil end
 	local year, month, day = timestamp:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)")
@@ -15,8 +15,6 @@ function Simulators.age(timestamp, now)
 	return math.max(0, math.floor(((now or os.time()) - then_) / 86400))
 end
 
--- The SF Symbol for a device or runtime name: lists have no column headers,
--- so the symbol says what kind of device a row is.
 local SYMBOLS = {{"ipad", "ipad"}, {"watch", "applewatch"}, {"tv", "appletv"}, {"vision", "vision.pro"}, {"xr", "vision.pro"}}
 function Simulators.symbol(name)
 	local lowered = (name or ""):lower()
@@ -26,44 +24,77 @@ function Simulators.symbol(name)
 	return "iphone"
 end
 
-function Simulators.rows(inventory, now)
-	local rows, runtimes = {}, {}
-	for _, runtime in ipairs(inventory.runtimes or {}) do runtimes[runtime.identifier] = runtime.name end
-	for runtime, devices in pairs(inventory.devices or {}) do
-		for _, device in ipairs(devices) do
+-- "iOS 26.0" from a runtime identifier.
+function Simulators.runtimeName(identifier)
+	if type(identifier) ~= "string" or identifier == "" or identifier == "unknown" then return "Unknown runtime" end
+	local body = identifier:gsub("^com%.apple%.CoreSimulator%.SimRuntime%.", "")
+	local product, major, minor = body:match("^(%a+)%-(%d+)%-(%d+)$")
+	if product then return product .. " " .. major .. "." .. minor end
+	return (body:gsub("%-", " "))
+end
+
+-- Device rows from simctl's device list joined with the measured device
+-- folders: `devices` is `{[runtime] = {{udid, name, state, isAvailable,
+-- lastBootedAt, deviceTypeIdentifier}}}`, `folders[udid]` is {path, bytes,
+-- used, state}. A device simctl does not list but whose folder exists is
+-- orphaned: its data is unreachable from Xcode.
+function Simulators.deviceRows(devices, folders, now)
+	local rows, seen = {}, {}
+	for runtime, list in pairs(devices or {}) do
+		for _, device in ipairs(list) do
+			seen[device.udid] = true
+			local folder = folders[device.udid] or {}
 			local name = device.name or "Unnamed device"
-			local runtimeName = runtimes[runtime] or runtime:gsub("com.apple.CoreSimulator.SimRuntime.", ""):gsub("%-", " ")
 			local available = device.isAvailable
 			local running
 			if device.state == "Shutdown" then running = false
 			elseif device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down" then running = true end
-			local age = Simulators.age(device.lastUsedAt, now)
-			-- A value names itself or stays empty: a dash in a list without
-			-- headers says nothing.
-			table.insert(rows, {id = device.udid, name = name, runtime = runtimeName,
-				icon = Simulators.symbol(name .. " " .. runtimeName), color = available == false and "systemOrange" or "systemBlue",
-				state = available == false and "Unavailable" or (device.state or "State unknown"),
-				available = available, running = running, path = device.dataPath,
-				bytes = device.dataPathSize, size = Format.size(device.dataPathSize), age = age,
-				runtimeIdentifier = runtime, deviceType = device.deviceType,
-				lastUse = age and Format.used(Format.ago(age)) or "Last use unknown"})
+			local age = Simulators.age(device.lastBootedAt, now)
+			local row = {id = device.udid, path = folder.path or ("~/Library/Developer/CoreSimulator/Devices/" .. device.udid), udid = device.udid,
+				name = name, owner = Simulators.runtimeName(runtime), icon = Simulators.symbol(name),
+				available = available, running = running, bytes = folder.bytes, used = folder.used, state = folder.state or "missing",
+				runtimeIdentifier = runtime, deviceType = device.deviceTypeIdentifier, age = age,
+				detail = available == false and "Unavailable" or (device.state or "State unknown")}
+			row.what = "The simulator device " .. name .. " on " .. row.owner .. ": its installed apps, accounts and data."
+			if available == false then
+				row.verdict, row.action = "safe", "delete"
+				row.reason = "Its runtime is no longer installed, so Xcode cannot boot it; only its data remains."
+			elseif running then
+				row.verdict, row.action = "keep", "none"
+				row.reason = "It is running now."
+			elseif age and age >= Simulators.staleDays then
+				row.verdict, row.action = "review", "erase"
+				row.reason = "Not booted for " .. Format.plural(age, "day") .. ". Erasing keeps the device and removes its apps and data; deleting removes the device too."
+			else
+				row.verdict, row.action = "review", "erase"
+				row.reason = (age and ("Booted " .. Format.ago(age):lower() .. ". ") or "Never booted on record. ") .. "Erasing keeps the device and removes its apps and data."
+			end
+			table.insert(rows, row)
+		end
+	end
+	for udid, folder in pairs(folders or {}) do
+		if not seen[udid] then
+			table.insert(rows, {id = udid, path = folder.path, udid = udid, name = folder.name or udid, owner = Simulators.runtimeName(folder.runtime),
+				icon = Simulators.symbol(folder.name), bytes = folder.bytes, used = folder.used, state = folder.state or "measured",
+				available = false, running = false, detail = "Not listed by simctl", verdict = "safe", action = "delete",
+				what = "A device folder simctl no longer lists. Xcode cannot reach it.",
+				reason = "simctl does not list this device, so only its folder remains."})
 		end
 	end
 	table.sort(rows, function(a, b) if (a.bytes or 0) ~= (b.bytes or 0) then return (a.bytes or 0) > (b.bytes or 0) end; return (a.id or "") < (b.id or "") end)
 	return rows
 end
+
 local PLATFORMS = {
 	["com.apple.platform.iphonesimulator"] = "iOS", ["com.apple.platform.appletvsimulator"] = "tvOS",
 	["com.apple.platform.watchsimulator"] = "watchOS", ["com.apple.platform.xrsimulator"] = "visionOS",
 }
 
--- Installed runtimes from `xcrun simctl runtime list -j`: an object keyed by
--- runtime image UUID. Unknown fields stay unknown; sizes are never invented.
--- Device counts come from the device inventory's runtime identifiers.
-function Simulators.runtimeRows(list, inventory, now)
-	local rows = {}
-	local counts = {}
-	for runtime, devices in pairs(inventory and inventory.devices or {}) do counts[runtime] = #devices end
+-- Installed runtimes from `xcrun simctl runtime list -j`: an object keyed
+-- by runtime image UUID. Device counts come from the device list.
+function Simulators.runtimeRows(list, devices, now)
+	local rows, counts = {}, {}
+	for runtime, list_ in pairs(devices or {}) do counts[runtime] = #list_ end
 	for key, entry in pairs(type(list) == "table" and list or {}) do
 		if type(entry) == "table" then
 			local id = type(entry.identifier) == "string" and entry.identifier or tostring(key)
@@ -74,14 +105,21 @@ function Simulators.runtimeRows(list, inventory, now)
 			local age = Simulators.age(entry.lastUsedAt, now)
 			local build = type(entry.build) == "string" and entry.build or nil
 			local bytes = tonumber(entry.sizeBytes)
-			local devices = counts[entry.runtimeIdentifier] or 0
-			table.insert(rows, {id = id, name = name, icon = Simulators.symbol(platform), color = "systemIndigo", subtitle = table.concat({build and ("Build " .. build) or nil,
-				type(entry.kind) == "string" and entry.kind or nil, type(entry.state) == "string" and entry.state or nil}, " · "),
+			local count = counts[entry.runtimeIdentifier] or 0
+			local row = {id = "runtime:" .. id, runtimeId = id, name = name, icon = Simulators.symbol(platform), owner = "Simulator",
+				detail = count == 0 and "No devices" or Format.plural(count, "device"),
 				platform = platform, version = version, runtimeIdentifier = entry.runtimeIdentifier,
-				bytes = bytes, size = Format.size(bytes), deletable = entry.deletable == true,
-				devices = devices, deviceText = devices == 0 and "No devices" or Format.plural(devices, "device"),
-				lastUse = age and Format.used(Format.ago(age)) or "Last use unknown",
-				path = type(entry.path) == "string" and entry.path or nil})
+				bytes = bytes, state = bytes and "measured" or "failed", deletable = entry.deletable == true, devices = count,
+				path = type(entry.path) == "string" and entry.path or nil,
+				what = "The " .. name .. " simulator runtime" .. (build and (", build " .. build) or "") .. ": the operating system image simulator devices boot. Xcode downloads it again from Settings › Components."}
+			if not row.deletable then
+				row.verdict, row.action, row.reason = "keep", "none", "simctl reports it as not deletable: it is the one Xcode bundles, or it is in use."
+			elseif count == 0 then
+				row.verdict, row.action, row.reason = "safe", "runtimeDelete", "No device uses it" .. (age and (", last used " .. Format.ago(age):lower()) or "") .. "."
+			else
+				row.verdict, row.action, row.reason = "review", "runtimeDelete", row.detail .. " run on it; they become unavailable without it."
+			end
+			table.insert(rows, row)
 		end
 	end
 	table.sort(rows, function(a, b)
@@ -91,73 +129,39 @@ function Simulators.runtimeRows(list, inventory, now)
 	return rows
 end
 
--- Totals for the page header. Unmeasured devices and runtimes add no bytes.
-function Simulators.summary(inventory, runtimes, now)
-	local result = {devices = 0, deviceBytes = 0, unavailable = 0, unavailableBytes = 0, stale = 0, staleBytes = 0,
-		runtimes = #(runtimes or {}), runtimeBytes = 0, unknownAvailability = 0}
-	for _, row in ipairs(Simulators.rows(inventory or {}, now)) do
-		result.devices = result.devices + 1
-		result.deviceBytes = result.deviceBytes + (row.bytes or 0)
-		if row.available == nil then result.unknownAvailability = result.unknownAvailability + 1 end
-		if row.available == false then
-			result.unavailable = result.unavailable + 1
-			result.unavailableBytes = result.unavailableBytes + (row.bytes or 0)
-		end
-		if row.age and row.age >= Simulators.staleDays then
-			result.stale = result.stale + 1
-			result.staleBytes = result.staleBytes + (row.bytes or 0)
-		end
+-- The simctl command for an action on a row, or nil with a refusal.
+function Simulators.command(action, row)
+	if action == "runtimeDelete" then
+		if type(row.runtimeId) ~= "string" or not row.runtimeId:match(UUID) then return nil, {message = "Runtime identifier is not a UUID."} end
+		if row.deletable ~= true then return nil, {message = "simctl reports this runtime as not deletable; manage it in Xcode."} end
+		return {"/usr/bin/xcrun", "simctl", "runtime", "delete", row.runtimeId}
 	end
-	for _, row in ipairs(runtimes or {}) do result.runtimeBytes = result.runtimeBytes + (row.bytes or 0) end
-	return result
+	if action ~= "erase" and action ~= "delete" then return nil, {message = "Simulator action is not supported."} end
+	if type(row.udid) ~= "string" or not row.udid:match(UUID) then return nil, {message = "Simulator identifier is not a UUID."} end
+	if row.running == nil then return nil, {message = "Device state could not be checked. Retry or manage this device in Xcode."} end
+	if row.running then return nil, {message = "Shut down the simulator before changing it."} end
+	if action == "erase" and row.available ~= true then return nil, {message = "Unavailable simulators cannot be erased."} end
+	return {"/usr/bin/xcrun", "simctl", action, row.udid}
 end
 
--- Deleting a runtime removes an operating system image. Only images simctl
--- reports as deletable qualify; Keep on runtimes protects every image, and
--- devices on the runtime become unavailable (their data remains).
-function Simulators.validateRuntime(row, kept)
-	if not row then return false, {code = "missing_runtime", message = "No runtime is selected."} end
-	if type(row.id) ~= "string" or not row.id:match(UUID) then return false, {code = "invalid_uuid", message = "Runtime identifier is not a UUID."} end
-	if row.deletable ~= true then return false, {code = "not_deletable", message = "simctl reports this runtime as not deletable; manage it in Xcode."} end
-	if kept and kept("runtimes") then return false, {code = "kept_resource", message = "Keep protects simulator runtimes."} end
-	return true
-end
-function Simulators.runtimeCommand(row, kept)
-	local ok, err = Simulators.validateRuntime(row, kept)
-	if not ok then return nil, err end
-	return {"/usr/bin/xcrun", "simctl", "runtime", "delete", row.id}
-end
-function Simulators.runtimeImpact(row)
-	return "Delete " .. row.name .. "?\n" .. row.id .. "\n\nRemoves this simulator operating system (" .. row.size .. "). "
-		.. (row.devices > 0 and (row.deviceText .. " using it will become unavailable; their data stays until you delete them. ") or "")
-		.. "Xcode can download it again from Settings › Components."
+-- A device's current record from a fresh simctl listing, as deviceRows
+-- reads it, for the check just before an action.
+function Simulators.refresh(row, listed)
+	for runtime, devices in pairs(listed and listed.devices or {}) do
+		for _, device in ipairs(devices) do
+			if device.udid == row.udid then
+				local fresh = {}
+				for key, value in pairs(row) do fresh[key] = value end
+				fresh.available = device.isAvailable
+				if device.state == "Shutdown" then fresh.running = false
+				elseif device.state == "Booted" or device.state == "Booting" or device.state == "Shutting Down" then fresh.running = true
+				else fresh.running = nil end
+				fresh.runtimeIdentifier = runtime
+				return fresh
+			end
+		end
+	end
+	return nil
 end
 
--- `kept(id)`, when given, says whether Keep protects a location or a device
--- (Locations.keeps): the Simulators category, or the device itself.
-function Simulators.validate(action, row, kept)
-	if action ~= "erase" and action ~= "delete" then return false, {code = "unsupported_action", message = "Simulator action is not supported."} end
-	if not row then return false, {code = "missing_device", message = "No simulator device is selected."} end
-	if type(row.id) ~= "string" or not row.id:match(UUID) then return false, {code = "invalid_uuid", message = "Simulator identifier is not a UUID."} end
-	if row.running == nil then return false, {code = "state_unknown", message = "Device state could not be checked. Retry or manage this device in Xcode."} end
-	if row.running then return false, {code = "device_running", message = "Shut down the simulator before changing it."} end
-	if action == "erase" and row.available ~= true then return false, {code = "device_unavailable", message = "Unavailable simulators cannot be erased."} end
-	if kept then
-		if kept("simulators") then return false, {code = "kept_resource", message = "Keep protects simulator storage."} end
-		if kept(Simulators.keepKey(row.id)) then return false, {code = "kept_device", message = "This device is marked Keep."} end
-	end
-	return true
-end
--- Keep for one device, beside Keep for the whole Simulators category. The
--- device's identifier is the key, so the choice survives renames.
-function Simulators.keepKey(udid) return "simulator:" .. tostring(udid) end
-function Simulators.command(action, row, kept)
-	local ok, err = Simulators.validate(action, row, kept)
-	if not ok then return nil, err end
-	return {"/usr/bin/xcrun", "simctl", action, row.id}
-end
-function Simulators.impact(action, row)
-	return (action == "erase" and "Erase contents of " or "Delete ") .. row.name .. "?\n" .. row.runtime .. " · " .. row.id .. "\n\nPermanently removes installed test apps, accounts and device data (" .. row.size .. "). " ..
-		(action == "delete" and "The device is also removed. " or "The device remains available. ") .. "Installed runtimes are preserved. This cannot be undone."
-end
 return Simulators

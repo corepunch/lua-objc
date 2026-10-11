@@ -22,17 +22,14 @@ column, 24pt margin and 16pt section spacing from
 The shell owns the content stack. A page never declares its own outer stack,
 page scroll view, outer margin, width cap or body-height constant. Table
 bodies use `flexGrow="1" flexBasis="0" maxHeight="infinity"`. There are no
-window footers or conditional item-count bars; flags use the Review toolbar
-badge. Selection details belong within the page beside their related content.
+window footers or conditional item-count bars. Selection details belong within the page beside their related content.
 Never cap the window's content host (`layouts/Content.etlua`): a scrolling
 page keeps its scroll bar at the window edge.
 
-Overview, Storage Map, Folder Map and File Types compose the same `Breakdown`
-widget in `ContentPage`: a compact native chart on the left, a concise legend
-on the right, and the complete list below. The icon button shows the alternate
-chart mode. In rectangle mode the chart spans the whole widget, with no side legend.
-Switching modes never removes the complete list below. Page and selection operations belong in `NSToolbar`;
-row flags and context menus stay local.
+Diskmap's Overview draws the disk as one `CapacityBar`, the bar System
+Settings › Storage draws, and every source page is sections of one native
+list (`views/components/ItemList.etlua`). Page operations belong in
+`NSToolbar`; row actions and context menus stay local.
 
 Why: Apple caps reading width in its own layouts (UIKit's
 `readableContentGuide` is 672pt at the default text size; a grouped SwiftUI
@@ -62,7 +59,7 @@ beside it, and neither leaves the card empty above and below the other.
 - The center text is in the units of the diameter, so ring and total
   shrink together. Never give a chart a `diameter` and then a different
   `maxWidth`: that is two sizes for one thing.
-- A chart that *is* the page content (Storage Map, Folder Map) fills its
+- A chart that *is* the page content fills its
   pane instead: `maxWidth`/`maxHeight="infinity"`, and the pane, not a
   constant, decides.
 - The minimums in one row must add up to no more than the row's width at
@@ -97,5 +94,4 @@ not gray.
   below the window's `minWidth`/`minHeight` is clamped to it, as a drag
   is, so a capture never shows a size no one can reach.
 - `rg 'outsideParent="true"|cropped="true"'` in the `.layout.xml`.
-- Headless tests: `tests/diskmap_ring_sizing.test.lua`,
-  `tests/sector_chart_sizing.test.lua`, `tests/diskmap_palette.test.lua`.
+- Headless tests: `tests/sector_chart_sizing.test.lua`, `tests/diskmap_pages.test.lua`.

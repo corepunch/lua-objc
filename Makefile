@@ -72,7 +72,7 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 
 uikit: build/UIKit.dylib
 
-build/StorageScan.dylib: src/plugins/storage/StorageScan.m src/plugins/storage/Duplicates.m Makefile
+build/StorageScan.dylib: src/plugins/storage/StorageScan.m Makefile
 	mkdir -p build
 	$(CC) $(CFLAGS) -mmacosx-version-min=26.0 $(MODULE_LDFLAGS) -framework Foundation -lcompression -o $@ $<
 
@@ -144,26 +144,13 @@ run-layout: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
 run-ide: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES)
 	./$(LUA_OBJC_BIN) demo/ide/init.lua
 
-# Usage: make run-diskmap                      # scans this repo (~28ms)
-#        make run-diskmap DIR=~/Developer/icui  # scan a specific dir
+# Usage: make run-diskmap                      # this Mac, with this repo open in the Folder Map
+#        make run-diskmap DIR=~/Developer/icui  # open a specific folder
 run-diskmap: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	./$(LUA_OBJC_BIN) apps/diskmap/init.lua $(or $(DIR),$(CURDIR))
+	./$(LUA_OBJC_BIN) apps/diskmap/init.lua --folder=$(or $(DIR),$(CURDIR))
 
-# Diskmap against a saved snapshot of a disk (apps/diskmap/README.md, "Mock HDD").
-# Usage: make diskmap-mock-export   # snapshot this Mac; keep the window open
-#                                   # until it says "Saved N file names…"
-#        make diskmap-mock          # open Diskmap on that snapshot
-#        make diskmap-mock MOCK=/path/to/other.bin
-#        make diskmap-showcase      # the bundled synthetic disk, for captures
-DISKMAP_MOCK ?= $(HOME)/Library/Application Support/Diskmap/mock-hdd.bin
-MOCK ?= $(DISKMAP_MOCK)
-diskmap-mock-export: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	./$(LUA_OBJC_BIN) --export-mock="$(MOCK)" apps/diskmap/init.lua
-
-diskmap-mock: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	@test -f "$(MOCK)" || { echo "No snapshot at $(MOCK); run make diskmap-mock-export first" >&2; exit 1; }
-	./$(LUA_OBJC_BIN) --mock-file="$(MOCK)" apps/diskmap/init.lua
-
+# Diskmap over the synthetic developer's Mac (services/Fixture.lua), for
+# screenshots and walkthroughs.
 diskmap-showcase: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 	./$(LUA_OBJC_BIN) apps/diskmap/init.lua --showcase
 
@@ -343,7 +330,7 @@ ipad-deploy:
 list-devices:
 	xcrun devicectl list devices
 
-.PHONY: diskmap-app diskmap-mock diskmap-mock-export diskmap-showcase
+.PHONY: diskmap-app diskmap-showcase
 diskmap-app: diskmap-xcode-build
 
 DISKMAP_XCODE_PROJECT = apps/diskmap/Diskmap.xcodeproj
@@ -389,44 +376,6 @@ xcode:
 	else \
 		echo "usage: make xcode APP=diskmap|dnb TARGET=macos" >&2; exit 2; \
 	fi
-
-# Diskmap showreel (reels/diskmap, rendered with modules/reel): `make
-# diskmap-reel` renders build/Diskmap-Showreel.mov, first capturing the pages
-# when reels/diskmap/captures is empty (generated, not committed). Capturing
-# runs reels/diskmap/capture.lua in one Diskmap launch, which opens its
-# window; `make diskmap-reel-captures` recaptures after a UI change.
-DISKMAP_CAPTURE = ./$(LUA_OBJC_BIN) --capture-plan=reels/diskmap/capture.lua --width=1280 --height=800 \
-	apps/diskmap/init.lua --showcase
-# Diskmap's tour screenshots (apps/diskmap/tour, committed JPEGs): captured
-# from the showcase disk in light and dark and cropped to each page by the plan.
-.PHONY: diskmap-tour-captures
-diskmap-tour-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	./$(LUA_OBJC_BIN) --capture-plan=apps/diskmap/tour/capture.lua --width=1100 --height=688 \
-		apps/diskmap/init.lua --showcase
-
-# Diskmap's Mac App Store screenshots (apps/diskmap/store-assets/en/screenshots,
-# committed JPEGs): five promotional artboards with real showcase windows,
-# exported at 2880 × 1800 without transparency. PYTHON must provide Pillow/NumPy.
-DISKMAP_STORE_PYTHON ?= python3
-.PHONY: diskmap-store-screenshots
-diskmap-store-screenshots: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	mkdir -p build/diskmap-store
-	./$(LUA_OBJC_BIN) --capture-plan=apps/diskmap/store-assets/capture.lua --width=1280 --height=640 \
-		apps/diskmap/init.lua --showcase
-	$(DISKMAP_STORE_PYTHON) scripts/diskmap-store-promos.py
-
-.PHONY: diskmap-store-preview
-diskmap-store-preview:
-	@test -f build/Diskmap-Showreel.mov || (echo "Run make diskmap-reel first" >&2; exit 1)
-	swift -module-cache-path build/diskmap-store/swift-cache scripts/diskmap-store-preview.swift
-
-.PHONY: diskmap-reel diskmap-reel-captures
-diskmap-reel: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	@ls reels/diskmap/captures/*.png >/dev/null 2>&1 || $(DISKMAP_CAPTURE)
-	./$(LUA_OBJC_BIN) reels/diskmap/init.lua render build/Diskmap-Showreel.mov
-
-diskmap-reel-captures: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
-	$(DISKMAP_CAPTURE)
 
 # The lua-objc promo (reels/promo): `make promo-reel` renders
 # build/videos/lua-objc-Promo.mov, first capturing the apps when

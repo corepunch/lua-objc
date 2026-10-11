@@ -1,51 +1,15 @@
 <App name="Diskmap" startup="overview" controller="Controller">
-	<Page id="overview" title="Overview" icon="chart.pie.fill" color="systemBlue" key="1" />
-	<Page id="cleanup" title="Clean Up" icon="sparkles" color="systemIndigo" key="2" />
-	<Page id="basket" title="Flagged for Review" sidebar="Flagged" icon="flag.fill" color="systemOrange" />
-	<Section title="Free Up Space">
-		<Page id="applications" title="Applications" icon="square.grid.3x3.fill" color="systemBlue" key="3" />
-		<Page id="files" arg="kind" title="Large Files" icon="doc.fill" color="systemTeal" key="4" />
-		<Page id="duplicates" title="Duplicates" icon="doc.on.doc.fill" color="systemTeal" />
-		<Page id="simulators" title="Simulators" icon="iphone" color="systemBlue" workflow="developer" />
-		<Page id="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" workflow="developer" />
-		<Page id="projects" title="Projects" icon="folder.fill.badge.gearshape" color="systemOrange" workflow="developer" />
+	<Page id="overview" title="Overview" icon="internaldrive.fill" color="systemBlue" key="1" />
+	<Section title="Sources">
+		<Page id="xcode" route="category" category="xcode" title="Xcode" icon="hammer.fill" color="systemBlue" key="3" />
+		<Page id="simulators" route="category" category="simulators" title="Simulators" icon="iphone" color="systemIndigo" key="4" />
+		<Page id="projects" route="category" category="projects" title="Projects" icon="shippingbox.fill" color="systemOrange" key="5" />
+		<Page id="worktrees" route="category" category="worktrees" title="Worktrees" icon="arrow.triangle.branch" color="systemPurple" key="6" />
+		<Page id="packages" route="category" category="packages" title="Packages" icon="cube.box.fill" color="systemTeal" key="7" />
+		<Page id="editors" route="category" category="editors" title="Editors" icon="chevron.left.forwardslash.chevron.right" color="systemGreen" key="8" />
+		<Page id="ai" route="category" category="ai" title="AI Tools" icon="sparkles" color="systemPink" key="9" />
+		<Page id="system" route="category" category="system" title="System Data" icon="gearshape.2.fill" color="systemGray" key="0" />
 	</Section>
-	<Section title="Explore">
-		<Page id="map" arg="focus" title="Storage Map" icon="circle.circle.fill" color="systemIndigo" key="5" />
-		<Page id="folder" arg="path" title="Folder Map" icon="folder.fill" color="systemBlue" />
-		<Page id="largest" title="Largest Locations" icon="chart.bar.fill" color="systemOrange" key="6" />
-		<Page id="kinds" title="File Types" icon="square.grid.2x2.fill" color="systemPink" key="7" />
-	</Section>
-	<Section title="System">
-		<Page id="disks" title="Disks &amp; Volumes" icon="internaldrive.fill" color="systemGray" />
-		<Page id="updates" title="Updates &amp; Snapshots" icon="arrow.triangle.2.circlepath" color="systemGray" />
-	</Section>
-	<Section title="Everyday">
-		<Page id="everyday" route="workflow" title="Everyday Apps" sidebar="Apps" icon="bubble.left.and.bubble.right.fill" color="systemCyan" workflow="everyday" />
-	</Section>
-	<Section title="Developer">
-		<Page id="developer" route="workflow" title="Developer tools" sidebar="Dev tools" icon="hammer.fill" color="systemPurple" key="8" workflow="developer" />
-		<Page id="xcode" title="Xcode" icon="hammer.circle.fill" color="systemBlue" key="9" workflow="developer" />
-	</Section>
-	<Section title="Creative &amp; Games">
-		<Page id="music" route="workflow" title="Music Production" sidebar="Music" icon="pianokeys" color="systemPink" workflow="music" />
-		<Page id="video" route="workflow" title="Video Production" sidebar="Video" icon="film.fill" color="systemPurple" workflow="video" />
-		<Page id="photography" route="workflow" title="Photography" icon="camera.fill" color="systemOrange" workflow="photography" />
-		<Page id="design" route="workflow" title="Design" icon="paintbrush.pointed.fill" color="systemTeal" workflow="design" />
-		<Page id="studio3d" route="workflow" title="3D &amp; Game Engines" sidebar="3D &amp; Engines" icon="cube.fill" color="systemIndigo" workflow="studio3d" />
-		<Page id="games" route="workflow" title="Games" icon="gamecontroller.fill" color="systemGreen" workflow="games" />
-	</Section>
-	<Section title="Learn">
-		<Page id="guide" route="topics" arg="topic" title="Storage Guide" icon="book.fill" color="systemTeal" source="Guide" />
-		<Page id="filesystem" title="macOS Folders" icon="apple.logo" color="systemGray" />
-		<Page id="help" route="topics" arg="topic" title="Diskmap Help" icon="questionmark.circle.fill" color="systemBlue" source="Help" />
-	</Section>
-	<Page id="search" title="Search" icon="magnifyingglass" color="systemGray" listed="false" />
-
-	<Page id="settings" title="Settings" icon="gearshape" color="systemBlue" listed="false" />
+	<Page id="folder" arg="path" title="Folder Map" icon="folder.fill" color="systemBlue" listed="false" />
 	<Page id="history" title="Action History" icon="clock" color="systemBlue" listed="false" />
-	<Page id="sdks" title="SDKs" icon="hammer" color="systemBlue" listed="false" />
-	<Page id="snapshotChanges" title="Snapshot Changes" icon="clock.arrow.circlepath" color="systemBlue" listed="false" />
-	<Page id="tour" title="Diskmap Tour" icon="book" color="systemBlue" listed="false" />
-	<Page id="onboarding" title="Storage Access" icon="lock.open" color="systemBlue" listed="false" />
 </App>

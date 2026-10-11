@@ -59,22 +59,9 @@ local function ownerOf(name, rule, facts, path)
 		if id then name = id end
 	end
 	local installed = facts.apps and Leftovers.owner(name, facts.apps, rule.byName)
-	if installed then -- The sentence for the packages an installer receipt names
--- (`pkgutil --file-info` lists each as "pkgid: com.example.pkg"), or nil.
-function Explain.packages(output)
-	local ids = {}
-	for id in (output or ""):gmatch("pkgid: ([^\n]+)") do table.insert(ids, id) end
-	return ids
-end
-function Explain.package(ids)
-	if not ids or #ids == 0 then return nil end
-	if #ids == 1 then return "Installed by the package " .. ids[1] .. "." end
-	return "Installed by the package " .. ids[1] .. " and " .. (#ids - 1) .. " more."
-end
-
-return Explain.names(installed) end
+	if installed then return Explain.names(installed) end
 	local service = id and apple(id) or Library.services[name:lower()]
-	if service then return service end
+	if service then return service, true end
 	return nil
 end
 
@@ -84,11 +71,12 @@ local function byRule(rule, name, facts, path, fallback)
 	local asset = name:match("^com_apple_MobileAsset_(.+)$")
 	if asset then
 		asset = asset:gsub("_", " ")
-		return {owner = "macOS", kind = rule.kind, what = fill(rule.what, asset), note = fill(rule.note, asset)}
+		return {owner = "macOS", apple = true, kind = rule.kind, what = fill(rule.what, asset), note = fill(rule.note, asset)}
 	end
-	local owner = ownerOf(name, rule, facts, path) or fallback
-	if owner then return {owner = owner, kind = rule.kind, what = fill(rule.what, owner), note = fill(rule.note, owner)} end
-	if rule.system then return {owner = "macOS", kind = rule.kind, what = rule.unknown, note = rule.unknownNote} end
+	local owner, isApple = ownerOf(name, rule, facts, path)
+	owner = owner or fallback
+	if owner then return {owner = owner, apple = isApple == true, kind = rule.kind, what = fill(rule.what, owner), note = fill(rule.note, owner)} end
+	if rule.system then return {owner = "macOS", apple = true, kind = rule.kind, what = rule.unknown, note = rule.unknownNote} end
 	-- Only an identifier no installed app claims is evidence of a removed
 	-- app; "vscode-cpptools" may belong to a tool, a helper or a plug-in.
 	local identified = Leftovers.identifier((name:gsub("%.plist$", ""))) or name:match("^%x+%-%x+%-%x+%-%x+%-%x+$")
@@ -101,14 +89,14 @@ function Explain.path(path, facts)
 	facts = facts or {}
 	local short = tilde(path, facts.home)
 	local location = Map.find(short) or Map.find(path)
-	if location then return {owner = location.owner, kind = location.name, what = location.what, note = location.note} end
+	if location then return {owner = location.owner, apple = true, kind = location.name, what = location.what, note = location.note} end
 	local inGroup = path:match("^/System/Volumes/Preboot/%x+%-%x+%-%x+%-%x+%-%x+(.*)$")
 	local group = inGroup == "" and Library.volumeGroup or inGroup and Library.volumeGroup.children[inGroup:match("^/([^/]+)$") or ""]
-	if group then return {owner = "macOS", kind = group.kind, what = group.what, note = group.note} end
+	if group then return {owner = "macOS", apple = true, kind = group.kind, what = group.what, note = group.note} end
 	local name = short:match("([^/]+)$")
 	if not name then return nil end
 	local named = Library.names[name:lower()]
-	if named then return {owner = named.owner, kind = named.kind, what = named.what, note = named.note} end
+	if named then return {owner = named.owner, apple = named.owner ~= nil, kind = named.kind, what = named.what, note = named.note} end
 	local parent = short:match("^(.*)/[^/]+$")
 	local container, inside = short:match("^~/Library/Containers/([^/]+)/(.+)$")
 	if container then

@@ -1,0 +1,29 @@
+<% --[[ Any folder as a list: the trail above it, Up beside the trail, and
+  the contents largest first, filling the page. ]] %>
+<TablePage id="page">
+  <%- partial("../components/Notice.etlua", {id = "notice", text = notice}) %>
+  <% if phase == "empty" then %>
+  <ContentUnavailable id="folderEmpty" title="Open a Folder" systemImage="folder.badge.plus" description="Choose File › Open Folder…, drop a folder onto this window, or use Look Inside on any item." flexGrow="1" flexBasis="0" maxHeight="infinity" />
+  <% elseif phase == "failed" then %>
+  <ContentUnavailable id="folderFailed" title="Could Not Measure This Folder" systemImage="exclamationmark.triangle" description="<%= failure %>" flexGrow="1" flexBasis="0" maxHeight="infinity" />
+  <% elseif phase == "measuring" then %>
+  <HStack id="measuringRow" spacing="8" alignment="center">
+    <ProgressView indeterminate="true" controlSize="small" />
+    <Label id="measuringStatus" text="<%= measuring %>" size="13" color="secondary" />
+    <Spacer />
+    <Button title="Stop" action="stop" />
+  </HStack>
+  <% else %>
+  <HStack id="trailRow" spacing="8" alignment="center" maxWidth="infinity">
+    <Button id="up" title="Up" systemImage="chevron.up" action="up" help="Show the enclosing folder" />
+    <Label id="trailLabel" text="<%= trail %>" size="13" weight="semibold" flexGrow="1" flexBasis="0" flexShrink="1" lines="1" truncation="middle" />
+  </HStack>
+  <List flexGrow="1" flexBasis="0" flexShrink="1" maxHeight="infinity" id="folderList" rowMenu="rowMenu" dragKey="path" onSelect="selectRow" onActivate="drillRow" onColumnButton="removeRow" style="fullWidth" header="false" alternatingRows="false" gridLines="horizontal" rowHeight="44">
+    <Column id="name" title="Name" subtitleKey="subtitle" imageKey="icon" badgeColorKey="color" imageSize="28" minWidth="220" />
+    <Column id="shareText" title="Size" width="150" minWidth="130" levelKey="relative" levelColorKey="color" valueKey="size" />
+    <Column id="remove" title="Remove" width="40" minWidth="40" buttonSymbol="trash" enabledKey="removable" helpKey="removeHelp" />
+    <Column id="more" title="" width="40" minWidth="40" buttonSymbol="ellipsis.circle" buttonMenu="true" />
+  </List>
+  <% if footnote ~= "" then %><%- partial("../components/Footnote.etlua", {id = "footnote", text = footnote}) %><% end %>
+  <% end %>
+</TablePage>

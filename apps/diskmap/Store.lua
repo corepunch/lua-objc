@@ -1,32 +1,23 @@
 local Model = require("data.model")
-local Catalog = require("apps.diskmap.Catalog")
-local Locations = require("apps.diskmap.models.Locations")
 
--- Diskmap's store: the tables its models read (lua/data/model.lua), built
--- from the catalog for one home folder. A scan, the services and the pages
--- fill and change it; nothing else holds Diskmap's state.
+-- Diskmap's store: the tables its models read (lua/data/model.lua). The
+-- sources fill `items`, the person's flags are `marks`, Keep is `kept`;
+-- nothing else holds Diskmap's state.
 --
---   home, includeMedia    the folder measured and whether media libraries are
---   locations             the catalog's locations (models/Locations.lua)
---   measurements          a location's size by its id: {status, bytes, ...}
---   kept                  ids a person keeps out of suggestions
---   scan, files           the running or last scan and the files it ranked
---   breakdowns            a location's immediate children, by its id
+--   home             the home folder
+--   items            every measured row, by id (models/Items.lua)
+--   marks            what is flagged for review, by path (models/Marks.lua)
+--   kept             item ids a person keeps out of suggestions (models/Keeps.lua)
+--   scan             {generation, running, status, pending}: the measurement in progress
+--   folders          project folders the person added
+--   disk             {freeKb, totalKb} of the startup disk, refreshed after a change
+--   capacity         {total, available} of the startup volume
+--   installedApplications   the apps Spotlight knows, once read, for owner inference
 local Store = {}
 
--- A new store for `home`, bound as the one every model reads: an app builds
--- one per window, and a test builds the one it checks.
 function Store.new(home)
-	local db = Model.bind({home = home, includeMedia = false, measurements = {}, kept = {}, scan = {}, breakdowns = {}})
-	local locations, err = Locations.seed(db, Catalog.tree(home))
-	assert(locations, err and err.message or "Could not build Diskmap locations")
-	for _, row in ipairs(Locations:leaves()) do
-		if row.mediaAccess then db.measurements[row.id] = {status = "excluded"} end
-		-- rawget: a catalog row's `measurement` field, not the Location:measurement method.
-		local measurement = rawget(row, "measurement")
-		if measurement then db.measurements[row.id] = {status = measurement} end
-	end
-	return db
+	return Model.bind({home = home, items = {}, marks = {}, kept = {}, folders = {},
+		scan = {generation = 0, running = false, status = "", pending = {}}})
 end
 
 return Store

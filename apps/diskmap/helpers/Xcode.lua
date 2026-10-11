@@ -32,17 +32,18 @@ local function newer(a, b)
 	return false
 end
 
--- Rows for Device Support entries ({platform, name, path, bytes}), newest
--- first per platform. The newest version of each platform is kept: it is
--- the one a connected device most likely needs.
+-- Rows for Device Support entries ({platform, name, path, bytes, used}),
+-- newest first per platform. The newest version of each platform is kept:
+-- it is the one a connected device most likely needs; older ones Xcode
+-- copies again from the device the next time it runs that version.
 function Xcode.supportRows(entries)
 	local rows = {}
 	for _, entry in ipairs(entries or {}) do
 		local parsed = Xcode.parseSupport(entry.name)
 		table.insert(rows, {id = entry.path, path = entry.path, platform = entry.platform, parts = parsed.parts,
-			name = entry.platform .. " " .. (parsed.version or entry.name),
-			subtitle = table.concat({parsed.build and ("Build " .. parsed.build) or nil, parsed.model}, " · "),
-			bytes = entry.bytes, size = Format.size(entry.bytes)})
+			name = entry.platform .. " " .. (parsed.version or entry.name), owner = "Xcode",
+			what = "Debug symbols Xcode copied from a device running " .. (parsed.version or entry.name) .. (parsed.model and (" (" .. parsed.model .. ")") or "") .. ". Xcode copies them again the next time it debugs a device on this version.",
+			bytes = entry.bytes, used = entry.used, state = entry.state or "measured"})
 	end
 	table.sort(rows, function(a, b)
 		if a.platform ~= b.platform then return a.platform < b.platform end
@@ -53,15 +54,17 @@ function Xcode.supportRows(entries)
 	for _, row in ipairs(rows) do
 		row.keep = not seen[row.platform]
 		seen[row.platform] = true
-		row.status = row.keep and "Newest · keep" or "Older"
+		row.verdict = row.keep and "keep" or "safe"
+		row.reason = row.keep and ("The newest " .. row.platform .. " version on this Mac: the one a connected device most likely needs.")
+			or ("An older " .. row.platform .. " version. Xcode copies the symbols again when it next debugs a device on it.")
+		row.action = row.keep and "none" or "trash"
 		row.parts = nil
 	end
 	return rows
 end
 
 -- Folders Xcode keeps in DerivedData for every project at once. They are
--- caches, not projects, so they are named for what they hold and never
--- counted as a project whose workspace is unknown.
+-- caches, not projects, so they are named for what they hold.
 Xcode.sharedCaches = {
 	["ModuleCache.noindex"] = "Module cache",
 	["SymbolCache.noindex"] = "Symbol cache",
@@ -82,22 +85,29 @@ function Xcode.derivedRows(entries)
 	local rows = {}
 	for _, entry in ipairs(entries or {}) do
 		local shared = Xcode.sharedCache(entry.name)
+		local base = {id = entry.path, path = entry.path, bytes = entry.bytes, used = entry.used, state = entry.state or "measured", owner = "Xcode", action = "trash"}
 		if shared then
-			table.insert(rows, {id = entry.path, path = entry.path, name = shared, bytes = entry.bytes, size = Format.size(entry.bytes),
-				subtitle = "Shared by every project · Xcode rebuilds it", missing = false, shared = true, status = "Shared"})
-			goto continue
+			base.name, base.shared, base.verdict = shared, true, "safe"
+			base.what = "A cache Xcode shares between every project. Xcode rebuilds it."
+			base.reason = "Shared by every project and rebuilt by Xcode as it builds."
+		else
+			local workspace = type(entry.workspace) == "string" and entry.workspace or nil
+			base.name = workspace and workspace:match("([^/]+)%.xc[a-z]+$") or entry.name:match("^(.-)%-%l+$") or entry.name
+			base.missing = workspace ~= nil and entry.exists == false
+			base.workspace = workspace
+			base.what = "Build products and the code index of " .. base.name .. ". The next build and indexing of the project take longer without them."
+			if base.missing then
+				base.verdict, base.reason = "safe", "Its project, " .. workspace .. ", no longer exists, so nothing can reuse this build data."
+			elseif workspace then
+				base.verdict, base.reason = "review", "Its project is still at " .. workspace .. ". Xcode rebuilds the data on the next build, which takes longer."
+			else
+				base.verdict, base.reason = "review", "Xcode did not record which project this belongs to."
+			end
 		end
-		local workspace = type(entry.workspace) == "string" and entry.workspace or nil
-		local name = workspace and workspace:match("([^/]+)%.xc[a-z]+$")
-			or entry.name:match("^(.-)%-%l+$") or entry.name
-		local missing = workspace ~= nil and entry.exists == false
-		table.insert(rows, {id = entry.path, path = entry.path, name = name, bytes = entry.bytes, size = Format.size(entry.bytes),
-			subtitle = workspace or "Workspace not recorded", missing = missing,
-			status = missing and "Missing" or workspace and "Present" or "Unknown"})
-		::continue::
+		table.insert(rows, base)
 	end
 	table.sort(rows, function(a, b)
-		if a.missing ~= b.missing then return a.missing end
+		if (a.missing == true) ~= (b.missing == true) then return a.missing == true end
 		if (a.shared == true) ~= (b.shared == true) then return b.shared == true end
 		if (a.bytes or 0) ~= (b.bytes or 0) then return (a.bytes or 0) > (b.bytes or 0) end
 		return a.path < b.path
@@ -105,9 +115,10 @@ function Xcode.derivedRows(entries)
 	return rows
 end
 
--- Archives ({path, name, plist, bytes}): app, version and creation date from
--- the archive's Info.plist, oldest first so review starts with the least
--- likely to be needed. Archives are never pre-selected.
+-- Archives ({path, name, plist, bytes, used}): app, version and creation
+-- date from the archive's Info.plist, oldest first so review starts with the
+-- least likely to be needed. Archives are never called safe: without one,
+-- crash reports for that version cannot be symbolicated.
 function Xcode.archiveRows(entries)
 	local rows = {}
 	for _, entry in ipairs(entries or {}) do
@@ -117,11 +128,12 @@ function Xcode.archiveRows(entries)
 		local build = properties.CFBundleVersion
 		local created = type(plist.CreationDate) == "string" and plist.CreationDate:sub(1, 10)
 			or type(entry.date) == "string" and entry.date or ""
-		table.insert(rows, {id = entry.path, path = entry.path,
-			name = type(plist.Name) == "string" and plist.Name or entry.name:gsub("%.xcarchive$", ""),
-			subtitle = version and ("Version " .. version .. (build and (" (" .. build .. ")") or "")) or "Version not recorded",
-			date = created, status = created ~= "" and ("Created " .. created) or "Date unknown",
-			bytes = entry.bytes, size = Format.size(entry.bytes)})
+		local name = type(plist.Name) == "string" and plist.Name or entry.name:gsub("%.xcarchive$", "")
+		table.insert(rows, {id = entry.path, path = entry.path, name = name, owner = "Xcode",
+			detail = version and ("Version " .. version .. (build and (" (" .. build .. ")") or "")) or "Version not recorded",
+			date = created, bytes = entry.bytes, used = entry.used, state = entry.state or "measured", verdict = "review", action = "trash",
+			what = "A shipped build of " .. name .. " with its debug symbols" .. (created ~= "" and (", archived " .. created) or "") .. ". Without it, crash reports for this version cannot be symbolicated.",
+			reason = "Keep archives of versions people still run; Diskmap cannot tell which those are."})
 	end
 	table.sort(rows, function(a, b)
 		if a.date ~= b.date then return a.date < b.date end
@@ -129,60 +141,5 @@ function Xcode.archiveRows(entries)
 	end)
 	return rows
 end
-
-function Xcode.total(rows, filter)
-	local bytes = 0
-	for _, row in ipairs(rows or {}) do
-		if not filter or filter(row) then bytes = bytes + (row.bytes or 0) end
-	end
-	return bytes
-end
-
--- Three reviewable lists, in the order they are usually worth cleaning.
-Xcode.sections = {
-	{id = "support", title = "Device Support", status = true, icon = "iphone.gen3", color = "systemBlue",
-		detail = "Symbols Xcode copies from each device OS version you debug. The newest version per platform is kept.",
-		bulkTitle = "Mark Older Versions", bulkHelp = "Mark every version except the newest per platform",
-		consequence = "Debug symbols for one OS version. Xcode copies them again the next time you debug a device running it."},
-	{id = "derived", title = "DerivedData", status = true, icon = "hammer", color = "systemOrange",
-		detail = "Build products and indexes per project. Folders whose project no longer exists come first; caches shared by every project come last.",
-		bulkTitle = "Mark Missing Projects", bulkHelp = "Mark build data of projects that no longer exist",
-		consequence = "Build products and the code index. The next build and indexing of this project take longer."},
-	{id = "archives", title = "Archives", detailColumn = true, icon = "archivebox", color = "systemPurple",
-		detail = "Shipped builds with their debug symbols, oldest first. Keep archives for versions people still run.",
-		consequence = "A shipped build and its dSYMs. Without it, crash reports for this version cannot be symbolicated."},
-}
-
--- Row statuses as Status symbols: the newest device support stays (red);
--- build data of a missing project is safe to remove (green); older versions
--- and build data of a present or unknown project need a look (orange).
--- Caches shared by every project are rebuilt by Xcode (green).
-Xcode.statuses = {["Newest · keep"] = "Keep", Older = "Review", Missing = "Rebuildable", Present = "Review", Unknown = "Review",
-	Shared = "Rebuildable"}
-
-
-function Xcode.item(section, row)
-	return {path = row.path, name = row.name .. (row.subtitle ~= "" and (" · " .. row.subtitle) or ""), bytes = row.bytes,
-		source = "Xcode · " .. section.title, consequence = section.consequence}
-end
-
-function Xcode.bulkable(section, row)
-	if section.id == "support" then return not row.keep end
-	if section.id == "derived" then return row.missing end
-	return false
-end
-
--- Copies of a section's rows, which the page annotates without touching the
--- inventory.
-function Xcode.copies(rows)
-	local copies = {}
-	for _, row in ipairs(rows or {}) do
-		local copy = {}
-		for key, value in pairs(row) do copy[key] = value end
-		table.insert(copies, copy)
-	end
-	return copies
-end
-
 
 return Xcode

@@ -1,0 +1,28 @@
+<% --[[ A source: its sections, each a list of items (ItemList). The page
+  is named by the window title; `summary` says what the source is. ]] %>
+<ContentPage id="page">
+  <HStack id="leadRow" spacing="12" alignment="center" maxWidth="infinity">
+    <Label id="summary" text="<%= summary %>" size="13" color="secondary" flexGrow="1" flexBasis="0" flexShrink="1" lines="0" />
+    <Button id="addFolder" title="Add Folder…" action="addFolder" help="Search another folder for projects and worktrees" />
+    <Button id="removeSafe" title="Remove Safe Items…" style="borderedProminent" action="removeSafe" help="Remove every item marked safe on this page, after one confirmation" />
+  </HStack>
+  <%- partial("../components/Warning.etlua", {id = "note", text = note}) %>
+  <%- partial("../components/Notice.etlua", {id = "notice", text = notice}) %>
+  <HStack id="measuring" spacing="8" alignment="center">
+    <ProgressView indeterminate="true" controlSize="small" />
+    <Label text="Measuring…" size="13" color="secondary" />
+  </HStack>
+  <ContentUnavailable id="empty" title="<%= emptyTitle %>" systemImage="checkmark.circle" description="<%= emptyText %>" />
+  <% for _, section in ipairs(sections) do %>
+  <VStack id="section_<%= section.id %>" spacing="8" alignment="leading" maxWidth="infinity">
+    <HStack spacing="12" alignment="bottom">
+      <%- partial("../components/SectionHeader.etlua", {title = section.title, detail = section.detail}) %>
+      <Spacer />
+      <Label id="size_<%= section.id %>" text="<%= section.size %>" size="13" weight="semibold" monospacedDigit="true" />
+    </HStack>
+    <GroupBox>
+      <%- partial("../components/ItemList.etlua", {id = section.listId, detail = true}) %>
+    </GroupBox>
+  </VStack>
+  <% end %>
+</ContentPage>

@@ -285,7 +285,7 @@ error and long-text states.
 ## Examples in this repository
 
 - [Diskmap](https://github.com/corepunch/lua-objc/tree/main/apps/diskmap):
-  the reference for the sidebar shape, thirteen models, pages as routes, flows,
+  the reference for the sidebar shape, models, pages as routes, flows,
   components and sheets.
 - [Adventure Arena](https://github.com/corepunch/lua-objc/tree/main/apps/adventure-arena):
   the reference for the tab-bar shape on iOS, with a ZIL interpreter as a service.

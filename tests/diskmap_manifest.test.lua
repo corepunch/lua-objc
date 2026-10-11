@@ -1,51 +1,28 @@
--- Diskmap's page set, sidebar and Go menu come from one file, app.xml.
 _G.__headless = true
 local t = require("TestKit")
 local Manifest = require("data.manifest")
-local App = require("data.app")
-local Mock = require("apps.diskmap.services.Mock")
-local Controller = require("apps.diskmap.Controller")
+local Routes = require("data.routes")
 local Navigation = require("apps.diskmap.controllers.NavigationController")
-local Workflows = require("apps.diskmap.models.Workflows")
 
+-- The manifest (app.xml): few pages, each with a route and a view, the
+-- sidebar as VISION.md draws it.
 local manifest = Manifest.load("apps/diskmap/app.xml")
-t.assertEqual(App.launcher("apps/diskmap/app.xml"), Controller, "the manifest's root controller is the launch class")
-t.assertEqual(manifest.startup, "overview", "the startup page")
-
--- Every page of the file is built, and nothing else is.
-local app = Controller.new(Mock.new())
-local expected = 0
+local routes = require("apps.diskmap.routes")
+t.assertEqual(manifest.startup, "overview", "the app opens on the Overview")
 for _, entry in ipairs(manifest.order) do
-	expected = expected + 1
-	t.expect(app.env.manifest.pages[entry.id] ~= nil, entry.id .. " is registered")
+	local route = Routes.find(routes, entry)
+	t.expect(route ~= nil, entry.id .. " has a route")
+	local file = io.open("apps/diskmap/views/" .. route.view .. ".etlua")
+	t.expect(file ~= nil, entry.id .. " has a view")
+	if file then file:close() end
 end
-local built = 0
-for _ in pairs(app.env.manifest.pages) do built = built + 1 end
-t.assertEqual(built, expected, "the page table holds exactly the manifest's pages")
-
--- The sidebar rows are the manifest's, in order, with headers for sections.
-local rows, index = {}, 0
-for _, section in ipairs(manifest.sections) do
-	if section.title then table.insert(rows, "section:" .. section.title) end
-	for _, page in ipairs(section.pages) do table.insert(rows, page.id) end
-end
-for _, row in ipairs(Navigation.destinations) do
-	index = index + 1
-	t.assertEqual(row.section and ("section:" .. row.title) or row.id, rows[index], "sidebar row " .. index .. " follows app.xml")
-end
-t.assertEqual(index, #rows, "and there are no others")
-t.assertEqual(manifest.pages.watched, nil, "size tracking has no route")
-
--- The Go menu lists the same pages.
-local data = app.commands:data()
 local listed = {}
-for _, section in ipairs(data.sections) do for _, page in ipairs(section.pages) do listed[page.id] = true end end
-for _, entry in ipairs(manifest.order) do
-	t.assertEqual(listed[entry.id] == true, entry.listed, entry.id .. (entry.listed and " is" or " is not") .. " in the Go menu")
-end
+for _, row in ipairs(Navigation.destinations) do if row.id then table.insert(listed, row.id) end end
+t.assertEqual(table.concat(listed, " "), "overview xcode simulators projects worktrees packages editors ai system", "the sidebar leads with Overview, then the sources")
+t.assertEqual(Navigation.destinations[2].title, "Sources", "the sources sit under one header")
+t.assertEqual(#manifest.order, 11, "eleven pages in all, two of them unlisted")
+t.expect(manifest.pages.folder.attrs.arg == "path", "the Folder Map carries its folder in its location")
+local keys = {}
+for _, entry in ipairs(manifest.order) do if entry.key then t.expect(not keys[entry.key], "key " .. entry.key .. " is used once"); keys[entry.key] = true end end
 
--- Workflow pages are gated on their own work, and each names its workflow.
-for _, workflow in ipairs(Workflows:all()) do
-	t.assertEqual(manifest.pages[workflow.id].attrs.workflow, workflow.id, workflow.id .. " page is gated on its workflow")
-end
 os.exit(t.summary() and 0 or 1)

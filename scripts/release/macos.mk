@@ -29,7 +29,7 @@ $(ROOT)/Launcher.o: scripts/launcher/launcher.c scripts/release/macos.mk
 	xcrun --sdk macosx clang $(FLAGS) -c $< -o $@
 $(ROOT)/Launcher: $(ROOT)/Launcher.o
 	xcrun --sdk macosx clang $(FLAGS) $< -framework CoreFoundation -Wl,-needed_framework,CoreServices -o $@
-$(ROOT)/StorageScan.o: src/plugins/storage/StorageScan.m src/plugins/storage/Duplicates.m scripts/release/macos.mk
+$(ROOT)/StorageScan.o: src/plugins/storage/StorageScan.m scripts/release/macos.mk
 	@mkdir -p $(@D)
 	xcrun --sdk macosx clang $(FLAGS) -fobjc-arc -fPIC -c $< -o $@
 $(ROOT)/StorageScan.dylib: $(ROOT)/StorageScan.o

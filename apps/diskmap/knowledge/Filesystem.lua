@@ -1,14 +1,8 @@
 -- A map of the macOS file system: every location worth knowing on a Mac
 -- running macOS 26 or later, what it holds, who may read it and where
--- leftovers collect. It is plain data, read three ways:
---
--- · the macOS Folders page presents it area by area, with live sizes, so a
---   person can learn what goes where and how much it takes;
--- · the scan skips `guard = "sip"` and `guard = "owner"` locations, which no
---   app can read, and the Overview names them instead of blaming Full Disk
---   Access for them;
--- · locations marked `leftover` become catalog resources (catalog/Leftovers)
---   so an interrupted update or install shows up in Clean Up.
+-- leftovers collect. It is plain data, read by helpers/Explain.lua so the
+-- Folder Map and the System Data page can say what a folder is and whose,
+-- and which locations no app can read.
 --
 -- Location fields:
 --   path      exact path; "~" is the home folder
@@ -19,11 +13,8 @@
 --   guard     who may read it (see Filesystem.guards); nil when apps can
 --   volume    APFS role whose own used space is the location's size
 --   expected  present on every Mac of this macOS version
---   resource  catalog id that measures it
 --   feature   what several locations serve together, named once
 --   owner     the app or macOS service that writes it, as a person knows it
---   leftover  {id, remover, threshold, advice}: where interrupted or stale
---             data stays, and who clears it (restart, update, finder)
 --
 -- Guards, sizes and presence were verified with `ls -ldO`, `stat -f %Xf`
 -- and `diskutil apfs list` on macOS 27. A location missing from a Mac is
@@ -50,13 +41,13 @@ Filesystem.areas = {
 				what = "The Signed System Volume: a sealed, read-only snapshot of macOS. Its size changes only with a macOS update."},
 			{path = "/System/Volumes/Data", name = "Macintosh HD – Data", note = "Your files and everything apps write", volume = "Data", expected = true,
 				what = "Everything that is yours and everything macOS writes at runtime. Firmlinks show its folders at the top of the disk."},
-			{path = "/System/Volumes/Preboot", name = "Preboot", note = "Boot files and Safari for macOS · not junk", volume = "Preboot", expected = true, resource = "preboot",
+			{path = "/System/Volumes/Preboot", name = "Preboot", note = "Boot files and Safari for macOS · not junk", volume = "Preboot", expected = true,
 				what = "Boot files, the FileVault unlock screen and the cryptexes that carry Safari and the shared code cache. It grows while an update is staged and shrinks once it installs. Its files are clones, so adding them up counts shared blocks several times; the volume's own size is the true one."},
-			{path = "/System/Volumes/Recovery", name = "Recovery", note = "Reinstall and repair system · keep", volume = "Recovery", expected = true, resource = "recovery",
+			{path = "/System/Volumes/Recovery", name = "Recovery", note = "Reinstall and repair system · keep", volume = "Recovery", expected = true,
 				what = "The recoveryOS used to reinstall macOS, restore from Time Machine or repair the disk. Usually not mounted; its size comes from APFS."},
-			{path = "/System/Volumes/VM", name = "Swap", note = "Memory swapped to disk · a restart frees it", volume = "VM", expected = true, resource = "vm",
+			{path = "/System/Volumes/VM", name = "Swap", note = "Memory swapped to disk · a restart frees it", volume = "VM", expected = true,
 				what = "Swap files macOS pages memory out to under memory pressure, and the sleep image on Intel Macs. Restarting releases swap."},
-			{path = "/System/Volumes/Update", name = "Update", note = "Where macOS updates are prepared", volume = "Update", expected = true, resource = "update-volume",
+			{path = "/System/Volumes/Update", name = "Update", note = "Where macOS updates are prepared", volume = "Update", expected = true,
 				what = "Where Software Update prepares a macOS update. A few hundred megabytes between updates; gigabytes while one is prepared or stuck."},
 		}},
 	{id = "preboot", title = "Inside Preboot", icon = "power",
@@ -78,32 +69,30 @@ Filesystem.areas = {
 	{id = "top", title = "The top of the disk", icon = "folder",
 		summary = "What Finder shows at the top of Macintosh HD, and the hidden Unix folders beside it.",
 		locations = {
-			{path = "/Applications", name = "Applications", note = "Apps installed for everyone", expected = true, resource = "apps-system-other",
+			{path = "/Applications", name = "Applications", note = "Apps installed for everyone", expected = true,
 				what = "Apps installed for everyone. Apple's own apps live on the sealed system volume at /System/Applications and only appear here."},
-			{path = "/System/Applications", name = "Apple apps", note = "Apps that ship with macOS · can't be removed", expected = true, resource = "apps-builtin",
+			{path = "/System/Applications", name = "Apple apps", note = "Apps that ship with macOS · can't be removed", expected = true,
 				what = "Safari, Mail, Music and the other apps that ship with macOS. They are part of the sealed system and cannot be removed."},
-			{path = "/Users", name = "Users", note = "Every account's home folder", expected = true, resource = "users-other",
+			{path = "/Users", name = "Users", note = "Every account's home folder", expected = true,
 				what = "A home folder for every account, and Shared for files every account can reach."},
 			{path = "/Users/Shared", name = "Shared", note = "Files every account can reach", expected = true,
 				what = "Files meant for every account. Installers of music and creative apps sometimes leave large sample libraries here."},
-			{path = "/Library", name = "Library", note = "Fonts, drivers and app data for everyone", expected = true, resource = "library-shared",
+			{path = "/Library", name = "Library", note = "Fonts, drivers and app data for everyone", expected = true,
 				what = "Resources shared by every account: fonts, drivers, caches, app support installed by administrators."},
-			{path = "/System", name = "System", note = "macOS itself · protected", expected = true, resource = "system",
+			{path = "/System", name = "System", note = "macOS itself · protected", expected = true,
 				what = "macOS itself, on the sealed read-only volume, plus firmlinked folders such as AssetsV2 that live on the Data volume."},
-			{path = "/usr", name = "usr", note = "Unix tools that ship with macOS", expected = true, resource = "unix",
+			{path = "/usr", name = "usr", note = "Unix tools that ship with macOS", expected = true,
 				what = "Unix commands and libraries. /usr/local is the one part that belongs to you: tools installed outside the App Store."},
-			{path = "/usr/local", name = "usr/local", note = "Command-line tools you installed", resource = "usr-local",
+			{path = "/usr/local", name = "usr/local", note = "Command-line tools you installed",
 				what = "Command-line tools you or an installer added, including Homebrew on Intel Macs."},
-			{path = "/opt/homebrew", name = "Homebrew", note = "Homebrew packages", resource = "brew-install",
+			{path = "/opt/homebrew", name = "Homebrew", note = "Homebrew packages",
 				what = "Homebrew's packages on Apple silicon."},
-			{path = "/private", name = "private", note = "macOS working data, logs and temp files", expected = true, resource = "private-other",
+			{path = "/private", name = "private", note = "macOS working data, logs and temp files", expected = true,
 				what = "Where /etc, /tmp and /var really live. macOS keeps its working data, logs and databases here."},
 			{path = "/cores", name = "Core dumps", note = "Crash memory dumps · safe to remove", expected = true,
-				what = "Memory images written when a process crashes with core dumps enabled. Normally empty; a single dump can take gigabytes.",
-				leftover = {id = "core-dumps", remover = "finder", threshold = 100e6, advice = "Core dumps are only useful to the developer debugging the crash. Move them to the Trash once no one needs them."}},
+				what = "Memory images written when a process crashes with core dumps enabled. Normally empty; a single dump can take gigabytes."},
 			{path = "/macOS Install Data", name = "macOS Install Data", note = "Leftover of a macOS install · see Clean Up",
-				what = "Staging for a macOS installation started from an Install macOS app. It is removed when the installation finishes; one left behind is an interrupted install.",
-				leftover = {id = "install-data", remover = "update", threshold = 500e6, advice = "Finish or cancel the macOS installation. If no installation is pending, restart; macOS removes an abandoned staging folder, and the Install macOS app can be downloaded again."}},
+				what = "Staging for a macOS installation started from an Install macOS app. It is removed when the installation finishes; one left behind is an interrupted install."},
 		}},
 	{id = "data-hidden", title = "Hidden at the top of the Data volume", icon = "eye.slash",
 		summary = "Volume-wide databases macOS keeps out of sight. Most are readable only by macOS itself.",
@@ -117,13 +106,12 @@ Filesystem.areas = {
 			{path = "/System/Volumes/Data/.PreviousSystemInformation", name = "Previous system information", note = "Details of the previous macOS version", expected = true,
 				what = "Details of the macOS version before the last update, kept for Migration and diagnostics."},
 			{path = "/System/Volumes/Data/MobileSoftwareUpdate", name = "Update staging (Data)", note = "Update staging · gigabytes mean a stuck update",
-				what = "Where macOS unpacks parts of an update on the Data volume. Normally a few megabytes; gigabytes mean an update is prepared or was interrupted.",
-				leftover = {id = "data-update-staging", remover = "update", threshold = 1e9, advice = "Open System Settings › General › Software Update and install or retry the pending update. macOS removes the staging when the update completes; do not delete it by hand."}},
+				what = "Where macOS unpacks parts of an update on the Data volume. Normally a few megabytes; gigabytes mean an update is prepared or was interrupted."},
 		}},
 	{id = "system", title = "Inside /System", icon = "gearshape.2",
 		summary = "The operating system. Only the asset store changes between updates.",
 		locations = {
-			{path = "/System/Library/AssetsV2", name = "Downloaded system assets", note = "Models, voices and updates macOS downloaded", expected = true, resource = "mobile-assets",
+			{path = "/System/Library/AssetsV2", name = "Downloaded system assets", note = "Models, voices and updates macOS downloaded", expected = true,
 				what = "The MobileAsset store: models, voices, fonts, dictionaries, wallpapers and software updates macOS downloads when a feature needs them. It lives on the Data volume through a firmlink."},
 			{path = assets .. "UAF_FM_GenerativeModels", name = "Apple Intelligence language model", note = "Apple Intelligence model · on-device", guard = "sip", feature = intelligence,
 				what = "The on-device foundation model behind Writing Tools, summaries and Siri. Several gigabytes when Apple Intelligence is on."},
@@ -137,31 +125,30 @@ Filesystem.areas = {
 				what = "The model that plans multi-step requests for Siri and App Intents."},
 			{path = assets .. "UAF_IF_PlannerOverrides", name = "Apple Intelligence planner updates", note = "Siri planner model updates", guard = "sip", feature = intelligence,
 				what = "Updates applied on top of the planner model."},
-			{path = assets .. "MacSoftwareUpdate", name = "Downloaded macOS updates", note = "Downloaded macOS update · install to clear", resource = "update-assets-2",
+			{path = assets .. "MacSoftwareUpdate", name = "Downloaded macOS updates", note = "Downloaded macOS update · install to clear",
 				what = "Update payloads Software Update downloaded. A paused, deferred or failed download stays here until macOS installs, retries or purges it."},
 			{path = "/System/Library/AssetsV2/PreinstalledAssetsV2", name = "Preinstalled assets", note = "Assets that shipped with macOS", expected = true,
 				what = "Assets that shipped with macOS and are replaced as newer versions download."},
 			{path = "/System/Cryptexes", name = "Cryptexes", note = "Preboot's cryptexes, mounted · no space here", expected = true,
 				what = "Mount points for the cryptexes stored in Preboot: Safari, the shared code cache and Rapid Security Responses. Their space counts in Preboot."},
-			{path = "/System/Library/Speech", name = "Speech", note = "Built-in voices and speech engines", expected = true, resource = "speech",
+			{path = "/System/Library/Speech", name = "Speech", note = "Built-in voices and speech engines", expected = true,
 				what = "Speech engines and voices that ship with macOS."},
 		}},
 	{id = "library", title = "Inside /Library", icon = "books.vertical",
 		summary = "Shared by every account on this Mac. Installers and administrators write here.",
 		locations = {
-			{path = "/Library/Caches", name = "Shared caches", note = "Shared caches · rebuilt by macOS", expected = true, resource = "system-caches",
+			{path = "/Library/Caches", name = "Shared caches", note = "Shared caches · rebuilt by macOS", expected = true,
 				what = "Caches of system services and apps installed for everyone. macOS rebuilds them."},
-			{path = "/Library/Logs", name = "Shared logs", note = "Diagnostic and install logs", expected = true, resource = "shared-logs",
+			{path = "/Library/Logs", name = "Shared logs", note = "Diagnostic and install logs", expected = true,
 				what = "Diagnostic reports, install logs and logs of system-wide apps."},
 			{path = "/Library/Application Support", name = "Shared application support", note = "Data of apps installed for everyone", expected = true,
 				what = "Data of apps installed for every account, license files, plug-in content and sound libraries."},
-			{path = "/Library/Application Support/com.apple.idleassetsd/Customer", name = "Aerial wallpapers", note = "Downloaded Aerial wallpapers", resource = "aerials",
+			{path = "/Library/Application Support/com.apple.idleassetsd/Customer", name = "Aerial wallpapers", note = "Downloaded Aerial wallpapers",
 				what = "Aerial screen savers and wallpapers you downloaded in Wallpaper settings. Each is hundreds of megabytes; remove them from Wallpaper settings."},
 			{path = "/Library/Developer", name = "Shared developer tools", note = "Command Line Tools and simulator runtimes",
 				what = "Command Line Tools and simulator runtimes shared by every account."},
 			{path = "/Library/Updates", name = "Legacy updates", note = "Pre-Big Sur updates · large means leftover", expected = true,
-				what = "Where macOS put updates before Big Sur. Today it holds only a small index; anything large here is a leftover from an old update.",
-				leftover = {id = "legacy-updates", remover = "finder", threshold = 500e6, advice = "Current macOS no longer installs from here. Review the contents in Finder; files left from an old update can be moved to the Trash."}},
+				what = "Where macOS put updates before Big Sur. Today it holds only a small index; anything large here is a leftover from an old update."},
 			{path = "/Library/Trial", name = "Trial experiments", note = "Settings macOS tests for Apple · tiny", expected = true, guard = "privacy",
 				what = "Settings and small models macOS downloads for features being tuned by Apple."},
 			{path = "/Library/Audio", name = "Audio", note = "Audio plug-ins and GarageBand/Logic sounds", expected = true,
@@ -182,21 +169,19 @@ Filesystem.areas = {
 	{id = "var", title = "Inside /private/var", icon = "cylinder.split.1x2",
 		summary = "macOS's own working data: temporary files, logs and service databases.",
 		locations = {
-			{path = "/private/var/folders", name = "Per-user temporary files", note = "Temporary files and system caches", expected = true, resource = "temporary",
+			{path = "/private/var/folders", name = "Per-user temporary files", note = "Temporary files and system caches", expected = true,
 				what = "Each account's $TMPDIR and system caches such as Quick Look thumbnails and App Store downloads. Restarting clears stale temporary files."},
 			{path = "/private/tmp", name = "tmp", note = "Temporary files · emptied at restart", expected = true,
-				what = "Temporary files of command-line tools and installers; /tmp is a link to it. macOS empties it at every restart.",
-				leftover = {id = "tmp", remover = "restart", threshold = 1e9, advice = "Restart your Mac: macOS empties /tmp at startup. Files no running app uses can also go to the Trash in Finder now; an app still writing here would lose its working files."}},
+				what = "Temporary files of command-line tools and installers; /tmp is a link to it. macOS empties it at every restart."},
 			{path = "/private/var/tmp", name = "var/tmp", note = "Temporary files kept across restarts", expected = true,
-				what = "Temporary files meant to survive a restart. macOS removes old ones periodically.",
-				leftover = {id = "var-tmp", remover = "finder", threshold = 1e9, advice = "Review the files in Finder. Files older than a few days that no app is using can be moved to the Trash."}},
-			{path = "/private/var/log", name = "System logs", note = "Unix service logs · rotated by macOS", expected = true, resource = "private-logs",
+				what = "Temporary files meant to survive a restart. macOS removes old ones periodically."},
+			{path = "/private/var/log", name = "System logs", note = "Unix service logs · rotated by macOS", expected = true,
 				what = "Text logs of Unix services and installs. macOS rotates them."},
-			{path = "/private/var/db/diagnostics", name = "Unified log", note = "System log Console reads · size-capped", expected = true, resource = "unified-log",
+			{path = "/private/var/db/diagnostics", name = "Unified log", note = "System log Console reads · size-capped", expected = true,
 				what = "The system log Console reads. macOS keeps it to a size budget and removes old entries."},
-			{path = "/private/var/db/uuidtext", name = "Unified log strings", note = "Strings the system log refers to", expected = true, resource = "unified-log-strings",
+			{path = "/private/var/db/uuidtext", name = "Unified log strings", note = "Strings the system log refers to", expected = true,
 				what = "Format strings the unified log refers to. It grows and shrinks with the log."},
-			{path = "/private/var/db/powerlog", name = "Power log", note = "Battery and energy history", expected = true, resource = "power-log",
+			{path = "/private/var/db/powerlog", name = "Power log", note = "Battery and energy history", expected = true,
 				what = "Battery and energy history behind Battery settings. macOS trims it."},
 			{path = "/private/var/db/receipts", name = "Package receipts", note = "Bills of materials of installed packages", expected = true,
 				what = "Bills of materials for packages installed with the Installer, used to update or verify them."},
@@ -207,8 +192,7 @@ Filesystem.areas = {
 			{path = "/private/var/install", name = "macOS install staging", note = "macOS install staging · removed when done", guard = "sip",
 				what = "Staging for a macOS installation in progress. macOS removes it when the installation completes or is abandoned."},
 			{path = "/private/var/MobileSoftwareUpdate", name = "Update brain", note = "Software Update engine · replaced each update", expected = true,
-				what = "The Software Update engine macOS downloads for each update.",
-				leftover = {id = "update-brain", remover = "update", threshold = 1e9, advice = "Install or retry the pending update in System Settings › General › Software Update. macOS replaces this with every update."}},
+				what = "The Software Update engine macOS downloads for each update."},
 			{path = "/private/var/db/oah", name = "Rosetta translations", note = "Intel apps translated by Rosetta · rebuilt", guard = "sip",
 				what = "Intel apps translated for Apple silicon by Rosetta. Grows with every Intel app you run; macOS rebuilds it."},
 			{path = "/private/var/db/KernelExtensionManagement/Staging", name = "Staged system extensions", note = "Extensions waiting for approval", guard = "sip",
@@ -235,21 +219,21 @@ Filesystem.areas = {
 	{id = "home", title = "Inside your home folder", icon = "house",
 		summary = "Yours. Most hidden storage on a Mac is in ~/Library, which Finder hides.",
 		locations = {
-			{path = "~/Library/Caches", name = "Caches", note = "Apps' caches · rebuilt when needed", expected = true, resource = "user-caches",
+			{path = "~/Library/Caches", name = "Caches", note = "Apps' caches · rebuilt when needed", expected = true,
 				what = "Data apps can download or rebuild. Clear a cache from the owning app."},
-			{path = "~/Library/Application Support", name = "Application Support", note = "Apps' data, including removed apps'", expected = true, resource = "support",
+			{path = "~/Library/Application Support", name = "Application Support", note = "Apps' data, including removed apps'", expected = true,
 				what = "Databases, downloads and state that apps cannot rebuild, including data of apps you deleted."},
-			{path = "~/Library/Containers", name = "Containers", note = "Sandboxed apps' private data", expected = true, resource = "app-containers",
+			{path = "~/Library/Containers", name = "Containers", note = "Sandboxed apps' private data", expected = true,
 				what = "Private homes of sandboxed apps, including most Apple apps. Deleting one resets that app."},
-			{path = "~/Library/Group Containers", name = "Group Containers", note = "Data shared by one developer's apps", expected = true, resource = "group-containers",
+			{path = "~/Library/Group Containers", name = "Group Containers", note = "Data shared by one developer's apps", expected = true,
 				what = "Data shared by related apps from one developer."},
 			{path = "~/Library/Mobile Documents", name = "iCloud Drive", note = "iCloud Drive and apps' iCloud data", expected = true, guard = "privacy",
 				what = "iCloud Drive and the iCloud data of apps. Files evicted to iCloud take no space here."},
-			{path = "~/Library/Mail", name = "Mail", note = "Your mailboxes and attachments", resource = "mail", guard = "privacy",
+			{path = "~/Library/Mail", name = "Mail", note = "Your mailboxes and attachments", guard = "privacy",
 				what = "Local copies of your mailboxes and attachments."},
-			{path = "~/Library/Messages", name = "Messages", note = "Your conversations and attachments", resource = "messages", guard = "privacy",
+			{path = "~/Library/Messages", name = "Messages", note = "Your conversations and attachments", guard = "privacy",
 				what = "Conversations and every attachment received, unless Messages is set to keep them only for a while."},
-			{path = "~/Library/Logs", name = "Logs", note = "Apps' logs and crash reports", expected = true, resource = "user-logs",
+			{path = "~/Library/Logs", name = "Logs", note = "Apps' logs and crash reports", expected = true,
 				what = "Your apps' logs and crash reports."},
 			{path = "~/Library/Developer", name = "Developer", note = "Xcode builds, archives and simulators",
 				what = "Xcode's derived data, archives, device support and simulators."},
@@ -257,9 +241,9 @@ Filesystem.areas = {
 				what = "Your activity history for Siri suggestions and Screen Time."},
 			{path = "~/Library/Trial", name = "Your Trial experiments", note = "Settings macOS tests for Apple · tiny", expected = true, guard = "privacy",
 				what = "Per-account settings and small models for features Apple is tuning."},
-			{path = "~/Library/iTunes/iPhone Software Updates", name = "iPhone updates", note = "Old iPhone updates · safe to remove", resource = "iphone-updates",
+			{path = "~/Library/iTunes/iPhone Software Updates", name = "iPhone updates", note = "Old iPhone updates · safe to remove",
 				what = "iOS versions Finder downloaded to update or restore an iPhone. Each is several gigabytes and is never needed again once the device is updated."},
-			{path = "~/.Trash", name = "Trash", note = "Files you deleted · empty the Trash", expected = true, resource = "user-trash", guard = "privacy",
+			{path = "~/.Trash", name = "Trash", note = "Files you deleted · empty the Trash", expected = true, guard = "privacy",
 				what = "Files you moved to the Trash. They take space until you empty it."},
 		}},
 	{id = "home-library", title = "Your Library, folder by folder", icon = "books.vertical.fill",
@@ -267,13 +251,13 @@ Filesystem.areas = {
 		locations = {
 			{path = "~/Library/CloudStorage", name = "Cloud storage providers", note = "Dropbox, Google Drive, OneDrive files", expected = true,
 				what = "Folders of Dropbox, Google Drive, OneDrive and other file provider apps. Files kept only online take no space; downloaded ones count fully. Free space from the provider's own app."},
-			{path = "~/Library/Preferences", name = "Preferences", note = "Every app's settings · small", expected = true, resource = "preferences",
+			{path = "~/Library/Preferences", name = "Preferences", note = "Every app's settings · small", expected = true,
 				what = "Every app's settings, one property list per app named by its bundle identifier. Small; deleting an app's file resets its settings."},
-			{path = "~/Library/Saved Application State", name = "Saved window state", note = "Windows apps reopen · safe to remove", expected = true, resource = "saved-state",
+			{path = "~/Library/Saved Application State", name = "Saved window state", note = "Windows apps reopen · safe to remove", expected = true,
 				what = "The windows each app reopens when it launches. Safe to lose: the app only opens fresh."},
-			{path = "~/Library/HTTPStorages", name = "Network storage", note = "Apps' cookies and network caches", expected = true, resource = "http-storages",
+			{path = "~/Library/HTTPStorages", name = "Network storage", note = "Apps' cookies and network caches", expected = true,
 				what = "Cookies and cached responses apps keep from their own network requests, a folder per app."},
-			{path = "~/Library/WebKit", name = "Web view data", note = "Web data of apps that show web pages", expected = true, resource = "webkit-data",
+			{path = "~/Library/WebKit", name = "Web view data", note = "Web data of apps that show web pages", expected = true,
 				what = "Website data such as local storage and caches of apps that show web pages inside their windows."},
 			{path = "~/Library/LaunchAgents", name = "Your login agents", note = "Programs started at your login", expected = true,
 				what = "Background programs launchd starts when you log in, added by apps for your account only. Turn one off in System Settings › General › Login Items & Extensions; an agent of a deleted app is a leftover."},
@@ -308,23 +292,17 @@ Filesystem.areas = {
 		}},
 }
 
-local byPath, byLeftover = {}, {}
+local byPath = {}
 for _, area in ipairs(Filesystem.areas) do
 	for _, location in ipairs(area.locations) do
 		location.area = area.id
 		byPath[location.path] = location
-		if location.leftover then byLeftover[location.leftover.id] = location end
 	end
 end
 
 -- The location at `path`, or nil.
 function Filesystem.find(path)
 	return byPath[path]
-end
-
--- The leftover location whose catalog id is `id`, or nil.
-function Filesystem.leftover(id)
-	return byLeftover[id]
 end
 
 -- Locations no app can read: the scan skips them.
