@@ -27,11 +27,13 @@ Model.DEFAULT = {
 	},
 }
 
+-- A chip puts its prompt in the composer; the person finishes the sentence.
 local SUGGESTIONS = {
-	{ title = "Add a feature", icon = "plus" },
-	{ title = "Fix a bug", icon = "ladybug" },
-	{ title = "Polish the UI", icon = "wand.and.stars" },
+	{ id = "feature", title = "Add a feature", icon = "plus", prompt = "Add a feature: " },
+	{ id = "bug", title = "Fix a bug", icon = "ladybug", prompt = "Fix this bug: " },
+	{ id = "polish", title = "Polish the UI", icon = "wand.and.stars", prompt = "Polish the UI: " },
 }
+Model.suggestions = SUGGESTIONS
 
 -- A diff line's colour: added green, removed red, context secondary.
 local function diffLine(text)
@@ -62,26 +64,40 @@ function Model.changes(list)
 	return result, { title = #result .. " " .. noun .. " changed", delta = delta }
 end
 
--- `conversation` ({messages, draft, listening}) replaces the starter
--- conversation, as a showcase does. An agent message may carry `changes`
--- (a change card) and a `conclusion`.
+-- What a project's conversation opens with before anyone has spoken.
+function Model.welcome(projectName)
+	return { role = "agent", text = "Describe what " .. (projectName or "your app")
+		.. " should do, or what to change. I read the project, edit its files and the preview reloads." }
+end
+
+-- `conversation` ({messages, draft, listening, busy, agent}) replaces the
+-- starter conversation: the project's transcript, or a showcase. A
+-- message's role is "user", "agent" or "error"; an agent message may
+-- carry `changes` (a change card) and a `conclusion`. `agent` names the
+-- provider and model answering ({name, model, icon}).
 function Model.presentation(conversation, code)
 	local source = conversation or Model.DEFAULT
 	local messages = {}
-	for index, message in ipairs(source.messages or {}) do
-		local entry = { id = index, role = message.role, text = message.text, conclusion = message.conclusion }
+	local transcript = source.messages or {}
+	-- A project with nothing said yet opens on a welcome; a showcase's
+	-- empty conversation is shown as it is.
+	if #transcript == 0 and source.project then transcript = { Model.welcome(source.project) } end
+	for index, message in ipairs(transcript) do
+		local entry = { id = index, role = message.role, text = message.text or "", conclusion = message.conclusion }
 		if message.changes and #message.changes > 0 then
 			entry.changes, entry.summary = Model.changes(message.changes)
 		end
 		table.insert(messages, entry)
 	end
+	local agent = source.agent or { name = "Assistant", model = "No provider", icon = "sparkles" }
 	return {
-		agent = { name = "Assistant", model = "openrouter/free", icon = "sparkles" },
+		agent = { name = agent.name, model = agent.model, icon = agent.icon or "sparkles" },
 		brand = Theme.brand,
 		tint = Theme.tint,
 		messages = messages,
 		draft = source.draft or "",
 		listening = source.listening == true,
+		busy = source.busy == true,
 		suggestions = SUGGESTIONS,
 		code = code or Code.presentation({}),
 		syntaxRules = Code.rules,

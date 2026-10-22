@@ -10,8 +10,8 @@ local projects = {
 	{ id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true },
 	{ id = "HabitTracker", title = "Habit Tracker", icon = "checklist" },
 }
-local window = xml.describeFile("apps/studio/views/Window.etlua", {canvas = Theme.canvas}).source
-local source = xml.describeFile("apps/studio/views/Workspace.etlua", {
+local window = xml.describeFile("apps/studio/views/layouts/Window.etlua", {canvas = Theme.canvas}).source
+local source = xml.describeFile("apps/studio/views/layouts/Workspace.etlua", {
 	rail = Rail.presentation(),
 	preview = Preview.presentation(projects, {
 		{ title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", imagePath = "/Documents/StarterApp/ProjectIcons/rocket-sketch.png", selected = false, action = "selectProjectIcon_rocket-sketch" },
@@ -123,12 +123,12 @@ t.expect(chat:find('7 files changed', 1, true) and chat:find('+291', 1, true),
 t.expect(chat:find('text="Today.etlua"', 1, true) and chat:find('text="views"', 1, true),
 	"change rows show the file name with its folder")
 t.expect(chat:find('Describe a change…', 1, true) ~= nil, "the composer invites a change")
-t.expect(chat:find('accessibilityLabel="Send" style="glassProminent"', 1, true) ~= nil,
+t.expect(chat:find('accessibilityLabel="Send" action="send" style="glassProminent"', 1, true) ~= nil,
 	"send is the composer's prominent action")
 local composerAt = chat:find('id="composer"', 1, true)
 t.expect(composerAt > chat:find('</ScrollView>', 1, true), "the composer stays below the transcript")
 
-local empty = xml.describeFile("apps/studio/views/Workspace.etlua", {
+local empty = xml.describeFile("apps/studio/views/layouts/Workspace.etlua", {
 	rail = Rail.presentation(),
 	preview = Preview.presentation({}),
 	chat = Chat.presentation(),
@@ -143,7 +143,7 @@ local function workspaceWith(state)
 	chat.mode, chat.hidden, chat.treeHidden = state.mode, state.chatHidden, state.treeHidden
 	local preview = Preview.presentation(projects)
 	preview.chatHidden = state.chatHidden
-	return xml.describeFile("apps/studio/views/Workspace.etlua", {
+	return xml.describeFile("apps/studio/views/layouts/Workspace.etlua", {
 		rail = Rail.presentation(state.mode), preview = preview, chat = chat,
 		code = code, codeFiles = code.files, syntaxRules = Code.rules,
 	}).source

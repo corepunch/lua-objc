@@ -5,7 +5,7 @@
 	<VStack id="treePane" hidden="<%= tostring(treeHidden == true) %>" width="<%= CODE.sidebarWidth %>" maxHeight="infinity" alignment="leading" background="secondaryBackground">
 		<HStack paddingHorizontal="<%= CODE.inset %>" paddingVertical="12" spacing="8" maxWidth="infinity" alignment="center">
 			<SystemImage name="folder.fill" size="15" color="secondary" />
-			<Label text="Habit Tracker" size="<%= CODE.captionSize %>" weight="semibold" color="secondary" lines="1" />
+			<Label id="codeProject" text="<%= code.project or "Project" %>" size="<%= CODE.captionSize %>" weight="semibold" color="secondary" lines="1" />
 			<Spacer />
 		</HStack>
 		<Divider />

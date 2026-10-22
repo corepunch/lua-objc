@@ -1,5 +1,13 @@
+-- The coding agent: a conversation in the neutral shape every provider
+-- plugin reads, the tools it may call on the project, and the loop that
+-- sends a turn, applies the reply's tool calls and sends again until the
+-- provider answers in words. Which provider and model speak is the
+-- project's choice; the API key comes from the keychain at send time.
+local Providers = require("apps.studio.services.Providers")
+
 local Agent = {}
 Agent.__index = Agent
+
 local PROMPT = [[You develop the user's Lua app running in a live UIKit preview on iPad.
 Use listFiles and readFile before editing. Apply complete files with applyFiles; changes reload immediately.
 Use demo/playground/init.lua returning Controller; Model.lua owns domain logic; Controller.lua binds actions;
@@ -11,93 +19,153 @@ Column and ToolbarItem keep their own id fields.
 Use <%= value %> for escaped attributes and partial() for reusable etlua views. Read existing code to follow its API.
 No shell, network tools, package installation, or native compilation. Changes must fit existing UIKit APIs.
 If preview reports an error, fix it. Be concise and describe what changed.]]
-local function tool(name, description, properties, required)
-	return { type = "function", ["function"] = { name = name, description = description,
-		parameters = { type = "object", properties = properties, required = required } } }
-end
+
+local LIMITS = { rounds = 12, maxTokens = 8192, excerpt = 200 }
+
+-- Tools in the neutral shape: name, description and a JSON schema.
 local TOOLS = {
-	tool("listFiles", "List project source paths", { project = { type = "string", description = "Use playground" } }, { "project" }),
-	tool("readFile", "Read a project source file", { path = { type = "string" } }, { "path" }),
-	tool("applyFiles", "Atomically save files, validate syntax, and reload preview; returns errors for repair", {
-		files = { type = "array", items = { type = "object", properties = { path = { type = "string" }, content = { type = "string" } }, required = { "path", "content" } } },
-	}, { "files" }),
-	tool("preview", "Reload the app and get its runtime error, if any", { project = { type = "string" } }, { "project" }),
+	{ name = "listFiles", description = "List project source paths",
+		parameters = { type = "object", properties = {} } },
+	{ name = "readFile", description = "Read a project source file",
+		parameters = { type = "object", properties = { path = { type = "string" } }, required = { "path" } } },
+	{ name = "applyFiles", description = "Atomically save files, validate syntax, and reload preview; returns errors for repair",
+		parameters = { type = "object", properties = {
+			files = { type = "array", items = { type = "object",
+				properties = { path = { type = "string" }, content = { type = "string" } }, required = { "path", "content" } } },
+		}, required = { "files" } } },
+	{ name = "preview", description = "Reload the app and get its runtime error, if any",
+		parameters = { type = "object", properties = {} } },
 }
-function Agent.new(model, transport, json, preview, changed)
-	return setmetatable({ model = model, transport = transport, json = json, preview = preview,
-		changed = changed, generation = 0, conversation = { { role = "system", content = PROMPT } } }, Agent)
+Agent.tools = TOOLS
+
+-- `options`: model (the project), providers (the extension point), keys,
+-- http(request, completion) returning a cancel function, json
+-- ({encode, decode}), preview() reloading the project, changed() telling
+-- the controller to draw again.
+function Agent.new(options)
+	return setmetatable({
+		model = options.model, providers = options.providers, keys = options.keys,
+		http = options.http, json = options.json, preview = options.preview, changed = options.changed,
+		generation = 0, conversation = {},
+	}, Agent)
 end
+
+--- The provider descriptor and model id the project talks to.
+function Agent:choice()
+	return Providers.choice(self.providers, self.model.provider, self.model.model)
+end
+
+--- Cancels the turn in flight and drops its partial exchange, so the next
+--- send starts from a conversation whose every call has its result.
 function Agent:stop()
 	self.generation = self.generation + 1
 	if self.cancel then self.cancel(); self.cancel = nil end
-	self.busy = false
-	-- Discard incomplete tool exchanges after cancellation or transport failure.
-	self.conversation = { { role = "system", content = PROMPT } }
+	if self.busy and self.mark then
+		for index = #self.conversation, self.mark + 1, -1 do table.remove(self.conversation, index) end
+	end
+	self.busy, self.mark = false, nil
 	self.changed()
 end
+
+function Agent:reset()
+	self:stop()
+	self.conversation = {}
+	self.model:clearMessages()
+	self.changed()
+end
+
+-- Runs one tool call; the result is what the provider reads back.
 function Agent:execute(call)
-	local fn = assert(call["function"], "Missing tool function")
-	local args = self.json.decode(fn.arguments)
+	local args = call.arguments
 	assert(type(args) == "table", "Invalid tool arguments")
-	if fn.name == "listFiles" then return self.model:listFiles() end
-	if fn.name == "readFile" then return assert(self.model.files[args.path], "File not found") end
-	if fn.name == "applyFiles" then
-		local ok, err = self.model:apply(args.files)
-		if not ok then return { error = err } end
-		self.model:message("Changes", "Saved " .. #args.files .. " file(s). Undo is available.")
+	if call.name == "listFiles" then return self.model:listFiles() end
+	if call.name == "readFile" then return assert(self.model.files[args.path], "File not found") end
+	if call.name == "applyFiles" then
+		local summary, err = self.model:apply(args.files)
+		if not summary then return { error = err } end
+		local noun = #summary == 1 and "file" or "files"
+		self.model:message("agent", "", summary)
 		local rendered, previewError = self.preview()
-		return { saved = true, preview = rendered and "ready" or "error", error = previewError }
+		return { saved = true, files = #summary .. " " .. noun, preview = rendered and "ready" or "error", error = previewError }
 	end
-	if fn.name == "preview" then
+	if call.name == "preview" then
 		local ok, err = self.preview()
 		return { preview = ok and "ready" or "error", error = err }
 	end
-	error("Unknown tool: " .. tostring(fn.name))
+	error("Unknown tool: " .. tostring(call.name))
 end
-function Agent:send(text, key)
+
+local function excerpt(body)
+	body = tostring(body or ""):gsub("%s+", " ")
+	if #body > LIMITS.excerpt then body = body:sub(1, LIMITS.excerpt) .. "…" end
+	return body
+end
+
+function Agent:send(text)
 	if self.busy then return nil, "The agent is already working" end
 	if type(text) ~= "string" or not text:match("%S") then return nil, "Enter a message" end
-	if not key or key == "" then return nil, "Add an OpenRouter API key in Settings to use the free router or a stronger model" end
+	local descriptor, modelId = self:choice()
+	if not descriptor then return nil, "No model provider is installed" end
+	local key = self.keys:get(descriptor.id)
+	if not key then return nil, "Add a " .. descriptor.title .. " API key in Settings" end
 	self.busy = true
 	self.generation = self.generation + 1
+	self.mark = #self.conversation
 	local generation, rounds = self.generation, 0
-	self.model:message("You", text)
-	table.insert(self.conversation, { role = "user", content = text })
+	self.model:message("user", text)
+	table.insert(self.conversation, { role = "user", text = text })
 	local function fail(message)
-		self.model:message("Error", message)
+		self.model:message("error", message)
 		self:stop()
 	end
 	local function step()
 		if generation ~= self.generation then return end
 		rounds = rounds + 1
-		if rounds > 12 then fail("Stopped after 12 agent steps. You can continue with another message."); return end
+		if rounds > LIMITS.rounds then
+			fail("Stopped after " .. LIMITS.rounds .. " agent steps. You can continue with another message.")
+			return
+		end
 		self.changed()
-		local payload = { model = self.model.model, messages = self.conversation, tools = TOOLS,
-			parallel_tool_calls = false, stream = false, max_tokens = 8192 }
-		self.cancel = self.transport(payload, key, function(response, err)
-			if generation ~= self.generation then return end
-			self.cancel = nil
-			if err then fail(err); return end
-			local message = response and response.choices and response.choices[1] and response.choices[1].message
-			if type(message) ~= "table" then fail("OpenRouter returned no assistant message"); return end
-			table.insert(self.conversation, message)
-			if type(message.content) == "string" and message.content ~= "" then self.model:message("Agent", message.content) end
-			local calls = message.tool_calls
-			if type(calls) == "table" and #calls > 0 then
+		local turn = { model = modelId, system = PROMPT, messages = self.conversation, tools = TOOLS,
+			maxTokens = LIMITS.maxTokens }
+		local ok, request = pcall(self.providers.invoke, self.providers, descriptor.id, "request", turn, key)
+		if not ok then fail(descriptor.title .. " plugin failed: " .. tostring(request)); return end
+		if type(request) ~= "table" or type(request.url) ~= "string" then
+			fail(descriptor.title .. " plugin returned no request"); return
+		end
+		local body = request.body
+		if type(body) == "table" then body = self.json.encode(body) end
+		self.cancel = self.http({ url = request.url, headers = request.headers or {}, body = body or "" },
+			function(responseBody, err, status)
+				if generation ~= self.generation then return end
+				self.cancel = nil
+				if err and not responseBody then fail(err); return end
+				local decodedOk, decoded = pcall(self.json.decode, responseBody or "")
+				if not decodedOk or type(decoded) ~= "table" then
+					fail("HTTP " .. tostring(status) .. ": " .. (err or excerpt(responseBody))); return
+				end
+				local replyOk, reply, replyErr = pcall(self.providers.invoke, self.providers, descriptor.id, "reply", status, decoded)
+				if not replyOk then fail(descriptor.title .. " plugin failed: " .. tostring(reply)); return end
+				if not reply then fail(descriptor.title .. ": " .. tostring(replyErr)); return end
+				local calls = type(reply.calls) == "table" and reply.calls or {}
+				table.insert(self.conversation, { role = "assistant", text = reply.text, calls = calls })
+				if type(reply.text) == "string" and reply.text:match("%S") then self.model:message("agent", reply.text) end
+				if #calls == 0 then
+					self.busy, self.mark = false, nil
+					self.changed()
+					return
+				end
 				for _, call in ipairs(calls) do
-					if type(call.id) ~= "string" then fail("Invalid tool call ID"); return end
-					local ok, result = pcall(self.execute, self, call)
-					table.insert(self.conversation, { role = "tool", tool_call_id = call.id,
-						content = self.json.encode(ok and { result = result } or { error = tostring(result) }) })
+					if type(call.id) ~= "string" or type(call.name) ~= "string" then fail("Invalid tool call"); return end
+					local okCall, result = pcall(self.execute, self, call)
+					table.insert(self.conversation, { role = "tool", id = call.id, name = call.name,
+						result = okCall and { result = result } or { error = tostring(result) } })
 				end
 				step()
-			else
-				self.busy = false
-				self.changed()
-			end
-		end)
+			end)
 	end
 	step()
 	return true
 end
+
 return Agent

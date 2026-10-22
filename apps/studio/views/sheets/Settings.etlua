@@ -1,0 +1,64 @@
+<%
+  -- Which provider and model answer, then one API key per provider. Keys
+  -- are never shown back: a row says whether one is saved, and typing in
+  -- its field replaces it when Done is tapped. Clearing a field removes
+  -- the key. Everything lines up on one label column so the rows scan.
+  local SHEET = { inset = 20, spacing = 20, rowSpacing = 10, titleSize = 20, sectionSize = 13, bodySize = 15, captionSize = 12, symbol = 18, symbolWidth = 26, labelWidth = 150, radius = 14 }
+%>
+<VStack padding="<%= SHEET.inset %>" spacing="<%= SHEET.spacing %>" alignment="leading" maxWidth="infinity">
+	<HStack spacing="8" alignment="center" maxWidth="infinity">
+		<Label text="Settings" size="<%= SHEET.titleSize %>" weight="bold" lines="1" />
+		<Spacer />
+		<Button id="cancel" title="Cancel" action="closeSheet" style="glass" size="<%= SHEET.bodySize %>" />
+		<Button id="done" title="Done" action="saveSettings" style="glassProminent" size="<%= SHEET.bodySize %>" weight="semibold" />
+	</HStack>
+	<% if error and error ~= "" then %>
+	<Label id="settingsError" text="<%= error %>" size="<%= SHEET.captionSize + 1 %>" color="systemOrange" lines="0" maxWidth="infinity" />
+	<% end %>
+	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
+		<Label text="AGENT" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />
+		<HStack spacing="<%= SHEET.rowSpacing %>" alignment="center" maxWidth="infinity">
+			<Label text="Provider" size="<%= SHEET.bodySize %>" width="<%= SHEET.labelWidth %>" lines="1" />
+			<Picker id="providerPicker" value="<%= providerIndex %>" onChange="chooseProvider" style="menu">
+				<% for _, provider in ipairs(providers) do %>
+				<Option title="<%= provider.title %>" />
+				<% end %>
+			</Picker>
+			<Spacer />
+		</HStack>
+		<HStack spacing="<%= SHEET.rowSpacing %>" alignment="center" maxWidth="infinity">
+			<Label text="Model" size="<%= SHEET.bodySize %>" width="<%= SHEET.labelWidth %>" lines="1" />
+			<Picker id="modelPicker" value="<%= modelIndex %>" onChange="chooseModel" style="menu">
+				<% for _, model in ipairs(models) do %>
+				<Option title="<%= model.title %>" />
+				<% end %>
+				<Option title="Other…" />
+			</Picker>
+			<Spacer />
+		</HStack>
+		<HStack spacing="<%= SHEET.rowSpacing %>" alignment="center" maxWidth="infinity">
+			<Label text="Model ID" size="<%= SHEET.bodySize %>" width="<%= SHEET.labelWidth %>" lines="1" />
+			<TextField id="customModel" text="<%= customModel %>" placeholder="Any model id the provider accepts" onChange="editModel" size="<%= SHEET.bodySize %>" flexGrow="1" maxWidth="infinity" />
+		</HStack>
+		<Label text="Talking to <%= model %>" size="<%= SHEET.captionSize %>" color="secondary" lines="1" />
+	</VStack>
+	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
+		<Label text="API KEYS" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />
+		<Label text="Keys stay in this iPad's keychain. They are never written into a project or shared with Files." size="<%= SHEET.captionSize %>" color="secondary" lines="0" maxWidth="infinity" />
+		<% for _, provider in ipairs(providers) do %>
+		<HStack id="key/<%= provider.id %>" spacing="<%= SHEET.rowSpacing %>" alignment="center" maxWidth="infinity">
+			<SystemImage name="<%= provider.symbol %>" size="<%= SHEET.symbol %>" color="accent" width="<%= SHEET.symbolWidth %>" label="" />
+			<Label text="<%= provider.title %>" size="<%= SHEET.bodySize %>" width="<%= SHEET.labelWidth - SHEET.symbolWidth - SHEET.rowSpacing %>" lines="1" />
+			<TextField id="keyField/<%= provider.id %>" text="<%= provider.draft %>" placeholder="<%= provider.hasKey and "Saved; type to replace" or (provider.keyPrefix .. "…") %>" secure="true" onChange="editKey_<%= provider.id %>" size="<%= SHEET.bodySize %>" flexGrow="1" maxWidth="infinity" />
+		</HStack>
+		<HStack spacing="<%= SHEET.rowSpacing %>" alignment="center" maxWidth="infinity">
+			<Spacer width="<%= SHEET.labelWidth %>" />
+			<Label id="keyStatus/<%= provider.id %>" text="<%= provider.status %>" size="<%= SHEET.captionSize %>" color="secondary" lines="1" />
+			<Spacer />
+			<% if provider.website ~= "" then %>
+			<Label text="<%= provider.website %>" size="<%= SHEET.captionSize %>" color="secondary" lines="1" truncation="middle" flexShrink="1" />
+			<% end %>
+		</HStack>
+		<% end %>
+	</VStack>
+</VStack>

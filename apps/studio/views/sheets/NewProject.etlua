@@ -1,0 +1,37 @@
+<%
+  -- A name and a template make a project: its folder, repository and first
+  -- commit are created before it opens on the stage.
+  local SHEET = { inset = 20, spacing = 20, rowSpacing = 10, titleSize = 20, sectionSize = 13, bodySize = 15, captionSize = 12, symbol = 22, symbolWidth = 30, radius = 14 }
+%>
+<VStack padding="<%= SHEET.inset %>" spacing="<%= SHEET.spacing %>" alignment="leading" maxWidth="infinity">
+	<HStack spacing="8" alignment="center" maxWidth="infinity">
+		<Label text="New Project" size="<%= SHEET.titleSize %>" weight="bold" lines="1" />
+		<Spacer />
+		<Button id="cancel" title="Cancel" action="closeSheet" style="glass" size="<%= SHEET.bodySize %>" />
+		<Button id="create" title="Create" action="createProject" style="glassProminent" size="<%= SHEET.bodySize %>" weight="semibold" disabled="<%= tostring(name == "") %>" />
+	</HStack>
+	<% if error and error ~= "" then %>
+	<Label id="projectError" text="<%= error %>" size="<%= SHEET.captionSize + 1 %>" color="systemOrange" lines="0" maxWidth="infinity" />
+	<% end %>
+	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
+		<Label text="NAME" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />
+		<TextField id="projectName" text="<%= name %>" placeholder="My App" onChange="editProjectName" onCommand="projectNameCommand" defaultFocus="true" size="<%= SHEET.bodySize %>" maxWidth="infinity" />
+		<Label id="projectFolder" text="<%= folder ~= "" and ("Documents/" .. folder) or "The folder takes the name's letters and digits." %>" size="<%= SHEET.captionSize %>" color="secondary" lines="1" />
+	</VStack>
+	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
+		<Label text="TEMPLATE" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />
+		<% for _, template in ipairs(templates) do %>
+		<Button id="template/<%= template.id %>" action="chooseTemplate_<%= template.id %>" style="plain" maxWidth="infinity">
+			<HStack spacing="<%= SHEET.rowSpacing %>" alignment="center" maxWidth="infinity">
+				<SystemImage name="<%= template.icon %>" size="<%= SHEET.symbol %>" color="accent" width="<%= SHEET.symbolWidth %>" label="" />
+				<VStack spacing="2" alignment="leading" flexShrink="1">
+					<Label text="<%= template.title %>" size="<%= SHEET.bodySize %>" weight="semibold" lines="1" />
+					<Label text="<%= template.caption %>" size="<%= SHEET.captionSize %>" color="secondary" lines="2" />
+				</VStack>
+				<Spacer />
+				<SystemImage name="<%= template.selected and "checkmark.circle.fill" or "circle" %>" size="<%= SHEET.symbol %>" color="<%= template.selected and "accent" or "secondary" %>" width="<%= SHEET.symbolWidth %>" label="<%= template.selected and "Selected" or "Not selected" %>" />
+			</HStack>
+		</Button>
+		<% end %>
+	</VStack>
+</VStack>

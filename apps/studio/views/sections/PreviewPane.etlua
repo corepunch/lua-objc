@@ -13,7 +13,7 @@
 		<HStack id="stageBar" spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" alignment="center">
 			<Menu id="projectMenu" title="<%= project.title %>" systemImage="<%= project.icon %>" imagePath="<%= project.imagePath or "" %>" style="glass" accessibilityLabel="Project: <%= project.title %>">
 				<% for _, item in ipairs(projects) do %>
-				<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" imagePath="<%= item.imagePath or "" %>" checked="<%= tostring(item.selected == true) %>" />
+				<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" imagePath="<%= item.imagePath or "" %>" checked="<%= tostring(item.selected == true) %>"<% if item.action then %> action="<%= item.action %>"<% end %> />
 				<% end %>
 				<Separator />
 				<% for _, choice in ipairs(iconChoices) do %>
@@ -21,11 +21,11 @@
 				<% end %>
 				<Separator />
 				<% for _, destination in ipairs(destinations) do %>
-				<MenuItem title="<%= destination.title %>" systemImage="<%= destination.icon %>" />
+				<MenuItem title="<%= destination.title %>" systemImage="<%= destination.icon %>" action="<%= destination.action %>" />
 				<% end %>
 			</Menu>
 			<HStack spacing="6" alignment="center" flexShrink="1">
-				<SystemImage name="checkmark.circle.fill" size="<%= STAGE.statusSize %>" color="secondary" />
+				<SystemImage name="<%= busy and "ellipsis.circle" or "checkmark.circle.fill" %>" size="<%= STAGE.statusSize %>" color="secondary" />
 				<Label id="previewStatus" text="<%= status %>" size="<%= STAGE.statusSize %>" color="secondary" lines="1" truncation="tail" />
 			</HStack>
 			<Spacer />

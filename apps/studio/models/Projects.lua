@@ -8,6 +8,54 @@ Projects.iconChoices = {
 	{ id = "rocket", title = "Lua-objc Rocket", symbol = "rocket.fill", file = "rocket.png" },
 }
 
+-- What a new project starts from. `root` is the bundled folder the files
+-- are read from; the files keep the demo/playground module namespace every
+-- project runs in.
+Projects.templates = {
+	{ id = "blank", title = "Blank App", icon = "app.dashed", appIcon = "rocket.fill",
+		caption = "A counter on one screen: the smallest Model, Controller and view.",
+		root = "demo/playground/", files = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" } },
+	{ id = "habits", title = "Habit Tracker", icon = "checklist", appIcon = "checklist",
+		caption = "Three tabs with local storage: Today, Stats and Settings.",
+		root = "apps/studio/Documents/HabitTracker/", files = { "init.lua", "Model.lua", "Controller.lua",
+			"views/Window.etlua", "views/Today.etlua", "views/Stats.etlua", "views/Settings.etlua" } },
+}
+
+function Projects.template(id)
+	for _, template in ipairs(Projects.templates) do
+		if template.id == id then return template end
+	end
+	return nil
+end
+
+--- The template's files, relative path to content, read with `read`.
+function Projects.templateFiles(template, read)
+	local files = {}
+	for _, path in ipairs(template.files) do
+		local content = read(template.root .. path)
+		if not content then return nil, "Template file is missing: " .. template.root .. path end
+		files[path] = content
+	end
+	return files
+end
+
+--- The folder a project named `name` lives in: its letters and digits,
+--- unique among `existing` ids. Nil and a message when nothing usable is left.
+function Projects.folderName(name, existing)
+	if type(name) ~= "string" then return nil, "Enter a project name" end
+	local folder = name:gsub("[^%w]", "")
+	if folder == "" then return nil, "Enter a project name with letters or digits" end
+	local taken = {}
+	for _, project in ipairs(existing or {}) do taken[(project.id or project):lower()] = true end
+	if taken[folder:lower()] then return nil, "A project called " .. folder .. " already exists" end
+	return folder
+end
+
+--- A bundle identifier for a project folder.
+function Projects.bundleId(folder)
+	return "org.example." .. folder:lower()
+end
+
 function Projects.iconChoice(id)
 	for _, choice in ipairs(Projects.iconChoices) do
 		if choice.id == id then return choice end

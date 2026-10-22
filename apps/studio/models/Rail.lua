@@ -10,13 +10,13 @@ local MODES = {
 -- Workspace destinations live on the rail, as in an editor's activity bar,
 -- so the project menu lists projects only.
 local DESTINATIONS = {
-	{ id = "templates", title = "Templates", icon = "square.grid.2x2" },
-	{ id = "examples", title = "Examples", icon = "shippingbox" },
-	{ id = "plugins", title = "Plugins", icon = "puzzlepiece.extension" },
+	{ id = "templates", title = "Templates", icon = "square.grid.2x2", action = "newProject" },
+	{ id = "examples", title = "Examples", icon = "shippingbox", action = "newProject" },
+	{ id = "plugins", title = "Plugins", icon = "puzzlepiece.extension", action = "openPlugins" },
 }
 
 local FOOTER = {
-	{ id = "settings", title = "Settings", icon = "gearshape" },
+	{ id = "settings", title = "Settings", icon = "gearshape", action = "openSettings" },
 }
 
 -- `selected` is the id of the mode the agent card opens in.

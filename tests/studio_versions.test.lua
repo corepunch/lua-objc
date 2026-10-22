@@ -170,7 +170,7 @@ controller.versions, controller.versionsError = nil, "no repository"
 t.expect(controller:commitProject("x") == nil, "commit without a repository fails")
 t.assertEqual(controller.status, "Git unavailable: no repository", "the open error is shown")
 
-local source = require("ui.xml").describeFile("apps/studio/views/Workspace.etlua", {
+local source = require("ui.xml").describeFile("apps/studio/views/layouts/Workspace.etlua", {
 	rail = require("apps.studio.models.Rail").presentation(),
 	preview = require("apps.studio.models.Preview").presentation({}),
 	chat = require("apps.studio.models.Chat").presentation(),

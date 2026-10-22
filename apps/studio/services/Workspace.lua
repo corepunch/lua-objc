@@ -104,7 +104,9 @@ local function initialize(ns, readBundled, git, project, definition)
 		}
 		local ok, err = ns._documentWrite(project .. "/project.lua", manifestSource(nextMetadata))
 		if not ok then return nil, err or "Could not save project file list" end
-		local settings = ns._jsonEncode({ model = value.model })
+		-- The agent choice travels with the project but stays out of its
+		-- history: settings.json is ignored by Git.
+		local settings = ns._jsonEncode({ provider = value.provider, model = value.model })
 		ok, err = ns._documentWrite(project .. "/settings.json", settings)
 		if not ok then return nil, err or "Could not save project settings" end
 		listed, metadata = {}, nextMetadata
@@ -122,7 +124,7 @@ local function initialize(ns, readBundled, git, project, definition)
 	-- Materialize the bundled starter in Documents on first launch so the
 	-- project tree, code viewer and Files app all inspect the same source.
 	if not ns._documentRead(project .. "/project.lua") then
-		local ok, err = save({ files = seed, model = settings and settings.model or "openrouter/free" })
+		local ok, err = save({ files = seed, provider = settings and settings.provider, model = settings and settings.model })
 		assert(ok, err)
 	end
 	definition = nil
@@ -160,11 +162,11 @@ local function initialize(ns, readBundled, git, project, definition)
 		localStorage = localStorage,
 		storage = {
 			load = function()
-				return { files = loadFiles(), model = settings and settings.model }
+				return { files = loadFiles(), provider = settings and settings.provider, model = settings and settings.model }
 			end,
 			save = function(value)
 				local ok, err = save(value)
-				if ok then settings = { model = value.model } end
+				if ok then settings = { provider = value.provider, model = value.model } end
 				return ok, err
 			end,
 		},

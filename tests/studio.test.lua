@@ -3,6 +3,9 @@ local t = require("TestKit")
 local Model = require("apps.studio.Model")
 local Agent = require("apps.studio.services.Agent")
 local Preview = require("apps.studio.services.Preview")
+local Providers = require("apps.studio.services.Providers")
+local Keys = require("apps.studio.services.Keys")
+local Changes = require("apps.studio.helpers.Changes")
 local ns = require("AppKit")
 local function read(path)
 	local file = assert(io.open(path)); local value = file:read("*a"); file:close(); return value
@@ -17,7 +20,7 @@ local storage = { load = function() return nil end, save = function(value)
 	saved = value; return true
 end }
 local model = Model.new(storage, seed)
-t.assertEqual(model.model, "openrouter/free", "new workspaces start with OpenRouter free router")
+t.assertEqual(model.provider, nil, "a new project has not chosen a provider yet")
 t.assertEqual(#model:listFiles(), 4, "starter has four MVC files")
 for _, path in ipairs({ "../secret.lua", "/tmp/file.lua", "demo/playground/../studio/Model.lua", "demo/playground//a.lua", "demo/playground/evil.txt", "demo/playground/a\\b.lua" }) do
 	t.expect(not Model.validPath(path), "reject unsafe path " .. path)
@@ -37,71 +40,115 @@ ok = model:apply({ { path = path, content = "return {}" } })
 t.expect(not ok, "write failure is surfaced")
 t.assertEqual(#model.history, 0, "failed persistence does not create undo history")
 failSave = false
-t.expect(model:apply({ { path = path, content = "return {}" } }), "valid edits save")
+local summary = model:apply({ { path = path, content = "return {}" } })
+t.expect(summary, "valid edits save")
+t.assertEqual(summary[1].path, "Model.lua", "the change summary names the file relative to the project")
+t.assertEqual(summary[1].added, 1, "and counts the lines it gained")
+t.assertEqual(summary[1].removed, 9, "and lost")
 t.assertEqual(saved.files[path], "return {}", "changes persist")
 t.assertEqual(model.files["demo/playground/init.lua"], seed["demo/playground/init.lua"], "unrelated file unchanged")
 t.expect(model:undo(), "undo succeeds")
 t.assertEqual(model.files[path], original, "undo restores original")
 t.expect(not model:undo(), "empty undo is safe")
-t.expect(not model:setModel("no-provider"), "model ID validation")
-t.expect(model:setModel("provider/test-model"), "custom model allowed")
+t.expect(not model:setAgent("", "x") and not model:setAgent("openai", "two words"), "the agent choice is validated")
+t.expect(model:setAgent("openai", "gpt-5-mini"), "a provider and model are chosen")
+t.assertEqual(saved.provider .. "/" .. saved.model, "openai/gpt-5-mini", "the choice persists with the project")
+failSave = true
+t.expect(not model:setAgent("anthropic", "x"), "a choice that cannot be saved is refused")
+t.assertEqual(model.provider, "openai", "and the previous choice stays")
+failSave = false
 local restored = Model.new({ load = function() return saved end, save = storage.save }, seed)
-t.assertEqual(restored.model, "provider/test-model", "model setting restored")
-local legacyFiles = {}
-for path, source in pairs(seed) do
-	local legacyPath = path:gsub("^demo/playground/", "apps/playground/")
-	legacyFiles[legacyPath] = source:gsub("demo%.playground", "apps.playground"):gsub("demo/playground", "apps/playground")
-end
-local migratedSave
-local migrated = Model.new({
-	load = function() return { files = legacyFiles, model = "provider/legacy" } end,
-	save = function(value) migratedSave = value; return true end,
-}, seed)
-t.assertEqual(migrated.files["demo/playground/Model.lua"], legacyFiles["apps/playground/Model.lua"],
-	"legacy apps/playground files load at the current project path")
-t.assertEqual(migrated.files["demo/playground/init.lua"], 'return require("demo.playground.Controller")\n',
-	"legacy apps.playground module references are migrated")
-t.assertEqual(migratedSave.files["demo/playground/Model.lua"], legacyFiles["apps/playground/Model.lua"],
-	"migrated project paths are persisted")
-t.assertEqual(migrated.model, "provider/legacy", "migration preserves the selected model")
+t.assertEqual(restored.provider .. "/" .. restored.model, "openai/gpt-5-mini", "the choice is restored")
+model:message("user", "hi"); model:message("agent", "", { { path = "a.lua", added = 1, removed = 0 } })
+t.assertEqual(model.messages[2].changes[1].path, "a.lua", "a message may carry a change summary")
+model:clearMessages()
+t.assertEqual(#model.messages, 0, "a conversation can start over")
 
-local pending, payload, cancelled, reloads = nil, nil, 0, 0
-local encoded
-local agent = Agent.new(model, function(body, key, callback)
-	payload, pending = body, callback
-	t.assertEqual(key, "test-key", "credential passed to transport only")
-	return function() cancelled = cancelled + 1 end
-end, { decode = ns.json_parse, encode = function(value) encoded = value; return "tool result" end },
-	function() reloads = reloads + 1; return true end, function() end)
-t.expect(not agent:send("", "test-key"), "empty prompt rejected")
-t.expect(not agent:send("hello", ""), "missing key rejected")
-t.expect(agent:send("Change my app", "test-key"), "agent starts")
-t.expect(not agent:send("again", "test-key"), "concurrent sends rejected")
-t.assertEqual(payload.model, "provider/test-model", "configured model used")
-t.assertEqual(#payload.tools, 4, "tools sent with request")
-pending({ choices = { { message = { role = "assistant", tool_calls = {
-	{ id = "call-1", ["function"] = { name = "readFile", arguments = '{"path":"demo/playground/Model.lua"}' } },
-} } } } })
-t.assertEqual(encoded.result, original, "readFile returns actual source")
-t.assertEqual(payload.messages[#payload.messages].tool_call_id, "call-1", "tool result tied to call")
-t.assertEqual(#payload.tools, 4, "tools included on follow-up")
-pending({ choices = { { message = { role = "assistant", content = "Done" } } } })
+-- Line counts for change cards.
+local added, removed = Changes.count("a\nb\nc\n", "a\nc\nd\ne\n")
+t.expect(added == 2 and removed == 1, "added and removed lines are counted")
+added, removed = Changes.count("a\nb\n", "b\na\n")
+t.expect(added == 0 and removed == 0, "moved lines count for neither")
+added, removed = Changes.count(nil, "x\n\ny\n")
+t.expect(added == 2 and removed == 0, "a new file adds its non-empty lines")
+
+-- The agent speaks to whichever provider the project chose, through a
+-- transport that only sees finished requests.
+local json = { encode = ns._jsonEncode, decode = ns.json_parse }
+local providers = Providers.load(json)
+local store = { openai = "test-key" }
+local keys = Keys.new({ _keychainGet = function(_, account) return store[account] end,
+	_keychainSet = function(_, account, value) store[account] = value; return true end,
+	_keychainDelete = function(_, account) store[account] = nil; return true end })
+local pending, request, cancelled, reloads, renders = nil, nil, 0, 0, 0
+local agent = Agent.new({ model = model, providers = providers, keys = keys, json = json,
+	http = function(req, callback)
+		request, pending = req, callback
+		return function() cancelled = cancelled + 1 end
+	end,
+	preview = function() reloads = reloads + 1; return true end,
+	changed = function() renders = renders + 1 end })
+local function respond(message)
+	pending(json.encode({ choices = { { message = message } } }), nil, 200)
+end
+t.expect(not agent:send(""), "empty prompt rejected")
+model.provider = "anthropic"
+local started, why = agent:send("hello")
+t.expect(not started and why:find("Anthropic API key", 1, true), "a provider without a key says so")
+model.provider = "openai"
+t.expect(agent:send("Change my app"), "agent starts")
+t.expect(not agent:send("again"), "concurrent sends rejected")
+t.assertEqual(model.messages[1].role .. ": " .. model.messages[1].text, "user: Change my app", "the request joins the transcript")
+t.assertEqual(request.url, "https://api.openai.com/v1/chat/completions", "the chosen provider's request goes out")
+t.assertEqual(request.headers.Authorization, "Bearer test-key", "with the key from the keychain")
+local body = json.decode(request.body)
+t.assertEqual(body.model, "gpt-5-mini", "configured model used")
+t.assertEqual(#body.tools, 4, "tools sent with request")
+t.assertEqual(body.messages[#body.messages].content, "Change my app", "the user's words close the request")
+respond({ role = "assistant", content = "Reading.", tool_calls = {
+	{ id = "call-1", type = "function", ["function"] = { name = "readFile", arguments = '{"path":"demo/playground/Model.lua"}' } } } })
+body = json.decode(request.body)
+local last = body.messages[#body.messages]
+t.assertEqual(last.role, "tool", "the tool result follows the call")
+t.assertEqual(last.tool_call_id, "call-1", "tool result tied to call")
+t.assertEqual(json.decode(last.content).result, original, "readFile returns actual source")
+t.assertEqual(model.messages[2].text, "Reading.", "the agent's words join the transcript")
+respond({ role = "assistant", content = "Done" })
 t.expect(not agent.busy, "agent finishes after final answer")
-t.expect(agent:send("Try again", "test-key"), "next turn starts")
+t.assertEqual(#agent.conversation, 4, "user, assistant, tool, assistant")
+t.expect(agent:send("Try again"), "next turn starts")
 local late = pending
 agent:stop()
 t.assertEqual(cancelled, 1, "stop cancels HTTP request")
+t.assertEqual(#agent.conversation, 4, "a stopped turn is dropped from the conversation")
 local messages = #model.messages
-late({ choices = { { message = { role = "assistant", content = "late" } } } })
+late(json.encode({ choices = { { message = { role = "assistant", content = "late" } } } }), nil, 200)
 t.assertEqual(#model.messages, messages, "late response ignored")
-t.expect(agent:send("Try again", "test-key"), "restart after cancellation")
-pending(nil, "offline")
+t.expect(agent:send("Try again"), "restart after cancellation")
+pending(nil, "offline", 0)
 t.expect(not agent.busy, "network errors clear busy state")
+t.assertEqual(model.messages[#model.messages].role, "error", "a network error is an error line")
 t.expect(model:transcript():find("offline", 1, true) ~= nil, "network error visible")
-local result = agent:execute({ ["function"] = { name = "applyFiles", arguments = '{"files":[{"path":"demo/playground/Model.lua","content":"return {}"}]}' } })
+t.expect(agent:send("Once more"), "restart after a network error")
+pending("<html>Bad gateway</html>", nil, 502)
+t.expect(model.messages[#model.messages].text:find("HTTP 502", 1, true), "a non-JSON body reports its status")
+t.expect(agent:send("Again"), "restart after a bad body")
+pending(json.encode({ error = { message = "insufficient_quota" } }), nil, 429)
+t.expect(model.messages[#model.messages].text:find("insufficient_quota", 1, true), "the provider's error is shown")
+local result = agent:execute({ name = "applyFiles", arguments = { files = { { path = "demo/playground/Model.lua", content = "return {}" } } } })
 t.expect(result.saved, "tool applies files")
 t.assertEqual(reloads, 1, "tool reloads preview")
+t.assertEqual(model.messages[#model.messages].changes[1].path, "Model.lua", "an edit joins the transcript as a change card")
+result = agent:execute({ name = "applyFiles", arguments = { files = { { path = "demo/playground/Model.lua", content = "nope(" } } } })
+t.expect(result.error, "a bad edit returns its error to the provider")
 model:undo()
+agent:reset()
+t.expect(#agent.conversation == 0 and #model.messages == 0, "a new conversation forgets everything")
+model.provider = "anthropic"; store.anthropic = "sk-ant"
+t.expect(agent:send("hi"), "the project can switch providers")
+t.assertEqual(request.headers["x-api-key"], "sk-ant", "and the next request speaks that provider's protocol")
+agent:stop()
+
 local previewNS = {}
 for k, v in pairs(ns) do previewNS[k] = v end
 previewNS.HostingController = function(view) return view end
@@ -117,15 +164,17 @@ broken[path] = 'while true do end'
 view, err = preview:render(broken)
 t.expect(not view and err:find("execution budget", 1, true), "runaway initial render interrupted")
 t.expect(preview:render(model.files) ~= nil, "hook restored after budget error")
--- Inspect the two-pane workspace template without constructing native UI.
-local description = require("ui.xml").describeFile("apps/studio/views/Workspace.etlua", {
+-- Inspect the workspace template without constructing native UI.
+local description = require("ui.xml").describeFile("apps/studio/views/layouts/Workspace.etlua", {
 	rail = require("apps.studio.models.Rail").presentation(),
 	preview = require("apps.studio.models.Preview").presentation({
-		{ title = "HabitPal", icon = "checklist", selected = true },
+		{ id = "HabitPal", title = "HabitPal", icon = "checklist", selected = true, action = "openProject_HabitPal" },
 	}),
 	chat = require("apps.studio.models.Chat").presentation(),
 })
 t.expect(description.source:find("HabitPal", 1, true) ~= nil, "project navigation renders")
+t.expect(description.source:find('action="openProject_HabitPal"', 1, true) ~= nil, "a project in the menu opens")
+t.expect(description.source:find('title="New Project" systemImage="plus" action="newProject"', 1, true) ~= nil, "the menu makes a project")
 t.expect(description.source:find("width=\"440\"", 1, true) ~= nil, "preview is sized to the device")
 t.expect(description.source:find("minWidth=\"380\"", 1, true) ~= nil, "chat keeps a usable minimum width")
 t.expect(description.source:find("toggleChat", 1, true) ~= nil, "chat visibility customization remains available")
@@ -146,6 +195,17 @@ local ok = Projects.save(function(path, value) writes[path] = value; return true
 t.expect(ok and writes["Demo/project.lua"]:find('appIcon = "checklist"', 1, true), "project settings persist as readable Lua")
 t.expect(writes["Demo/project.lua"]:find('projectIcon = "rocket-sketch"', 1, true),
 	"project settings persist the default artwork choice")
+-- Templates and folder names for new projects.
+t.assertEqual(#Projects.templates, 2, "a project starts blank or as the habit tracker")
+local blank = Projects.templateFiles(Projects.template("blank"), read)
+t.assertEqual(blank["init.lua"], read("demo/playground/init.lua"), "the blank template is the playground")
+local habits = Projects.templateFiles(Projects.template("habits"), read)
+t.expect(habits["views/Today.etlua"] ~= nil, "the habit template carries its tabs")
+t.expect(not Projects.templateFiles({ root = "nowhere/", files = { "x.lua" } }, function() return nil end), "a missing template file is an error")
+t.assertEqual(Projects.folderName("My App 2!", {}), "MyApp2", "a folder keeps the name's letters and digits")
+t.expect(not Projects.folderName("!!!", {}) and not Projects.folderName(nil, {}), "a name needs letters or digits")
+t.expect(not Projects.folderName("habit tracker", { { id = "HabitTracker" } }), "folders are unique, ignoring case")
+t.assertEqual(Projects.bundleId("MyApp"), "org.example.myapp", "a bundle id follows the folder")
 -- The preview runs any project by its init module: demo/todo, which uses
 -- retained templates, renders from its files alone.
 local todoFiles = {}
@@ -173,11 +233,26 @@ t.assertEqual(change.delta, "+5 −1", "a change counts added and removed lines"
 t.assertEqual(chat.messages[2].summary.title, "1 file changed", "the card summarises its files")
 t.assertEqual(chat.draft, "Make it blue", "the composer shows the draft")
 t.expect(chat.listening, "dictation can be shown listening")
+t.assertEqual(chat.agent.model, "No provider", "without a provider the header says so")
 local starter = Chat.presentation()
 t.expect(starter.messages[1].role == "user" and #starter.messages[2].changes == 7, "the starter conversation describes the complete app")
-local pane = require("ui.xml").describeFile("apps/studio/views/ChatPane.etlua", chat)
+local fresh = Chat.presentation({ messages = {}, project = "Habit Tracker", busy = true,
+	agent = { name = "OpenAI", model = "gpt-5-mini", icon = "brain" } })
+t.expect(fresh.messages[1].role == "agent" and fresh.messages[1].text:find("Habit Tracker", 1, true), "a quiet project opens on a welcome")
+t.assertEqual(fresh.agent.name .. " " .. fresh.agent.model, "OpenAI gpt-5-mini", "the header names the provider and model")
+t.expect(fresh.busy, "the composer knows the agent is working")
+local pane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", chat)
 t.expect(pane.source:find("&lt;Old /&gt;", 1, true) ~= nil, "the chat pane renders diff lines")
 t.expect(pane.source:find('text="Make it blue"', 1, true) ~= nil, "the chat pane renders the draft")
+t.expect(pane.source:find('id="sendButton"', 1, true) ~= nil, "an idle composer offers Send")
+local busyPane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", fresh)
+t.expect(busyPane.source:find('id="stopButton"', 1, true) ~= nil and not busyPane.source:find('id="sendButton"', 1, true),
+	"a working composer offers Stop instead")
+local errorPane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", Chat.presentation({ messages = {
+	{ role = "user", text = "x" }, { role = "error", text = "HTTP 401: bad key" }, { role = "agent", text = "", changes = { { path = "a.lua", added = 1 } } } } }))
+t.expect(errorPane.source:find("exclamationmark.triangle.fill", 1, true) ~= nil, "an error line shows a warning symbol")
+t.expect(errorPane.source:find('text="HTTP 401: bad key"', 1, true) ~= nil, "with its message")
+t.expect(not errorPane.source:find('text="" size="15"', 1, true), "an agent message that is only a change card shows no empty label")
 
 local Code = require("apps.studio.models.Code")
 local code = Code.presentation({
@@ -223,14 +298,24 @@ documents["HabitTracker/AppIcon.png"] = "custom project artwork"
 local editedFiles = {}
 for path, content in pairs(workspace.seed) do editedFiles[path] = content end
 editedFiles["demo/playground/Model.lua"] = "return { saved = true }\n"
-t.expect(workspace.storage.save({ files = editedFiles, model = "provider/test" }),
+t.expect(workspace.storage.save({ files = editedFiles, provider = "openai", model = "gpt-5-mini" }),
 	"project files and settings save to Documents")
+t.assertEqual(ns.json_parse(documents["HabitTracker/settings.json"]).provider, "openai", "the agent choice is the project's setting")
 local reopened = Workspace.open(documentNS, read, fakeGit, "HabitTracker")
 t.assertEqual(reopened.seed["demo/playground/Model.lua"], "return { saved = true }\n",
 	"saved project source is reopened from Documents")
+local loaded = reopened.storage.load()
+t.assertEqual(loaded.provider .. "/" .. loaded.model, "openai/gpt-5-mini", "the agent choice is reopened with the project")
 t.assertEqual(documents["HabitTracker/AppIcon.png"], "custom project artwork",
 	"opening a project preserves its own app icon")
 t.expect(reopened.localStorage.set("test-state", "{\"saved\":true}"), "app local storage writes into its Documents folder")
 t.assertEqual(reopened.localStorage.get("test-state"), "{\"saved\":true}", "app local storage reads persisted data")
+-- Creating a project writes its files, metadata and catalog entry.
+local created = Workspace.create(documentNS, fakeGit, "Fresh", { name = "Fresh App", bundleId = "org.example.fresh", appIcon = "app" }, blank)
+t.expect(documents["Fresh/project.lua"]:find('name = "Fresh App"', 1, true), "a created project has its metadata")
+t.assertEqual(documents["Fresh/init.lua"], blank["init.lua"], "and its template files")
+t.expect(ns.json_parse(documents["projects.json"])[1] == "Fresh" or ns.json_parse(documents["projects.json"])[2] == "Fresh",
+	"and joins the catalog")
+t.assertEqual(#Code.presentation(created.seed).files, 4, "the created workspace is open")
 
 os.exit(t.summary() and 0 or 1)

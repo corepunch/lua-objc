@@ -23,10 +23,10 @@
 	<% end %>
 	<Divider width="<%= RAIL.rule %>" />
 	<% for _, item in ipairs(destinations) do %>
-	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" action="<%= item.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
 	<% end %>
 	<Spacer />
 	<% for _, item in ipairs(footer) do %>
-	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" action="<%= item.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
 	<% end %>
 </VStack>

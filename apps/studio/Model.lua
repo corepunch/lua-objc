@@ -1,47 +1,20 @@
+-- A project open in Studio: its source files, the undo history of the
+-- agent's edits, the conversation, and the agent it talks to (a provider
+-- plugin and one of its models). Files are keyed by their module path
+-- under demo/playground/, the namespace every project runs in.
+local Changes = require("apps.studio.helpers.Changes")
 local Model = {}
 Model.__index = Model
 local PREFIX = "demo/playground/"
 local REQUIRED = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" }
 local LIMITS = { fileBytes = 128 * 1024, totalBytes = 1024 * 1024, history = 20 }
-local DEFAULT_MODEL = "openrouter/free"
-local SAVED_PREFIXES = { "examples/playground/", "apps/playground/" }
+
+Model.prefix = PREFIX
 
 local function copy(files)
 	local result = {}
 	for path, source in pairs(files) do result[path] = source end
 	return result
-end
-
-local function migrateSavedFiles(files)
-	if type(files) ~= "table" then return files, false end
-	local migrated, changed = {}, false
-	for path, source in pairs(files) do
-		local canonical = path
-		if type(path) == "string" then
-			for _, savedPrefix in ipairs(SAVED_PREFIXES) do
-				if path:sub(1, #savedPrefix) == savedPrefix then
-					canonical = PREFIX .. path:sub(#savedPrefix + 1)
-					changed = true
-					break
-				end
-			end
-		end
-		if type(source) == "string" then
-			local current = source:gsub("examples%.playground", "demo.playground")
-			current = current:gsub("examples/playground", "demo/playground")
-			current = current:gsub("apps%.playground", "demo.playground")
-			current = current:gsub("apps/playground", "demo/playground")
-			if current ~= source then
-				source = current
-				changed = true
-			end
-		end
-		if migrated[canonical] ~= nil then
-			return nil, false, "Saved project has conflicting paths after moving to demo/playground: " .. canonical
-		end
-		migrated[canonical] = source
-	end
-	return migrated, changed
 end
 
 function Model.validPath(path)
@@ -53,21 +26,16 @@ function Model.validPath(path)
 	return path:match("%.lua$") ~= nil or path:match("%.etlua$") ~= nil
 end
 
+-- `storage.load()` returns {files, provider, model} or nil; `storage.save`
+-- takes the same shape. `seed` is the project's source when nothing is saved.
 function Model.new(storage, seed)
-	local self = setmetatable({ storage = storage, files = copy(seed), history = {}, messages = {},
-		model = DEFAULT_MODEL, revision = 0 }, Model)
+	local self = setmetatable({ storage = storage, files = copy(seed), history = {}, messages = {}, revision = 0 }, Model)
 	local saved = storage.load()
 	if saved then
-		local files, changed, migrationError = migrateSavedFiles(saved.files)
-		if migrationError then error(migrationError) end
-		local ok, err = self:validate(files)
+		local ok, err = self:validate(saved.files)
 		if not ok then error("Saved project is invalid: " .. err) end
-		if changed then
-			local canonical = { files = files, model = saved.model }
-			local written, writeError = storage.save(canonical)
-			if not written then error("Could not save migrated project paths: " .. tostring(writeError)) end
-		end
-		self.files = copy(files)
+		self.files = copy(saved.files)
+		if type(saved.provider) == "string" then self.provider = saved.provider end
 		if type(saved.model) == "string" then self.model = saved.model end
 	end
 	return self
@@ -105,10 +73,14 @@ function Model:listFiles()
 	return result
 end
 
+local function record(self, files)
+	return self.storage.save({ files = files, provider = self.provider, model = self.model })
+end
+
 function Model:commit(files)
 	local ok, err = self:validate(files)
 	if not ok then return nil, err end
-	ok, err = self.storage.save({ files = files, model = self.model })
+	ok, err = record(self, files)
 	if not ok then return nil, err or "Could not save project" end
 	table.insert(self.history, (copy(self.files)))
 	if #self.history > LIMITS.history then table.remove(self.history, 1) end
@@ -117,39 +89,57 @@ function Model:commit(files)
 	return true
 end
 
+--- Applies `changes` ({path, content} each) as one edit. Returns the
+--- change summary ({path, added, removed} per file) or nil and an error.
 function Model:apply(changes)
 	if type(changes) ~= "table" or #changes == 0 then return nil, "Expected nonempty changes" end
-	local files, seen = copy(self.files), {}
+	local files, seen, paths = copy(self.files), {}, {}
 	for _, change in ipairs(changes) do
 		if type(change) ~= "table" or not Model.validPath(change.path) then return nil, "Invalid file path" end
 		if seen[change.path] then return nil, "Duplicate file path" end
 		seen[change.path] = true
 		if type(change.content) ~= "string" then return nil, "Expected file content" end
 		files[change.path] = change.content
+		table.insert(paths, change.path)
 	end
-	return self:commit(files)
+	local summary = Changes.summary(self.files, files, paths, PREFIX)
+	local ok, err = self:commit(files)
+	if not ok then return nil, err end
+	return summary
 end
 
 function Model:undo()
 	local previous = self.history[#self.history]
 	if not previous then return nil, "Nothing to undo" end
-	local ok, err = self.storage.save({ files = previous, model = self.model })
+	local ok, err = record(self, previous)
 	if not ok then return nil, err end
 	self.files = table.remove(self.history)
 	self.revision = self.revision + 1
 	return true
 end
 
-function Model:setModel(value)
-	if type(value) ~= "string" or not value:match("^%S+/%S+$") then return nil, "Enter a provider/model ID" end
-	local ok, err = self.storage.save({ files = self.files, model = value })
-	if not ok then return nil, err end
-	self.model = value
+--- The agent this project talks to: a provider plugin id and a model id.
+function Model:setAgent(provider, model)
+	if type(provider) ~= "string" or provider == "" then return nil, "Choose a provider" end
+	if type(model) ~= "string" or not model:match("^%S+$") then return nil, "Enter a model ID" end
+	local previousProvider, previousModel = self.provider, self.model
+	self.provider, self.model = provider, model
+	local ok, err = record(self, self.files)
+	if not ok then
+		self.provider, self.model = previousProvider, previousModel
+		return nil, err
+	end
 	return true
 end
 
-function Model:message(role, text)
-	table.insert(self.messages, { role = role, text = text })
+--- A line of the conversation: `role` is "user", "agent" or "error";
+--- `changes` is a change summary shown as a card.
+function Model:message(role, text, changes)
+	table.insert(self.messages, { role = role, text = text or "", changes = changes })
+end
+
+function Model:clearMessages()
+	self.messages = {}
 end
 
 function Model:transcript()
@@ -157,4 +147,5 @@ function Model:transcript()
 	for _, item in ipairs(self.messages) do table.insert(lines, item.role .. "\n" .. item.text) end
 	return table.concat(lines, "\n\n")
 end
+
 return Model

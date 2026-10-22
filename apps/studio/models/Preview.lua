@@ -8,7 +8,7 @@ local STAGE_WIDTH = 440
 -- The project menu lists the projects, then what makes another one. The
 -- other workspace destinations are on the activity rail.
 local DESTINATIONS = {
-	{ title = "New Project", icon = "plus" },
+	{ title = "New Project", icon = "plus", action = "newProject" },
 }
 
 function Model.presentation(projects, iconChoices)
@@ -26,6 +26,7 @@ function Model.presentation(projects, iconChoices)
 		zoom = "100%",
 		runLabel = "Run",
 		status = "Ready",
+		busy = false,
 		stageWidth = STAGE_WIDTH,
 		tint = Theme.tint,
 	}

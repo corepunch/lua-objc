@@ -161,6 +161,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #define LUA_OBJC_DOCUMENT_ROOT() \
 	NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject
 #include "../shared/lua_documents.m"
+#include "../shared/keychain.m"
 #include "../shared/performance_signpost.m"
 #include "../shared/lua_dealloc_watch.m"
 
@@ -210,6 +211,10 @@ static const luaL_Reg bridge_lib[] = {
 	{"_documentWrite", bridge_document_write},
 	{"_documentWriteData", bridge_document_write_data},
 	{"_documentExists", bridge_document_exists},
+	{"_documentList", bridge_document_list},
+	{"_keychainGet", bridge_keychain_get},
+	{"_keychainSet", bridge_keychain_set},
+	{"_keychainDelete", bridge_keychain_delete},
 	{"_jsonEncode", bridge_json_encode},
 	{"_httpRequest", bridge_http_request},
 	{"_cancelRequest", bridge_cancel_request},

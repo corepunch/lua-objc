@@ -1,0 +1,45 @@
+<%
+  -- Every provider plugin Studio loaded: the bundled ones and the files
+  -- dropped into Documents/Plugins, with the ones that failed to load and
+  -- why. Adding a provider is adding a file; this sheet says where.
+  local SHEET = { inset = 20, spacing = 20, rowSpacing = 10, titleSize = 20, sectionSize = 13, bodySize = 15, captionSize = 12, symbol = 20, symbolWidth = 28, radius = 14 }
+%>
+<VStack padding="<%= SHEET.inset %>" spacing="<%= SHEET.spacing %>" alignment="leading" maxWidth="infinity">
+	<HStack spacing="8" alignment="center" maxWidth="infinity">
+		<Label text="Plugins" size="<%= SHEET.titleSize %>" weight="bold" lines="1" />
+		<Spacer />
+		<Button id="done" title="Done" action="closeSheet" style="glassProminent" size="<%= SHEET.bodySize %>" weight="semibold" />
+	</HStack>
+	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
+		<Label text="MODEL PROVIDERS" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />
+		<% for _, plugin in ipairs(plugins) do %>
+		<HStack id="plugin/<%= plugin.id %>" spacing="<%= SHEET.rowSpacing %>" alignment="center" maxWidth="infinity">
+			<SystemImage name="<%= plugin.symbol %>" size="<%= SHEET.symbol %>" color="accent" width="<%= SHEET.symbolWidth %>" label="" />
+			<VStack spacing="2" alignment="leading" flexShrink="1">
+				<Label text="<%= plugin.title %>" size="<%= SHEET.bodySize %>" weight="semibold" lines="1" />
+				<Label text="<%= plugin.origin %> · <%= plugin.models %>" size="<%= SHEET.captionSize %>" color="secondary" lines="2" />
+			</VStack>
+			<Spacer />
+			<Label text="<%= plugin.keyStatus %>" size="<%= SHEET.captionSize %>" color="secondary" lines="1" />
+		</HStack>
+		<% end %>
+	</VStack>
+	<% if #problems > 0 then %>
+	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
+		<Label text="NOT LOADED" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />
+		<% for _, problem in ipairs(problems) do %>
+		<HStack spacing="<%= SHEET.rowSpacing %>" alignment="top" maxWidth="infinity">
+			<SystemImage name="exclamationmark.triangle.fill" size="<%= SHEET.symbol %>" color="systemOrange" width="<%= SHEET.symbolWidth %>" label="" />
+			<VStack spacing="2" alignment="leading" flexShrink="1">
+				<Label text="<%= problem.file %>" size="<%= SHEET.bodySize %>" design="monospaced" lines="1" />
+				<Label text="<%= problem.message %>" size="<%= SHEET.captionSize %>" color="secondary" lines="0" />
+			</VStack>
+		</HStack>
+		<% end %>
+	</VStack>
+	<% end %>
+	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
+		<Label text="ADD A PROVIDER" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />
+		<Label text="A provider is one Lua file. Put it in Lua Studio › <%= folder %> in the Files app and relaunch: it appears here and in Settings. The file returns a table with api = 1, a title, its models, and two functions: request(host, turn, key) builds the HTTPS request for a turn, reply(host, status, body) reads the answer back. host.chat speaks the OpenAI dialect, so a gateway is a URL and a header. See openai.lua in the app for the pattern." size="<%= SHEET.captionSize + 1 %>" color="secondary" lines="0" maxWidth="infinity" />
+	</VStack>
+</VStack>

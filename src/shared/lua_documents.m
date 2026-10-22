@@ -62,6 +62,31 @@ static int bridge_document_exists(lua_State *L) {
 	return 1;
 }
 
+/* The entries of a Documents folder, sorted as Finder sorts, hidden files
+ * left out: {name, directory} each. Apps that let the user drop files in
+ * (plugins in a Plugins folder) read the folder with this. A folder that
+ * does not exist yet lists as empty. */
+static int bridge_document_list(lua_State *L) {
+	NSString *path = document_path(L);
+	NSFileManager *fm = NSFileManager.defaultManager;
+	NSArray<NSString *> *names = [[fm contentsOfDirectoryAtPath:path error:nil]
+		sortedArrayUsingSelector:@selector(localizedStandardCompare:)];
+	lua_newtable(L);
+	lua_Integer index = 0;
+	for (NSString *name in names) {
+		if ([name hasPrefix:@"."]) continue;
+		BOOL directory = NO;
+		[fm fileExistsAtPath:[path stringByAppendingPathComponent:name] isDirectory:&directory];
+		lua_newtable(L);
+		lua_pushstring(L, name.UTF8String);
+		lua_setfield(L, -2, "name");
+		lua_pushboolean(L, directory);
+		lua_setfield(L, -2, "directory");
+		lua_rawseti(L, -2, ++index);
+	}
+	return 1;
+}
+
 static int bridge_json_encode(lua_State *L) {
 	id obj = lua_to_objc_value(L, 1);
 	if (![NSJSONSerialization isValidJSONObject:obj]) return luaL_error(L, "invalid JSON value");

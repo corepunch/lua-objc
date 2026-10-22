@@ -41,6 +41,8 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `uikit/platform.m` | window display and native values | `bridge_show`, `bridge_font` |
 | `shared/lua_bridge_support.m` | userdata retain/release, interned handles, Foundation conversion | `ObjCRef`, `push_objc`, `gc_objc`, `lua_to_objc_value` |
 | `shared/lua_async.m` | state owners, timers, HTTP, and JSON for both platforms | `LuaStateOwner`, `bridge_http_get` |
+| `shared/lua_documents.m` | the app's Documents folder: read, write, exists, list; JSON encoding | `bridge_document_read`, `bridge_document_list` |
+| `shared/keychain.m` | generic-password keychain items for an app's secrets (API keys), by service and account | `bridge_keychain_get`, `bridge_keychain_set`, `bridge_keychain_delete` |
 | `shared/lua_reg.m` | state-bound callback registrations included by `lua_async.m` | `LuaReg`, `lua_reg_opt`, `Scope` |
 | `shared/lua_dealloc_watch.m` | test-only native deallocation sentinel | `bridge_dealloc_watch`, `bridge_dealloc_count` |
 | `shared/scene_models.m` | SceneKit model files loaded once and cloned, textures resolved against the model; shared with Reel's offline renderer | `scene_model` |

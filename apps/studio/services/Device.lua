@@ -1,31 +1,22 @@
+-- The iPad's services as the controller injects them: JSON, HTTPS, the
+-- Documents folder and the keychain, all from the platform module.
 local Device = {}
+
 function Device.new(ns)
 	local json = { encode = ns._jsonEncode, decode = ns.json_parse }
 	return {
 		json = json,
-		storage = {
-			load = function()
-				local source = ns._documentRead("playground.json")
-				if not source then return nil end
-				return json.decode(source)
-			end,
-			save = function(value) return ns._documentWrite("playground.json", json.encode(value)) end,
+		keychain = ns,
+		documents = {
+			list = function(folder) return ns._documentList(folder) end,
+			read = function(path) return ns._documentRead(path) end,
 		},
-		transport = function(payload, key, completion)
-			local request = ns._httpRequest("https://openrouter.ai/api/v1/chat/completions", {
-				Authorization = "Bearer " .. key, ["Content-Type"] = "application/json", ["X-Title"] = "Lua Studio",
-			}, json.encode(payload), function(body, err, status)
-				if err then completion(nil, err); return end
-				local ok, result = pcall(json.decode, body or "")
-				if not ok or type(result) ~= "table" then completion(nil, "OpenRouter returned invalid JSON (HTTP " .. status .. ")"); return end
-				if status < 200 or status >= 300 or result.error then
-					local detail = type(result.error) == "table" and result.error.message or "Request failed"
-					completion(nil, "OpenRouter HTTP " .. status .. ": " .. tostring(detail)); return
-				end
-				completion(result)
-			end)
-			return function() ns._cancelRequest(request) end
+		-- One POST; `completion(body, err, status)`. Returns a cancel function.
+		http = function(request, completion)
+			local task = ns._httpRequest(request.url, request.headers, request.body, completion)
+			return function() ns._cancelRequest(task) end
 		end,
 	}
 end
+
 return Device

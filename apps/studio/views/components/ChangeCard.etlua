@@ -9,7 +9,7 @@
 		<Label text="<%= summary.title %>" systemImage="doc.badge.plus" iconSize="<%= CARD.icon %>" size="<%= CARD.title %>" weight="semibold" lines="1" fixedSize="horizontal" />
 		<Label text="<%= summary.delta %>" size="<%= CARD.title %>" color="systemGreen" monospacedDigit="true" />
 		<Spacer />
-		<Button title="Undo" systemImage="arrow.uturn.backward" controlSize="small" style="bordered" />
+		<Button title="Undo" systemImage="arrow.uturn.backward" action="undoChange" controlSize="small" style="bordered" />
 	</HStack>
 	<Divider />
 	<% for _, change in ipairs(changes) do %>

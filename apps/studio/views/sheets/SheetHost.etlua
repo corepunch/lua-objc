@@ -1,0 +1,12 @@
+<%
+  -- The shell of every Studio sheet: a page the controller retains and
+  -- draws again as its state changes (OnboardingSheet in Adventure Arena).
+  -- `width` and `height` size the sheet on the Mac; iPadOS sizes by detent.
+%>
+<Sheet width="<%= width or 560 %>" height="<%= height or 640 %>">
+	<NavigationStack hidesNavigationBar="true">
+		<ScrollView>
+			<VStack id="page" maxWidth="infinity" />
+		</ScrollView>
+	</NavigationStack>
+</Sheet>
