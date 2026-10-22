@@ -172,10 +172,11 @@ t.assertEqual(controller.status, "Git unavailable: no repository", "the open err
 
 local source = require("ui.xml").describeFile("apps/studio/views/layouts/Workspace.etlua", {
 	rail = require("apps.studio.models.Rail").presentation(),
-	preview = require("apps.studio.models.Preview").presentation({}),
+	toolbar = require("apps.studio.models.Toolbar").presentation({}),
+	preview = require("apps.studio.models.Preview").presentation(),
 	chat = require("apps.studio.models.Chat").presentation(),
 }).source
-t.expect(source:find('title="Commit"[^>]*action="commitProject"') ~= nil, "the chat header's Commit button commits")
+t.expect(source:find('accessibilityLabel="Commit"[^>]*action="commitProject"') ~= nil, "the rail's Commit button commits")
 
 os.execute("/bin/rm -rf " .. root)
 os.exit(t.summary() and 0 or 1)

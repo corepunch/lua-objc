@@ -20,6 +20,7 @@ local Projects = require("apps.studio.models.Projects")
 local Code = require("apps.studio.models.Code")
 local Chat = require("apps.studio.models.Chat")
 local Settings = require("apps.studio.models.Settings")
+local Toolbar = require("apps.studio.models.Toolbar")
 local PluginsModel = require("apps.studio.models.Plugins")
 
 local Controller = {}
@@ -135,10 +136,12 @@ end
 -- What the workspace shows: the rail's mode, the stage, and the agent card
 -- with the code pane, from the workspace state.
 function Controller:workspaceData()
-	local preview = self.previewPane:presentation(self.projects, self:iconChoices())
-	preview.status = self:agentBusy() and "Thinking…" or self.status or preview.status
-	preview.busy = self:agentBusy()
-	if self.showcase and self.showcase.conversation.status then preview.status = self.showcase.conversation.status end
+	local toolbar = Toolbar.presentation(self.projects, self:iconChoices())
+	toolbar.status = self:agentBusy() and "Thinking…" or self.status or toolbar.status
+	toolbar.busy = self:agentBusy()
+	if self.showcase and self.showcase.conversation.status then toolbar.status = self.showcase.conversation.status end
+	toolbar.chatHidden = self.chatHidden
+	local preview = self.previewPane:presentation()
 	preview.chatHidden = self.chatHidden
 	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
 	code.project = self.activeProject and self.activeProject.title or "Project"
@@ -148,6 +151,7 @@ function Controller:workspaceData()
 	self.actions = self:workspaceActions()
 	return {
 		rail = self.rail:presentation(self.mode),
+		toolbar = toolbar,
 		preview = preview,
 		chat = chat,
 		-- XML data bindings resolve against the root template context, even
@@ -163,9 +167,11 @@ function Controller:render()
 	if not self.workspace then return end
 	local _, refs = self.workspace:update(self:workspaceData())
 	self.refs = refs
-	if self.previewContent and refs.preview ~= self.previewView then
+	-- The stage keeps its view across draws; the hosted controller changes
+	-- when the preview reloads or another project opens, so both are compared.
+	if self.previewContent and (refs.preview ~= self.previewView or self.previewShown ~= self.previewContent) then
 		refs.preview.content = self.previewContent
-		self.previewView = refs.preview
+		self.previewView, self.previewShown = refs.preview, self.previewContent
 	end
 	self:renderSheet()
 end
@@ -363,7 +369,9 @@ function Controller:sheetData()
 	if self.sheetKind == "Settings" then
 		local data = Settings.presentation(self.providers, { provider = state.provider, model = state.model },
 			function(id) return self.keys:has(id) end, state.keyDrafts, state.customModel)
-		data.error = state.error
+		-- `notice`, not `error`: a template's data shares a namespace with
+		-- Lua's globals, and an absent `error` would show the function.
+		data.notice = state.error
 		return data
 	elseif self.sheetKind == "NewProject" then
 		local templates = {}
@@ -372,7 +380,7 @@ function Controller:sheetData()
 				caption = template.caption, selected = template.id == state.template })
 		end
 		return { name = state.name, folder = Projects.folderName(state.name, self.projects) or "",
-			templates = templates, error = state.error }
+			templates = templates, notice = state.error }
 	elseif self.sheetKind == "Plugins" then
 		return PluginsModel.presentation(self.providers, self.problems, function(id) return self.keys:has(id) end)
 	end

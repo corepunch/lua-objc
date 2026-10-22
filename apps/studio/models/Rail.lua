@@ -7,11 +7,17 @@ local MODES = {
 	{ id = "code", title = "Code", icon = "chevron.left.forwardslash.chevron.right", action = "showCode" },
 }
 
--- Workspace destinations live on the rail, as in an editor's activity bar,
--- so the project menu lists projects only.
+-- Project actions live on the rail, as Run and Source Control do in the
+-- activity bar of VS Code: Run reloads the preview, Commit records the
+-- project.
+local ACTIONS = {
+	{ id = "run", title = "Run", icon = "play.fill", action = "reloadPreview" },
+	{ id = "commit", title = "Commit", icon = "point.3.connected.trianglepath.dotted", action = "commitProject" },
+}
+
+-- Workspace destinations follow. Projects are made from the toolbar's
+-- project menu, so the rail holds only what is not about one project.
 local DESTINATIONS = {
-	{ id = "templates", title = "Templates", icon = "square.grid.2x2", action = "newProject" },
-	{ id = "examples", title = "Examples", icon = "shippingbox", action = "newProject" },
 	{ id = "plugins", title = "Plugins", icon = "puzzlepiece.extension", action = "openPlugins" },
 }
 
@@ -31,6 +37,7 @@ function Model.presentation(selected)
 		tint = Theme.tint,
 		brand = { title = "Lua Studio", icon = "hammer.fill", colors = Theme.brand },
 		modes = modes,
+		actions = ACTIONS,
 		destinations = DESTINATIONS,
 		footer = FOOTER,
 	}

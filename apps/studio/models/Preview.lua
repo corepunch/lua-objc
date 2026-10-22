@@ -1,33 +1,15 @@
+-- The stage: the device alone, on the canvas. Just wide enough for an
+-- iPhone-proportioned device at iPad height; the chat receives every
+-- other point, unless the chat is hidden and the stage grows.
 local Theme = require("apps.studio.models.Theme")
 local Model = {}
 
--- Just wide enough for an iPhone-proportioned device at iPad height and for
--- the stage bar; the chat receives every other point.
 local STAGE_WIDTH = 440
 
--- The project menu lists the projects, then what makes another one. The
--- other workspace destinations are on the activity rail.
-local DESTINATIONS = {
-	{ title = "New Project", icon = "plus", action = "newProject" },
-}
-
-function Model.presentation(projects, iconChoices)
-	projects = projects or {}
-	local current = projects[1]
-	for _, project in ipairs(projects) do
-		if project.selected then current = project; break end
-	end
+function Model.presentation()
 	return {
-		project = current or { title = "No Project", icon = "rocket.fill" },
-		projects = projects,
-		iconChoices = iconChoices or {},
-		destinations = DESTINATIONS,
-		device = "iPhone 16",
-		zoom = "100%",
-		runLabel = "Run",
-		status = "Ready",
-		busy = false,
 		stageWidth = STAGE_WIDTH,
+		chatHidden = false,
 		tint = Theme.tint,
 	}
 end

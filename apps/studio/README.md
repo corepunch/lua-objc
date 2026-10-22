@@ -28,33 +28,40 @@ failed signing/install steps stop the command.
 
 ## Use
 
-Lua Studio is three columns on one canvas: an icon-only activity rail, the
-running app on a stage sized to an iPhone 16, and the coding agent in a floating
-card that fills the rest. The canvas is a wash of the brand gradient over the
-system background, so it holds in light and dark; the rail and the stage have no
-fill of their own.
+Lua Studio is one canvas: an icon-only activity rail down the left, and
+beside it a window toolbar over two panes, the running app on a stage sized
+to an iPhone 16 and the coding agent in a floating card that fills the rest.
+The canvas is a wash of the brand gradient over the system background, so it
+holds in light and dark; the rail and the stage have no fill of their own.
 
 The rail carries the Lua Studio mark, the two modes of the agent card (Chat and
-Code, with a gradient highlight on the one showing), the workspace destinations
-(Templates and Examples open New Project; Plugins lists the providers), and
+Code, with a gradient highlight on the one showing), then Run and Commit, as
+Run and Source Control sit in the activity bar of VS Code, then Plugins, and
 Settings at its foot. Every item is an icon with an accessibility label.
 
-Liquid Glass bars above and below the device hold the preview actions. The top
-bar has the project menu, which lists the projects (choose one to open it),
-the project's icon choices and New Project, plus the status line, Run, and the
-chat toggle for focusing the preview. The bottom bar has the device, reload,
-appearance, and zoom controls. The card header names the provider and model
-answering, with the project actions Commit, Share, and Deploy and a menu for
-New Conversation, Choose Model… and Undo Last Change.
+The toolbar is one Liquid Glass bar spanning the stage and the card, as a Mac
+window toolbar spans the content beside a sidebar. The project menu leads: it
+lists the projects (choose one to open it), the project's icon choices and
+New Project. The status line follows it (Ready, Thinking…, the last commit, or
+why a send was refused), and the chat toggle for focusing the preview trails.
+Nothing project-wide sits in the stage or the card, so the bar fits an iPad
+Pro in portrait with room to spare (`tests/studio_portrait.test.lua` lays the
+workspace out at 1032 points and checks).
 
-The chat is the project's transcript: the request as a gradient bubble, the
-agent's reply beside its avatar, a card of changed files with line counts for
-each edit (with Undo), and a warning line for an error. Suggestion chips start
-a prompt in the composer; Return or the Send button sends it, and while the
-agent works the button is Stop and the status line says Thinking…. Code
-shows the project files with a hideable tree and native Lua/etlua syntax
-highlighting. The controls inside the phone preview are interactive. Share and
-Deploy are still placeholders.
+The stage is the device alone. The card header names the provider and model
+answering, with a menu for New Conversation, Choose Model… and Undo Last
+Change. The chat is the project's transcript: the request as a gradient
+bubble, the agent's reply beside its avatar, a card of changed files with
+line counts for each edit (with Undo), and a warning line for an error.
+Suggestion chips start a prompt in the composer; Return or the Send button
+sends it, and while the agent works the button is Stop. Code shows the
+project files with a hideable tree and native Lua/etlua syntax highlighting.
+The controls inside the phone preview are interactive.
+
+Every control on screen does something. Share, Deploy, the device picker,
+appearance and zoom, attach and dictate were removed rather than shown
+disabled: deployment is `make ipad-deploy` from the Mac, and dictation is the
+keyboard's own microphone key.
 
 ### First run
 
@@ -171,7 +178,7 @@ security boundary for hostile code. It shares the host's native runtime.
 ```
 apps/studio/
   init.lua, Controller.lua, Model.lua
-  models/        Chat, Code, Preview, Rail, Theme, Projects (templates, folder names),
+  models/        Chat, Code, Toolbar, Preview, Rail, Theme, Projects (templates, folder names),
                  Settings and Plugins (the sheets' data)
   services/      Workspace (Documents, Git), Versions, Preview (isolated runtime),
                  Agent (the turn loop), Providers (the extension point), Keys (keychain),
@@ -179,7 +186,7 @@ apps/studio/
   helpers/       ChatCompletions (the OpenAI dialect), Changes (line counts)
   plugins/providers/   one file per bundled provider
   views/layouts/       Window, Workspace
-  views/sections/      Rail, PreviewPane, ChatPane, CodePane
+  views/sections/      Rail, Toolbar, PreviewPane, ChatPane, CodePane
   views/components/    Avatar, ChangeCard, Composer
   views/sheets/        SheetHost, Settings, NewProject, Plugins
 ```

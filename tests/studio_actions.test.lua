@@ -1,18 +1,20 @@
 _G.__headless = true
 
 local t = require("TestKit")
+local Toolbar = require("apps.studio.models.Toolbar")
 local Preview = require("apps.studio.controllers.PreviewController")
 local Chat = require("apps.studio.models.Chat")
 
-local presentation = Preview.new():presentation({
+local presentation = Toolbar.presentation({
 	{ title = "Starter App", icon = "rocket.fill" },
 	{ title = "Habit Tracker", icon = "checklist", selected = true },
 })
-t.assertEqual(presentation.project.title, "Habit Tracker", "the selected project heads the stage")
+t.assertEqual(presentation.project.title, "Habit Tracker", "the selected project heads the toolbar")
 t.assertEqual(#presentation.projects, 2, "every project is offered")
-t.assertEqual(Preview.new():presentation({ { title = "Only", icon = "app" } }).project.title, "Only",
+t.assertEqual(Toolbar.presentation({ { title = "Only", icon = "app" } }).project.title, "Only",
 	"the first project is current when none is selected")
-t.assertEqual(Preview.new():presentation().project.title, "No Project", "missing projects are safe")
+t.assertEqual(Toolbar.presentation().project.title, "No Project", "missing projects are safe")
+t.assertEqual(Preview.new():presentation().stageWidth, 440, "the stage is sized to the device")
 
 local changes, summary = Chat.changes({
 	{ path = "init.lua", added = 2 },
@@ -43,9 +45,20 @@ local root = setmetatable({
 t.expect(root:reloadPreview(), "Run reloads the embedded controller")
 t.assertEqual(root.previewContent, child, "successful reload replaces preview content")
 t.assertEqual(root.status, "Ready", "successful reload clears the prior status")
+-- Each reload hands the stage its new hosted controller, even though the
+-- stage view itself is retained across draws.
+local stage = {}
+root.workspace = { update = function() return nil, { preview = stage } end }
+root.workspaceData = function() return {} end
+root:render()
+t.assertEqual(stage.content, child, "the stage shows the reloaded controller")
+local next = {}
+root.preview.render = function() return next end
+root:reloadPreview()
+t.assertEqual(stage.content, next, "a reload replaces the stage content in the same view")
 root.preview.render = function() return nil, "bad project" end
 t.expect(not root:reloadPreview(), "failed reload is reported")
-t.assertEqual(root.previewContent, child, "failed reload preserves the prior preview")
+t.assertEqual(root.previewContent, next, "failed reload preserves the prior preview")
 t.expect(root.status:find("bad project", 1, true) ~= nil, "failed reload displays its error")
 root.refs = {}
 local anchored

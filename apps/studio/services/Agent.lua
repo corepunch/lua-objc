@@ -107,7 +107,7 @@ function Agent:send(text)
 	local descriptor, modelId = self:choice()
 	if not descriptor then return nil, "No model provider is installed" end
 	local key = self.keys:get(descriptor.id)
-	if not key then return nil, "Add a " .. descriptor.title .. " API key in Settings" end
+	if not key then return nil, "Add your " .. descriptor.title .. " API key in Settings" end
 	self.busy = true
 	self.generation = self.generation + 1
 	self.mark = #self.conversation

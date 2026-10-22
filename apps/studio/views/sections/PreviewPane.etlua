@@ -1,51 +1,10 @@
 <%
-  -- The stage: Liquid Glass controls float in bars above and below the
-  -- device, like iPadOS 26 toolbars over content. The bars sit in the
-  -- stack rather than over the device so the phone never hides beneath them.
-  -- The stage is only as wide as the device needs; the chat takes the rest,
-  -- and focusing the preview (`chatHidden`) drops the fixed width so the
-  -- stage grows.
-  -- The stage has no background: the device stands on the workspace canvas.
-  local STAGE = { inset = 16, spacing = 12, barSpacing = 10, statusSize = 13, zoomSize = 13 }
+  -- The stage: the device alone on the workspace canvas, with no bar and no
+  -- fill of its own. The stage is only as wide as the device needs; the
+  -- chat takes the rest, and focusing the preview (`chatHidden`) drops the
+  -- fixed width so the stage grows.
+  local STAGE = { inset = 16 }
 %>
-<VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="<%= STAGE.spacing %>" <% if not chatHidden then %>width="<%= stageWidth %>" <% end %>flexGrow="1" flexBasis="0" maxHeight="infinity">
-	<GlassEffectContainer spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" tint="<%= tint %>">
-		<HStack id="stageBar" spacing="<%= STAGE.barSpacing %>" maxWidth="infinity" alignment="center">
-			<Menu id="projectMenu" title="<%= project.title %>" systemImage="<%= project.icon %>" imagePath="<%= project.imagePath or "" %>" style="glass" accessibilityLabel="Project: <%= project.title %>">
-				<% for _, item in ipairs(projects) do %>
-				<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" imagePath="<%= item.imagePath or "" %>" checked="<%= tostring(item.selected == true) %>"<% if item.action then %> action="<%= item.action %>"<% end %> />
-				<% end %>
-				<Separator />
-				<% for _, choice in ipairs(iconChoices) do %>
-				<MenuItem title="Use <%= choice.title %> Icon" systemImage="<%= choice.symbol %>" imagePath="<%= choice.imagePath %>" checked="<%= tostring(choice.selected) %>" action="<%= choice.action %>" />
-				<% end %>
-				<Separator />
-				<% for _, destination in ipairs(destinations) do %>
-				<MenuItem title="<%= destination.title %>" systemImage="<%= destination.icon %>" action="<%= destination.action %>" />
-				<% end %>
-			</Menu>
-			<HStack spacing="6" alignment="center" flexShrink="1">
-				<SystemImage name="<%= busy and "ellipsis.circle" or "checkmark.circle.fill" %>" size="<%= STAGE.statusSize %>" color="secondary" />
-				<Label id="previewStatus" text="<%= status %>" size="<%= STAGE.statusSize %>" color="secondary" lines="1" truncation="tail" />
-			</HStack>
-			<Spacer />
-			<Button id="runButton" title="<%= runLabel %>" systemImage="play.fill" action="reloadPreview" style="glassProminent" />
-			<Button id="chatVisibility" systemImage="sidebar.trailing" accessibilityLabel="<%= chatHidden and "Show Chat" or "Focus Preview" %>" action="toggleChat" style="glass" />
-		</HStack>
-	</GlassEffectContainer>
+<VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="0" <% if not chatHidden then %>width="<%= stageWidth %>" <% end %>flexGrow="1" flexBasis="0" maxHeight="infinity">
 	<Preview id="preview" background="clear" flexGrow="1" maxWidth="infinity" maxHeight="infinity" />
-	<HStack spacing="0" maxWidth="infinity">
-		<Spacer />
-		<GlassEffectContainer spacing="<%= STAGE.barSpacing %>" tint="<%= tint %>">
-			<HStack id="deviceBar" spacing="<%= STAGE.barSpacing %>" alignment="center">
-				<Menu title="<%= device %>" systemImage="iphone" style="glass" accessibilityLabel="Preview device">
-					<MenuItem title="<%= device %>" systemImage="iphone" checked="true" />
-				</Menu>
-				<Button systemImage="arrow.clockwise" accessibilityLabel="Reload Preview" action="reloadPreview" style="glass" />
-				<Button systemImage="circle.lefthalf.filled" accessibilityLabel="Toggle Appearance" style="glass" />
-				<Button title="<%= zoom %>" systemImage="plus.magnifyingglass" size="<%= STAGE.zoomSize %>" accessibilityLabel="Zoom <%= zoom %>" style="glass" />
-			</HStack>
-		</GlassEffectContainer>
-		<Spacer />
-	</HStack>
 </VStack>

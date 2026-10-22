@@ -1,8 +1,9 @@
 <%
   -- Suggestions sit directly above the field they fill; the field and its
-  -- actions share one glass capsule so the composer reads as a single control.
-  -- Return sends; while the agent works the send button becomes Stop.
-  local COMPOSER = { spacing = 10, chipSpacing = 8, radius = 24, fieldInset = 6, fieldSize = 15 }
+  -- send button share one glass capsule so the composer reads as a single
+  -- control. Return sends; while the agent works the button becomes Stop.
+  -- Dictation belongs to the keyboard; the composer adds no button for it.
+  local COMPOSER = { spacing = 10, chipSpacing = 8, radius = 24, fieldInset = 6, fieldInsetLeading = 16, fieldSize = 15 }
 %>
 <VStack padding="<%= inset %>" spacing="<%= COMPOSER.spacing %>" maxWidth="<%= column %>" alignment="leading">
 	<FlowStack spacing="<%= COMPOSER.chipSpacing %>" maxWidth="infinity">
@@ -11,10 +12,8 @@
 		<% end %>
 	</FlowStack>
 	<GlassEffect cornerRadius="<%= COMPOSER.radius %>" maxWidth="infinity">
-		<HStack padding="<%= COMPOSER.fieldInset %>" spacing="<%= COMPOSER.fieldInset %>" maxWidth="infinity" alignment="center">
-			<Button systemImage="plus" accessibilityLabel="Attach" style="plain" />
+		<HStack padding="<%= COMPOSER.fieldInset %>" paddingLeading="<%= COMPOSER.fieldInsetLeading %>" spacing="<%= COMPOSER.fieldInset %>" maxWidth="infinity" alignment="center">
 			<TextField id="composer" text="<%= draft or "" %>" placeholder="Describe a change…" onChange="editDraft" onCommand="composerCommand" size="<%= COMPOSER.fieldSize %>" style="plain" flexGrow="1" maxWidth="infinity" />
-			<Button systemImage="<%= listening and "waveform" or "mic" %>" accessibilityLabel="Dictate" style="plain" />
 			<% if busy then %>
 			<Button id="stopButton" systemImage="stop.fill" accessibilityLabel="Stop" action="stopAgent" style="glassProminent" />
 			<% else %>

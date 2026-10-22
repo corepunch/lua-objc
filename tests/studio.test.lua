@@ -94,7 +94,7 @@ end
 t.expect(not agent:send(""), "empty prompt rejected")
 model.provider = "anthropic"
 local started, why = agent:send("hello")
-t.expect(not started and why:find("Anthropic API key", 1, true), "a provider without a key says so")
+t.expect(not started and why:find("your Anthropic API key", 1, true), "a provider without a key says so")
 model.provider = "openai"
 t.expect(agent:send("Change my app"), "agent starts")
 t.expect(not agent:send("again"), "concurrent sends rejected")
@@ -167,9 +167,10 @@ t.expect(preview:render(model.files) ~= nil, "hook restored after budget error")
 -- Inspect the workspace template without constructing native UI.
 local description = require("ui.xml").describeFile("apps/studio/views/layouts/Workspace.etlua", {
 	rail = require("apps.studio.models.Rail").presentation(),
-	preview = require("apps.studio.models.Preview").presentation({
+	toolbar = require("apps.studio.models.Toolbar").presentation({
 		{ id = "HabitPal", title = "HabitPal", icon = "checklist", selected = true, action = "openProject_HabitPal" },
 	}),
+	preview = require("apps.studio.models.Preview").presentation(),
 	chat = require("apps.studio.models.Chat").presentation(),
 })
 t.expect(description.source:find("HabitPal", 1, true) ~= nil, "project navigation renders")

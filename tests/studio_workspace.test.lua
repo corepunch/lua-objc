@@ -63,10 +63,10 @@ root.agent = { send = function(_, text) sent = text; return true end, stop = fun
 t.expect(root.actions.composerCommand("submit"), "Return submits the composer")
 t.assertEqual(sent, "Add a feature: a streak counter", "and sends the draft")
 t.assertEqual(root.refs.composer.text, "", "a sent draft clears the composer")
-root.agent.send = function() return nil, "Add an OpenAI API key in Settings" end
+root.agent.send = function() return nil, "Add your OpenAI API key in Settings" end
 root.draft = "x"
 root.actions.send()
-t.assertEqual(root.refs.previewStatus.text, "Add an OpenAI API key in Settings", "a refused send explains itself in the status line")
+t.assertEqual(root.refs.previewStatus.text, "Add your OpenAI API key in Settings", "a refused send explains itself in the status line")
 
 -- A working agent shows Stop and Thinking.
 root.agent.busy = true

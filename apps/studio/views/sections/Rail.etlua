@@ -1,7 +1,8 @@
 <%
   -- The activity rail: icon-only, as in an editor. The brand mark sits at the
-  -- top, the modes of the agent card beneath it, workspace destinations after
-  -- a rule, and settings at the foot. The rail has no background of its own;
+  -- top, the modes of the agent card beneath it, then the project actions
+  -- (Run, Commit) after a rule, workspace destinations after another, and
+  -- settings at the foot. The rail has no background of its own;
   -- it rests on the workspace gradient.
   local RAIL = { width = 68, inset = 12, spacing = 6, item = 44, itemRadius = 14, symbol = 19, mark = 40, markRadius = 12, markSymbol = 19, rule = 24 }
 %>
@@ -20,6 +21,10 @@
 	<% else %>
 	<Button id="rail/<%= mode.id %>/off" systemImage="<%= mode.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= mode.title %>" action="<%= mode.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
 	<% end %>
+	<% end %>
+	<Divider width="<%= RAIL.rule %>" />
+	<% for _, item in ipairs(actions) do %>
+	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" action="<%= item.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
 	<% end %>
 	<Divider width="<%= RAIL.rule %>" />
 	<% for _, item in ipairs(destinations) do %>

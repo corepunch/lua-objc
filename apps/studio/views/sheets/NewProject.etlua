@@ -10,8 +10,8 @@
 		<Button id="cancel" title="Cancel" action="closeSheet" style="glass" size="<%= SHEET.bodySize %>" />
 		<Button id="create" title="Create" action="createProject" style="glassProminent" size="<%= SHEET.bodySize %>" weight="semibold" disabled="<%= tostring(name == "") %>" />
 	</HStack>
-	<% if error and error ~= "" then %>
-	<Label id="projectError" text="<%= error %>" size="<%= SHEET.captionSize + 1 %>" color="systemOrange" lines="0" maxWidth="infinity" />
+	<% if notice and notice ~= "" then %>
+	<Label id="projectError" text="<%= notice %>" size="<%= SHEET.captionSize + 1 %>" color="systemOrange" lines="0" maxWidth="infinity" />
 	<% end %>
 	<VStack spacing="<%= SHEET.rowSpacing %>" alignment="leading" maxWidth="infinity" padding="<%= SHEET.inset - 4 %>" background="secondaryBackground" cornerRadius="<%= SHEET.radius %>">
 		<Label text="NAME" size="<%= SHEET.sectionSize %>" weight="semibold" color="secondary" />

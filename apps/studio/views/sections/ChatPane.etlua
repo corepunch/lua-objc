@@ -4,8 +4,9 @@
   -- user can review or undo. The composer floats on glass at the foot.
   -- The agent lives in a card floating on the workspace canvas. The card
   -- takes the width the stage leaves; the conversation keeps a readable
-  -- measure centred in it, and project actions sit in the header. The rail
-  -- switches the card between the conversation and the code.
+  -- measure centred in it, and the header names the agent answering. The
+  -- rail switches the card between the conversation and the code; project
+  -- actions belong to the window toolbar.
   local CHAT = {
     column = 720, inset = 16, spacing = 18, headerSpacing = 10,
     margin = 12, radius = 28, avatar = 36, turnAvatar = 26, nameSize = 16, modelSize = 12,
@@ -22,10 +23,7 @@
 				<Label text="<%= agent.model %>" size="<%= CHAT.modelSize %>" color="secondary" lines="1" truncation="middle" />
 			</VStack>
 			<Spacer />
-			<Button title="Commit" systemImage="point.3.connected.trianglepath.dotted" action="commitProject" style="glass" />
-			<Button title="Share" systemImage="square.and.arrow.up" style="glass" />
-			<Button title="Deploy" systemImage="paperplane.fill" style="glassProminent" />
-			<Menu systemImage="ellipsis" style="glass" accessibilityLabel="Conversation Options">
+			<Menu id="conversationMenu" systemImage="ellipsis" style="glass" accessibilityLabel="Conversation Options">
 				<MenuItem title="New Conversation" systemImage="square.and.pencil" action="newConversation" />
 				<MenuItem title="Choose Model…" systemImage="cpu" action="openSettings" />
 				<Separator />
@@ -79,7 +77,7 @@
 		</ScrollView>
 		<%- partial("CodePane.etlua", { code = code, syntaxRules = syntaxRules, shown = mode == "code", treeHidden = treeHidden }) %>
 		<VStack id="composerPane" hidden="<%= tostring(mode == "code") %>" spacing="0" maxWidth="infinity" alignment="center">
-			<%- partial("../components/Composer.etlua", { suggestions = suggestions, draft = draft, listening = listening, busy = busy, inset = CHAT.inset, column = CHAT.column }) %>
+			<%- partial("../components/Composer.etlua", { suggestions = suggestions, draft = draft, busy = busy, inset = CHAT.inset, column = CHAT.column }) %>
 		</VStack>
 	</VStack>
 </VStack>

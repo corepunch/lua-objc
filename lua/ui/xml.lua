@@ -2418,6 +2418,47 @@ end
 
 local reconcileNode
 
+local function deepEqual(a, b)
+    if a == b then return true end
+    if type(a) ~= "table" or type(b) ~= "table" then return false end
+    for key, value in pairs(a) do if not deepEqual(value, b[key]) then return false end end
+    for key in pairs(b) do if a[key] == nil then return false end end
+    return true
+end
+
+-- A list's rows are a binding, not an attribute: `data` names the rows, so
+-- the same name carries different rows from one draw to the next. Each node
+-- that binds rows remembers the rows it was drawn with; reconciliation
+-- compares those and replaces the native list's rows when they changed,
+-- while the list keeps its view, its scroll position and its callbacks.
+local function recordRows(node)
+    if type(node) ~= "table" then return end
+    if node.attrs and node.attrs.data and renderData then node.rows = renderData[node.attrs.data] end
+    for _, child in ipairs(elements(node.children)) do recordRows(child) end
+end
+
+local function hasRows(view)
+    local ok, method = pcall(function() return view.clearRows end)
+    return ok and method ~= nil
+end
+
+local function replaceRows(view, rows)
+    local ok, replace = pcall(function() return view.replaceRows end)
+    if ok and replace ~= nil then view:replaceRows(rows); return end
+    view:clearRows()
+    for _, row in ipairs(rows) do if type(row) == "table" then view:addRow(row) end end
+end
+
+local function rowsPatch(old, new)
+    if not new.attrs.data or not renderData then return {} end
+    local rows = renderData[new.attrs.data]
+    new.rows = rows
+    if type(rows) ~= "table" or deepEqual(old.rows, rows) then return {} end
+    if type(old.target) ~= "userdata" or not hasRows(old.target) then return {} end
+    local target = old.target
+    return { function() replaceRows(target, rows) end }
+end
+
 -- Builds a new node's subtree (without inserting it).
 local function build(node, ns, plan)
     local views = compile({ node }, ns, registry, {})
@@ -2425,6 +2466,7 @@ local function build(node, ns, plan)
         if node.scope then node.scope:dispose() end
         error("xml: <" .. node.tag .. "> must render one native view to be reconciled")
     end
+    recordRows(node)
     table.insert(plan.built, node)
     return node
 end
@@ -2546,6 +2588,7 @@ reconcileNode = function(old, new, ns, plan, record)
         return nil
     end
     for _, op in ipairs(ops) do table.insert(plan.ops, op) end
+    for _, op in ipairs(rowsPatch(old, new)) do table.insert(plan.ops, op) end
     for _, op in ipairs(childPlan.ops) do table.insert(plan.ops, op) end
     for _, node in ipairs(childPlan.removals) do table.insert(plan.removals, node) end
     for _, node in ipairs(childPlan.built) do table.insert(plan.built, node) end
@@ -2589,6 +2632,9 @@ function M.mount(description, ns, host)
         error(err)
     end
     if type(root.view) ~= "userdata" then error("Template mounts require a view root, not a Window") end
+    renderData = description.data
+    recordRows(root)
+    renderData = previous
     local mounted = { root = root, view = root.view, refs = {} }
     collectRefs(root, mounted.refs)
     ns._insertSubview(host, root.view, 1)
