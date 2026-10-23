@@ -18,13 +18,20 @@ root.actions = root:workspaceActions()
 root.workspace = Template.new(ns.VStack {}, "apps/studio/views/layouts/Workspace.etlua", ns)
 root:render()
 local codePane = root.refs.codePane
-t.expect(codePane.hidden and not root.refs.transcriptScroll.hidden, "the workspace opens on the conversation")
+t.expect(codePane.hidden and not root.refs.welcomePane.hidden and root.refs.transcriptScroll.hidden,
+	"a quiet project opens on its welcome, in place of the empty transcript")
+t.assertEqual(root.refs.previewStatus, nil, "at rest the header shows no status")
+t.expect(not root.refs.sendButton.enabled, "Send waits for a draft")
 t.expect(root.refs["rail/chat/on"] ~= nil and root.refs["rail/code/on"] == nil, "the rail highlights the chat")
-t.assertEqual(root.refs.codeProject.text, "Starter App", "the project tree is titled by the project")
+t.assertEqual(root.refs.codeProject.text, "Files", "the navigator says what it lists; the project menu names the project")
 
+local resigned
+root.ns = setmetatable({ _resignFocus = function(view) resigned = view end }, { __index = ns })
+local composer = root.refs.composer
 root.actions.showCode()
-t.expect(not root.refs.codePane.hidden and root.refs.transcriptScroll.hidden and root.refs.composerPane.hidden,
-	"code mode shows the code pane in place of the conversation")
+t.assertEqual(resigned, composer, "leaving the conversation dismisses the composer's keyboard")
+t.expect(not root.refs.codePane.hidden and root.refs.transcriptScroll.hidden and root.refs.composerPane.hidden
+	and root.refs.welcomePane.hidden, "code mode shows the code pane in place of the conversation")
 t.assertEqual(root.refs.codePane, codePane, "the code pane keeps its view")
 t.expect(root.refs["rail/code/on"] ~= nil and root.refs["rail/chat/on"] == nil, "the rail highlight follows the mode")
 
@@ -41,6 +48,16 @@ t.assertEqual(root.refs.sourceCode.text, "return 1", "and shows its source")
 root.versions = { record = function() return "0123456789" end }
 root.actions.commitProject()
 t.assertEqual(root.refs.previewStatus.text, "Committed 0123456", "the status line in the card header is drawn from the state")
+root.actions.showCode()
+t.assertEqual(root.refs.previewStatus, nil, "a result lasts until the next action")
+root.actions.showChat()
+local sentWhileEmpty = false
+root.agent = { send = function() sentWhileEmpty = true; return true end, stop = function() end }
+root.draft = ""
+root.actions.composerCommand("submit")
+t.expect(not sentWhileEmpty and root.refs.previewStatus == nil, "Return on an empty field does nothing")
+root.agent = nil
+root.actions.commitProject()
 t.expect(root.refs.projectMenu ~= nil, "the project menu heads the rail")
 t.assertEqual(root.refs.projectMenu.accessibilityLabel, "Project: Starter App", "and names the open project")
 
@@ -48,6 +65,12 @@ t.assertEqual(root.refs.projectMenu.accessibilityLabel, "Project: Starter App", 
 root.actions.showChat()
 root.actions.suggest_feature()
 t.assertEqual(root.refs.composer.text, "Add a feature: ", "a suggestion chip fills the composer")
+t.expect(root.refs.sendButton.enabled, "and enables Send")
+local sendButton = root.refs.sendButton
+root.actions.editDraft("   ")
+t.expect(not root.refs.sendButton.enabled, "blank text disables Send again")
+t.assertEqual(root.refs.sendButton, sendButton, "in the same button")
+root.actions.editDraft("Add a feature: ")
 root.actions.editDraft("Add a feature: a streak counter")
 t.assertEqual(root.draft, "Add a feature: a streak counter", "typing keeps the draft")
 local sent
@@ -93,7 +116,7 @@ sheeted.activeProject = sheeted.projects[1]
 sheeted.actions = sheeted:workspaceActions()
 sheeted.workspace = Template.new(ns.VStack {}, "apps/studio/views/layouts/Workspace.etlua", ns)
 sheeted:render()
-t.assertEqual(sheeted.refs.previewStatus.text, "Ready", "the stage starts ready")
+t.assertEqual(sheeted.refs.previewStatus, nil, "the header starts without a status")
 
 sheeted.actions.openSettings()
 t.assertEqual(#presented, 1, "Settings presents a sheet")

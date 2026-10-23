@@ -85,8 +85,9 @@ end
 function Controller:reloadPreview()
 	local controller, err = self:renderPreview()
 	if controller then
+		-- A preview that runs needs no word; the stage shows it.
 		self.previewContent = controller
-		self:report("Ready")
+		self:report(nil)
 	else
 		self:report("Preview failed: " .. tostring(err), "problem")
 	end
@@ -130,9 +131,10 @@ function Controller:changedCount()
 end
 
 -- The status line and its tone: "ok" for a result, "problem" for a refusal
--- or a failure. The toolbar's activity viewer shows the symbol.
+-- or a failure; nil clears it. The card header shows it until the next
+-- action, as a transient result rather than a standing label.
 function Controller:report(status, tone)
-	self.status, self.statusTone = status, tone or "ok"
+	self.status, self.statusTone = status, status and (tone or "ok") or nil
 end
 
 -- The project's transcript as the chat shows it.
@@ -142,8 +144,8 @@ function Controller:conversation()
 		messages = self.model and self.model.messages or {},
 		draft = self.draft,
 		busy = self:agentBusy(),
-		status = { text = self:agentBusy() and "Thinking…" or self.status or "Ready",
-			tone = self.statusTone or "ok", busy = self:agentBusy() },
+		status = self:agentBusy() and { text = "Thinking…", busy = true }
+			or (self.status and { text = self.status, tone = self.statusTone }) or nil,
 		project = self.activeProject and self.activeProject.title or nil,
 		projectIcon = self.activeProject and self.activeProject.icon or nil,
 		agent = descriptor and { name = descriptor.title, model = modelId, icon = descriptor.symbol } or nil,
@@ -168,7 +170,7 @@ function Controller:workspaceData()
 		-- XML data bindings resolve against the root template context, even
 		-- when the controls are declared in a nested partial.
 		code = code,
-		codeFiles = code.files,
+		codeFiles = code.rows,
 		syntaxRules = Code.rules,
 		actions = self.actions,
 	}
@@ -253,8 +255,9 @@ function Controller:createProject(name, templateId)
 	local ok, workspace = pcall(Workspace.create, self.ns, self.git, folder, metadata, files)
 	if not ok then return nil, tostring(workspace) end
 	self:activate(folder, workspace)
-	self:report("Created " .. name)
 	self:reloadPreview()
+	self:report("Created " .. name)
+	self:render()
 	return folder
 end
 
@@ -327,6 +330,8 @@ end
 --- Sends the composer's draft to the agent.
 function Controller:send()
 	if not self.agent then return nil, "No project is open" end
+	-- Send is disabled without a draft; Return on an empty field does nothing.
+	if not (self.draft or ""):match("%S") then return nil end
 	local ok, err = self.agent:send(self.draft)
 	if ok then
 		self.draft = ""
@@ -455,12 +460,24 @@ function Controller:workspaceActions()
 		reloadPreview = function() self:reloadPreview() end,
 		commitProject = function() self:commitProject("Update project") end,
 		showChat = function() self.mode = "chat"; self:render() end,
-		showCode = function() self.mode = "code"; self:render() end,
+		showCode = function()
+			-- The composer hides with the conversation; its keyboard goes too.
+			if self.refs and self.refs.composer and self.ns._resignFocus then self.ns._resignFocus(self.refs.composer) end
+			self.mode = "code"
+			self:render()
+		end,
 		toggleTree = function() self.treeHidden = not self.treeHidden; self:render() end,
 		selectFile = function(_, _, row) if row and row.id then self:selectFile(row.id) end end,
 		send = function() self:send() end,
 		stopAgent = function() if self.agent then self.agent:stop() end end,
-		editDraft = function(text) if type(text) == "string" then self.draft = text end end,
+		editDraft = function(text)
+			if type(text) ~= "string" then return end
+			local had = (self.draft or ""):match("%S") ~= nil
+			self.draft = text
+			-- Draw again only when Send changes between enabled and disabled;
+			-- the field already shows what was typed.
+			if had ~= (text:match("%S") ~= nil) then self:render() end
+		end,
 		composerCommand = function(command)
 			if command == "submit" then self:send(); return true end
 			return false
@@ -536,7 +553,16 @@ function Controller:workspaceActions()
 			end
 		end
 	end
-	return actions
+	-- A reported result lasts until the next action, which clears it before
+	-- running; the action may report its own.
+	local wrapped = {}
+	for name, action in pairs(actions) do
+		wrapped[name] = function(...)
+			self.status, self.statusTone = nil, nil
+			return action(...)
+		end
+	end
+	return wrapped
 end
 
 -- A conversation opens at its latest turn, as SwiftUI's

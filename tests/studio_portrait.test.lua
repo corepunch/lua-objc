@@ -24,6 +24,7 @@ local config, hostRefs = xml.render('<Window width="' .. WIDTH .. '" height="' .
 local window = ns.Window(config)
 local host = hostRefs.host
 root.workspace = Template.new(host, "apps/studio/views/layouts/Workspace.etlua", ns)
+root.status = "Committed 0123456"
 root:render()
 local refs = root.refs
 

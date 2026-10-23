@@ -44,9 +44,9 @@ function Code.language(path)
 	return path:match("%.etlua$") and "etlua" or "lua"
 end
 
--- Rows for the navigator: each file with its symbol and its folder as the
--- secondary line, root files first and then folder by folder, as a
--- project navigator lists them. `crumb` is the jump-bar text of the open
+-- Rows for the navigator: each file with its symbol, root files first and
+-- then folder by folder under a section row naming the folder, as a project
+-- navigator lists them. `crumb` is the jump-bar text of the open
 -- file: its folder, then its name.
 function Code.presentation(files, selected)
 	local rows = {}
@@ -69,12 +69,23 @@ function Code.presentation(files, selected)
 		end
 		return left.name < right.name
 	end)
+	-- The navigator groups files under a section row per folder, as Xcode's
+	-- navigator groups them, instead of repeating the folder on every row.
+	local navigator, folder = {}, ""
+	for _, row in ipairs(rows) do
+		if row.folder ~= folder then
+			folder = row.folder
+			table.insert(navigator, { section = true, title = folder, display = folder })
+		end
+		table.insert(navigator, row)
+	end
 	if not selected or not files[PREFIX .. selected] then selected = rows[1] and rows[1].id end
 	local source = selected and files[PREFIX .. selected] or ""
 	local name = selected and selected:match("[^/]+$") or "No file selected"
 	local folder = selected and selected:match("^(.+)/[^/]+$") or nil
 	return {
 		files = rows,
+		rows = navigator,
 		selected = selected,
 		name = name,
 		crumb = folder and (folder .. " › " .. name) or name,

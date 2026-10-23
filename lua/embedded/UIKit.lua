@@ -1391,7 +1391,7 @@ function UIKit.Menu(props)
 	local button = bridge._menu(props.items or props.children or {},
 		-- SwiftUI labels a symbol-only menu with its image alone.
 		props.title or (props.systemImage and "" or "Menu"), props.systemImage or "", props.style or "plain",
-		props.symbolSize, props.imagePath or "")
+		props.symbolSize, props.imagePath or "", props.cornerRadius)
 	if props.accessibilityLabel then button.accessibilityLabel = props.accessibilityLabel end
 	return applyLayout(button, props)
 end

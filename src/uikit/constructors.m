@@ -851,6 +851,10 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 	const char *style = luaL_optstring(L, 4, "plain");
 	CGFloat symbolSize = (CGFloat)luaL_optnumber(L, 5, kMenuSymbolPointSize);
 	const char *imagePath = luaL_optstring(L, 6, "");
+	/* With artwork, a corner radius makes the button a tile the artwork
+	 * fills, as an app icon fills its rounded square, instead of a capsule
+	 * with a thumbnail beside the title. */
+	CGFloat tileRadius = (CGFloat)luaL_optnumber(L, 7, 0);
 	if (strcmp(style, "plain") != 0 && strcmp(style, "glass") != 0)
 		return luaL_error(L, "menu style must be 'plain' or 'glass'");
 	if (symbolSize <= 0) return luaL_error(L, "menu symbolSize must be positive");
@@ -927,9 +931,19 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 	configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 	UIImage *buttonImage = imagePath[0]
 		? [UIImage imageWithContentsOfFile:[NSString stringWithUTF8String:imagePath]] : nil;
+	if (buttonImage && tileRadius > 0) {
+		UIBackgroundConfiguration *background = UIBackgroundConfiguration.clearConfiguration;
+		background.image = buttonImage;
+		background.imageContentMode = UIViewContentModeScaleAspectFill;
+		background.cornerRadius = tileRadius;
+		configuration.background = background;
+		configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+		buttonImage = nil;
+		imagePath = "";
+	}
 	if (buttonImage) buttonImage = [buttonImage imageByPreparingThumbnailOfSize:
 		CGSizeMake(kMenuArtworkPointSize, kMenuArtworkPointSize)];
-	if (!buttonImage && systemImage[0]) buttonImage = [UIImage systemImageNamed:
+	if (!buttonImage && systemImage[0] && !configuration.background.image) buttonImage = [UIImage systemImageNamed:
 		[NSString stringWithUTF8String:systemImage]];
 	if (buttonImage) {
 		configuration.image = buttonImage;

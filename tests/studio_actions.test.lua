@@ -45,7 +45,7 @@ local root = setmetatable({
 }, Root)
 t.expect(root:reloadPreview(), "Run reloads the embedded controller")
 t.assertEqual(root.previewContent, child, "successful reload replaces preview content")
-t.assertEqual(root.status, "Ready", "successful reload clears the prior status")
+t.assertEqual(root.status, nil, "successful reload clears the prior status; a running preview needs no word")
 -- Each reload hands the stage its new hosted controller, even though the
 -- stage view itself is retained across draws.
 local stage = {}

@@ -122,6 +122,9 @@ static const CGFloat kPreviewBezel = 10.0;
 static const CGFloat kPreviewScreenRadius = 55.0;
 static const CGFloat kPreviewMargin = 8.0;
 static const CGFloat kPreviewTrimWidth = 2.0;
+/* In dark mode a black body would merge with a black app; a graphite body
+ * keeps the device outline, as dark device mockups draw it. */
+static const CGFloat kPreviewDarkBodyWhite = 0.18;
 static const CGFloat kBenchmarkScrollPointsPerSecond = 1500.0;
 static const CGFloat kEdgeSwipeBackDistance = 80.0;
 static const CGFloat kEdgeSwipeHorizontalRatio = 1.5;
@@ -219,6 +222,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_httpRequest", bridge_http_request},
 	{"_cancelRequest", bridge_cancel_request},
 	{"_focus", bridge_focus},
+	{"_resignFocus", bridge_resign_focus},
 	{"_hitTestTarget", bridge_hit_test_target},
 	{"_parityMeasure", bridge_parity_measure},
 	{"_parityCapturePNG", bridge_parity_capture_png},

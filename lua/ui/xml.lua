@@ -1090,6 +1090,9 @@ local TAG_SCHEMA = {
             url = { default = "", type = "str" },
         },
     },
+    -- A pull-down menu button. With `imagePath`, `cornerRadius` makes the
+    -- button a tile the artwork fills (an app or project icon) instead of a
+    -- thumbnail beside the title.
     Menu = {
         constructor = "Menu",
         children = "items",
@@ -1097,6 +1100,7 @@ local TAG_SCHEMA = {
 			title = "str",
 			systemImage = "str",
 			imagePath = "str",
+			cornerRadius = "num",
 			style = "str",
 			symbolSize = "num",
 			accessibilityLabel = "str",

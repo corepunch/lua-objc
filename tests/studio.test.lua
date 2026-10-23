@@ -243,7 +243,10 @@ t.expect(fresh.welcome.text:find("Habit Tracker", 1, true) ~= nil, "the welcome 
 t.assertEqual(Chat.presentation({ messages = {} }).welcome, nil, "a showcase without a project shows no hero")
 t.assertEqual(fresh.agent.name .. " " .. fresh.agent.model, "OpenAI gpt-5-mini", "the header names the provider and model")
 t.expect(fresh.busy, "the composer knows the agent is working")
-t.assertEqual(fresh.status.text, "Ready", "without a status the header says Ready")
+local working = Chat.presentation({ messages = {}, status = { busy = true } }).status
+t.expect(working ~= nil and working.busy and working.text == "", "a working agent has a status even without words")
+t.assertEqual(Chat.presentation({ messages = {} }).status, nil, "at rest the header has no status")
+t.assertEqual(Chat.presentation({ messages = {}, status = "Rendering" }).status.text, "Rendering", "a showcase may give its status as text")
 local reported = Chat.presentation({ messages = {}, status = { text = "Add your OpenAI API key in Settings", tone = "problem" } })
 t.expect(reported.status.tone == "problem" and reported.status.busy == false, "the header status carries its tone")
 local pane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", chat)
@@ -253,8 +256,12 @@ t.expect(pane.source:find('id="sendButton"', 1, true) ~= nil, "an idle composer 
 local busyPane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", fresh)
 t.expect(busyPane.source:find('id="stopButton"', 1, true) ~= nil and not busyPane.source:find('id="sendButton"', 1, true),
 	"a working composer offers Stop instead")
-t.expect(busyPane.source:find('id="welcome"', 1, true) and busyPane.source:find('id="welcomeTitle" text="Habit Tracker"', 1, true),
+t.expect(busyPane.source:find('id="welcomePane"', 1, true) and busyPane.source:find('id="welcomeTitle" text="Habit Tracker"', 1, true),
 	"the chat pane renders the welcome hero")
+t.expect(busyPane.source:find('id="transcriptScroll" hidden="true"', 1, true) ~= nil, "in place of the empty transcript")
+local welcomeAt = busyPane.source:find('id="welcomePane"', 1, true)
+t.expect(busyPane.source:find('id="welcomeSuggestions"', welcomeAt, true) and busyPane.source:find('action="suggest_feature"', welcomeAt, true)
+	and not busyPane.source:find('<FlowStack', 1, true), "the chips sit under the welcome and leave the composer")
 t.expect(busyPane.source:find('id="agentChooser"[^>]-action="openSettings"') ~= nil, "the header agent opens Settings")
 local errorPane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", Chat.presentation({ messages = {
 	{ role = "user", text = "x" }, { role = "error", text = "HTTP 401: bad key" }, { role = "agent", text = "", changes = { { path = "a.lua", added = 1 } } } } }))
@@ -269,6 +276,11 @@ local code = Code.presentation({
 }, "views/Today.etlua")
 t.assertEqual(code.language, "etlua", "template files select the etlua lexer")
 t.assertEqual(code.files[2].folder, "views", "project tree entries retain their folder")
+t.assertEqual(#code.rows, 3, "the navigator adds one section row per folder")
+t.expect(code.rows[1].id == "Controller.lua" and code.rows[2].section == true and code.rows[2].title == "views"
+	and code.rows[3].id == "views/Today.etlua", "root files first, then each folder under its section row")
+t.expect(code.rows[2].id == nil, "a section row selects no file")
+t.assertEqual(code.crumb, "views › Today.etlua", "the jump bar names the folder and the file")
 t.expect(Code.rules.languages.etlua.regions[1].rules == Code.rules.languages.lua,
 	"embedded etlua Lua blocks reuse the Lua token rules")
 t.expect(Code.rules.languages.lua.matches[#Code.rules.languages.lua.matches].color == "comment",

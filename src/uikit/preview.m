@@ -5,6 +5,7 @@
 @property(nonatomic, strong) UIViewController *content;
 @property(nonatomic, strong) UIView *deviceBody;
 @property(nonatomic, strong) UIView *screen;
+- (void)updateTrim;
 @end
 @implementation LuaPreviewView
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -13,12 +14,18 @@
 		// This is device artwork requested for the preview, not a replacement
 		// for a UIKit control. The embedded controller remains fully interactive.
 		_deviceBody = [UIView new];
-		_deviceBody.backgroundColor = UIColor.blackColor;
+		_deviceBody.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
+			return traits.userInterfaceStyle == UIUserInterfaceStyleDark
+				? [UIColor colorWithWhite:kPreviewDarkBodyWhite alpha:1] : UIColor.blackColor;
+		}];
 		_deviceBody.layer.cornerRadius = kPreviewScreenRadius + kPreviewBezel;
 		_deviceBody.layer.cornerCurve = kCACornerCurveContinuous;
 		_deviceBody.layer.borderWidth = kPreviewTrimWidth;
-		_deviceBody.layer.borderColor = UIColor.systemGrayColor.CGColor;
 		[self addSubview:_deviceBody];
+		[self updateTrim];
+		// A layer colour does not follow the appearance on its own.
+		[self registerForTraitChanges:@[UITraitUserInterfaceStyle.class]
+			withHandler:^(LuaPreviewView *view, __unused UITraitCollection *previous) { [view updateTrim]; }];
 		_screen = [UIView new];
 		_screen.clipsToBounds = YES;
 		_screen.layer.cornerRadius = kPreviewScreenRadius;
@@ -26,6 +33,9 @@
 		[_deviceBody addSubview:_screen];
 	}
 	return self;
+}
+- (void)updateTrim {
+	_deviceBody.layer.borderColor = [UIColor.systemGrayColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
 }
 - (UIViewController *)parentController {
 	UIResponder *responder = self.nextResponder;

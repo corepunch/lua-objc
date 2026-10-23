@@ -6,8 +6,12 @@ static NSMutableDictionary *lua_table_to_dict(lua_State *L, int idx) {
 	while (lua_next(L, idx) != 0) {
 		if (lua_type(L, -2) == LUA_TSTRING) {
 			const char *key = lua_tostring(L, -2);
-			const char *val = lua_tostring(L, -1);
-			if (key) {
+			/* Booleans stay booleans, so a `section = true` row is a header
+			 * here as it is on AppKit; everything else is shown as text. */
+			if (key && lua_type(L, -1) == LUA_TBOOLEAN) {
+				dict[[NSString stringWithUTF8String:key]] = @((BOOL)lua_toboolean(L, -1));
+			} else if (key) {
+				const char *val = lua_tostring(L, -1);
 				dict[[NSString stringWithUTF8String:key]] =
 					[NSString stringWithUTF8String:val ?: ""];
 			}

@@ -23,7 +23,10 @@ local function describe(state)
 		chat = state.chat or Chat.presentation(),
 	}).source
 end
-local source = describe()
+-- The default conversation with a result in the header, so the activity
+-- viewer is drawn; at rest it is absent.
+local source = describe({ chat = Chat.presentation({ messages = Chat.DEFAULT.messages, status = { text = "Committed 0123456" } }) })
+local resting = describe()
 
 t.expect(not source:find("nil", 1, true), "partials render instead of inserting nil")
 t.expect(source:find("Use Rocket Sketch Icon", 1, true) ~= nil, "the project menu renders icon choices")
@@ -54,6 +57,8 @@ for _, name in ipairs({ "Project: Starter App", "Chat, selected", "Code", "Run",
 	t.expect(rail:find('accessibilityLabel="' .. name .. '"', 1, true) ~= nil, "icon-only " .. name .. " keeps an accessible name")
 end
 local menu = assert(rail:match('(<Menu id="projectMenu".-</Menu>)'))
+t.expect(menu:find('<Menu id="projectMenu"[^>]-cornerRadius="14" style="plain"[^>]-width="44" height="44"') ~= nil,
+	"the project artwork fills a tile the shape of the other rail items")
 t.expect(rail:find('<Menu id="projectMenu"', 1, true) < rail:find('id="rail/chat/on"', 1, true), "the project menu heads the rail")
 t.expect(menu:find('title="Habit Tracker"', 1, true) ~= nil, "the project menu lists every project")
 t.expect(menu:find('title="New Project"[^>]-action="newProject"') ~= nil, "the project menu makes a new project")
@@ -119,7 +124,8 @@ local header = assert(chat:match('(<HStack paddingHorizontal="16".-</Menu>%s*</H
 local _, headerButtons = header:gsub('<Button', "")
 t.assertEqual(headerButtons, 1, "the header has one button, the agent itself; project actions are the rail's")
 t.expect(header:find('id="agentChooser"[^>]-action="openSettings"') ~= nil, "tapping the agent opens Settings")
-t.expect(header:find('<HStack id="activity"', 1, true) ~= nil, "the status sits in an activity viewer, as in Xcode")
+t.expect(header:find('<HStack id="activity"', 1, true) ~= nil, "a result sits in an activity viewer, as in Xcode")
+t.expect(not resting:find('id="activity"', 1, true), "at rest the header is the agent and its menu alone")
 t.expect(header:find('<SystemImage id="activitySymbol" name="checkmark.circle.fill"', 1, true) ~= nil,
 	"the mutable status keeps its symbol as a separate view")
 local statusAt = assert(header:find('<Label id="previewStatus"', 1, true))
@@ -142,6 +148,8 @@ t.expect(chat:find('<ScrollView id="transcriptScroll" hidden="false" flexGrow="1
 	"the transcript scrolls independently of the composer")
 t.expect(chat:find('id="codePane" hidden="true"', 1, true) and chat:find('syntaxRules="syntaxRules"', 1, true),
 	"Code mode starts hidden and binds Lua supplied syntax rules")
+t.expect(chat:find('<FlowStack', 1, true) ~= nil and not chat:find('id="welcomePane"', 1, true),
+	"once a conversation starts, the chips sit above the composer")
 local bubble = assert(chat:match('(<ZStack id="bubble/1".-</ZStack>)'))
 t.expect(bubble:find('id="bubble/1" flexGrow="0" flexShrink="1" fixedSize="vertical"', 1, true) ~= nil,
 	"the bubble hugs its text instead of growing with its gradient")
@@ -158,6 +166,9 @@ t.expect(chat:find('text="Today.etlua"', 1, true) and chat:find('text="views"', 
 t.expect(chat:find('Describe a change…', 1, true) ~= nil, "the composer invites a change")
 t.expect(chat:find('accessibilityLabel="Send" action="send" style="glassProminent"', 1, true) ~= nil,
 	"send is the composer's prominent action")
+t.expect(chat:find('id="sendButton"[^>]-disabled="true"') ~= nil, "and waits for a draft")
+local drafted = Chat.presentation({ messages = Chat.DEFAULT.messages, draft = "Make it blue" })
+t.expect(describe({ chat = drafted }):find('id="sendButton"[^>]-disabled="false"') ~= nil, "a draft enables it")
 local composer = assert(chat:match('(<GlassEffect cornerRadius="24".-</GlassEffect>)'))
 local _, composerButtons = composer:gsub('<Button', "")
 t.assertEqual(composerButtons, 1, "the composer offers Send alone; attach and dictate had nothing behind them")

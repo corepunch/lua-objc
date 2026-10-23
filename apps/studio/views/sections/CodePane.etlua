@@ -2,18 +2,18 @@
 	-- A project navigator beside an editor, as in Xcode: the navigator lists
 	-- every file with its symbol and folder, the editor header is a jump bar
 	-- naming the open file by its folder and name.
-	local CODE = { inset = 14, sidebarWidth = 220, titleSize = 15, captionSize = 11, rowHeight = 42 }
+	local CODE = { inset = 14, sidebarWidth = 220, titleSize = 15, captionSize = 11, rowHeight = 36 }
 %>
 <HStack id="codePane" hidden="<%= tostring(not shown) %>" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity" background="background">
 	<VStack id="treePane" hidden="<%= tostring(treeHidden == true) %>" width="<%= CODE.sidebarWidth %>" maxHeight="infinity" alignment="leading" background="secondaryBackground">
 		<HStack paddingHorizontal="<%= CODE.inset %>" paddingVertical="12" spacing="8" maxWidth="infinity" alignment="center">
 			<SystemImage name="folder.fill" size="15" color="secondary" />
-			<Label id="codeProject" text="<%= code.project or "Project" %>" size="<%= CODE.captionSize %>" weight="semibold" color="secondary" lines="1" />
+			<Label id="codeProject" text="Files" size="<%= CODE.captionSize %>" weight="semibold" color="secondary" lines="1" />
 			<Spacer />
 		</HStack>
 		<Divider />
 		<List id="codeFiles" data="codeFiles" onSelect="selectFile" style="plain" header="false" alternatingRows="false" rowHeight="<%= CODE.rowHeight %>" maxWidth="infinity" maxHeight="infinity">
-			<Column id="display" title="" minWidth="160" imageKey="icon" subtitleKey="folder" />
+			<Column id="display" title="" minWidth="160" imageKey="icon" />
 		</List>
 	</VStack>
 	<Divider id="treeDivider" hidden="<%= tostring(treeHidden == true) %>" orientation="vertical" />
