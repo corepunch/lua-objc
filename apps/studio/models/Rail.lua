@@ -27,8 +27,9 @@ local FOOTER = {
 
 -- `selected` is the id of the mode the agent card opens in; `badges` maps
 -- an action id to a count shown on its item (Commit: changed files), as
--- the activity bar of VS Code counts changes on Source Control.
-function Model.presentation(selected, badges)
+-- the activity bar of VS Code counts changes on Source Control; `menu` is
+-- the project menu (Projects.menu) that heads the rail.
+function Model.presentation(selected, badges, menu)
 	selected = selected or MODES[1].id
 	badges = badges or {}
 	local modes = {}
@@ -46,6 +47,7 @@ function Model.presentation(selected, badges)
 	return {
 		tint = Theme.tint,
 		brand = { title = "Lua Studio", icon = "hammer.fill", colors = Theme.brand },
+		menu = menu or require("apps.studio.models.Projects").menu({}),
 		modes = modes,
 		actions = actions,
 		destinations = DESTINATIONS,

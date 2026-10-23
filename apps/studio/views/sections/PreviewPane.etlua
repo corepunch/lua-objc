@@ -1,10 +1,9 @@
 <%
   -- The stage: the device alone on the workspace canvas, with no bar and no
   -- fill of its own. The stage is only as wide as the device needs; the
-  -- chat takes the rest, and focusing the preview (`chatHidden`) drops the
-  -- fixed width so the stage grows.
+  -- chat takes the rest.
   local STAGE = { inset = 16 }
 %>
-<VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="0" <% if not chatHidden then %>width="<%= stageWidth %>" <% end %>flexGrow="1" flexBasis="0" maxHeight="infinity">
+<VStack id="previewPane" padding="<%= STAGE.inset %>" spacing="0" width="<%= stageWidth %>" maxHeight="infinity">
 	<Preview id="preview" background="clear" flexGrow="1" maxWidth="infinity" maxHeight="infinity" />
 </VStack>

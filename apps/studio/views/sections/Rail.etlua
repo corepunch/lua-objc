@@ -1,16 +1,27 @@
 <%
-  -- The activity rail: icon-only, as in an editor. The brand mark sits at the
-  -- top, the modes of the agent card beneath it, then the project actions
-  -- (Run, Commit) after a rule, workspace destinations after another, and
-  -- settings at the foot. The rail has no background of its own;
+  -- The activity rail: icon-only, as in an editor. The project menu sits at
+  -- the top, the modes of the agent card beneath it, then the project
+  -- actions (Run, Commit) after a rule, workspace destinations after
+  -- another, and settings at the foot. The rail has no background of its own;
   -- it rests on the workspace gradient.
   local RAIL = { width = 68, inset = 12, spacing = 6, item = 44, itemRadius = 14, symbol = 19, mark = 40, markRadius = 12, markSymbol = 19, rule = 24, badge = 18, badgeSize = 10 }
 %>
 <VStack id="rail" tint="<%= tint %>" width="<%= RAIL.width %>" paddingVertical="<%= RAIL.inset %>" spacing="<%= RAIL.spacing %>" maxHeight="infinity" alignment="center">
-	<ZStack width="<%= RAIL.mark %>" height="<%= RAIL.mark %>" accessibilityLabel="<%= brand.title %>">
-		<LinearGradient colors="<%= brand.colors %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= RAIL.markRadius %>" />
-		<SystemImage name="<%= brand.icon %>" size="<%= RAIL.markSymbol %>" weight="semibold" color="white" label="" />
-	</ZStack>
+	<% -- The project heads the rail: its artwork is the button, and the menu
+	   -- lists the projects, the icon choices and New Project. %>
+	<Menu id="projectMenu" title="" systemImage="<%= menu.project.icon %>" imagePath="<%= menu.project.imagePath or "" %>" style="glass" accessibilityLabel="Project: <%= menu.project.title %>" width="<%= RAIL.item %>" height="<%= RAIL.item %>">
+		<% for _, item in ipairs(menu.projects) do %>
+		<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" imagePath="<%= item.imagePath or "" %>" checked="<%= tostring(item.selected == true) %>"<% if item.action then %> action="<%= item.action %>"<% end %> />
+		<% end %>
+		<Separator />
+		<% for _, choice in ipairs(menu.iconChoices) do %>
+		<MenuItem title="Use <%= choice.title %> Icon" systemImage="<%= choice.symbol %>" imagePath="<%= choice.imagePath %>" checked="<%= tostring(choice.selected) %>" action="<%= choice.action %>" />
+		<% end %>
+		<Separator />
+		<% for _, destination in ipairs(menu.destinations) do %>
+		<MenuItem title="<%= destination.title %>" systemImage="<%= destination.icon %>" action="<%= destination.action %>" />
+		<% end %>
+	</Menu>
 	<Spacer height="<%= RAIL.spacing %>" />
 	<% for _, mode in ipairs(modes) do %>
 	<% if mode.selected then %>

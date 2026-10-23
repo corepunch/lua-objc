@@ -28,32 +28,27 @@ failed signing/install steps stop the command.
 
 ## Use
 
-Lua Studio is one canvas: an icon-only activity rail down the left, and
-beside it a window toolbar over two panes, the running app on a stage sized
-to an iPhone 16 and the coding agent in a floating card that fills the rest.
-The canvas is a wash of the brand gradient over the system background, so it
+Lua Studio is three columns on one canvas: an icon-only activity rail, the
+running app on a stage sized to an iPhone 16, and the coding agent in a
+floating card that fills the rest. There is no toolbar: the rail and the card
+hold every control, as the activity bar and the panels do in VS Code. The
+canvas is a wash of the brand gradient over the system background, so it
 holds in light and dark; the rail and the stage have no fill of their own.
 
-The rail carries the Lua Studio mark, the two modes of the agent card (Chat and
-Code, with a gradient highlight on the one showing), then Run and Commit, as
-Run and Source Control sit in the activity bar of VS Code, then Plugins, and
-Settings at its foot. Commit wears a badge with the number of changed files,
-as Source Control does. Every item is an icon with an accessibility label.
-
-The toolbar is one Liquid Glass bar spanning the stage and the card, laid out
-as Xcode lays out its own. The project menu leads, as the scheme chooser does:
-it lists the projects (choose one to open it), the project's icon choices and
-New Project. An activity viewer sits in the centre with the status (Ready, the
-last commit, why a send was refused, with a warning symbol for a problem) and
-a spinner while the agent thinks. The chat toggle for focusing the preview
-trails, where Xcode keeps its inspector toggle.
-Nothing project-wide sits in the stage or the card, so the bar fits an iPad
-Pro in portrait with room to spare (`tests/studio_portrait.test.lua` lays the
-workspace out at 1032 points and checks).
+The rail opens with the project menu, an icon-only button wearing the
+project's artwork: it lists the projects (choose one to open it), the
+project's icon choices and New Project. Beneath it are the two modes of the
+agent card (Chat and Code, with a gradient highlight on the one showing),
+then Run and Commit, as Run and Source Control sit in the activity bar of VS
+Code, then Plugins, and Settings at its foot. Commit wears a badge with the
+number of changed files, as Source Control does. Every item is an icon with
+an accessibility label.
 
 The stage is the device alone. The card header names the provider and model
-answering (tap it to change them), with a menu for New Conversation, Choose
-Model… and Undo Last Change. A project with nothing said yet opens on a
+answering (tap it to change them), then an activity viewer as Xcode keeps in
+its toolbar: the status (Ready, the last commit, why a send was refused, with
+a warning symbol for a problem) and a spinner while the agent thinks, then a
+menu for New Conversation, Choose Model… and Undo Last Change. A project with nothing said yet opens on a
 welcome hero with its mark and name. The chat is the project's transcript: the request as a gradient
 bubble, the agent's reply beside its avatar, a card of changed files with
 line counts for each edit (with Undo), and a warning line for an error.
@@ -184,7 +179,7 @@ security boundary for hostile code. It shares the host's native runtime.
 ```
 apps/studio/
   init.lua, Controller.lua, Model.lua
-  models/        Chat, Code, Toolbar, Preview, Rail, Theme, Projects (templates, folder names),
+  models/        Chat, Code, Preview, Rail, Theme, Projects (templates, folder names, the project menu),
                  Settings and Plugins (the sheets' data)
   services/      Workspace (Documents, Git), Versions, Preview (isolated runtime),
                  Agent (the turn loop), Providers (the extension point), Keys (keychain),
@@ -192,7 +187,7 @@ apps/studio/
   helpers/       ChatCompletions (the OpenAI dialect), Changes (line counts)
   plugins/providers/   one file per bundled provider
   views/layouts/       Window, Workspace
-  views/sections/      Rail, Toolbar, PreviewPane, ChatPane, CodePane
+  views/sections/      Rail, PreviewPane, ChatPane, CodePane
   views/components/    Avatar, ChangeCard, Composer
   views/sheets/        SheetHost, Settings, NewProject, Plugins
 ```

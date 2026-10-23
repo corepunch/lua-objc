@@ -15,7 +15,7 @@
     welcomeInset = 48, welcomeMark = 72, welcomeRadius = 20, welcomeTitle = 22, welcomeMeasure = 440,
   }
 %>
-<VStack id="chatPane" hidden="<%= tostring(hidden == true) %>" tint="<%= tint %>" paddingVertical="<%= CHAT.margin %>" paddingTrailing="<%= CHAT.margin %>" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity">
+<VStack id="chatPane" tint="<%= tint %>" paddingVertical="<%= CHAT.margin %>" paddingTrailing="<%= CHAT.margin %>" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity">
 	<VStack id="chatCard" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background" cornerRadius="<%= CHAT.radius %>" clipsToBounds="true">
 		<HStack paddingHorizontal="<%= CHAT.inset %>" paddingVertical="<%= CHAT.inset - 4 %>" spacing="<%= CHAT.headerSpacing %>" maxWidth="infinity" alignment="center">
 			<% -- The agent names itself and opens Settings when tapped, as the
@@ -30,6 +30,17 @@
 				</HStack>
 			</Button>
 			<Spacer />
+			<% -- The activity viewer, as Xcode centres one in its toolbar: the
+			   -- status, a warning symbol for a problem, a spinner while the
+			   -- agent thinks. %>
+			<HStack id="activity" spacing="6" alignment="center" flexShrink="1" accessibilityLabel="Status: <%= status.text %>">
+				<% if status.busy then %>
+				<ProgressView id="activitySpinner" indeterminate="true" controlSize="small" />
+				<% else %>
+				<SystemImage id="activitySymbol" name="<%= status.tone == "problem" and "exclamationmark.triangle.fill" or "checkmark.circle.fill" %>" size="<%= CHAT.captionSize + 1 %>" color="<%= status.tone == "problem" and "systemOrange" or "secondary" %>" width="<%= CHAT.captionSize + 5 %>" label="" />
+				<% end %>
+				<Label id="previewStatus" text="<%= status.text %>" size="<%= CHAT.captionSize + 1 %>" color="<%= status.tone == "problem" and "label" or "secondary" %>" lines="1" truncation="tail" flexShrink="1" />
+			</HStack>
 			<Menu id="conversationMenu" systemImage="ellipsis" style="glass" accessibilityLabel="Conversation Options">
 				<MenuItem title="New Conversation" systemImage="square.and.pencil" action="newConversation" />
 				<MenuItem title="Choose Model…" systemImage="cpu" action="openSettings" />

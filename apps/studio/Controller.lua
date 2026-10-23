@@ -20,7 +20,6 @@ local Projects = require("apps.studio.models.Projects")
 local Code = require("apps.studio.models.Code")
 local Chat = require("apps.studio.models.Chat")
 local Settings = require("apps.studio.models.Settings")
-local Toolbar = require("apps.studio.models.Toolbar")
 local PluginsModel = require("apps.studio.models.Plugins")
 
 local Controller = {}
@@ -143,6 +142,8 @@ function Controller:conversation()
 		messages = self.model and self.model.messages or {},
 		draft = self.draft,
 		busy = self:agentBusy(),
+		status = { text = self:agentBusy() and "Thinking…" or self.status or "Ready",
+			tone = self.statusTone or "ok", busy = self:agentBusy() },
 		project = self.activeProject and self.activeProject.title or nil,
 		projectIcon = self.activeProject and self.activeProject.icon or nil,
 		agent = descriptor and { name = descriptor.title, model = modelId, icon = descriptor.symbol } or nil,
@@ -152,23 +153,16 @@ end
 -- What the workspace shows: the rail's mode, the stage, and the agent card
 -- with the code pane, from the workspace state.
 function Controller:workspaceData()
-	local toolbar = Toolbar.presentation(self.projects, self:iconChoices())
-	toolbar.status = self:agentBusy() and "Thinking…" or self.status or toolbar.status
-	toolbar.tone = self.statusTone or "ok"
-	toolbar.busy = self:agentBusy()
-	if self.showcase and self.showcase.conversation.status then toolbar.status = self.showcase.conversation.status end
-	toolbar.chatHidden = self.chatHidden
 	local preview = self.previewPane:presentation()
-	preview.chatHidden = self.chatHidden
 	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
 	code.project = self.activeProject and self.activeProject.title or "Project"
 	self.selectedFile = code.selected
 	local chat = self.chat:presentation(self.showcase and self.showcase.conversation or self:conversation(), code)
-	chat.mode, chat.hidden, chat.treeHidden = self.mode, self.chatHidden, self.treeHidden
+	chat.mode, chat.treeHidden = self.mode, self.treeHidden
 	self.actions = self:workspaceActions()
 	return {
-		rail = self.rail:presentation(self.mode, { commit = self:changedCount() }),
-		toolbar = toolbar,
+		rail = self.rail:presentation(self.mode, { commit = self:changedCount() },
+			Projects.menu(self.projects, self:iconChoices())),
 		preview = preview,
 		chat = chat,
 		-- XML data bindings resolve against the root template context, even
@@ -462,7 +456,6 @@ function Controller:workspaceActions()
 		commitProject = function() self:commitProject("Update project") end,
 		showChat = function() self.mode = "chat"; self:render() end,
 		showCode = function() self.mode = "code"; self:render() end,
-		toggleChat = function() self.chatHidden = not self.chatHidden; self:render() end,
 		toggleTree = function() self.treeHidden = not self.treeHidden; self:render() end,
 		selectFile = function(_, _, row) if row and row.id then self:selectFile(row.id) end end,
 		send = function() self:send() end,

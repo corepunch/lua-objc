@@ -56,6 +56,26 @@ function Projects.bundleId(folder)
 	return "org.example." .. folder:lower()
 end
 
+-- The project menu: the current project, every project, the icon choices
+-- and New Project. It sits at the top of the rail.
+Projects.menuDestinations = {
+	{ title = "New Project", icon = "plus", action = "newProject" },
+}
+
+function Projects.menu(projects, iconChoices)
+	projects = projects or {}
+	local current = projects[1]
+	for _, project in ipairs(projects) do
+		if project.selected then current = project; break end
+	end
+	return {
+		project = current or { title = "No Project", icon = "app.dashed" },
+		projects = projects,
+		iconChoices = iconChoices or {},
+		destinations = Projects.menuDestinations,
+	}
+end
+
 function Projects.iconChoice(id)
 	for _, choice in ipairs(Projects.iconChoices) do
 		if choice.id == id then return choice end

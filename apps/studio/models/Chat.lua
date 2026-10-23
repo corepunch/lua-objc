@@ -89,10 +89,15 @@ function Model.presentation(conversation, code)
 		table.insert(messages, entry)
 	end
 	local agent = source.agent or { name = "Assistant", model = "No provider", icon = "sparkles" }
+	-- The status is the card header's activity viewer: text, a tone ("ok"
+	-- or "problem") for its symbol, and whether the agent is working.
+	local status = source.status or {}
+	status = { text = status.text or "Ready", tone = status.tone or "ok", busy = status.busy == true }
 	return {
 		agent = { name = agent.name, model = agent.model, icon = agent.icon or "sparkles" },
 		brand = Theme.brand,
 		tint = Theme.tint,
+		status = status,
 		messages = messages,
 		welcome = welcome,
 		draft = source.draft or "",

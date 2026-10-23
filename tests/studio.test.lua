@@ -166,10 +166,9 @@ t.expect(not view and err:find("execution budget", 1, true), "runaway initial re
 t.expect(preview:render(model.files) ~= nil, "hook restored after budget error")
 -- Inspect the workspace template without constructing native UI.
 local description = require("ui.xml").describeFile("apps/studio/views/layouts/Workspace.etlua", {
-	rail = require("apps.studio.models.Rail").presentation(),
-	toolbar = require("apps.studio.models.Toolbar").presentation({
+	rail = require("apps.studio.models.Rail").presentation(nil, nil, require("apps.studio.models.Projects").menu({
 		{ id = "HabitPal", title = "HabitPal", icon = "checklist", selected = true, action = "openProject_HabitPal" },
-	}),
+	})),
 	preview = require("apps.studio.models.Preview").presentation(),
 	chat = require("apps.studio.models.Chat").presentation(),
 })
@@ -178,7 +177,6 @@ t.expect(description.source:find('action="openProject_HabitPal"', 1, true) ~= ni
 t.expect(description.source:find('title="New Project" systemImage="plus" action="newProject"', 1, true) ~= nil, "the menu makes a project")
 t.expect(description.source:find("width=\"440\"", 1, true) ~= nil, "preview is sized to the device")
 t.expect(description.source:find("minWidth=\"380\"", 1, true) ~= nil, "chat keeps a usable minimum width")
-t.expect(description.source:find("toggleChat", 1, true) ~= nil, "chat visibility customization remains available")
 local Projects = require("apps.studio.models.Projects")
 t.assertEqual(#Projects.iconChoices, 3, "Studio offers three project icons")
 t.assertEqual(Projects.defaultProjectIcon, "rocket-sketch", "the rocket sketch is the default project artwork")
@@ -245,6 +243,9 @@ t.expect(fresh.welcome.text:find("Habit Tracker", 1, true) ~= nil, "the welcome 
 t.assertEqual(Chat.presentation({ messages = {} }).welcome, nil, "a showcase without a project shows no hero")
 t.assertEqual(fresh.agent.name .. " " .. fresh.agent.model, "OpenAI gpt-5-mini", "the header names the provider and model")
 t.expect(fresh.busy, "the composer knows the agent is working")
+t.assertEqual(fresh.status.text, "Ready", "without a status the header says Ready")
+local reported = Chat.presentation({ messages = {}, status = { text = "Add your OpenAI API key in Settings", tone = "problem" } })
+t.expect(reported.status.tone == "problem" and reported.status.busy == false, "the header status carries its tone")
 local pane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", chat)
 t.expect(pane.source:find("&lt;Old /&gt;", 1, true) ~= nil, "the chat pane renders diff lines")
 t.expect(pane.source:find('text="Make it blue"', 1, true) ~= nil, "the chat pane renders the draft")

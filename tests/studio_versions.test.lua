@@ -172,7 +172,6 @@ t.assertEqual(controller.status, "Git unavailable: no repository", "the open err
 
 local source = require("ui.xml").describeFile("apps/studio/views/layouts/Workspace.etlua", {
 	rail = require("apps.studio.models.Rail").presentation(),
-	toolbar = require("apps.studio.models.Toolbar").presentation({}),
 	preview = require("apps.studio.models.Preview").presentation(),
 	chat = require("apps.studio.models.Chat").presentation(),
 }).source

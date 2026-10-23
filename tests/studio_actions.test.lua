@@ -1,19 +1,20 @@
 _G.__headless = true
 
 local t = require("TestKit")
-local Toolbar = require("apps.studio.models.Toolbar")
+local Projects = require("apps.studio.models.Projects")
 local Preview = require("apps.studio.controllers.PreviewController")
 local Chat = require("apps.studio.models.Chat")
 
-local presentation = Toolbar.presentation({
-	{ title = "Starter App", icon = "rocket.fill" },
+local presentation = Projects.menu({
+	{ title = "Starter App", icon = "app.fill" },
 	{ title = "Habit Tracker", icon = "checklist", selected = true },
 })
-t.assertEqual(presentation.project.title, "Habit Tracker", "the selected project heads the toolbar")
+t.assertEqual(presentation.project.title, "Habit Tracker", "the selected project heads the menu")
 t.assertEqual(#presentation.projects, 2, "every project is offered")
-t.assertEqual(Toolbar.presentation({ { title = "Only", icon = "app" } }).project.title, "Only",
+t.assertEqual(Projects.menu({ { title = "Only", icon = "app" } }).project.title, "Only",
 	"the first project is current when none is selected")
-t.assertEqual(Toolbar.presentation().project.title, "No Project", "missing projects are safe")
+t.assertEqual(Projects.menu().project.title, "No Project", "missing projects are safe")
+t.assertEqual(Projects.menu().destinations[1].action, "newProject", "the menu makes a new project")
 t.assertEqual(Preview.new():presentation().stageWidth, 440, "the stage is sized to the device")
 
 local changes, summary = Chat.changes({

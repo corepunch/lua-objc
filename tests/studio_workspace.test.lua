@@ -17,7 +17,7 @@ root.mode = "chat"
 root.actions = root:workspaceActions()
 root.workspace = Template.new(ns.VStack {}, "apps/studio/views/layouts/Workspace.etlua", ns)
 root:render()
-local codePane, chatPane, previewPane = root.refs.codePane, root.refs.chatPane, root.refs.previewPane
+local codePane = root.refs.codePane
 t.expect(codePane.hidden and not root.refs.transcriptScroll.hidden, "the workspace opens on the conversation")
 t.expect(root.refs["rail/chat/on"] ~= nil and root.refs["rail/code/on"] == nil, "the rail highlights the chat")
 t.assertEqual(root.refs.codeProject.text, "Starter App", "the project tree is titled by the project")
@@ -34,23 +34,15 @@ t.assertEqual(root.refs.treeToggle.accessibilityLabel, "Show project tree", "the
 root.actions.toggleTree()
 t.expect(not root.refs.treePane.hidden, "the tree comes back")
 
-root.actions.toggleChat()
-t.expect(root.refs.chatPane.hidden, "focusing the preview hides the chat")
-t.assertEqual(root.refs.chatPane, chatPane, "the chat keeps its view")
-t.assertEqual(root.refs.previewPane.fixedWidth, nil, "and the stage drops its fixed width")
-t.assertEqual(root.refs.chatVisibility.accessibilityLabel, "Show Chat", "the toggle offers the chat back")
-root.actions.toggleChat()
-t.expect(not root.refs.chatPane.hidden, "the chat comes back")
-t.assertEqual(root.refs.previewPane.fixedWidth, 440, "beside a stage sized to the device")
-t.assertEqual(root.refs.previewPane, previewPane, "the stage keeps its view")
-
 root.actions.selectFile(nil, nil, { id = "Model.lua" })
 t.assertEqual(root.refs.codeFileTitle.text, "Model.lua", "selecting a file names it")
 t.assertEqual(root.refs.sourceCode.text, "return 1", "and shows its source")
 
 root.versions = { record = function() return "0123456789" end }
 root.actions.commitProject()
-t.assertEqual(root.refs.previewStatus.text, "Committed 0123456", "the status line is drawn from the state")
+t.assertEqual(root.refs.previewStatus.text, "Committed 0123456", "the status line in the card header is drawn from the state")
+t.expect(root.refs.projectMenu ~= nil, "the project menu heads the rail")
+t.assertEqual(root.refs.projectMenu.accessibilityLabel, "Project: Starter App", "and names the open project")
 
 -- The composer: the draft is kept as it is typed, a chip fills it, Return sends.
 root.actions.showChat()
@@ -67,15 +59,18 @@ root.agent.send = function() return nil, "Add your OpenAI API key in Settings" e
 root.draft = "x"
 root.actions.send()
 t.assertEqual(root.refs.previewStatus.text, "Add your OpenAI API key in Settings", "a refused send explains itself in the status line")
+t.assertEqual(root.refs.activitySymbol.accessibilityLabel or "", "", "the warning symbol stays decorative; the label carries the text")
 
 -- A working agent shows Stop and Thinking.
 root.agent.busy = true
 root:render()
 t.expect(root.refs.stopButton ~= nil and root.refs.sendButton == nil, "a working agent's composer offers Stop")
-t.assertEqual(root.refs.previewStatus.text, "Thinking…", "and the stage says the agent is thinking")
+t.assertEqual(root.refs.previewStatus.text, "Thinking…", "and the header says the agent is thinking")
+t.expect(root.refs.activitySpinner ~= nil and root.refs.activitySymbol == nil, "with a spinner in place of the symbol")
 root.agent.busy = false
 root:render()
 t.expect(root.refs.sendButton ~= nil, "an idle agent's composer offers Send")
+t.expect(root.refs.activitySymbol ~= nil and root.refs.activitySpinner == nil, "and the symbol returns")
 
 -- Sheets open one at a time through the injected presenter.
 local presented, dismissed = {}, {}
