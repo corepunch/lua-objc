@@ -33,8 +33,12 @@ static int bridge_tableview(lua_State *L) {
 		lua_pop(L, 1);
 		NSString *colId = column[@"id"];
 		if (colId) {
+			/* The cell spec names row fields, as on AppKit: `image` for a
+			 * symbol beside the text, `secondary` for a line beneath it. */
+			id cellSpec = column[@"cell"];
 			[colSpecs addObject:@{@"id": colId,
-								  @"title": column[@"title"] ?: colId}];
+								  @"title": column[@"title"] ?: colId,
+								  @"cell": [cellSpec isKindOfClass:NSDictionary.class] ? cellSpec : @{}}];
 		}
 	}
 
@@ -120,6 +124,26 @@ static int bridge_tableview_remove(lua_State *L) {
 	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
 	if (!src) return luaL_error(L, "not a table view");
 	[src removeRowAtIndex:(NSInteger)luaL_checkinteger(L, 2)];
+	if ([obj isKindOfClass:UITableView.class] && !((UITableView *)obj).scrollEnabled)
+		uikit_invalidate_layout((UIView *)obj);
+	return 0;
+}
+
+/* Replaces every row at once, with one reload rather than a row insertion
+ * each; the reconciler uses it when a list is drawn again with other rows. */
+static int bridge_tableview_replace(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *src = objc_getAssociatedObject(obj, &kTableSourceKey);
+	if (!src) return luaL_error(L, "not a table view");
+	luaL_checktype(L, 2, LUA_TTABLE);
+	NSMutableArray *rows = [NSMutableArray array];
+	lua_Integer count = luaL_len(L, 2);
+	for (lua_Integer index = 1; index <= count; index++) {
+		lua_rawgeti(L, 2, index);
+		if (lua_istable(L, -1)) [rows addObject:lua_table_to_dict(L, lua_gettop(L))];
+		lua_pop(L, 1);
+	}
+	[src replaceRows:rows];
 	if ([obj isKindOfClass:UITableView.class] && !((UITableView *)obj).scrollEnabled)
 		uikit_invalidate_layout((UIView *)obj);
 	return 0;

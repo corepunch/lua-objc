@@ -1,6 +1,6 @@
 return {
 	name = "Starter App",
 	bundleId = "org.example.starterapp",
-	appIcon = "rocket.fill",
+	appIcon = "app.fill",
 	projectIcon = "rocket-sketch",
 }

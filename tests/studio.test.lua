@@ -187,7 +187,7 @@ local listed = Projects.list(function(path)
 	if path == "projects.json" then return '["Demo"]' end
 	if path == "Demo/project.lua" then return 'return { name = "Demo", bundleId = "org.example.demo" }' end
 end, ns.json_parse, ns._jsonEncode, function(path, value) writes[path] = value; return true end)
-t.assertEqual(listed[1].appIcon, "rocket.fill", "projects get a consistent default app icon")
+t.assertEqual(listed[1].appIcon, "app.fill", "projects get a consistent default app icon")
 t.assertEqual(listed[1].projectIcon, "rocket-sketch", "projects use the rocket sketch artwork by default")
 t.assertEqual(listed[1].bundleId, "org.example.demo", "Lua metadata loads bundle identifier")
 local ok = Projects.save(function(path, value) writes[path] = value; return true end, "Demo", {
@@ -237,9 +237,12 @@ t.expect(chat.listening, "dictation can be shown listening")
 t.assertEqual(chat.agent.model, "No provider", "without a provider the header says so")
 local starter = Chat.presentation()
 t.expect(starter.messages[1].role == "user" and #starter.messages[2].changes == 7, "the starter conversation describes the complete app")
-local fresh = Chat.presentation({ messages = {}, project = "Habit Tracker", busy = true,
+local fresh = Chat.presentation({ messages = {}, project = "Habit Tracker", projectIcon = "checklist", busy = true,
 	agent = { name = "OpenAI", model = "gpt-5-mini", icon = "brain" } })
-t.expect(fresh.messages[1].role == "agent" and fresh.messages[1].text:find("Habit Tracker", 1, true), "a quiet project opens on a welcome")
+t.expect(#fresh.messages == 0 and fresh.welcome.title == "Habit Tracker" and fresh.welcome.icon == "checklist",
+	"a quiet project opens on a welcome hero in place of a transcript")
+t.expect(fresh.welcome.text:find("Habit Tracker", 1, true) ~= nil, "the welcome names the project")
+t.assertEqual(Chat.presentation({ messages = {} }).welcome, nil, "a showcase without a project shows no hero")
 t.assertEqual(fresh.agent.name .. " " .. fresh.agent.model, "OpenAI gpt-5-mini", "the header names the provider and model")
 t.expect(fresh.busy, "the composer knows the agent is working")
 local pane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", chat)
@@ -249,6 +252,9 @@ t.expect(pane.source:find('id="sendButton"', 1, true) ~= nil, "an idle composer 
 local busyPane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", fresh)
 t.expect(busyPane.source:find('id="stopButton"', 1, true) ~= nil and not busyPane.source:find('id="sendButton"', 1, true),
 	"a working composer offers Stop instead")
+t.expect(busyPane.source:find('id="welcome"', 1, true) and busyPane.source:find('id="welcomeTitle" text="Habit Tracker"', 1, true),
+	"the chat pane renders the welcome hero")
+t.expect(busyPane.source:find('id="agentChooser"[^>]-action="openSettings"') ~= nil, "the header agent opens Settings")
 local errorPane = require("ui.xml").describeFile("apps/studio/views/sections/ChatPane.etlua", Chat.presentation({ messages = {
 	{ role = "user", text = "x" }, { role = "error", text = "HTTP 401: bad key" }, { role = "agent", text = "", changes = { { path = "a.lua", added = 1 } } } } }))
 t.expect(errorPane.source:find("exclamationmark.triangle.fill", 1, true) ~= nil, "an error line shows a warning symbol")

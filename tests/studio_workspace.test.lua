@@ -11,7 +11,7 @@ local Keys = require("apps.studio.services.Keys")
 -- views and only their attributes change.
 local root = Root.new()
 root.model = { files = { ["demo/playground/Controller.lua"] = "return {}", ["demo/playground/Model.lua"] = "return 1" }, messages = {} }
-root.projects = { { id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true } }
+root.projects = { { id = "StarterApp", title = "Starter App", icon = "app.fill", selected = true } }
 root.activeProject = root.projects[1]
 root.mode = "chat"
 root.actions = root:workspaceActions()
@@ -93,7 +93,7 @@ sheeted.keys = Keys.new({ _keychainGet = function(_, account) return store[accou
 local savedChoice
 sheeted.model = { files = root.model.files, messages = {}, provider = "openai", model = "gpt-5-mini",
 	setAgent = function(self, provider, model) savedChoice = provider .. "/" .. model; self.provider, self.model = provider, model; return true end }
-sheeted.projects = { { id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true } }
+sheeted.projects = { { id = "StarterApp", title = "Starter App", icon = "app.fill", selected = true } }
 sheeted.activeProject = sheeted.projects[1]
 sheeted.actions = sheeted:workspaceActions()
 sheeted.workspace = Template.new(ns.VStack {}, "apps/studio/views/layouts/Workspace.etlua", ns)

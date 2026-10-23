@@ -16,11 +16,14 @@ function Model.presentation(projects, iconChoices)
 		if project.selected then current = project; break end
 	end
 	return {
-		project = current or { title = "No Project", icon = "rocket.fill" },
+		project = current or { title = "No Project", icon = "app.dashed" },
 		projects = projects,
 		iconChoices = iconChoices or {},
 		destinations = DESTINATIONS,
 		status = "Ready",
+		-- The activity viewer's symbol follows the tone of the status, as
+		-- Xcode's shows a warning or a success mark: "ok" or "problem".
+		tone = "ok",
 		busy = false,
 		chatHidden = false,
 		tint = Theme.tint,

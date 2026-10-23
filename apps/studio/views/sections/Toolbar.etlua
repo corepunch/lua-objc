@@ -1,9 +1,12 @@
 <%
-  -- The window toolbar on Liquid Glass: the project menu and the status
-  -- line lead, the chat toggle trails. Run and Commit are on the rail, as
-  -- in an activity bar. It spans the stage and the agent card, so nothing
-  -- project-wide crowds either of them.
-  local BAR = { inset = 16, spacing = 10, statusSize = 13 }
+  -- The window toolbar on Liquid Glass, laid out as Xcode lays out its own:
+  -- the project chooser leads, an activity viewer sits in the centre with
+  -- the status and a spinner while the agent works, and the inspector-like
+  -- chat toggle trails. Run and Commit are on the rail, as in an activity
+  -- bar. The bar spans the stage and the agent card, so nothing project-wide
+  -- crowds either of them.
+  local BAR = { inset = 16, spacing = 10, statusSize = 13, activityInset = 14, activityRadius = 18, activitySpacing = 8, symbol = 13 }
+  local problem = tone == "problem"
 %>
 <HStack id="toolbar" tint="<%= tint %>" paddingHorizontal="<%= BAR.inset %>" paddingTop="<%= BAR.inset %>" spacing="0" maxWidth="infinity">
 	<GlassEffectContainer spacing="<%= BAR.spacing %>" maxWidth="infinity" tint="<%= tint %>">
@@ -21,10 +24,17 @@
 				<MenuItem title="<%= destination.title %>" systemImage="<%= destination.icon %>" action="<%= destination.action %>" />
 				<% end %>
 			</Menu>
-			<HStack spacing="6" alignment="center" flexShrink="1">
-				<SystemImage name="<%= busy and "ellipsis.circle" or "checkmark.circle.fill" %>" size="<%= BAR.statusSize %>" color="secondary" />
-				<Label id="previewStatus" text="<%= status %>" size="<%= BAR.statusSize %>" color="secondary" lines="1" truncation="tail" />
-			</HStack>
+			<Spacer />
+			<GlassEffect id="activity" cornerRadius="<%= BAR.activityRadius %>" flexShrink="1">
+				<HStack paddingHorizontal="<%= BAR.activityInset %>" paddingVertical="<%= BAR.activitySpacing %>" spacing="<%= BAR.activitySpacing %>" alignment="center" accessibilityLabel="Status: <%= status %>">
+					<% if busy then %>
+					<ProgressView id="activitySpinner" indeterminate="true" controlSize="small" />
+					<% else %>
+					<SystemImage id="activitySymbol" name="<%= problem and "exclamationmark.triangle.fill" or "checkmark.circle.fill" %>" size="<%= BAR.symbol %>" color="<%= problem and "systemOrange" or "secondary" %>" width="<%= BAR.symbol + 4 %>" label="" />
+					<% end %>
+					<Label id="previewStatus" text="<%= status %>" size="<%= BAR.statusSize %>" color="<%= problem and "label" or "secondary" %>" lines="1" truncation="tail" flexShrink="1" />
+				</HStack>
+			</GlassEffect>
 			<Spacer />
 			<Button id="chatVisibility" systemImage="sidebar.trailing" accessibilityLabel="<%= chatHidden and "Show Chat" or "Focus Preview" %>" action="toggleChat" style="glass" />
 		</HStack>

@@ -12,16 +12,23 @@
     margin = 12, radius = 28, avatar = 36, turnAvatar = 26, nameSize = 16, modelSize = 12,
     bodySize = 15, bubbleInset = 12, bubbleRadius = 18, bubbleIndent = 56,
     turnSpacing = 10, captionSize = 12,
+    welcomeInset = 48, welcomeMark = 72, welcomeRadius = 20, welcomeTitle = 22, welcomeMeasure = 440,
   }
 %>
 <VStack id="chatPane" hidden="<%= tostring(hidden == true) %>" tint="<%= tint %>" paddingVertical="<%= CHAT.margin %>" paddingTrailing="<%= CHAT.margin %>" spacing="0" flexGrow="1" flexBasis="0" minWidth="380" maxWidth="infinity" maxHeight="infinity">
 	<VStack id="chatCard" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background" cornerRadius="<%= CHAT.radius %>" clipsToBounds="true">
 		<HStack paddingHorizontal="<%= CHAT.inset %>" paddingVertical="<%= CHAT.inset - 4 %>" spacing="<%= CHAT.headerSpacing %>" maxWidth="infinity" alignment="center">
-			<%- partial("../components/Avatar.etlua", { size = CHAT.avatar, colors = brand, icon = agent.icon, label = agent.name }) %>
-			<VStack spacing="1" alignment="leading" flexShrink="1">
-				<Label text="<%= agent.name %>" size="<%= CHAT.nameSize %>" weight="semibold" lines="1" />
-				<Label text="<%= agent.model %>" size="<%= CHAT.modelSize %>" color="secondary" lines="1" truncation="middle" />
-			</VStack>
+			<% -- The agent names itself and opens Settings when tapped, as the
+			   -- model picker in a chat view does. %>
+			<Button id="agentChooser" style="plain" action="openSettings" accessibilityLabel="Agent: <%= agent.name %>, <%= agent.model %>. Change provider or model" flexShrink="1">
+				<HStack spacing="<%= CHAT.headerSpacing %>" alignment="center">
+					<%- partial("../components/Avatar.etlua", { size = CHAT.avatar, colors = brand, icon = agent.icon, label = "" }) %>
+					<VStack spacing="1" alignment="leading" flexShrink="1">
+						<Label text="<%= agent.name %>" size="<%= CHAT.nameSize %>" weight="semibold" lines="1" />
+						<Label text="<%= agent.model %>" size="<%= CHAT.modelSize %>" color="secondary" lines="1" truncation="middle" />
+					</VStack>
+				</HStack>
+			</Button>
 			<Spacer />
 			<Menu id="conversationMenu" systemImage="ellipsis" style="glass" accessibilityLabel="Conversation Options">
 				<MenuItem title="New Conversation" systemImage="square.and.pencil" action="newConversation" />
@@ -34,6 +41,18 @@
 		<ScrollView id="transcriptScroll" hidden="<%= tostring(mode == "code") %>" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
 			<VStack spacing="0" maxWidth="infinity" alignment="center">
 			<VStack padding="<%= CHAT.inset %>" spacing="<%= CHAT.spacing %>" maxWidth="<%= CHAT.column %>" alignment="leading">
+				<% if welcome then %>
+				<% -- Nothing said yet: the mark of the project, its name and what the
+				   -- agent does, centred where the transcript will grow. %>
+				<VStack id="welcome" paddingVertical="<%= CHAT.welcomeInset %>" spacing="<%= CHAT.turnSpacing %>" maxWidth="infinity" alignment="center">
+					<ZStack width="<%= CHAT.welcomeMark %>" height="<%= CHAT.welcomeMark %>">
+						<LinearGradient colors="<%= brand %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= CHAT.welcomeRadius %>" />
+						<SystemImage name="<%= welcome.icon %>" size="<%= CHAT.welcomeMark // 2 %>" weight="semibold" color="white" label="" />
+					</ZStack>
+					<Label id="welcomeTitle" text="<%= welcome.title %>" size="<%= CHAT.welcomeTitle %>" weight="bold" lines="1" />
+					<Label text="<%= welcome.text %>" size="<%= CHAT.bodySize %>" color="secondary" lines="0" alignment="center" maxWidth="<%= CHAT.welcomeMeasure %>" />
+				</VStack>
+				<% end %>
 				<% for _, message in ipairs(messages) do %>
 				<% if message.role == "user" then %>
 				<HStack id="message/<%= message.id %>" spacing="0" maxWidth="infinity">

@@ -1,18 +1,18 @@
 local Projects = {}
 
-Projects.defaultIcon = "rocket.fill"
+Projects.defaultIcon = "app.fill"
 Projects.defaultProjectIcon = "rocket-sketch"
 Projects.iconChoices = {
 	{ id = "rocket-sketch", title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", file = "rocket-sketch.png" },
 	{ id = "desk", title = "Studio Desk", symbol = "pencil.and.ruler", file = "desk.png" },
-	{ id = "rocket", title = "Lua-objc Rocket", symbol = "rocket.fill", file = "rocket.png" },
+	{ id = "rocket", title = "Lua-objc Rocket", symbol = "paperplane.fill", file = "rocket.png" },
 }
 
 -- What a new project starts from. `root` is the bundled folder the files
 -- are read from; the files keep the demo/playground module namespace every
 -- project runs in.
 Projects.templates = {
-	{ id = "blank", title = "Blank App", icon = "app.dashed", appIcon = "rocket.fill",
+	{ id = "blank", title = "Blank App", icon = "app.dashed", appIcon = "app.fill",
 		caption = "A counter on one screen: the smallest Model, Controller and view.",
 		root = "demo/playground/", files = { "init.lua", "Model.lua", "Controller.lua", "views/Window.etlua" } },
 	{ id = "habits", title = "Habit Tracker", icon = "checklist", appIcon = "checklist",

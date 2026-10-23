@@ -97,8 +97,29 @@ t.assertEqual(toolbarButtons, 1, "the toolbar holds one button, the chat toggle;
 t.expect(not toolbar:find('style="glassProminent"', 1, true), "nothing in the toolbar is prominent")
 t.expect(toolbar:find('action="toggleChat"', 1, true) and toolbar:find('accessibilityLabel="Focus Preview"', 1, true),
 	"icon-only chat toggle keeps an accessible name")
-t.expect(toolbar:find('<SystemImage name="checkmark.circle.fill"', 1, true) ~= nil,
+t.expect(toolbar:find('<GlassEffect id="activity"', 1, true) ~= nil, "the status sits in an activity viewer, as in Xcode")
+t.expect(toolbar:find('<SystemImage id="activitySymbol" name="checkmark.circle.fill"', 1, true) ~= nil,
 	"the mutable status keeps its symbol as a separate view")
+local busyToolbar = Toolbar.presentation(projects, iconChoices)
+busyToolbar.busy, busyToolbar.status = true, "Thinking…"
+local busySource = describe({ toolbar = busyToolbar })
+t.expect(busySource:find('<ProgressView id="activitySpinner" indeterminate="true"', 1, true) ~= nil
+	and not busySource:find('id="activitySymbol"', 1, true), "a working agent shows a spinner in place of the symbol")
+local problemToolbar = Toolbar.presentation(projects, iconChoices)
+problemToolbar.tone, problemToolbar.status = "problem", "Add your OpenAI API key in Settings"
+local problemSource = describe({ toolbar = problemToolbar })
+t.expect(problemSource:find('id="activitySymbol" name="exclamationmark.triangle.fill"', 1, true) ~= nil,
+	"a refusal or failure shows a warning symbol")
+-- The rail counts changes on Commit, as the activity bar counts them on Source Control.
+local badged = describe({ mode = "chat" })
+t.expect(not badged:find('rail/commit/badge', 1, true), "no changes, no badge")
+local railWithBadge = Rail.presentation("chat", { commit = 3 })
+t.expect(railWithBadge.actions[2].badge == "3" and railWithBadge.actions[2].label == "Commit, 3 changes", "the badge counts changed files")
+t.assertEqual(Rail.presentation("chat", { commit = 1 }).actions[2].label, "Commit, 1 change", "and reads naturally for one")
+t.assertEqual(Rail.presentation("chat", { commit = 120 }).actions[2].badge, "99+", "a large count is capped")
+local badgedSource = xml.describeFile("apps/studio/views/sections/Rail.etlua", railWithBadge).source
+t.expect(badgedSource:find('id="rail/commit/badge"', 1, true) and badgedSource:find('text="3"', 1, true)
+	and badgedSource:find('accessibilityLabel="Commit, 3 changes"', 1, true), "the badge is drawn on the Commit item with an accessible count")
 local statusAt = assert(toolbar:find('<Label id="previewStatus"', 1, true))
 local statusEnd = assert(toolbar:find('/>', statusAt, true))
 t.expect(toolbar:sub(statusAt, statusEnd):find('systemImage=', 1, true) == nil,
@@ -125,8 +146,10 @@ t.expect(chat:find('id="chatPane" hidden="false" tint="systemIndigo" paddingVert
 t.expect(chat:find('id="chatCard"[^>]-background="background" cornerRadius="28" clipsToBounds="true"') ~= nil,
 	"the agent lives in a rounded card that clips its panes")
 t.expect(chat:find('maxWidth="720"', 1, true) ~= nil, "the conversation keeps a readable measure")
-local header = assert(chat:match('(<HStack paddingHorizontal="16".-</HStack>)'))
-t.expect(not header:find('<Button', 1, true), "the header has no buttons; project actions are the toolbar's")
+local header = assert(chat:match('(<HStack paddingHorizontal="16".-</Menu>%s*</HStack>)'))
+local _, headerButtons = header:gsub('<Button', "")
+t.assertEqual(headerButtons, 1, "the header has one button, the agent itself; project actions are the toolbar's")
+t.expect(header:find('id="agentChooser"[^>]-action="openSettings"') ~= nil, "tapping the agent opens Settings")
 t.expect(header:find('<Menu id="conversationMenu"', 1, true) ~= nil, "the header keeps the conversation menu")
 t.expect(header:find('title="New Conversation"[^>]-action="newConversation"') and header:find('title="Undo Last Change"[^>]-action="undoChange"')
 	and header:find('title="Choose Model…"[^>]-action="openSettings"'), "the menu's items act")

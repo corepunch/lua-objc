@@ -6,8 +6,8 @@ function Controller.new()
 	return setmetatable({model = Model}, Controller)
 end
 
-function Controller:presentation(selected)
-	return self.model.presentation(selected)
+function Controller:presentation(selected, badges)
+	return self.model.presentation(selected, badges)
 end
 
 return Controller

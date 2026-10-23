@@ -1,6 +1,7 @@
 #pragma mark - nsview metatable (UIKit uses "uiview")
 
 static int bridge_tableview_on_row_move(lua_State *L);
+static int bridge_tableview_replace(lua_State *L);
 static int bridge_tableview_on_row_swipe(lua_State *L);
 static int bridge_tableview_on_select(lua_State *L);
 static int bridge_clear_container(lua_State *L);
@@ -81,6 +82,10 @@ static int nsview_index(lua_State *L) {
 		}
 		if (strcmp(key, "clearRows") == 0) {
 			lua_pushcfunction(L, bridge_tableview_clear);
+			return 1;
+		}
+		if (strcmp(key, "replaceRows") == 0) {
+			lua_pushcfunction(L, bridge_tableview_replace);
 			return 1;
 		}
 		if (strcmp(key, "onRowMove") == 0) {

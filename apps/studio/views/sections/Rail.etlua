@@ -4,7 +4,7 @@
   -- (Run, Commit) after a rule, workspace destinations after another, and
   -- settings at the foot. The rail has no background of its own;
   -- it rests on the workspace gradient.
-  local RAIL = { width = 68, inset = 12, spacing = 6, item = 44, itemRadius = 14, symbol = 19, mark = 40, markRadius = 12, markSymbol = 19, rule = 24 }
+  local RAIL = { width = 68, inset = 12, spacing = 6, item = 44, itemRadius = 14, symbol = 19, mark = 40, markRadius = 12, markSymbol = 19, rule = 24, badge = 18, badgeSize = 10 }
 %>
 <VStack id="rail" tint="<%= tint %>" width="<%= RAIL.width %>" paddingVertical="<%= RAIL.inset %>" spacing="<%= RAIL.spacing %>" maxHeight="infinity" alignment="center">
 	<ZStack width="<%= RAIL.mark %>" height="<%= RAIL.mark %>" accessibilityLabel="<%= brand.title %>">
@@ -24,7 +24,24 @@
 	<% end %>
 	<Divider width="<%= RAIL.rule %>" />
 	<% for _, item in ipairs(actions) do %>
-	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.title %>" action="<%= item.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<% if item.badge then %>
+	<% -- A count sits on the corner of the item, as the change count sits on
+	   -- Source Control in the activity bar. %>
+	<Button id="rail/<%= item.id %>" accessibilityLabel="<%= item.label %>" action="<%= item.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>">
+		<ZStack width="<%= RAIL.item %>" height="<%= RAIL.item %>">
+			<SystemImage name="<%= item.icon %>" size="<%= RAIL.symbol %>" color="secondary" label="" />
+			<VStack spacing="0" maxWidth="infinity" maxHeight="infinity" alignment="trailing">
+				<ZStack id="rail/<%= item.id %>/badge" width="<%= RAIL.badge %>" height="<%= RAIL.badge %>">
+					<LinearGradient colors="<%= brand.colors %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= RAIL.badge // 2 %>" />
+					<Label text="<%= item.badge %>" size="<%= RAIL.badgeSize %>" weight="bold" color="white" lines="1" />
+				</ZStack>
+				<Spacer />
+			</VStack>
+		</ZStack>
+	</Button>
+	<% else %>
+	<Button id="rail/<%= item.id %>" systemImage="<%= item.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= item.label %>" action="<%= item.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<% end %>
 	<% end %>
 	<Divider width="<%= RAIL.rule %>" />
 	<% for _, item in ipairs(destinations) do %>

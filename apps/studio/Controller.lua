@@ -86,9 +86,10 @@ end
 function Controller:reloadPreview()
 	local controller, err = self:renderPreview()
 	if controller then
-		self.previewContent, self.status = controller, "Ready"
+		self.previewContent = controller
+		self:report("Ready")
 	else
-		self.status = "Preview failed: " .. tostring(err)
+		self:report("Preview failed: " .. tostring(err), "problem")
 	end
 	self:render()
 	if controller then return true end
@@ -100,11 +101,11 @@ function Controller:commitProject(message)
 	local id, err
 	if not self.versions then
 		err = self.versionsError
-		self.status = "Git unavailable: " .. tostring(err)
+		self:report("Git unavailable: " .. tostring(err), "problem")
 	else
 		id, err = self.versions:record(message)
-		if id == nil then self.status = "Commit failed: " .. tostring(err)
-		else self.status = id and "Committed " .. id:sub(1, 7) or "No changes to commit" end
+		if id == nil then self:report("Commit failed: " .. tostring(err), "problem")
+		else self:report(id and "Committed " .. id:sub(1, 7) or "No changes to commit") end
 	end
 	self:render()
 	if id == nil then return nil, err end
@@ -121,6 +122,20 @@ function Controller:agentBusy()
 	return self.agent ~= nil and self.agent.busy == true
 end
 
+-- Files changed since the last commit, for the rail's Commit badge.
+function Controller:changedCount()
+	local versions = self.versions
+	if not versions or type(versions.changedCount) ~= "function" then return 0 end
+	local ok, count = pcall(versions.changedCount, versions)
+	return ok and count or 0
+end
+
+-- The status line and its tone: "ok" for a result, "problem" for a refusal
+-- or a failure. The toolbar's activity viewer shows the symbol.
+function Controller:report(status, tone)
+	self.status, self.statusTone = status, tone or "ok"
+end
+
 -- The project's transcript as the chat shows it.
 function Controller:conversation()
 	local descriptor, modelId = self:agentChoice()
@@ -129,6 +144,7 @@ function Controller:conversation()
 		draft = self.draft,
 		busy = self:agentBusy(),
 		project = self.activeProject and self.activeProject.title or nil,
+		projectIcon = self.activeProject and self.activeProject.icon or nil,
 		agent = descriptor and { name = descriptor.title, model = modelId, icon = descriptor.symbol } or nil,
 	}
 end
@@ -138,6 +154,7 @@ end
 function Controller:workspaceData()
 	local toolbar = Toolbar.presentation(self.projects, self:iconChoices())
 	toolbar.status = self:agentBusy() and "Thinking…" or self.status or toolbar.status
+	toolbar.tone = self.statusTone or "ok"
 	toolbar.busy = self:agentBusy()
 	if self.showcase and self.showcase.conversation.status then toolbar.status = self.showcase.conversation.status end
 	toolbar.chatHidden = self.chatHidden
@@ -150,7 +167,7 @@ function Controller:workspaceData()
 	chat.mode, chat.hidden, chat.treeHidden = self.mode, self.chatHidden, self.treeHidden
 	self.actions = self:workspaceActions()
 	return {
-		rail = self.rail:presentation(self.mode),
+		rail = self.rail:presentation(self.mode, { commit = self:changedCount() }),
 		toolbar = toolbar,
 		preview = preview,
 		chat = chat,
@@ -220,7 +237,7 @@ function Controller:openProject(id)
 	if self.activeProject and self.activeProject.id == id then return true end
 	local ok, workspace = pcall(Workspace.open, self.ns, self.ns._readFile, self.git, id)
 	if not ok then
-		self.status = "Could not open " .. id .. ": " .. tostring(workspace)
+		self:report("Could not open " .. id .. ": " .. tostring(workspace), "problem")
 		self:render()
 		return nil, workspace
 	end
@@ -242,7 +259,7 @@ function Controller:createProject(name, templateId)
 	local ok, workspace = pcall(Workspace.create, self.ns, self.git, folder, metadata, files)
 	if not ok then return nil, tostring(workspace) end
 	self:activate(folder, workspace)
-	self.status = "Created " .. name
+	self:report("Created " .. name)
 	self:reloadPreview()
 	return folder
 end
@@ -306,9 +323,9 @@ function Controller:selectProjectIcon(choice)
 	if ok then
 		local project = self.activeProject
 		project.projectIcon, project.appIcon, project.icon = choice.id, choice.symbol, choice.symbol
-		self.status = "Project icon: " .. choice.title
+		self:report("Project icon: " .. choice.title)
 	else
-		self.status = "Icon update failed: " .. tostring(err)
+		self:report("Icon update failed: " .. tostring(err), "problem")
 	end
 	self:render()
 end
@@ -320,7 +337,7 @@ function Controller:send()
 	if ok then
 		self.draft = ""
 	else
-		self.status = err
+		self:report(err, "problem")
 	end
 	self:render()
 	self:showLatestTurn()
@@ -333,7 +350,7 @@ function Controller:undoChange()
 		self.model:message("agent", "Reverted the last change.")
 		self:reloadPreview()
 	else
-		self.status = err
+		self:report(err, "problem")
 		self:render()
 	end
 	return ok, err
@@ -419,7 +436,7 @@ function Controller:saveSettings()
 		return nil, err
 	end
 	local descriptor, modelId = self:agentChoice()
-	self.status = "Agent: " .. descriptor.title .. " · " .. modelId
+	self:report("Agent: " .. descriptor.title .. " · " .. modelId)
 	self:closeSheet()
 	self:render()
 	return true

@@ -27,6 +27,14 @@ function Versions:record(message)
 	return false
 end
 
+-- How many files differ from the last commit, staged or not: the rail's
+-- Commit badge. A repository that cannot be read counts as unchanged.
+function Versions:changedCount()
+	local status = self.repo:status()
+	if not status then return 0 end
+	return #status
+end
+
 -- Recorded versions, newest first: {id, shortId, summary, time, ...}.
 function Versions:log(limit)
 	return self.repo:log({ limit = limit })

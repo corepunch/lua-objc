@@ -44,6 +44,10 @@ function Code.language(path)
 	return path:match("%.etlua$") and "etlua" or "lua"
 end
 
+-- Rows for the navigator: each file with its symbol and its folder as the
+-- secondary line, root files first and then folder by folder, as a
+-- project navigator lists them. `crumb` is the jump-bar text of the open
+-- file: its folder, then its name.
 function Code.presentation(files, selected)
 	local rows = {}
 	for path in pairs(files) do
@@ -53,17 +57,27 @@ function Code.presentation(files, selected)
 			id = relative,
 			name = name,
 			folder = folder or "",
-			display = folder and (folder .. "/" .. name) or name,
+			display = name,
 			icon = relative:match("%.etlua$") and "chevron.left.forwardslash.chevron.right" or "doc.text",
 		})
 	end
-	table.sort(rows, function(left, right) return left.id < right.id end)
+	table.sort(rows, function(left, right)
+		if left.folder ~= right.folder then
+			if left.folder == "" then return true end
+			if right.folder == "" then return false end
+			return left.folder < right.folder
+		end
+		return left.name < right.name
+	end)
 	if not selected or not files[PREFIX .. selected] then selected = rows[1] and rows[1].id end
 	local source = selected and files[PREFIX .. selected] or ""
+	local name = selected and selected:match("[^/]+$") or "No file selected"
+	local folder = selected and selected:match("^(.+)/[^/]+$") or nil
 	return {
 		files = rows,
 		selected = selected,
-		name = selected and selected:match("[^/]+$") or "No file selected",
+		name = name,
+		crumb = folder and (folder .. " › " .. name) or name,
 		language = selected and Code.language(selected) or "lua",
 		text = source,
 	}

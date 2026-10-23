@@ -37,25 +37,31 @@ holds in light and dark; the rail and the stage have no fill of their own.
 The rail carries the Lua Studio mark, the two modes of the agent card (Chat and
 Code, with a gradient highlight on the one showing), then Run and Commit, as
 Run and Source Control sit in the activity bar of VS Code, then Plugins, and
-Settings at its foot. Every item is an icon with an accessibility label.
+Settings at its foot. Commit wears a badge with the number of changed files,
+as Source Control does. Every item is an icon with an accessibility label.
 
-The toolbar is one Liquid Glass bar spanning the stage and the card, as a Mac
-window toolbar spans the content beside a sidebar. The project menu leads: it
-lists the projects (choose one to open it), the project's icon choices and
-New Project. The status line follows it (Ready, Thinking…, the last commit, or
-why a send was refused), and the chat toggle for focusing the preview trails.
+The toolbar is one Liquid Glass bar spanning the stage and the card, laid out
+as Xcode lays out its own. The project menu leads, as the scheme chooser does:
+it lists the projects (choose one to open it), the project's icon choices and
+New Project. An activity viewer sits in the centre with the status (Ready, the
+last commit, why a send was refused, with a warning symbol for a problem) and
+a spinner while the agent thinks. The chat toggle for focusing the preview
+trails, where Xcode keeps its inspector toggle.
 Nothing project-wide sits in the stage or the card, so the bar fits an iPad
 Pro in portrait with room to spare (`tests/studio_portrait.test.lua` lays the
 workspace out at 1032 points and checks).
 
 The stage is the device alone. The card header names the provider and model
-answering, with a menu for New Conversation, Choose Model… and Undo Last
-Change. The chat is the project's transcript: the request as a gradient
+answering (tap it to change them), with a menu for New Conversation, Choose
+Model… and Undo Last Change. A project with nothing said yet opens on a
+welcome hero with its mark and name. The chat is the project's transcript: the request as a gradient
 bubble, the agent's reply beside its avatar, a card of changed files with
 line counts for each edit (with Undo), and a warning line for an error.
 Suggestion chips start a prompt in the composer; Return or the Send button
-sends it, and while the agent works the button is Stop. Code shows the
-project files with a hideable tree and native Lua/etlua syntax highlighting.
+sends it, and while the agent works the button is Stop. Code is a project
+navigator beside an editor, as in Xcode: every file with its symbol and
+folder, a hideable tree, a jump bar naming the open file by folder and name,
+and native Lua/etlua syntax highlighting.
 The controls inside the phone preview are interactive.
 
 Every control on screen does something. Share, Deploy, the device picker,
@@ -78,7 +84,7 @@ keyboard's own microphone key.
 
 Project folders live in `Documents/<project>/`. Each folder has a `project.lua`
 metadata file returning a plain table with `name`, `bundleId`, `appIcon`,
-`projectIcon` and `files`; missing symbol icons use `rocket.fill`, and artwork
+`projectIcon` and `files`; missing symbol icons use `app.fill`, and artwork
 defaults to `rocket-sketch`. New Project takes a name and a template (Blank App:
 the counter in `demo/playground`; Habit Tracker: the bundled three-tab app),
 makes `Documents/<Name>/` from the name's letters and digits, writes the files,
