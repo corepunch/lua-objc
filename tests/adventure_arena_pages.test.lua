@@ -5,7 +5,7 @@ local Manifest = require("data.manifest")
 local Routes = require("data.routes")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Controller = require("apps.adventure-arena.Controller")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 
 -- Every page of the manifest has a route with a view that exists.
 local manifest = Manifest.load("apps/adventure-arena/app.xml")

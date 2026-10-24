@@ -1,5 +1,5 @@
 local Model = require("data.model")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 
 -- Autosaves, one per adventure: the command history and random seed that
 -- replay the story, plus what the library shows about it (room and score)

@@ -10,6 +10,9 @@ local LIBRARY = { featured = 3, shelf = 10, chart = 5, related = 6 }
 
 -- Genre tiles carry an SF Symbol, as Apple Books' category tiles do.
 local GENRE_SYMBOLS = {
+	["Children's Adventure"] = "cloud.sun.fill",
+	["Science Fiction Horror"] = "waveform",
+	["Historical Detective Mystery"] = "magnifyingglass",
 	["Sci-Fi Adventure"] = "sparkles",
 	["Psychological Horror"] = "eye.fill",
 	["Fantasy Adventure"] = "wand.and.stars",
