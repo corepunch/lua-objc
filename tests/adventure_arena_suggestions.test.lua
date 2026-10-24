@@ -1,6 +1,6 @@
 _G.__headless = true
 local t = require("TestKit")
-local Suggestions = require("apps.adventure-arena.helpers.Suggestions")
+local Suggestions = require("apps.adventure-arena.zilscript.zilscript.reader.Suggestions")
 
 local function titles(list)
 	local result = {}

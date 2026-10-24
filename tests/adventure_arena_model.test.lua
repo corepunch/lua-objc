@@ -2,12 +2,12 @@ _G.__headless = true
 
 local t = require("TestKit")
 local Adventures = require("apps.adventure-arena.models.Adventures")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Store = require("apps.adventure-arena.Store")
 Store.new()
 local catalog = Adventures
 
-t.assertEqual(#catalog:all(), 9, "AdventureArena catalog contains the complete Lua catalog")
+t.assertEqual(#catalog:all(), 12, "AdventureArena catalog contains the complete Lua catalog")
 t.assertEqual(catalog:find("infocom.zork1").title,
 	"Zork I: The Great Underground Empire",
 	"catalog resolves games by stable id")
