@@ -11,10 +11,14 @@
       <VStack spacing="3" alignment="leading" flexGrow="1">
         <Label text="<%= game.title %>" size="16" weight="semibold" lines="2" />
         <Label text="<%= game.genre %> · <%= game.year %>" size="13" color="secondary" lines="1" truncation="tail" />
+        <% if game.reviewCount > 0 then %>
         <HStack spacing="4">
           <%- partial("Stars.etlua", { rating = game.rating, size = 10 }) %>
           <Label text="<%= string.format('%.1f', game.rating) %>" size="12" color="secondary" />
         </HStack>
+        <% else %>
+        <Label text="No ratings yet" size="12" color="secondary" />
+        <% end %>
       </VStack>
     </HStack>
   </Button>
