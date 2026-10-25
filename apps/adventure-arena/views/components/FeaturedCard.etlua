@@ -18,7 +18,11 @@
             <Label text="Read" systemImage="book.fill" size="15" weight="semibold" color="white" />
           </HStack>
         </GlassEffect>
+        <% if game.reviewCount > 0 then %>
         <Label text="<%= string.format('%.1f', game.rating) %>" systemImage="star.fill" iconSize="12" spacing="4" size="13" weight="semibold" color="white" accessibilityLabel="Rated <%= string.format('%.1f', game.rating) %> out of 5" />
+        <% else %>
+        <Label text="No ratings yet" size="13" color="white" />
+        <% end %>
         <Label text="<%= game.difficulty or game.genre %>" size="13" weight="medium" color="white" />
       </HStack>
     </VStack>

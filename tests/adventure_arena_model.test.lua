@@ -20,17 +20,12 @@ t.expect(catalog:find("missing") == nil, "unknown game ids return nil")
 t.assertEqual(catalog:all()[1].id, "infocom.planetfall", "catalog is sorted by title")
 t.assertEqual(catalog:featured()[2].id, "books.blackwood-horror", "second featured game matches source")
 t.assertEqual(catalog:featured()[3].id, "infocom.spellbreaker", "third featured game matches source")
-local expectedCounts = { ["infocom.spellbreaker"] = 891, ["infocom.zork2"] = 1872,
-	["infocom.zork3"] = 1567, ["books.limehouse-killings"] = 342 }
-for id, count in pairs(expectedCounts) do
-	t.assertEqual(catalog:find(id).reviewCount, count, "source review count for " .. id)
-end
 local reviews = 0
 for _, game in ipairs(catalog:all()) do
 	reviews = reviews + #game.reviews
 	t.expect(#game.description > 200, "complete source description for " .. game.id)
 end
-t.assertEqual(reviews, 21, "all individual source reviews are preserved")
+t.assertEqual(reviews, 0, "bundled catalog contains no unsourced reader feedback")
 t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery")
 for _, game in ipairs(catalog:all()) do
 	t.expect(type(game.collection) == "string", "every game belongs to a library shelf: " .. game.id)
