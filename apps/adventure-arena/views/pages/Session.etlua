@@ -12,9 +12,11 @@
     <VStack id="heading" width="230" />
   </ToolbarItem>
   <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
+  <% if not hideTextInput then %>
   <ToolbarItem id="suggestionBar" placement="keyboard" label="Suggestions">
     <VStack id="suggestions" maxWidth="infinity" />
   </ToolbarItem>
+  <% end %>
 </Toolbar>
 <VStack id="reader" maxWidth="infinity" maxHeight="infinity" />
 </Page>

@@ -1,0 +1,158 @@
+{
+  "source": "room-images-sheet.jpg",
+  "generatedWith": "OpenAI image generation",
+  "grid": [
+    4,
+    4
+  ],
+  "sheetSize": [
+    1254,
+    1254
+  ],
+  "tileSize": [
+    256,
+    256
+  ],
+  "rooms": [
+    {
+      "room": "LB-LANDING",
+      "file": "images/LB-LANDING.jpg",
+      "crop": [
+        2,
+        2,
+        312,
+        312
+      ]
+    },
+    {
+      "room": "LB-HALL",
+      "file": "images/LB-HALL.jpg",
+      "crop": [
+        316,
+        2,
+        625,
+        312
+      ]
+    },
+    {
+      "room": "LB-OFFICE",
+      "file": "images/LB-OFFICE.jpg",
+      "crop": [
+        629,
+        2,
+        938,
+        312
+      ]
+    },
+    {
+      "room": "LB-STUDIO",
+      "file": "images/LB-STUDIO.jpg",
+      "crop": [
+        942,
+        2,
+        1252,
+        312
+      ]
+    },
+    {
+      "room": "LB-CONTROL",
+      "file": "images/LB-CONTROL.jpg",
+      "crop": [
+        2,
+        316,
+        312,
+        625
+      ]
+    },
+    {
+      "room": "LB-CUTTING",
+      "file": "images/LB-CUTTING.jpg",
+      "crop": [
+        316,
+        316,
+        625,
+        625
+      ]
+    },
+    {
+      "room": "LB-ARCHIVE",
+      "file": "images/LB-ARCHIVE.jpg",
+      "crop": [
+        629,
+        316,
+        938,
+        625
+      ]
+    },
+    {
+      "room": "LB-WORKSHOP",
+      "file": "images/LB-WORKSHOP.jpg",
+      "crop": [
+        942,
+        316,
+        1252,
+        625
+      ]
+    },
+    {
+      "room": "LB-GENERATOR",
+      "file": "images/LB-GENERATOR.jpg",
+      "crop": [
+        2,
+        629,
+        312,
+        938
+      ]
+    },
+    {
+      "room": "LB-PASSAGE",
+      "file": "images/LB-PASSAGE.jpg",
+      "crop": [
+        316,
+        629,
+        625,
+        938
+      ]
+    },
+    {
+      "room": "LB-KITCHEN",
+      "file": "images/LB-KITCHEN.jpg",
+      "crop": [
+        629,
+        629,
+        938,
+        938
+      ]
+    },
+    {
+      "room": "LB-TELEGRAPH",
+      "file": "images/LB-TELEGRAPH.jpg",
+      "crop": [
+        942,
+        629,
+        1252,
+        938
+      ]
+    },
+    {
+      "room": "LB-PLATFORM",
+      "file": "images/LB-PLATFORM.jpg",
+      "crop": [
+        2,
+        942,
+        312,
+        1252
+      ]
+    },
+    {
+      "room": "LB-BUNKROOM",
+      "file": "images/LB-BUNKROOM.jpg",
+      "crop": [
+        316,
+        942,
+        625,
+        1252
+      ]
+    }
+  ]
+}

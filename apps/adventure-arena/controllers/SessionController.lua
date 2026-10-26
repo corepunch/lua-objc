@@ -69,7 +69,9 @@ function Controller:show(id, fresh)
 		return false
 	end
 	self:cancelDictation()
-	local speechAvailable = self.speechModule ~= nil
+	self.hideTextInput = game.hideTextInput == true
+	self.speech = nil
+	local speechAvailable = self.speechModule ~= nil and not self.hideTextInput
 	if speechAvailable then
 		self.speech = self.speechModule.recognizer(function(state, text, message)
 			self:onSpeechEvent(state, text, message)
@@ -95,10 +97,12 @@ function Controller:show(id, fresh)
 	self.actions = actions
 	self.draft, self.dictationStatus, self.toast = "", "", nil
 	local pageRefs
-	self.page, pageRefs = self.push("pages/Session", { gameTitle = presentation.gameTitle, actions = actions })
+	self.page, pageRefs = self.push("pages/Session", { gameTitle = presentation.gameTitle, hideTextInput = self.hideTextInput, actions = actions })
 	self.reader = self.mountTemplate(pageRefs.reader, "sections/Reader")
 	self.heading = self.mountTemplate(pageRefs.heading, "sections/SessionTitle")
-	self.suggestions = self.mountTemplate(pageRefs.suggestions, "sections/Suggestions")
+	if not self.hideTextInput then
+		self.suggestions = self.mountTemplate(pageRefs.suggestions, "sections/Suggestions")
+	end
 	self:render()
 	self.transcript = self.mountTemplate(self.refs.transcript, "sections/Transcript")
 	-- A new story types its opening; a resumed one opens at its last line.
@@ -126,7 +130,7 @@ function Controller:readerData()
 	data.dictation = { status = self.dictationStatus }
 	-- With speech available the microphone stands where Send would, until
 	-- there is something typed to send.
-	data.composer = { dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
+	data.composer = { hidden = self.hideTextInput == true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
 	data.toast = self.toast
 	data.actions = self.actions
 	return data
