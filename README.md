@@ -499,7 +499,9 @@ make xcode APP=adventure-arena TARGET=ios
 The second command regenerates and opens the project. The generator
 (`scripts/xcode/generate.py`) uses stable IDs and preserves signing settings,
 version numbers, and existing shared scheme customizations. Commit the generated
-project and scheme; regenerate when native host sources or build settings change.
+project, scheme, and shared workspace settings; regenerate when native host sources
+or build settings change. The generator disables automatic scheme creation in the
+shared workspace settings, so no manual sharing setup in Xcode is required.
 Lua, etlua, and app assets are copied on every build. The UIKit API header and
 libgit2 build products live in Xcode's DerivedData. No XcodeGen installation is
 needed. The app's Info.plist and asset catalog also live in its app folder.

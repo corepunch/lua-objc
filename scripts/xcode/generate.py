@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import plistlib
 import subprocess
 import xml.etree.ElementTree as ET
 
@@ -157,6 +158,12 @@ def generate(project=PROJECT):
         ET.SubElement(scheme, 'ArchiveAction', buildConfiguration='Release', revealArchiveInOrganizer='YES')
         ET.indent(scheme)
         write(scheme_path, '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(scheme, encoding='unicode') + '\n')
+    # Like CMake's Xcode generator, supply shared workspace settings so Xcode
+    # uses the generated scheme instead of automatically creating user schemes.
+    settings_path = project / 'project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings'
+    workspace_settings = plistlib.loads(settings_path.read_bytes()) if settings_path.exists() else {}
+    workspace_settings['IDEWorkspaceSharedSettings_AutocreateContextsIfNeeded'] = False
+    write(settings_path, plistlib.dumps(workspace_settings).decode())
     return project
 
 

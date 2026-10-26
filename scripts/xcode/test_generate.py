@@ -1,6 +1,7 @@
 """Offline project regeneration and native build contracts."""
 import json
 from pathlib import Path
+import plistlib
 import subprocess
 import tempfile
 import unittest
@@ -10,6 +11,27 @@ import generate
 
 
 class ProjectTests(unittest.TestCase):
+    def test_shared_scheme_and_workspace_settings_are_generated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / 'AdventureArena.xcodeproj'
+            generate.generate(project)
+            scheme = project / 'xcshareddata/xcschemes/AdventureArena.xcscheme'
+            settings = project / 'project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings'
+            key = 'IDEWorkspaceSharedSettings_AutocreateContextsIfNeeded'
+            self.assertIs(plistlib.loads(settings.read_bytes())[key], False)
+            self.assertTrue(scheme.is_file())
+            self.assertFalse((project / 'xcuserdata').exists())
+            before = settings.read_bytes(), settings.stat().st_mtime_ns
+            generate.generate(project)
+            self.assertEqual(before, (settings.read_bytes(), settings.stat().st_mtime_ns))
+            # Regeneration restores the shared scheme and owns automatic creation,
+            # while preserving unrelated workspace preferences.
+            scheme.unlink()
+            settings.write_bytes(plistlib.dumps({key: True, 'PreviewsEnabled': False}))
+            generate.generate(project)
+            self.assertTrue(scheme.is_file())
+            self.assertEqual(plistlib.loads(settings.read_bytes()), {key: False, 'PreviewsEnabled': False})
+
     def test_regeneration_is_stable_and_preserves_xcode_choices(self):
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / 'AdventureArena.xcodeproj'
