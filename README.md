@@ -485,6 +485,35 @@ Deploy an app from `apps/<name>/` to an iPhone with
 `make iphone-deploy APP=adventure-arena`. It uses the same build, signing, and
 install flow and automatically selects the only available physical iPhone.
 
+### Adventure Arena in Xcode
+
+Adventure Arena's native iPhone/iPad project lives beside its app sources:
+`apps/adventure-arena/AdventureArena.xcodeproj`. Generate it with Python, then
+open the shared `AdventureArena` scheme:
+
+```sh
+make xcode-generate APP=adventure-arena
+make xcode APP=adventure-arena TARGET=ios
+```
+
+The second command regenerates and opens the project. The generator
+(`scripts/xcode/generate.py`) uses stable IDs and preserves signing settings,
+version numbers, and existing shared scheme customizations. Commit the generated
+project and scheme; regenerate when native host sources or build settings change.
+Lua, etlua, and app assets are copied on every build. The UIKit API header and
+libgit2 build products live in Xcode's DerivedData. No XcodeGen installation is
+needed. The app's Info.plist and asset catalog also live in its app folder.
+
+```sh
+xcodebuild -project apps/adventure-arena/AdventureArena.xcodeproj \
+  -scheme AdventureArena -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath build/xcode-adventure-arena CODE_SIGNING_ALLOWED=NO build
+```
+
+Device builds use the existing development team with automatic signing; adjust
+Signing & Capabilities for a different team. Release automation continues to use
+the Makefiles independently of this optional development project.
+
 ### Releases: GitHub and App Store Connect
 
 [Release apps](.github/workflows/release.yml) builds a tag `v1.2.3` with

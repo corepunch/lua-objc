@@ -1,0 +1,897 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = 1;
+	"classes" = {
+	};
+	"objectVersion" = 77;
+	"objects" = {
+		"1F5DA83DC795090EBB71AAE4" = {
+			"isa" = "PBXFileReference";
+			"name" = "LRTApplicationController.m";
+			"path" = "../../ios/LuaRuntime/LRTApplicationController.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"2015B422665D1A1EA069745F" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1F5DA83DC795090EBB71AAE4";
+		};
+		"C5FD5054D0AA488074C86641" = {
+			"isa" = "PBXFileReference";
+			"name" = "LRTApplicationDelegate.m";
+			"path" = "../../ios/LuaRuntime/LRTApplicationDelegate.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"6513B6E4891B035F1423BB33" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C5FD5054D0AA488074C86641";
+		};
+		"5BF152B4F25A9FEB8F7A84A4" = {
+			"isa" = "PBXFileReference";
+			"name" = "LRTErrorViewController.m";
+			"path" = "../../ios/LuaRuntime/LRTErrorViewController.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"4DF754A55D0321857F0456CF" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "5BF152B4F25A9FEB8F7A84A4";
+		};
+		"788A1244B78766254FCE7465" = {
+			"isa" = "PBXFileReference";
+			"name" = "LRTReloadConnection.m";
+			"path" = "../../ios/LuaRuntime/LRTReloadConnection.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"25FEBE718E45BEDC71B4C979" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "788A1244B78766254FCE7465";
+		};
+		"4623C7CF86A7848B1D1D7A19" = {
+			"isa" = "PBXFileReference";
+			"name" = "LRTResourceLoader.m";
+			"path" = "../../ios/LuaRuntime/LRTResourceLoader.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"889DFB204569FFC9939D418E" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4623C7CF86A7848B1D1D7A19";
+		};
+		"B673C46EF905D2F61B263ED0" = {
+			"isa" = "PBXFileReference";
+			"name" = "LRTSceneDelegate.m";
+			"path" = "../../ios/LuaRuntime/LRTSceneDelegate.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"6315AA4B3536D5459E1FC9B0" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "B673C46EF905D2F61B263ED0";
+		};
+		"A077DB967D840E536829610C" = {
+			"isa" = "PBXFileReference";
+			"name" = "LRTViewCapture.m";
+			"path" = "../../ios/LuaRuntime/LRTViewCapture.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"7EFD55325F4C1096C2253E60" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "A077DB967D840E536829610C";
+		};
+		"1F96132EA17611B2A4F1F6B3" = {
+			"isa" = "PBXFileReference";
+			"name" = "main.m";
+			"path" = "../../ios/LuaRuntime/main.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"1A0EF6789C62A629CFF88494" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1F96132EA17611B2A4F1F6B3";
+		};
+		"70C09ABC12768611E830C345" = {
+			"isa" = "PBXFileReference";
+			"name" = "uikit_module.m";
+			"path" = "../../src/uikit_module.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"CBECE40F5E81764CF5572BCA" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "70C09ABC12768611E830C345";
+		};
+		"BF3C313A685BFF6955F0F158" = {
+			"isa" = "PBXFileReference";
+			"name" = "Git.c";
+			"path" = "../../src/plugins/git/Git.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"E95F0C303D8C25ECA2D9563F" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "BF3C313A685BFF6955F0F158";
+		};
+		"A00E0E1F071486160F7FA3F3" = {
+			"isa" = "PBXFileReference";
+			"name" = "Speech.m";
+			"path" = "../../src/plugins/speech/Speech.m";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.objc";
+		};
+		"A17E69724F50B668D3F35808" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "A00E0E1F071486160F7FA3F3";
+		};
+		"F752F7E642BD92944F5B9E01" = {
+			"isa" = "PBXFileReference";
+			"name" = "lapi.c";
+			"path" = "../../vendor/lua-5.4.8/src/lapi.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"5BE91106028240F4785B1FCF" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F752F7E642BD92944F5B9E01";
+		};
+		"99D16D2849E3F75193A282A6" = {
+			"isa" = "PBXFileReference";
+			"name" = "lauxlib.c";
+			"path" = "../../vendor/lua-5.4.8/src/lauxlib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"A7335CABAADC934898F71887" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "99D16D2849E3F75193A282A6";
+		};
+		"3F8BD544D2B01EFB1ADD67EC" = {
+			"isa" = "PBXFileReference";
+			"name" = "lbaselib.c";
+			"path" = "../../vendor/lua-5.4.8/src/lbaselib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"629DB26EDF81953AC9DB9CAE" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "3F8BD544D2B01EFB1ADD67EC";
+		};
+		"1CB5A47152D44B85EDAA373A" = {
+			"isa" = "PBXFileReference";
+			"name" = "lcode.c";
+			"path" = "../../vendor/lua-5.4.8/src/lcode.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"71DF0FB22D133B60B42180D2" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1CB5A47152D44B85EDAA373A";
+		};
+		"78940BAC35194643927BCCB5" = {
+			"isa" = "PBXFileReference";
+			"name" = "lcorolib.c";
+			"path" = "../../vendor/lua-5.4.8/src/lcorolib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"24649E63333643482C5CAE2E" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "78940BAC35194643927BCCB5";
+		};
+		"7B335465288B7F3CCA5A2460" = {
+			"isa" = "PBXFileReference";
+			"name" = "lctype.c";
+			"path" = "../../vendor/lua-5.4.8/src/lctype.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"160342C1E9FA8BE63261A79C" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7B335465288B7F3CCA5A2460";
+		};
+		"9F3E5EF53A5FB64DF28F700D" = {
+			"isa" = "PBXFileReference";
+			"name" = "ldblib.c";
+			"path" = "../../vendor/lua-5.4.8/src/ldblib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"6332B3997E8338CEB3C92FDB" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "9F3E5EF53A5FB64DF28F700D";
+		};
+		"9850D22B2D0A935ADE806E3B" = {
+			"isa" = "PBXFileReference";
+			"name" = "ldebug.c";
+			"path" = "../../vendor/lua-5.4.8/src/ldebug.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"38A99B143E751FD9CBBD2EAB" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "9850D22B2D0A935ADE806E3B";
+		};
+		"BDD752F5455A36E78D44DC3D" = {
+			"isa" = "PBXFileReference";
+			"name" = "ldo.c";
+			"path" = "../../vendor/lua-5.4.8/src/ldo.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"34B2598DADC00493674ED1AD" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "BDD752F5455A36E78D44DC3D";
+		};
+		"C90868BC69EC70ACDD5C73BF" = {
+			"isa" = "PBXFileReference";
+			"name" = "ldump.c";
+			"path" = "../../vendor/lua-5.4.8/src/ldump.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"05314D60E1FEF3F787FA1C9C" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C90868BC69EC70ACDD5C73BF";
+		};
+		"CB42399EC30226252688962F" = {
+			"isa" = "PBXFileReference";
+			"name" = "lfunc.c";
+			"path" = "../../vendor/lua-5.4.8/src/lfunc.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"7103D8CCC99B3CC5356659E9" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "CB42399EC30226252688962F";
+		};
+		"3E27964067AED2AA18A94809" = {
+			"isa" = "PBXFileReference";
+			"name" = "lgc.c";
+			"path" = "../../vendor/lua-5.4.8/src/lgc.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"E76FAE6ABDCAA990FEAE7E42" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "3E27964067AED2AA18A94809";
+		};
+		"2921157783B42584139E67EA" = {
+			"isa" = "PBXFileReference";
+			"name" = "linit.c";
+			"path" = "../../vendor/lua-5.4.8/src/linit.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"5BB339944400B59CB2F77E88" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "2921157783B42584139E67EA";
+		};
+		"1AA2B03837286EA9BD59A3D6" = {
+			"isa" = "PBXFileReference";
+			"name" = "liolib.c";
+			"path" = "../../vendor/lua-5.4.8/src/liolib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"AB14AA46A0A2A074421E44B7" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AA2B03837286EA9BD59A3D6";
+		};
+		"668AB239F8E0CC7C1AAEE4CE" = {
+			"isa" = "PBXFileReference";
+			"name" = "llex.c";
+			"path" = "../../vendor/lua-5.4.8/src/llex.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"1A20A221255F416B435F818A" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "668AB239F8E0CC7C1AAEE4CE";
+		};
+		"BA1548816EC4E0BC4BE9597D" = {
+			"isa" = "PBXFileReference";
+			"name" = "lmathlib.c";
+			"path" = "../../vendor/lua-5.4.8/src/lmathlib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"F76EFDCC7457685BCA470940" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "BA1548816EC4E0BC4BE9597D";
+		};
+		"E40A4F9CD4492CDB4AF928DF" = {
+			"isa" = "PBXFileReference";
+			"name" = "lmem.c";
+			"path" = "../../vendor/lua-5.4.8/src/lmem.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"E870BF53BB97F8761B6604F8" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "E40A4F9CD4492CDB4AF928DF";
+		};
+		"0708588B2C668C3427A72A84" = {
+			"isa" = "PBXFileReference";
+			"name" = "loadlib.c";
+			"path" = "../../vendor/lua-5.4.8/src/loadlib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"DF1E11604B27A546A21F7DF8" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "0708588B2C668C3427A72A84";
+		};
+		"376BC651E07AD43755F52D08" = {
+			"isa" = "PBXFileReference";
+			"name" = "lobject.c";
+			"path" = "../../vendor/lua-5.4.8/src/lobject.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"048CC63FA92549D26F426D41" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "376BC651E07AD43755F52D08";
+		};
+		"47CAC57A41021344BF411979" = {
+			"isa" = "PBXFileReference";
+			"name" = "lopcodes.c";
+			"path" = "../../vendor/lua-5.4.8/src/lopcodes.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"8BF180C72D3EDD35D2AC4035" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "47CAC57A41021344BF411979";
+		};
+		"2B4CD075C5887BD875EBB513" = {
+			"isa" = "PBXFileReference";
+			"name" = "loslib.c";
+			"path" = "../../vendor/lua-5.4.8/src/loslib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"F12BD0D80028F2A7706873A8" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "2B4CD075C5887BD875EBB513";
+		};
+		"83281712890A82A0CE5DA87D" = {
+			"isa" = "PBXFileReference";
+			"name" = "lparser.c";
+			"path" = "../../vendor/lua-5.4.8/src/lparser.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"2301FE5A3CC09CD57F48FB8D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "83281712890A82A0CE5DA87D";
+		};
+		"215D6E9B7F170C40D96718D1" = {
+			"isa" = "PBXFileReference";
+			"name" = "lstate.c";
+			"path" = "../../vendor/lua-5.4.8/src/lstate.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"0B3E9C23CCF812CDBFF2D621" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "215D6E9B7F170C40D96718D1";
+		};
+		"AECD4BD5DD4223D203AAF8B7" = {
+			"isa" = "PBXFileReference";
+			"name" = "lstring.c";
+			"path" = "../../vendor/lua-5.4.8/src/lstring.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"BB1084F6FF561B297E87F140" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AECD4BD5DD4223D203AAF8B7";
+		};
+		"4F7CDA806063BF75DB9326CE" = {
+			"isa" = "PBXFileReference";
+			"name" = "lstrlib.c";
+			"path" = "../../vendor/lua-5.4.8/src/lstrlib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"4B9787C15937E66BD5141EB9" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4F7CDA806063BF75DB9326CE";
+		};
+		"417A85F783BD327EED6518FE" = {
+			"isa" = "PBXFileReference";
+			"name" = "ltable.c";
+			"path" = "../../vendor/lua-5.4.8/src/ltable.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"80FD3952EAD616374F5DC88A" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "417A85F783BD327EED6518FE";
+		};
+		"EF3BC2D5C25C4BE4770C9039" = {
+			"isa" = "PBXFileReference";
+			"name" = "ltablib.c";
+			"path" = "../../vendor/lua-5.4.8/src/ltablib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"33D4516CE9062974F046A20D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "EF3BC2D5C25C4BE4770C9039";
+		};
+		"1AD924396F3992F243534E3A" = {
+			"isa" = "PBXFileReference";
+			"name" = "ltm.c";
+			"path" = "../../vendor/lua-5.4.8/src/ltm.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"8EF0517EDA03C0C27952CA70" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1AD924396F3992F243534E3A";
+		};
+		"D4728970B4F09494171FFCC2" = {
+			"isa" = "PBXFileReference";
+			"name" = "lundump.c";
+			"path" = "../../vendor/lua-5.4.8/src/lundump.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"011FCCD7F8B62B169FCB2AB9" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "D4728970B4F09494171FFCC2";
+		};
+		"46EC44304217DEED1D7300F6" = {
+			"isa" = "PBXFileReference";
+			"name" = "lutf8lib.c";
+			"path" = "../../vendor/lua-5.4.8/src/lutf8lib.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"E3DA06724E0B7D465F11318F" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "46EC44304217DEED1D7300F6";
+		};
+		"4C5F8EF854BFE79842E88B1A" = {
+			"isa" = "PBXFileReference";
+			"name" = "lvm.c";
+			"path" = "../../vendor/lua-5.4.8/src/lvm.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"1DC02C6DE588F50E8B343A62" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4C5F8EF854BFE79842E88B1A";
+		};
+		"077518647A8F23C8307DF3AB" = {
+			"isa" = "PBXFileReference";
+			"name" = "lzio.c";
+			"path" = "../../vendor/lua-5.4.8/src/lzio.c";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "sourcecode.c.c";
+		};
+		"05FDD30EEAF321263C7097AC" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "077518647A8F23C8307DF3AB";
+		};
+		"1D9957B4AF6D44656B760BC3" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"name" = "Application";
+			"path" = ".";
+			"sourceTree" = "<group>";
+		};
+		"DA91EFADD7E1452B3E269E0B" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"name" = "Framework Lua";
+			"path" = "../../lua";
+			"sourceTree" = "<group>";
+		};
+		"9752CBA3D4B2B2FC6A43D37F" = {
+			"isa" = "PBXFileSystemSynchronizedRootGroup";
+			"name" = "Native bridge";
+			"path" = "../../src";
+			"sourceTree" = "<group>";
+		};
+		"878A52FC5FF6A57D50B7B870" = {
+			"isa" = "PBXGroup";
+			"name" = "Compile Sources";
+			"children" = (
+				"1F5DA83DC795090EBB71AAE4",
+				"C5FD5054D0AA488074C86641",
+				"5BF152B4F25A9FEB8F7A84A4",
+				"788A1244B78766254FCE7465",
+				"4623C7CF86A7848B1D1D7A19",
+				"B673C46EF905D2F61B263ED0",
+				"A077DB967D840E536829610C",
+				"1F96132EA17611B2A4F1F6B3",
+				"70C09ABC12768611E830C345",
+				"BF3C313A685BFF6955F0F158",
+				"A00E0E1F071486160F7FA3F3",
+				"F752F7E642BD92944F5B9E01",
+				"99D16D2849E3F75193A282A6",
+				"3F8BD544D2B01EFB1ADD67EC",
+				"1CB5A47152D44B85EDAA373A",
+				"78940BAC35194643927BCCB5",
+				"7B335465288B7F3CCA5A2460",
+				"9F3E5EF53A5FB64DF28F700D",
+				"9850D22B2D0A935ADE806E3B",
+				"BDD752F5455A36E78D44DC3D",
+				"C90868BC69EC70ACDD5C73BF",
+				"CB42399EC30226252688962F",
+				"3E27964067AED2AA18A94809",
+				"2921157783B42584139E67EA",
+				"1AA2B03837286EA9BD59A3D6",
+				"668AB239F8E0CC7C1AAEE4CE",
+				"BA1548816EC4E0BC4BE9597D",
+				"E40A4F9CD4492CDB4AF928DF",
+				"0708588B2C668C3427A72A84",
+				"376BC651E07AD43755F52D08",
+				"47CAC57A41021344BF411979",
+				"2B4CD075C5887BD875EBB513",
+				"83281712890A82A0CE5DA87D",
+				"215D6E9B7F170C40D96718D1",
+				"AECD4BD5DD4223D203AAF8B7",
+				"4F7CDA806063BF75DB9326CE",
+				"417A85F783BD327EED6518FE",
+				"EF3BC2D5C25C4BE4770C9039",
+				"1AD924396F3992F243534E3A",
+				"D4728970B4F09494171FFCC2",
+				"46EC44304217DEED1D7300F6",
+				"4C5F8EF854BFE79842E88B1A",
+				"077518647A8F23C8307DF3AB",
+			);
+			"sourceTree" = "<group>";
+		};
+		"8BF729FFE074CAEE622C0292" = {
+			"isa" = "PBXFileReference";
+			"path" = "Assets.xcassets";
+			"sourceTree" = "SOURCE_ROOT";
+			"lastKnownFileType" = "folder.assetcatalog";
+		};
+		"1E0584A25D9F43BF5CBD0AEC" = {
+			"isa" = "PBXShellScriptBuildPhase";
+			"name" = "Embed UIKit Lua API";
+			"buildActionMask" = 2147483647;
+			"shellPath" = "/bin/sh";
+			"shellScript" = "set -eu\nmkdir -p \"$DERIVED_FILE_DIR/generated\"\nxxd -i -n UIKit_lua \"$LUA_OBJC_ROOT/lua/embedded/UIKit.lua\" \"$DERIVED_FILE_DIR/generated/UIKit.lua.h\"\n";
+			"runOnlyForDeploymentPostprocessing" = 0;
+			"inputPaths" = (
+				"$(LUA_OBJC_ROOT)/lua/embedded/UIKit.lua",
+			);
+			"outputPaths" = (
+				"$(DERIVED_FILE_DIR)/generated/UIKit.lua.h",
+			);
+		};
+		"9A881B9B9F23849475296A8C" = {
+			"isa" = "PBXShellScriptBuildPhase";
+			"name" = "Build libgit2";
+			"buildActionMask" = 2147483647;
+			"shellPath" = "/bin/sh";
+			"shellScript" = "set -eu\n/usr/bin/make -s -j\"$(getconf _NPROCESSORS_ONLN)\" -f \"$LUA_OBJC_ROOT/scripts/libgit2/libgit2.mk\" SDK=\"$PLATFORM_NAME\" ARCH=arm64 OUT=\"$DERIVED_FILE_DIR/libgit2\"\n";
+			"runOnlyForDeploymentPostprocessing" = 0;
+			"alwaysOutOfDate" = 1;
+			"outputPaths" = (
+				"$(DERIVED_FILE_DIR)/libgit2/libgit2.a",
+			);
+		};
+		"EBA8DCD606BD0014B899E362" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"2015B422665D1A1EA069745F",
+				"6513B6E4891B035F1423BB33",
+				"4DF754A55D0321857F0456CF",
+				"25FEBE718E45BEDC71B4C979",
+				"889DFB204569FFC9939D418E",
+				"6315AA4B3536D5459E1FC9B0",
+				"7EFD55325F4C1096C2253E60",
+				"1A0EF6789C62A629CFF88494",
+				"CBECE40F5E81764CF5572BCA",
+				"E95F0C303D8C25ECA2D9563F",
+				"A17E69724F50B668D3F35808",
+				"5BE91106028240F4785B1FCF",
+				"A7335CABAADC934898F71887",
+				"629DB26EDF81953AC9DB9CAE",
+				"71DF0FB22D133B60B42180D2",
+				"24649E63333643482C5CAE2E",
+				"160342C1E9FA8BE63261A79C",
+				"6332B3997E8338CEB3C92FDB",
+				"38A99B143E751FD9CBBD2EAB",
+				"34B2598DADC00493674ED1AD",
+				"05314D60E1FEF3F787FA1C9C",
+				"7103D8CCC99B3CC5356659E9",
+				"E76FAE6ABDCAA990FEAE7E42",
+				"5BB339944400B59CB2F77E88",
+				"AB14AA46A0A2A074421E44B7",
+				"1A20A221255F416B435F818A",
+				"F76EFDCC7457685BCA470940",
+				"E870BF53BB97F8761B6604F8",
+				"DF1E11604B27A546A21F7DF8",
+				"048CC63FA92549D26F426D41",
+				"8BF180C72D3EDD35D2AC4035",
+				"F12BD0D80028F2A7706873A8",
+				"2301FE5A3CC09CD57F48FB8D",
+				"0B3E9C23CCF812CDBFF2D621",
+				"BB1084F6FF561B297E87F140",
+				"4B9787C15937E66BD5141EB9",
+				"80FD3952EAD616374F5DC88A",
+				"33D4516CE9062974F046A20D",
+				"8EF0517EDA03C0C27952CA70",
+				"011FCCD7F8B62B169FCB2AB9",
+				"E3DA06724E0B7D465F11318F",
+				"1DC02C6DE588F50E8B343A62",
+				"05FDD30EEAF321263C7097AC",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C2D4B446A44CE54FAB8E0115" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "8BF729FFE074CAEE622C0292";
+		};
+		"41D311A605520FC7B8B9A980" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"C2D4B446A44CE54FAB8E0115",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"1E6ED65D77D6364EEAED5A74" = {
+			"isa" = "PBXShellScriptBuildPhase";
+			"name" = "Bundle Lua and app assets";
+			"buildActionMask" = 2147483647;
+			"shellPath" = "/bin/sh";
+			"shellScript" = "set -eu\ncd \"$LUA_OBJC_ROOT\"\npython3 scripts/ipad/xcode_bundle.py --bundle \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\n";
+			"runOnlyForDeploymentPostprocessing" = 0;
+			"alwaysOutOfDate" = 1;
+		};
+		"09AA38CEF3EA53936A20C858" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"LUA_OBJC_ROOT" = "$(PROJECT_DIR)/../..";
+				"SDKROOT" = "iphoneos";
+				"ARCHS" = "arm64";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "26.5";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"$(inherited)",
+					"LUA_USE_IOS",
+				);
+				"HEADER_SEARCH_PATHS" = (
+					"$(LUA_OBJC_ROOT)/ios/LuaRuntime",
+					"$(LUA_OBJC_ROOT)/src",
+					"$(LUA_OBJC_ROOT)/vendor/lua-5.4.8/src",
+					"$(LUA_OBJC_ROOT)/vendor/libgit2/include",
+					"$(DERIVED_FILE_DIR)",
+				);
+				"OTHER_LDFLAGS" = (
+					"$(inherited)",
+					"$(DERIVED_FILE_DIR)/libgit2/libgit2.a",
+					"-lz",
+					"-framework",
+					"UIKit",
+					"-framework",
+					"Foundation",
+					"-framework",
+					"CoreGraphics",
+					"-framework",
+					"CoreText",
+					"-framework",
+					"QuartzCore",
+					"-framework",
+					"Symbols",
+					"-framework",
+					"UserNotifications",
+					"-framework",
+					"Security",
+					"-framework",
+					"WebKit",
+					"-framework",
+					"SceneKit",
+					"-framework",
+					"GameController",
+					"-framework",
+					"AVFoundation",
+					"-framework",
+					"Speech",
+				);
+				"ALWAYS_SEARCH_USER_PATHS" = "NO";
+				"GCC_WARN_ABOUT_RETURN_TYPE" = "YES";
+				"GCC_OPTIMIZATION_LEVEL" = "0";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ONLY_ACTIVE_ARCH" = "YES";
+			};
+		};
+		"2C51B24F1BD0E37CCD3A85CD" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"LUA_OBJC_ROOT" = "$(PROJECT_DIR)/../..";
+				"SDKROOT" = "iphoneos";
+				"ARCHS" = "arm64";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "26.5";
+				"TARGETED_DEVICE_FAMILY" = "1,2";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+				"GCC_PREPROCESSOR_DEFINITIONS" = (
+					"$(inherited)",
+					"LUA_USE_IOS",
+				);
+				"HEADER_SEARCH_PATHS" = (
+					"$(LUA_OBJC_ROOT)/ios/LuaRuntime",
+					"$(LUA_OBJC_ROOT)/src",
+					"$(LUA_OBJC_ROOT)/vendor/lua-5.4.8/src",
+					"$(LUA_OBJC_ROOT)/vendor/libgit2/include",
+					"$(DERIVED_FILE_DIR)",
+				);
+				"OTHER_LDFLAGS" = (
+					"$(inherited)",
+					"$(DERIVED_FILE_DIR)/libgit2/libgit2.a",
+					"-lz",
+					"-framework",
+					"UIKit",
+					"-framework",
+					"Foundation",
+					"-framework",
+					"CoreGraphics",
+					"-framework",
+					"CoreText",
+					"-framework",
+					"QuartzCore",
+					"-framework",
+					"Symbols",
+					"-framework",
+					"UserNotifications",
+					"-framework",
+					"Security",
+					"-framework",
+					"WebKit",
+					"-framework",
+					"SceneKit",
+					"-framework",
+					"GameController",
+					"-framework",
+					"AVFoundation",
+					"-framework",
+					"Speech",
+				);
+				"ALWAYS_SEARCH_USER_PATHS" = "NO";
+				"GCC_WARN_ABOUT_RETURN_TYPE" = "YES";
+				"GCC_OPTIMIZATION_LEVEL" = "2";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+				"ONLY_ACTIVE_ARCH" = "NO";
+			};
+		};
+		"1E4B6209DBC7689E3E7CF89C" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"09AA38CEF3EA53936A20C858",
+				"2C51B24F1BD0E37CCD3A85CD",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Debug";
+		};
+		"702A057C813F700DC90695F1" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Debug";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "AdventureArena";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.luaobjc.adventure-arena";
+				"INFOPLIST_FILE" = "Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"MARKETING_VERSION" = "1.0";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"DEVELOPMENT_TEAM" = "BM2R8F5YHC";
+				"GCC_OPTIMIZATION_LEVEL" = "0";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ONLY_ACTIVE_ARCH" = "YES";
+			};
+		};
+		"466D20FBCECD50304EB1AEB7" = {
+			"isa" = "XCBuildConfiguration";
+			"name" = "Release";
+			"buildSettings" = {
+				"PRODUCT_NAME" = "AdventureArena";
+				"PRODUCT_BUNDLE_IDENTIFIER" = "org.luaobjc.adventure-arena";
+				"INFOPLIST_FILE" = "Info.plist";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"MARKETING_VERSION" = "1.0";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"DEVELOPMENT_TEAM" = "BM2R8F5YHC";
+				"GCC_OPTIMIZATION_LEVEL" = "2";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+				"ONLY_ACTIVE_ARCH" = "NO";
+			};
+		};
+		"3C04D03BAD2455F21534F0AD" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"702A057C813F700DC90695F1",
+				"466D20FBCECD50304EB1AEB7",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Debug";
+		};
+		"A8792157CB4F27FB949C035F" = {
+			"isa" = "PBXFileReference";
+			"path" = "AdventureArena.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+			"explicitFileType" = "wrapper.application";
+		};
+		"A172CEDCAE47474B615C54D5" = {
+			"isa" = "PBXNativeTarget";
+			"name" = "AdventureArena";
+			"productName" = "AdventureArena";
+			"productReference" = "A8792157CB4F27FB949C035F";
+			"productType" = "com.apple.product-type.application";
+			"buildConfigurationList" = "3C04D03BAD2455F21534F0AD";
+			"buildPhases" = (
+				"1E0584A25D9F43BF5CBD0AEC",
+				"9A881B9B9F23849475296A8C",
+				"EBA8DCD606BD0014B899E362",
+				"41D311A605520FC7B8B9A980",
+				"1E6ED65D77D6364EEAED5A74",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+		};
+		"0A3E27B8CA818264D75C8D81" = {
+			"isa" = "PBXGroup";
+			"name" = "Products";
+			"children" = (
+				"A8792157CB4F27FB949C035F",
+			);
+			"sourceTree" = "<group>";
+		};
+		"0D6E4079E36703EBD37C0072" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"1D9957B4AF6D44656B760BC3",
+				"DA91EFADD7E1452B3E269E0B",
+				"9752CBA3D4B2B2FC6A43D37F",
+				"878A52FC5FF6A57D50B7B870",
+				"8BF729FFE074CAEE622C0292",
+				"0A3E27B8CA818264D75C8D81",
+			);
+			"sourceTree" = "<group>";
+		};
+		"244210E48437B6556980A702" = {
+			"isa" = "PBXProject";
+			"buildConfigurationList" = "1E4B6209DBC7689E3E7CF89C";
+			"developmentRegion" = "en";
+			"knownRegions" = (
+				"en",
+				"Base",
+			);
+			"mainGroup" = "0D6E4079E36703EBD37C0072";
+			"productRefGroup" = "0A3E27B8CA818264D75C8D81";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"targets" = (
+				"A172CEDCAE47474B615C54D5",
+			);
+			"preferredProjectObjectVersion" = 77;
+			"attributes" = {
+				"LastUpgradeCheck" = "2700";
+			};
+		};
+	};
+	"rootObject" = "244210E48437B6556980A702";
+}

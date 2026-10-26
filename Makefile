@@ -367,14 +367,19 @@ appstore-upload:
 
 APP ?=
 TARGET ?=
-.PHONY: xcode
+.PHONY: xcode xcode-generate
+xcode-generate:
+	python3 scripts/xcode/generate.py "$(APP)"
+
 xcode:
 	@if [ "$(APP)" = diskmap ] && [ "$(TARGET)" = macos ]; then \
 		open $(DISKMAP_XCODE_PROJECT); \
 	elif [ "$(APP)" = dnb ] && [ "$(TARGET)" = macos ]; then \
 		open apps/dnb/DrumAndBass.xcodeproj; \
+	elif [ "$(APP)" = adventure-arena ] && [ "$(TARGET)" = ios ]; then \
+		$(MAKE) xcode-generate APP=adventure-arena && open apps/adventure-arena/AdventureArena.xcodeproj; \
 	else \
-		echo "usage: make xcode APP=diskmap|dnb TARGET=macos" >&2; exit 2; \
+		echo "usage: make xcode APP=diskmap|dnb TARGET=macos, or APP=adventure-arena TARGET=ios" >&2; exit 2; \
 	fi
 
 # The lua-objc promo (reels/promo): `make promo-reel` renders

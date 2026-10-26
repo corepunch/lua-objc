@@ -20,7 +20,7 @@ class DiscoveryTests(unittest.TestCase):
         from pathlib import Path
         import plistlib
 
-        info = plistlib.loads(Path('ios/AdventureArena/Info.plist').read_bytes())
+        info = plistlib.loads(Path('apps/adventure-arena/Info.plist').read_bytes())
         self.assertIs(info['ITSAppUsesNonExemptEncryption'], False)
 
     def test_release_tag_sets_archive_version(self):
@@ -54,6 +54,9 @@ class DiscoveryTests(unittest.TestCase):
             self.assertTrue((bundle / 'Workspace/lua/embedded/UIKit.lua').is_file())
             self.assertTrue((bundle / 'Workspace/apps/adventure-arena/init.lua').is_file())
             self.assertTrue((bundle / 'Workspace/apps/adventure-arena/zilscript/zilscript/bootstrap.lua').is_file())
+            self.assertFalse((bundle / 'Workspace/apps/adventure-arena/Info.plist').exists())
+            self.assertFalse((bundle / 'Workspace/apps/adventure-arena/AdventureArena.xcodeproj').exists())
+            self.assertFalse((bundle / 'Workspace/apps/adventure-arena/Assets.xcassets').exists())
 
     def test_simulator_keychain(self):
         result = entitlements('org.luaobjc.test')

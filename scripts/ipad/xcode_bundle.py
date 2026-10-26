@@ -12,7 +12,7 @@ def populate(bundle: Path) -> None:
     if workspace.exists():
         shutil.rmtree(workspace)
     copy_tree('lua', workspace, lua_only=True)
-    copy_tree('apps/adventure-arena', workspace)
+    copy_tree('apps/adventure-arena', workspace, runtime_only=True)
 
 
 def main() -> None:
