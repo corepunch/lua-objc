@@ -1,0 +1,138 @@
+{
+  "source": "room-images-sheet.jpg",
+  "generatedWith": "OpenAI image generation",
+  "grid": [
+    4,
+    4
+  ],
+  "sheetSize": [
+    1254,
+    1254
+  ],
+  "tileSize": [
+    256,
+    256
+  ],
+  "rooms": [
+    {
+      "room": "DISPATCH",
+      "file": "images/DISPATCH.jpg",
+      "crop": [
+        2,
+        2,
+        312,
+        312
+      ]
+    },
+    {
+      "room": "TERRACE",
+      "file": "images/TERRACE.jpg",
+      "crop": [
+        316,
+        2,
+        625,
+        312
+      ]
+    },
+    {
+      "room": "VANE-DECK",
+      "file": "images/VANE-DECK.jpg",
+      "crop": [
+        629,
+        2,
+        938,
+        312
+      ]
+    },
+    {
+      "room": "ROOKERY",
+      "file": "images/ROOKERY.jpg",
+      "crop": [
+        942,
+        2,
+        1252,
+        312
+      ]
+    },
+    {
+      "room": "LAUNDRY",
+      "file": "images/LAUNDRY.jpg",
+      "crop": [
+        2,
+        316,
+        312,
+        625
+      ]
+    },
+    {
+      "room": "KITCHEN",
+      "file": "images/KITCHEN.jpg",
+      "crop": [
+        316,
+        316,
+        625,
+        625
+      ]
+    },
+    {
+      "room": "GARDEN",
+      "file": "images/GARDEN.jpg",
+      "crop": [
+        629,
+        316,
+        938,
+        625
+      ]
+    },
+    {
+      "room": "SHED",
+      "file": "images/SHED.jpg",
+      "crop": [
+        942,
+        316,
+        1252,
+        625
+      ]
+    },
+    {
+      "room": "ARCH",
+      "file": "images/ARCH.jpg",
+      "crop": [
+        2,
+        629,
+        312,
+        938
+      ]
+    },
+    {
+      "room": "HOLLOW",
+      "file": "images/HOLLOW.jpg",
+      "crop": [
+        316,
+        629,
+        625,
+        938
+      ]
+    },
+    {
+      "room": "ARCHIVE",
+      "file": "images/ARCHIVE.jpg",
+      "crop": [
+        629,
+        629,
+        938,
+        938
+      ]
+    },
+    {
+      "room": "BROADCAST",
+      "file": "images/BROADCAST.jpg",
+      "crop": [
+        942,
+        629,
+        1252,
+        938
+      ]
+    }
+  ]
+}

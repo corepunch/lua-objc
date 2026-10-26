@@ -34,7 +34,8 @@ if ok then
 		t.expect(type(progress.maxScore) == "number" and progress.maxScore >= progress.score,
 			"runtime reports the game's maximum score")
 		local roomName = engine:roomName()
-		t.assertEqual(engine:roomIcon(), nil, "a story without room JPGs renders ordinary prose")
+		t.assertEqual(engine:roomIcon(), "apps/adventure-arena/assets/books/wondertown/images/WORKSHOP-FLOOR.jpg",
+			"Wondertown discovers its bundled opening-room artwork")
 		t.expect(type(roomName) == "string" and roomName:lower():find("workshop", 1, true) ~= nil,
 			"runtime reports the current room name: " .. tostring(roomName))
 		local exits = engine:exits()

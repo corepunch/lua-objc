@@ -1,3 +1,4 @@
+-- hideTextInput marks adventures playable through prose links; parser classics keep typing.
 -- Editorial library order; new Arena Originals follow the established selection.
 -- Artwork paths are local. Ratings stay empty until sourced reader feedback exists.
 -- The former static review copy had no reader provenance; see git c055005.
@@ -30,6 +31,7 @@ return {
 	},
 	{
 		id = "books.blackwood-horror",
+		hideTextInput = true,
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		tint = "#047857",
@@ -69,6 +71,7 @@ return {
 	},
 	{
 		id = "books.wondertown",
+		hideTextInput = true,
 		collection = "Arena Originals",
 		difficulty = "Introductory",
 		tint = "#A21CAF",
@@ -89,6 +92,7 @@ return {
 	},
 	{
 		id = "books.limehouse-killings",
+		hideTextInput = true,
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		tint = "#334155",
@@ -186,6 +190,7 @@ return {
 
 	{
 		id = "books.pocket-weather",
+		hideTextInput = true,
 		statusLine = "moves",
 		collection = "Arena Originals",
 		difficulty = "Introductory",
@@ -207,6 +212,7 @@ return {
 	},
 	{
 		id = "books.silent-vector",
+		hideTextInput = true,
 		statusLine = "moves",
 		collection = "Arena Originals",
 		difficulty = "Advanced",
@@ -228,6 +234,7 @@ return {
 	},
 	{
 		id = "books.last-broadcast",
+		hideTextInput = true,
 		statusLine = "moves",
 		collection = "Arena Originals",
 		difficulty = "Standard",
