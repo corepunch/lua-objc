@@ -555,8 +555,10 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
  * UIKit coalesces them into its next layout pass, where the hosting
  * controller's viewDidLayoutSubviews lays the Lua root out at its real width. */
 static void uikit_invalidate_layout(UIView *view) {
-	for (UIView *ancestor = view; ancestor; ancestor = ancestor.superview)
+	for (UIView *ancestor = view; ancestor; ancestor = ancestor.superview) {
+		[ancestor invalidateIntrinsicContentSize];
 		[ancestor setNeedsLayout];
+	}
 }
 
 /* Geometry reads observe pending layout, like AppKit's flush. */
