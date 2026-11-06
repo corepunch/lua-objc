@@ -28,6 +28,27 @@ unlocked. It is not placed in project files, Git history, or project exports.
 Remove it in Settings to disable subsequent AI requests. New Conversation clears
 the current in-memory conversation. Conversations are not saved across launches.
 
+## Optional GitHub publishing
+
+GitHub is optional and uses your own GitHub personal access token. Connecting
+contacts GitHub over HTTPS to validate that token and read your account login,
+name, public email and account identifier. The token stays in the device Keychain;
+it is never embedded in a remote URL, project source, Git history, exports or AI
+requests. Remove it in the GitHub sheet to disable future authenticated requests.
+
+Creating a repository sends its name, owner and selected visibility to GitHub.
+New repositories default to private. Publishing sends the selected project's
+saved source, artwork and Git commit history to the repository you choose, using
+libgit2 directly on your iPad. Commit history contains author names, email
+addresses and commit timestamps. The author email defaults to GitHub's no-reply
+address when no public email is available. You can edit the author name and
+email before publishing. Local application data and Studio settings are excluded.
+
+A public repository makes its source and commit history public. GitHub handles
+the uploaded content and account data under [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
+Lua Studio does not receive a copy. Removing a token does not delete content
+already published to GitHub; manage that content on GitHub.
+
 ## Dictation, attachments, and sharing
 
 Pressing the microphone requests Apple's microphone and speech-recognition
@@ -42,8 +63,9 @@ and Export create a ZIP containing project source, its manifest and app icon.
 Runtime data, Git history, Studio settings, and API keys are excluded. Your
 chosen share destination handles the exported files under its own policies.
 
-Lua Studio uses file timestamps for local project history and a monotonic clock
-for runtime timing. These values are not used to identify or track people.
+Lua Studio uses file timestamps for project history and a monotonic clock for
+runtime timing. Git commit timestamps are included when you publish history to
+GitHub. These values are not used for advertising or tracking.
 
 If you contact support on GitHub, your post is handled by GitHub under its own
 privacy policy. Do not include passwords, API keys, private source, or personal
