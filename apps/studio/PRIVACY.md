@@ -2,30 +2,51 @@
 
 Effective date: November 6, 2026
 
-Lua Studio is a free iPad workspace for exploring native app projects. The current
-version stores project source, project icons, Git history, starter-app data, and
-preferences in the app's local container. Removing the app removes these local
-files, subject to any backups managed by iPadOS.
+Lua Studio is a free iPad workspace for creating native app projects. Project
+source, icons, Git history, starter-app data, and preferences stay in the app's
+local container. Removing the app removes these files, subject to iPadOS backups.
+The developer operates no backend for this app and receives no project content.
+There is no advertising, analytics, tracking, in-app purchase, or subscription.
 
-The current version does not collect or transmit this information to the
-developer. It has no advertising, analytics, tracking, account sign-in, in-app
-purchases, or subscriptions. The assistant conversation shown at startup is a
-bundled example. The chat composer does not send requests to an AI service in
-this version. The source contains an OpenRouter integration that is not
-connected to the current interface; enabling it in a later release will require
-an updated policy and App Store privacy answers before that release.
+## Optional AI assistant
 
-Lua Studio does not currently request microphone or speech-recognition access
-through its interface. iPadOS keyboard dictation is managed by Apple and the
-device's system settings.
+The assistant is optional. Before enabling it, Settings explains the sharing and
+asks you to save your own OpenRouter API key. When you press Send, your message,
+conversation context, attached text files, and source files requested by the
+agent are sent over HTTPS to OpenRouter and the model provider selected through
+your OpenRouter account. Responses and generated source return through the same
+service. Do not send secrets or information you lack permission to share.
 
-Lua Studio uses file timestamps to manage local project history and a monotonic
-clock for timing inside its runtime. These values remain on the device and are
-not used to identify or track people.
+OpenRouter authenticates requests using your API key; requests can be associated
+with your OpenRouter account. Provider retention and use depend on the selected
+provider and your account settings. See [OpenRouter's privacy policy](https://openrouter.ai/privacy)
+and [provider data practices](https://openrouter.ai/docs/guides/privacy/provider-logging).
+Provider charges may apply; Lua Studio does not sell AI credits.
 
-If you contact support on GitHub, the information you choose to post is handled
-by GitHub under its own privacy policy. Do not include passwords, API keys,
-private project source, or personal information in public issues.
+The API key is stored in this device's Keychain, accessible while the device is
+unlocked. It is not placed in project files, Git history, or project exports.
+Remove it in Settings to disable subsequent AI requests. New Conversation clears
+the current in-memory conversation. Conversations are not saved across launches.
 
-For privacy questions, use [project support](https://github.com/corepunch/lua-objc/issues)
-or email igor.chernakov@gmail.com.
+## Dictation, attachments, and sharing
+
+Pressing the microphone requests Apple's microphone and speech-recognition
+permissions. Audio is processed by Apple's Speech service according to system
+availability and permissions; recognition may use Apple's servers. Lua Studio
+does not save audio recordings. Recognized text becomes an editable draft and
+is sent to the AI service only if you press Send.
+
+The native Files picker reads only files you select, as bounded UTF-8 text.
+Attachments become request context; they do not replace project files. Share
+and Export create a ZIP containing project source, its manifest and app icon.
+Runtime data, Git history, Studio settings, and API keys are excluded. Your
+chosen share destination handles the exported files under its own policies.
+
+Lua Studio uses file timestamps for local project history and a monotonic clock
+for runtime timing. These values are not used to identify or track people.
+
+If you contact support on GitHub, your post is handled by GitHub under its own
+privacy policy. Do not include passwords, API keys, private source, or personal
+information in public issues. For privacy questions, use
+[project support](https://github.com/corepunch/lua-objc/issues) or email
+igor.chernakov@gmail.com.
