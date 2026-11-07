@@ -5,7 +5,7 @@ static int bridge_http_request(lua_State *L) {
 	if (!url || ![url.scheme isEqualToString:@"https"]) return luaL_error(L, "HTTP request requires HTTPS");
 	luaL_checktype(L, 4, LUA_TFUNCTION);
 	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-	request.HTTPMethod = @"POST";
+	request.HTTPMethod = @(luaL_optstring(L, 5, "POST"));
 	request.timeoutInterval = 120;
 	request.allHTTPHeaderFields = lua_to_objc_value(L, 2);
 	request.HTTPBody = [@(luaL_checkstring(L, 3)) dataUsingEncoding:NSUTF8StringEncoding];

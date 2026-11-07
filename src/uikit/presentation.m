@@ -13,7 +13,14 @@ static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 	UIViewController *presenter = lua_uikit_presenter();
 	if (!presenter) return luaL_error(L, "no UIKit presenter is installed");
 
-	sheet.modalPresentationStyle = UIModalPresentationPageSheet;
+	static const char *styles[] = { "pageSheet", "formSheet", NULL };
+	int style = 0;
+	if (lua_istable(L, 2)) {
+		lua_getfield(L, 2, "presentationStyle");
+		style = luaL_checkoption(L, -1, "pageSheet", styles);
+		lua_pop(L, 1);
+	}
+	sheet.modalPresentationStyle = style == 1 ? UIModalPresentationFormSheet : UIModalPresentationPageSheet;
 	if (lua_istable(L, 2)) {
 		lua_getfield(L, 2, "title");
 		if (!lua_isnoneornil(L, -1))
@@ -88,5 +95,116 @@ static int bridge_UIKitPresentation_confirm(lua_State *L) {
 			style:UIAlertActionStyleCancel handler:nil]];
 	}
 	[presenter presentViewController:alert animated:NO completion:nil];
+	return 0;
+}
+
+/* Foundation's coordinated uploading read makes the ZIP; the system activity
+ * controller owns destinations, presentation, and completion. */
+static int bridge_UIKitPresentation_shareFiles(lua_State *L) {
+	NSArray *items = lua_to_objc_value(L, 1);
+	NSString *name = @(luaL_optstring(L, 2, "Project"));
+	if (![items isKindOfClass:NSArray.class] || !items.count)
+		return luaL_error(L, "shareFiles requires a nonempty file list");
+	if (!document_relative_name_valid(name) || name.pathComponents.count != 1)
+		return luaL_error(L, "archive name must be a filename");
+	UIViewController *presenter = lua_uikit_presenter();
+	if (!presenter) return luaL_error(L, "no UIKit presenter is installed");
+	for (NSDictionary *item in items) {
+		if (![item isKindOfClass:NSDictionary.class] || (![item[@"text"] isKindOfClass:NSString.class] && !document_relative_name_valid(item[@"source"]))
+			|| !document_relative_name_valid(item[@"name"]))
+			return luaL_error(L, "shareFiles paths must be safe relative names");
+	}
+	NSFileManager *manager = NSFileManager.defaultManager;
+	NSURL *temporary = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString]];
+	NSURL *folder = [temporary URLByAppendingPathComponent:name isDirectory:YES];
+	NSError *error = nil;
+	[manager createDirectoryAtURL:folder withIntermediateDirectories:YES attributes:nil error:&error];
+	for (NSDictionary *item in items) {
+		if (error) break;
+		NSURL *source = item[@"source"] ? [NSURL fileURLWithPath:[LUA_OBJC_DOCUMENT_ROOT() stringByAppendingPathComponent:item[@"source"]]] : nil;
+		NSURL *destination = [folder URLByAppendingPathComponent:item[@"name"]];
+		[manager createDirectoryAtURL:destination.URLByDeletingLastPathComponent withIntermediateDirectories:YES attributes:nil error:&error];
+		if (!error) {
+			if ([item[@"text"] isKindOfClass:NSString.class])
+				[item[@"text"] writeToURL:destination atomically:YES encoding:NSUTF8StringEncoding error:&error];
+			else [manager copyItemAtURL:source toURL:destination error:&error];
+		}
+	}
+	NSURL *archive = [temporary URLByAppendingPathComponent:[name stringByAppendingPathExtension:@"zip"]];
+	if (!error) {
+		NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] init];
+		__block NSError *copyError = nil;
+		[coordinator coordinateReadingItemAtURL:folder options:NSFileCoordinatorReadingForUploading error:&error
+			byAccessor:^(NSURL *uploadURL) { [manager copyItemAtURL:uploadURL toURL:archive error:&copyError]; }];
+		if (!error) error = copyError;
+	}
+	if (error) {
+		[manager removeItemAtURL:temporary error:nil];
+		lua_pushnil(L);
+		lua_pushstring(L, error.localizedDescription.UTF8String);
+		return 2;
+	}
+	UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[archive] applicationActivities:nil];
+	activity.completionWithItemsHandler = ^(__unused UIActivityType type, __unused BOOL completed,
+		__unused NSArray *returned, __unused NSError *activityError) {
+		[manager removeItemAtURL:temporary error:nil];
+	};
+	UIPopoverPresentationController *popover = activity.popoverPresentationController;
+	if (popover) {
+		popover.sourceView = presenter.view;
+		popover.sourceRect = CGRectMake(CGRectGetMidX(presenter.view.bounds), CGRectGetMidY(presenter.view.bounds),
+			kActivityPopoverAnchorSide, kActivityPopoverAnchorSide);
+		popover.permittedArrowDirections = 0;
+	}
+	[presenter presentViewController:activity animated:!UIAccessibilityIsReduceMotionEnabled() completion:nil];
+	lua_pushboolean(L, true);
+	return 1;
+}
+
+// The native picker supplies temporary copies. Return only bounded UTF-8 text;
+// projects never gain access to the host's filesystem or security-scoped URLs.
+@interface LuaTextDocumentPickerDelegate : NSObject <UIDocumentPickerDelegate>
+@property(nonatomic, strong) LuaReg *callback;
+@end
+@implementation LuaTextDocumentPickerDelegate
+- (void)complete:(NSArray *)files error:(NSString *)error {
+	lua_State *L = lua_reg_live_state(self.callback);
+	if (L && lua_reg_push(self.callback)) {
+		if (files) push_objc_value(L, files); else lua_pushnil(L);
+		if (error) lua_pushstring(L, error.UTF8String); else lua_pushnil(L);
+		lua_objc_pcall(L, 2, 0, "import text files");
+	}
+	[self.callback dispose];
+}
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+	if (urls.count > kTextImportMaxFiles) { [self complete:nil error:@"Attach up to four text files"]; return; }
+	NSMutableArray *files = [NSMutableArray array];
+	for (NSURL *url in urls) {
+		NSNumber *size = nil;
+		[url getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
+		if (!size || size.unsignedLongLongValue > kTextImportMaxBytes) {
+			[self complete:nil error:@"Each attachment must be under 128 KB"]; return;
+		}
+		NSError *error = nil;
+		NSString *text = [NSString stringWithContentsOfURL:url encoding:NSUTF8StringEncoding error:&error];
+		if (!text) { [self complete:nil error:@"Choose UTF-8 text or source files"]; return; }
+		[files addObject:@{@"name": url.lastPathComponent, @"text": text}];
+	}
+	[self complete:files error:nil];
+}
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller { [self complete:nil error:nil]; }
+- (void)dealloc { [_callback dispose]; }
+@end
+static int bridge_UIKitPresentation_importTextFiles(lua_State *L) {
+	LuaTextDocumentPickerDelegate *delegate = [LuaTextDocumentPickerDelegate new];
+	delegate.callback = lua_reg_opt(L, 1);
+	UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc]
+		initForOpeningContentTypes:@[UTTypeText, UTTypeSourceCode, UTTypeData] asCopy:YES];
+	picker.allowsMultipleSelection = YES;
+	picker.delegate = delegate;
+	objc_setAssociatedObject(picker, &kDocumentPickerDelegateKey, delegate, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+	UIViewController *presenter = lua_uikit_presenter();
+	if (!presenter) return luaL_error(L, "no UIKit presenter is installed");
+	[presenter presentViewController:picker animated:!UIAccessibilityIsReduceMotionEnabled() completion:nil];
 	return 0;
 }

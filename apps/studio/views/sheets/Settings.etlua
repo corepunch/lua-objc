@@ -1,0 +1,20 @@
+<VStack id="settingsPopup" maxWidth="infinity" maxHeight="infinity">
+	<%- partial("../layouts/SheetResources.etlua") %>
+	<ScrollView flexGrow="1" maxWidth="infinity">
+		<VStack padding="@sheetInset" spacing="@sheetSpacing" maxWidth="infinity" alignment="leading">
+			<Label text="OpenRouter API key" weight="semibold" />
+			<Label text="Messages and project source are sent to OpenRouter and the selected model provider when you press Send. Provider charges may apply. Your API key stays in this device’s Keychain and is excluded from exports." lines="0" maxWidth="infinity" color="secondary" />
+			<Link title="Privacy Policy" url="https://github.com/corepunch/lua-objc/blob/main/apps/studio/PRIVACY.md" />
+			<TextField id="apiKey" text="<%= keyDraft %>" secure="true" placeholder="<%= hasKey and 'A key is saved in Keychain' or 'Enter your OpenRouter API key' %>" accessibilityLabel="OpenRouter API key" onChange="editKey" />
+			<HStack alignment="center">
+				<Button title="Save Key and Enable Agent" action="saveCredential" style="borderedProminent" />
+				<Button title="Remove Saved Key" action="clearCredential" disabled="<%= tostring(not hasKey) %>" />
+			</HStack>
+			<Divider />
+			<Label text="Model" weight="semibold" />
+			<TextField id="modelId" text="<%= modelIdDraft %>" placeholder="provider/model" accessibilityLabel="OpenRouter model" onChange="editModel" />
+			<Button title="Save Model" action="saveModel" />
+			<Label text="<%= message %>" color="secondary" lines="0" maxWidth="infinity" />
+		</VStack>
+	</ScrollView>
+</VStack>

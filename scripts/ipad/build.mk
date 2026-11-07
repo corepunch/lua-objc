@@ -37,7 +37,7 @@ $(LIBGIT2): scripts/libgit2/libgit2.mk scripts/libgit2/git2_features.h scripts/l
 FRAMEWORKS := -lz -framework UIKit -framework Foundation -framework CoreGraphics \
 	-framework CoreText \
 	-framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework SceneKit -framework GameController \
-	-framework AVFoundation -framework Speech
+	-framework UniformTypeIdentifiers -framework AVFoundation -framework Speech
 ifeq ($(SDK),iphonesimulator)
 SIM_ENTITLEMENTS := $(ROOT)/$(BUNDLE_ID).entitlements.plist
 SIM_DER := $(SIM_ENTITLEMENTS:.plist=.der)

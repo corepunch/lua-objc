@@ -45,6 +45,8 @@ def apps(path=None):
             raise ValueError('Missing profile secret for ' + slug)
         if 'appStore' in channels and not record.get('appStoreIdVariable'):
             raise ValueError('Missing App Store ID variable for ' + slug)
+        if 'appStore' in channels and not all(record.get(key) for key in ('certificateSecret', 'certificatePasswordSecret')):
+            raise ValueError('Missing App Store certificate secret names for ' + slug)
         for plugin in record.get('plugins', []):
             if plugin not in ('StorageScan', 'AudioStream'):
                 raise ValueError('Unsupported macOS release plugin: ' + plugin)

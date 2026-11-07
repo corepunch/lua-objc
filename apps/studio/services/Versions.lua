@@ -15,14 +15,14 @@ function Versions.open(git, root)
 end
 
 -- Returns the commit id, false when unchanged, or nil and an error.
-function Versions:record(message)
+function Versions:record(message, author)
 	local ok, err = self.repo:add()
 	if not ok then return nil, err end
 	local status
 	status, err = self.repo:status()
 	if not status then return nil, err end
 	for _, entry in ipairs(status) do
-		if entry.index then return self.repo:commit(message, AUTHOR) end
+		if entry.index then return self.repo:commit(message, author or AUTHOR) end
 	end
 	return false
 end

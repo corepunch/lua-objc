@@ -85,6 +85,7 @@ static int bridge_text_field_test_focus(lua_State *L) {
 	[_changeReg dispose];
 }
 - (void)textViewDidChange:(UITextView *)textView {
+	if ([textView isKindOfClass:LuaCodeView.class]) [(LuaCodeView *)textView highlight];
 	lua_State *L = lua_reg_live_state(_changeReg);
 	if (!L || !lua_reg_push(_changeReg)) return;
 	lua_pushstring(L, (textView.text ?: @"").UTF8String);

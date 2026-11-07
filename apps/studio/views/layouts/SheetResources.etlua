@@ -1,0 +1,8 @@
+<Resources>
+	<Number id="sheetWidth" value="560" />
+	<Number id="sheetHeight" value="600" />
+	<Number id="sheetInset" value="24" />
+	<Number id="sheetSpacing" value="16" />
+	<Number id="sheetTitle" value="24" />
+	<Number id="sheetSymbol" value="28" />
+</Resources>

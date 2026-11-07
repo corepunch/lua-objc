@@ -273,6 +273,8 @@ static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 		NSString *label = lua_isstring(L, -1) ? @(lua_tostring(L, -1)) : @"";
 		lua_getfield(L, item, "action");
 		LuaReg *action = lua_isfunction(L, -1) ? lua_reg_create(L, -1, YES) : nil;
+		lua_getfield(L, item, "systemItem");
+		NSString *systemItem = lua_isstring(L, -1) ? @(lua_tostring(L, -1)) : nil;
 		if ([placement isEqualToString:@"keyboard"]) {
 			if (!view) return luaL_error(L, "a keyboard ToolbarItem requires one view child");
 			[keyboard addObject:view];
@@ -280,7 +282,15 @@ static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 			if (view) navigationItem.titleView = page_toolbar_view(view, kNavigationTitleMaxWidth);
 		} else {
 			UIBarButtonItem *barItem;
-			if (view) {
+			if (systemItem.length) {
+				UIBarButtonSystemItem kind;
+				if ([systemItem isEqualToString:@"done"]) kind = UIBarButtonSystemItemDone;
+				else if ([systemItem isEqualToString:@"cancel"]) kind = UIBarButtonSystemItemCancel;
+				else return luaL_error(L, "systemItem must be 'done' or 'cancel'");
+				barItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:kind
+					target:[LuaButtonTarget shared] action:@selector(onAction:)];
+				if (action) objc_setAssociatedObject(barItem, &kCallbackKey, action, OBJC_ASSOCIATION_RETAIN);
+			} else if (view) {
 				barItem = [[UIBarButtonItem alloc] initWithCustomView:page_toolbar_view(view, kNavigationTitleMaxWidth)];
 			} else {
 				UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration

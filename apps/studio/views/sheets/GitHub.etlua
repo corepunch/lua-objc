@@ -1,0 +1,42 @@
+<VStack maxWidth="infinity" maxHeight="infinity">
+	<%- partial("../layouts/SheetResources.etlua") %>
+	<ScrollView id="githubScroll" flexGrow="1" maxWidth="infinity">
+		<VStack padding="@sheetInset" spacing="@sheetSpacing" maxWidth="infinity" alignment="leading">
+			<Label text="GitHub" size="@sheetTitle" weight="bold" />
+			<Label text="Connect your account, create or link a repository, then publish your project and Git history. Publish directly from your iPad." lines="0" maxWidth="infinity" color="secondary" />
+			<Label text="GitHub personal access token" weight="semibold" />
+			<TextField id="githubToken" text="<%= tokenDraft %>" secure="true" placeholder="<%= hasToken and 'A token is saved in Keychain' or 'Enter a GitHub token' %>" accessibilityLabel="GitHub personal access token" onChange="editGitHubToken" disabled="<%= tostring(busy) %>" />
+			<Link title="Create a GitHub token" url="https://github.com/settings/personal-access-tokens/new" />
+			<Label text="Use repository Contents read/write permission to push. Creating repositories also needs Administration write permission. Your token stays in Keychain and is never included in Git, exports or AI requests." lines="0" maxWidth="infinity" color="secondary" />
+			<HStack alignment="center">
+				<Button title="Connect Account" action="connectGitHub" style="borderedProminent" disabled="<%= tostring(busy) %>" />
+				<Button title="Remove Token" action="disconnectGitHub" disabled="<%= tostring(busy or not hasToken) %>" />
+			</HStack>
+			<Label text="<%= login ~= '' and ('Connected as ' .. login) or 'No account connected' %>" color="secondary" />
+			<Divider />
+			<Label text="Repository" weight="semibold" />
+			<TextField id="githubOwner" text="<%= owner %>" placeholder="User or organization" accessibilityLabel="GitHub repository owner" onChange="editGitHubOwner" disabled="<%= tostring(busy) %>" />
+			<TextField id="githubRepository" text="<%= repository %>" placeholder="Repository name" accessibilityLabel="GitHub repository name" onChange="editGitHubRepository" disabled="<%= tostring(busy) %>" />
+			<Label text="GitHub branch" weight="semibold" />
+			<TextField id="githubBranch" text="<%= branch %>" placeholder="main" accessibilityLabel="GitHub branch" onChange="editGitHubBranch" disabled="<%= tostring(busy) %>" />
+			<% if not linked then %><Toggle label="Private repository" value="<%= tostring(private) %>" onChange="editGitHubPrivate" disabled="<%= tostring(busy) %>" /><% end %>
+			<HStack alignment="center">
+				<Button title="Create Repository" action="createGitHubRepository" disabled="<%= tostring(busy or login == '') %>" />
+				<Button title="Link Existing" action="linkGitHubRepository" disabled="<%= tostring(busy or login == '') %>" />
+			</HStack>
+			<Label text="Commit author" weight="semibold" />
+			<TextField text="<%= name %>" placeholder="Name" accessibilityLabel="Git commit author name" onChange="editGitHubName" disabled="<%= tostring(busy) %>" />
+			<TextField text="<%= email %>" placeholder="Email" accessibilityLabel="Git commit author email" onChange="editGitHubEmail" disabled="<%= tostring(busy) %>" />
+			<Label text="Publishing sends saved source, artwork and commit history to the selected GitHub repository. Local app data, Studio settings and credentials stay on this iPad. Your author name and email are included in new commits. Existing GitHub history is preserved; a conflicting history is reported without overwriting it." lines="0" maxWidth="infinity" color="secondary" />
+			<% if busy then %>
+			<ProgressView indeterminate="true" />
+			<Button title="Cancel" action="cancelGitHub" />
+			<% else %>
+			<Button title="Commit and Publish" action="publishGitHub" style="borderedProminent" disabled="<%= tostring(not linked or login == '') %>" />
+			<% end %>
+			<% if url then %><Link title="View Project on GitHub" url="<%= url %>" /><% end %>
+			<Label id="githubStatus" text="<%= message %>" lines="0" maxWidth="infinity" color="secondary" />
+		</VStack>
+	</ScrollView>
+	<Button title="Done" action="closeSheet" style="borderedProminent" padding="@sheetInset" />
+</VStack>

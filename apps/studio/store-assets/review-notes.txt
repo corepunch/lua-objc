@@ -1,0 +1,11 @@
+Lua Studio is an iPad-only code-development workspace with native UIKit controls and a bundled Lua runtime. No account, purchase, Mac, or packager is required for the included projects and source editor.
+
+Review steps:
+1. Launch on an iPad running iPadOS 26.5 or later. Try Today, Stats, and Settings in the Habit Tracker preview.
+2. Choose Code in the left rail. Select a Lua or etlua source file, edit it, save, then Run. Invalid source remains editable and preserves the last working preview. Undo restores an edit.
+3. Use the project menu or Templates to create a blank MVC project. Switch between projects; Commit records local Git history.
+4. Share or Export presents the system share sheet with a source ZIP. It excludes Git, app data, settings, and API keys. Standalone signing and deployment require a Mac.
+5. Choose GitHub in the rail or project menu. Connect a GitHub test account with a personal access token (Contents read/write; Administration write if creating repositories). Create a private repository or link a writable existing repository, then Commit and Publish. View Project on GitHub opens the repository. Pushes use libgit2 directly, preserve history, and refuse non-fast-forward updates. No Git executable runs on iPad. GitHub is optional; local projects and Git history need no account.
+6. The optional assistant uses an OpenRouter API key. Private review access is provided below. Settings explains which content is sent to OpenRouter and its selected model provider before enabling requests. API keys stay in the device Keychain. Dictation and text attachments are optional; permission is requested on use. Source returned by the agent is fully viewable and editable in Code.
+
+The purpose of this app is to teach and experiment with native app development. Projects run as visible Lua source within the bundled UIKit runtime; all downloaded or generated source is viewable and editable in Code. The app does not install executable binaries or native plugins. Generated source remains inside the development workspace. The export is source only and cannot install a standalone app from iPad. Please review this educational development workflow under guideline 2.5.2.

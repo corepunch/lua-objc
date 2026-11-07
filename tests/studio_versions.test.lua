@@ -23,6 +23,7 @@ local function write(path, content)
 	return true
 end
 local documentNS = {
+	_documentRemove = function(path) return os.remove(root .. "/" .. path) end,
 	_documentRead = function(path) return read(root .. "/" .. path) end,
 	_documentWrite = write,
 	_documentExists = function(path)
@@ -39,7 +40,7 @@ local documentNS = {
 }
 local workspace = Workspace.open(documentNS, read, Git, "HabitTracker")
 local function save(files)
-	return workspace.storage.save({ files = files, model = "openrouter/free" })
+	return workspace.storage.save({ files = files, modelId = "openrouter/free" })
 end
 -- The index order follows the file system's case sensitivity.
 local function tracked(repo)
@@ -168,14 +169,14 @@ t.expect(controller:commitProject("fail") == nil, "a failed commit is reported")
 t.assertEqual(controller.status, "Commit failed: locked", "the failure is shown")
 controller.versions, controller.versionsError = nil, "no repository"
 t.expect(controller:commitProject("x") == nil, "commit without a repository fails")
-t.assertEqual(controller.status, "Git unavailable: no repository", "the open error is shown")
+t.assertEqual(controller.status, "No project repository", "the missing repository is shown")
 
-local source = require("ui.xml").describeFile("apps/studio/views/Workspace.etlua", {
-	rail = require("apps.studio.models.Rail").presentation(),
-	preview = require("apps.studio.models.Preview").presentation({}),
-	chat = require("apps.studio.models.Chat").presentation(),
+local source = require("ui.xml").describeFile("apps/studio/views/sections/Workspace.etlua", {
+	rail = require("apps.studio.helpers.Rail").presentation(),
+	preview = require("apps.studio.helpers.Preview").presentation({}),
+	chat = require("apps.studio.helpers.Chat").presentation(),
 }).source
-t.expect(source:find('title="Commit"[^>]*action="commitProject"') ~= nil, "the chat header's Commit button commits")
+t.expect(source:find('accessibilityLabel="Commit"[^>]*action="commitProject"') ~= nil, "the chat header's Commit button commits")
 
 os.execute("/bin/rm -rf " .. root)
 os.exit(t.summary() and 0 or 1)

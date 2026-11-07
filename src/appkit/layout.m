@@ -440,7 +440,9 @@ static NSSize measure_horizontal_children(NSView *view, LuaLayoutConstraint cons
 			sizes[i] = measure_view(children[i], (LuaLayoutConstraint){
 				.width = offer, .widthMode = LuaMeasureAtMost,
 				.height = constraint.height, .heightMode = constraint.heightMode });
-			if (weight > 0) sizes[i].width = offer;
+			if (weight > 0) sizes[i].width = clamp_dimension(offer,
+				view_optional_dimension(children[i], &kKeys[kMinWidthKey], 0),
+				view_optional_dimension(children[i], &kKeys[kMaxWidthKey], INFINITY));
 			remaining -= sizes[i].width;
 		}
 		result.width += sizes[i].width;

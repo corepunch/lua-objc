@@ -21,12 +21,11 @@ function Preview:render(files, entry)
 	-- loads (ui.xml reconciling a retained template) also need the few
 	-- private hooks they call.
 	for key, value in pairs(self.ns) do
-		if key:sub(1, 1) ~= "_" or FRAMEWORK_HOOKS[key] then ns[key] = value end
+		if (key:sub(1, 1) ~= "_" or FRAMEWORK_HOOKS[key]) and key ~= "Credentials" and key ~= "shareFiles" then ns[key] = value end
 	end
 	if self.localStorage then ns.LocalStorage = self.localStorage end
 	ns.Window = function(config)
 		local content = config.content or config[1]
-		if type(content) == "table" then content = self.ns.VStack(content) end
 		return self.ns.HostingController(content)
 	end
 	-- The framework's bundled components are part of the vocabulary a
@@ -60,7 +59,7 @@ function Preview:render(files, entry)
 		if name == "UIKitNative" or name == "AppKitNative" then return reader end
 		if loaded[name] ~= nil then return loaded[name] end
 		local source, path
-		if name == "ui.xml" or name == "ui.component" or name == "ui.template" or name == "ui.resources" then
+		if name == "ui.xml" or name == "ui.component" or name == "ui.template" or name == "ui.resources" or name == "data.model" then
 			path = "lua/" .. name:gsub("%.", "/") .. ".lua"; source = self.readFramework(path)
 		elseif name == "etlua" then
 			path = "lua/vendor/etlua/etlua.lua"; source = self.readFramework(path)
@@ -81,12 +80,20 @@ function Preview:render(files, entry)
 		ticks = ticks + 1
 		if ticks > 500 then error("Preview exceeded its execution budget") end
 	end, "", 10000)
+	local scope = self.ns.Scope.new()
 	local ok, result = xpcall(function()
-		local controller = requireModule(entry or "demo.playground.init").new()
-		return controller:createWindow()
+		return self.ns.Scope.withScope(scope, function()
+			local controller = requireModule(entry or "demo.playground.init").new()
+			return controller:createWindow()
+		end)
 	end, debug.traceback)
 	debug.sethook(oldHook, mask, count)
-	if not ok then return nil, result end
+	if not ok then scope:dispose(); return nil, result end
+	self:close()
+	self.scope = scope
 	return result
+end
+function Preview:close()
+	if self.scope then self.scope:dispose(); self.scope = nil end
 end
 return Preview

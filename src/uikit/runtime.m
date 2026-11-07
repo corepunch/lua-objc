@@ -2,6 +2,7 @@
 
 static int bridge_tableview_add(lua_State *L);
 static int bridge_tableview_remove(lua_State *L);
+static int bridge_tableview_replace(lua_State *L);
 static int bridge_tableview_clear(lua_State *L);
 static int bridge_add(lua_State *L);
 static int bridge_layout(lua_State *L);

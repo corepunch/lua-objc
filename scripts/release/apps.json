@@ -1,5 +1,19 @@
 [
   {
+    "app": "studio",
+    "product": "LuaStudio",
+    "platform": "ipad",
+    "channels": ["appStore"],
+    "identifier": "org.luaobjc.studio",
+    "displayName": "Lua Studio",
+    "assets": "apps/studio/Assets.xcassets",
+    "profileSecret": "STUDIO_APPSTORE_PROFILE",
+    "certificateSecret": "STUDIO_APPSTORE_CERTIFICATE_P12",
+    "certificatePasswordSecret": "STUDIO_APPSTORE_CERTIFICATE_PASSWORD",
+    "appStoreIdVariable": "STUDIO_APPSTORE_ID",
+    "submodules": ["vendor/libgit2"]
+  },
+  {
     "app": "diskmap",
     "product": "Diskmap",
     "platform": "macos",
@@ -9,6 +23,8 @@
     "plugins": ["StorageScan"],
     "entitlements": "apps/diskmap/AppStore.entitlements",
     "profileSecret": "DISKMAP_APPSTORE_PROFILE",
+    "certificateSecret": "APPSTORE_CERTIFICATE_P12",
+    "certificatePasswordSecret": "APPSTORE_CERTIFICATE_PASSWORD",
     "appStoreIdVariable": "DISKMAP_APPSTORE_ID"
   },
   {
@@ -28,6 +44,8 @@
     "displayName": "Adventure Arena",
     "assets": "ios/AdventureArena/Assets.xcassets",
     "profileSecret": "ADVENTURE_ARENA_APPSTORE_PROFILE",
+    "certificateSecret": "APPSTORE_CERTIFICATE_P12",
+    "certificatePasswordSecret": "APPSTORE_CERTIFICATE_PASSWORD",
     "appStoreIdVariable": "ADVENTURE_ARENA_APPSTORE_ID",
     "submodules": ["apps/adventure-arena/zilscript", "vendor/libgit2"]
   }

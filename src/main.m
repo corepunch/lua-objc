@@ -338,6 +338,7 @@ static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 	NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject \
 	stringByAppendingPathComponent:@"lua-objc"] stringByAppendingPathComponent:@"Documents"]
 #include "shared/lua_documents.m"
+#include "shared/credentials.m"
 #include "shared/performance_signpost.m"
 #include "shared/lua_dealloc_watch.m"
 
@@ -555,8 +556,12 @@ static const luaL_Reg bridge_lib[] = {
 	{"_documentPath", bridge_document_path},
 	{"_documentRead", bridge_document_read},
 	{"_documentWrite", bridge_document_write},
+	{"_documentRemove", bridge_document_remove},
 	{"_documentWriteData", bridge_document_write_data},
 	{"_documentExists", bridge_document_exists},
+	{"_credentialRead", bridge_credential_read},
+	{"_credentialWrite", bridge_credential_write},
+	{"_credentialRemove", bridge_credential_remove},
 	{"_jsonEncode", bridge_json_encode},
 	{"_openPath", bridge_open_path},
 	{"_moveToTrash", bridge_move_to_trash},

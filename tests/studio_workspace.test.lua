@@ -7,12 +7,18 @@ local Root = require("apps.studio.Controller")
 -- The workspace is a retained template drawn from the controller's state.
 -- Each action changes the state and draws again; the panes keep their native
 -- views and only their attributes change.
-local root = Root.new()
-root.model = { files = { ["demo/playground/Controller.lua"] = "return {}", ["demo/playground/Model.lua"] = "return 1" } }
-root.projects = { { id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true } }
+local root = Root.new({ns = ns})
+require("data.model").bind(root.store)
+root.session = require("apps.studio.services.Session").open({load = function() end, save = function() return true end}, {
+	["demo/playground/Controller.lua"] = "return {}", ["demo/playground/Model.lua"] = "return 1",
+	["demo/playground/init.lua"] = "return {}", ["demo/playground/views/pages/Main.etlua"] = '<Label text="Hello" />',
+}, "Test")
+root.model = root.session.workspace
+root.projects = { { id = "StarterApp", title = "Starter App", action = "openProject_StarterApp", icon = "rocket.fill", selected = true } }
 root.mode = "chat"
+root.chat.agent = {busy = false}
 root.actions = root:workspaceActions()
-root.workspace = Template.new(ns.VStack {}, "apps/studio/views/Workspace.etlua", ns)
+root.workspace = Template.new(ns.VStack {}, "apps/studio/views/sections/Workspace.etlua", ns)
 root:render()
 local codePane, chatPane, previewPane = root.refs.codePane, root.refs.chatPane, root.refs.previewPane
 t.expect(codePane.hidden and not root.refs.transcriptScroll.hidden, "the workspace opens on the conversation")
@@ -33,11 +39,11 @@ t.expect(not root.refs.treePane.hidden, "the tree comes back")
 root.actions.toggleChat()
 t.expect(root.refs.chatPane.hidden, "focusing the preview hides the chat")
 t.assertEqual(root.refs.chatPane, chatPane, "the chat keeps its view")
-t.assertEqual(root.refs.previewPane.fixedWidth, nil, "and the stage drops its fixed width")
+t.assertEqual(root.refs.previewPane.maxWidth, nil, "and the stage drops its fixed width")
 t.assertEqual(root.refs.chatVisibility.accessibilityLabel, "Show Chat", "the toggle offers the chat back")
 root.actions.toggleChat()
 t.expect(not root.refs.chatPane.hidden, "the chat comes back")
-t.assertEqual(root.refs.previewPane.fixedWidth, 440, "beside a stage sized to the device")
+t.assertEqual(root.refs.previewPane.maxWidth, 440, "beside a stage sized to the device")
 t.assertEqual(root.refs.previewPane, previewPane, "the stage keeps its view")
 
 root.actions.selectFile(nil, nil, { id = "Model.lua" })

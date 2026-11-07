@@ -1,0 +1,3 @@
+<Window title="My App">
+	<VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+</Window>

@@ -2419,6 +2419,13 @@ Pass a builder so every callback, timer and retained `Template` it creates is
 scoped to the sheet and released by `ns.dismiss`; `presentSheet` returns the
 builder's results (sheet, refs). AppKit requires `parent`; UIKit ignores it and
 reads `detents`. AppKit owns sheet attachment, frame, corners and shadow.
+On UIKit, `presentationStyle = "formSheet"` presents a centered popup using the
+`<Sheet>` width and height as its native preferred content size. The default
+`"pageSheet"` presentation follows the system page sizing and supplied detents.
+Use `ns.confirm` for destructive confirmation: it presents the system alert and
+its native Cancel/destructive actions. A settings sheet can use a NavigationStack
+and a ToolbarItem with `systemItem="done"` or `"cancel"` for UIKit's standard bar
+buttons rather than a custom action row.
 Headless mode constructs content without presentation. Keyboard behavior is
 declarative: `<Button keyboardShortcut="defaultAction">` (Return, drawn as the
 default button) or `"cancelAction"` (Escape), and `defaultFocus="true"` on a

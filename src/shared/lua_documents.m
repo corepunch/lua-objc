@@ -4,13 +4,17 @@
  * Each platform root defines LUA_OBJC_DOCUMENT_ROOT(): the app sandbox's
  * Documents folder on iOS, Application Support on the Mac.
  */
+static BOOL document_relative_name_valid(NSString *name) {
+	if (![name isKindOfClass:NSString.class] || !name.length || [name hasPrefix:@"/"] || [name containsString:@"\\"])
+		return NO;
+	for (NSString *part in [name componentsSeparatedByString:@"/"])
+		if (!part.length || [part isEqualToString:@"."] || [part isEqualToString:@".."]) return NO;
+	return YES;
+}
+
 static NSString *document_path(lua_State *L) {
 	NSString *name = @(luaL_checkstring(L, 1));
-	if (!name.length || [name hasPrefix:@"/"] || [name containsString:@"\\"])
-		luaL_error(L, "document path must be relative");
-	for (NSString *part in [name componentsSeparatedByString:@"/"])
-		if (!part.length || [part isEqualToString:@"."] || [part isEqualToString:@".."])
-			luaL_error(L, "invalid document path");
+	if (!document_relative_name_valid(name)) luaL_error(L, "document path must be a safe relative name");
 	NSString *path = [LUA_OBJC_DOCUMENT_ROOT() stringByAppendingPathComponent:name];
 	[[NSFileManager defaultManager] createDirectoryAtPath:path.stringByDeletingLastPathComponent
 		withIntermediateDirectories:YES attributes:nil error:nil];
@@ -68,4 +72,14 @@ static int bridge_json_encode(lua_State *L) {
 	NSData *data = [NSJSONSerialization dataWithJSONObject:obj options:0 error:nil];
 	lua_pushlstring(L, data.bytes, data.length);
 	return 1;
+}
+
+static int bridge_document_remove(lua_State *L) {
+	NSString *path = document_path(L);
+	NSError *error = nil;
+	BOOL ok = ![NSFileManager.defaultManager fileExistsAtPath:path]
+		|| [NSFileManager.defaultManager removeItemAtPath:path error:&error];
+	lua_pushboolean(L, ok);
+	if (error) lua_pushstring(L, error.localizedDescription.UTF8String); else lua_pushnil(L);
+	return 2;
 }

@@ -1,0 +1,207 @@
+require_relative "studio"
+
+def studio_store_options
+  {
+    app_identifier: StudioRelease::CONFIG.fetch("bundleId"),
+    app_version: StudioRelease::CONFIG.fetch("version"),
+    username: StudioRelease::CONFIG.fetch("appleId"),
+    platform: "ios",
+    metadata_path: StudioRelease::ASSETS.join("metadata").to_s,
+    screenshots_path: StudioRelease::ASSETS.join("screenshots").to_s,
+    automatic_release: false,
+    submit_for_review: false,
+    force: true,
+    run_precheck_before_submit: false
+  }
+end
+
+default_platform(:ios)
+skip_docs
+
+platform :ios do
+  private_lane :studio_auth do
+    app_store_connect_api_key(**StudioRelease.api_key_options)
+  end
+
+  desc "Verify environment authentication with a read-only App Store Connect request"
+  lane :studio_auth_check do
+    studio_auth
+    app = Spaceship::ConnectAPI::App.find(StudioRelease::CONFIG.fetch("bundleId"))
+    UI.user_error!("The API key cannot access Lua Studio") unless app
+    UI.success("App Store Connect environment authentication verified.")
+  end
+
+  desc "Run offline packaging tests and validate Fastlane metadata"
+  lane :studio_check do
+    Dir.chdir(StudioRelease::ROOT) do
+      sh("python3", "-m", "unittest", "discover", "-s", "scripts/release", "-p", "test_*.py")
+      sh("ruby", "fastlane/studio_test.rb")
+      sh("make", "studio-test")
+    end
+  end
+
+  desc "Build with the repository Makefile; profile: signs an App Store IPA"
+  lane :studio_build do |options|
+    UI.message(StudioRelease.build(number: options[:build_number], profile: options[:profile]))
+  end
+
+  desc "Save the listing and review information with Fastlane deliver"
+  lane :studio_metadata do
+    studio_auth
+    deliver(**studio_store_options, skip_binary_upload: true, skip_screenshots: true,
+            app_review_information: StudioRelease.review_information)
+    app = Spaceship::ConnectAPI::App.find(StudioRelease::CONFIG.fetch("bundleId"))
+    review = app.get_edit_app_store_version(platform: "IOS").fetch_app_store_review_detail
+    expected = StudioRelease.review_information.fetch(:notes)
+    UI.user_error!("Apple did not save the current review notes") unless review.notes.to_s.strip == expected.strip
+    evidence_path = StudioRelease::ROOT.join("build/studio-submission/completion.json")
+    evidence = evidence_path.file? ? JSON.parse(evidence_path.read) : {}
+    evidence["reviewAccessConfigured"] = !ENV["STUDIO_REVIEW_OPENROUTER_KEY"].to_s.empty?
+    evidence["githubReviewAccessConfigured"] = !ENV["STUDIO_REVIEW_GITHUB_TOKEN"].to_s.empty?
+    evidence.delete("reviewAccessBlocker") if evidence["reviewAccessConfigured"]
+    evidence["reviewNotesSHA256"] = Digest::SHA256.hexdigest(expected)
+    evidence_path.dirname.mkpath
+    evidence_path.write(JSON.pretty_generate(evidence) + "\n")
+  end
+
+  desc "Upload captured iPad screenshots with Fastlane deliver"
+  lane :studio_screenshots do
+    studio_auth
+    deliver(**studio_store_options, skip_binary_upload: true, skip_metadata: true,
+            skip_screenshots: false, overwrite_screenshots: true, screenshot_processing_timeout: 600)
+    app = Spaceship::ConnectAPI::App.find(StudioRelease::CONFIG.fetch("bundleId"))
+    app.get_edit_app_store_version(platform: "IOS").get_app_store_version_localizations.each do |locale|
+      next unless locale.locale == StudioRelease::CONFIG.fetch("locale")
+      locale.get_app_screenshot_sets.each do |set|
+        next unless set.screenshot_display_type == "APP_#{StudioRelease::CONFIG.fetch('screenshotDeviceType')}"
+        # Apple can finish the first upload after deliver has retried it.
+        StudioRelease.prune_duplicate_screenshots(set.app_screenshots)
+      end
+    end
+  end
+
+  desc "Upload the signed IPA with Fastlane deliver without submitting for review"
+  lane :studio_upload do
+    UI.user_error!("Build a signed IPA first") unless StudioRelease.ipa.file? && File.file?("#{StudioRelease.ipa}.signed")
+    studio_auth
+    upload_to_testflight(ipa: StudioRelease.ipa.to_s,
+                        app_identifier: StudioRelease::CONFIG.fetch("bundleId"),
+                        apple_id: StudioRelease::CONFIG.fetch("appStoreId"),
+                        skip_submission: true, skip_waiting_for_build_processing: false,
+                        distribute_external: false, notify_external_testers: false,
+                        wait_processing_interval: 30, wait_processing_timeout_duration: 1200)
+    app = Spaceship::ConnectAPI::App.find(StudioRelease::CONFIG.fetch("bundleId"))
+    build = Spaceship::ConnectAPI::Build.all(app_id: app.id,
+                                           version: StudioRelease::CONFIG.fetch("version"),
+                                           build_number: FastlaneCore::IpaFileAnalyser.fetch_app_build(StudioRelease.ipa.to_s),
+                                           processing_states: "VALID").first
+    UI.user_error!("Apple has not processed a valid build") unless build
+    app.get_edit_app_store_version(platform: "IOS").select_build(build_id: build.id)
+  end
+
+  desc "Verify the existing free price schedule through Fastlane Spaceship"
+  lane :studio_pricing do
+    studio_auth
+    app = Spaceship::ConnectAPI::App.find(StudioRelease::CONFIG.fetch("bundleId"))
+    client = Spaceship::ConnectAPI.client.tunes_request_client
+    schedule = client.get("v1/apps/#{app.id}/appPriceSchedule").body.fetch("data")
+    prices = client.get("v1/appPriceSchedules/#{schedule.fetch('id')}/manualPrices",
+                        {"include" => "appPricePoint", "limit" => 200}).body
+    points = prices.fetch("included", []).select { |item| item["type"] == "appPricePoints" }
+    free = !points.empty? && points.all? { |item| item.fetch("attributes").fetch("customerPrice").to_f.zero? }
+    path = StudioRelease::ROOT.join("build/studio-submission/pricing.json")
+    path.dirname.mkpath
+    path.write(JSON.pretty_generate({appId: app.id, free: free, schedule: schedule, prices: prices}) + "\n")
+    UI.user_error!("The store price is not Free; inspect #{path}") unless free
+    UI.success("Lua Studio is Free. Pricing verified with Fastlane Spaceship.")
+  end
+
+  desc "Run Fastlane precheck and save build and screenshot readiness"
+  lane :studio_readiness do
+    studio_auth
+    precheck_error = nil
+    begin
+      passed = precheck(app_identifier: StudioRelease::CONFIG.fetch("bundleId"),
+                        include_in_app_purchases: false, default_rule_level: :error)
+    rescue FastlaneCore::Interface::FastlaneError => error
+      passed = false
+      precheck_error = error.message
+    end
+    app = Spaceship::ConnectAPI::App.find(StudioRelease::CONFIG.fetch("bundleId"))
+    version = app.get_edit_app_store_version(platform: "IOS")
+    info = app.fetch_edit_app_info
+    review = version.fetch_app_store_review_detail
+    locales = version.get_app_store_version_localizations
+    metadata_matches = locales.any? do |locale|
+      locale.locale == StudioRelease::CONFIG.fetch("locale") &&
+        %w[description keywords support_url].all? do |field|
+          locale.public_send(field).to_s.strip == StudioRelease::ASSETS.join("metadata", locale.locale, "#{field}.txt").read.strip
+        end
+    end
+    client = Spaceship::ConnectAPI.client.tunes_request_client
+    build = client.get("v1/appStoreVersions/#{version.id}/relationships/build").body.fetch("data")
+    build_attributes = build && client.get("v1/builds/#{build.fetch('id')}").body.fetch("data").fetch("attributes")
+    screenshots = version.get_app_store_version_localizations.flat_map do |locale|
+      locale.get_app_screenshot_sets.flat_map do |set|
+        set.app_screenshots.map do |shot|
+          {locale: locale.locale, displayType: set.screenshot_display_type,
+           file: shot.file_name, state: shot.asset_delivery_state["state"], checksum: shot.source_file_checksum}
+        end
+      end
+    end
+    report = {
+      appId: app.id, version: version.version_string, precheckPassed: passed, precheckError: precheck_error,
+      state: version.app_store_state, releaseType: version.release_type,
+      ageRating: info && info.app_store_age_rating, contentRights: app.content_rights_declaration,
+      metadataMatches: metadata_matches,
+      reviewContactComplete: review && [review.contact_first_name, review.contact_last_name, review.contact_phone, review.contact_email].all? { |value| !value.to_s.empty? },
+      attachedBuild: build && build.fetch("id"), attachedBuildNumber: build_attributes && build_attributes.fetch("version"),
+      expectedBuildNumber: FastlaneCore::IpaFileAnalyser.fetch_app_build(StudioRelease.ipa.to_s),
+      localSignedIPA: StudioRelease.ipa.file?,
+      screenshots: screenshots,
+      advisory: "Apple reviews the educational code-development workflow under guideline 2.5.2. Preparation does not submit or release the app."
+    }
+    evidence_path = StudioRelease::ROOT.join("build/studio-submission/completion.json")
+    evidence = evidence_path.file? ? JSON.parse(evidence_path.read) : {}
+    report[:productBlockers] = StudioRelease.submission_blockers(report, evidence)
+    report[:productBlockers] << "Upload the current listing metadata." unless metadata_matches
+    report[:productBlockers] << "Keep the release set to manual." unless version.release_type == "MANUAL"
+    path = StudioRelease::ROOT.join("build/studio-submission/readiness.json")
+    path.dirname.mkpath
+    path.write(JSON.pretty_generate(report) + "\n")
+    UI.message(JSON.pretty_generate(report))
+    UI.user_error!("Submission is blocked; see #{path}") unless passed && build && report[:productBlockers].empty?
+  end
+
+  desc "Check and prepare the free store draft using native Fastlane actions"
+  lane :studio_prepare do
+    studio_check
+    studio_metadata
+    studio_pricing
+    studio_readiness
+  end
+
+  desc "Submit the verified Studio build to App Review, retaining manual release"
+  lane :studio_submit do
+    studio_readiness
+    app = Spaceship::ConnectAPI::App.find(StudioRelease::CONFIG.fetch("bundleId"))
+    version = app.get_edit_app_store_version(platform: "IOS")
+    version_id = version.id
+    number = FastlaneCore::IpaFileAnalyser.fetch_app_build(StudioRelease.ipa.to_s)
+    deliver(**StudioRelease.submission_options(studio_store_options, number))
+    state = nil
+    12.times do
+      state = Spaceship::ConnectAPI::AppStoreVersion.get(app_store_version_id: version_id).app_store_state
+      break if %w[WAITING_FOR_REVIEW IN_REVIEW].include?(state)
+      sleep(5)
+    end
+    submission = app.get_in_progress_review_submission(platform: "IOS")
+    report = {appId: app.id, versionId: version_id, version: StudioRelease::CONFIG.fetch("version"),
+              build: number, state: state, submissionId: submission&.id, submissionState: submission&.state,
+              submittedAt: submission&.submitted_date, releaseType: "MANUAL"}
+    path = StudioRelease::ROOT.join("build/studio-submission/submission.json")
+    path.write(JSON.pretty_generate(report) + "\n")
+    UI.message(JSON.pretty_generate(report))
+    UI.user_error!("Apple has not confirmed the review queue; see #{path}") unless %w[WAITING_FOR_REVIEW IN_REVIEW].include?(state)
+  end
+end

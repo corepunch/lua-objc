@@ -1,0 +1,1 @@
+https://github.com/corepunch/lua-objc/blob/main/apps/studio/PRIVACY.md

@@ -1,0 +1,13 @@
+<VStack padding="@sheetInset" spacing="@sheetSpacing" maxWidth="infinity" maxHeight="infinity" alignment="leading">
+	<%- partial("../layouts/SheetResources.etlua") %>
+	<Label text="Export Project" size="@sheetTitle" weight="bold" />
+	<Label text="<%= projectTitle %>" weight="semibold" />
+	<Label text="Save or share a ZIP of your Lua source, etlua views, project metadata, and app icon. Local app data, Git history, and credentials stay on this iPad." lines="0" maxWidth="infinity" />
+	<Label text="This exports project source. A standalone signed App Store app still needs a Mac build and signing step. Your interactive preview runs directly on this iPad without that build." lines="0" color="secondary" maxWidth="infinity" />
+	<Spacer />
+	<HStack alignment="center">
+		<Button title="Cancel" action="closeSheet" />
+		<Spacer />
+		<Button title="Export ZIP…" action="exportProject" style="borderedProminent" />
+	</HStack>
+</VStack>

@@ -95,6 +95,9 @@ t.expect(not pcall(ns.LinearGradient, { colors = { "systemIndigo", "systemPink" 
 	"an unknown unit point is rejected")
 t.expect(not pcall(ns.LinearGradient, { colors = { "systemIndigo", "systemPink" }, endPoint = "sideways" }),
 	"an unknown end point is rejected")
+tinted.size = ns.Size(320,400); tinted:layout(320)
+tinted.size = ns.Size(900,400); tinted:layout(900)
+t.assertEqual(g.bubble.size.height,g.text.size.height,"a gradient does not retain its previous size after resizing")
 local fade = ns.LinearGradient({ bottomAlpha = 0.9 })
 t.expect(fade.className:find("Gradient") ~= nil, "without colors the gradient stays a black fade")
 

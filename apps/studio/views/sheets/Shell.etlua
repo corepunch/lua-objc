@@ -1,0 +1,4 @@
+<Sheet width="<%= widthResource or '@sheetWidth' %>" height="<%= heightResource or '@sheetHeight' %>">
+	<%- partial("../layouts/SheetResources.etlua") %>
+	<VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+</Sheet>

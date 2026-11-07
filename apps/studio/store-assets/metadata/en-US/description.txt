@@ -1,0 +1,13 @@
+Build native iPhone app interfaces right on your iPad. Lua Studio puts an interactive UIKit preview beside an editable Lua and etlua project. Ordinary source changes run immediately without compilation or a Mac packager.
+
+Start from a blank MVC app or the bundled Habit Tracker. Create and switch projects, edit source with syntax highlighting, run the preview, undo source changes, and record snapshots with local Git commits.
+
+Connect your GitHub account with a personal access token. Create a private repository or link an existing one, publish saved source and commit history through libgit2 on your iPad, and open the project on GitHub. Edit your commit author name and email before publishing. Your GitHub token stays in Keychain and is excluded from source, Git and exports.
+
+Use the optional coding assistant to describe changes. It can inspect source, save validated edits, and reload the preview. Review its changed-file cards, stop a request, attach text context, or dictate an editable message. The assistant requires your own OpenRouter API key; provider charges may apply. Messages and requested source are shared with OpenRouter and the selected model provider when you send a request.
+
+Projects keep data logic in models, presentation in etlua templates, and coordination in controllers. UIKit supplies the native controls. Choose preview appearance and fit or 75% zoom, or focus the preview while trying your app.
+
+Share a source ZIP through the system share sheet. Export includes the project manifest and app icon, and leaves out runtime data, Git history, Studio settings, and API keys. Creating a signed standalone iPhone app still requires a Mac and Apple signing tools. Lua Studio does not provide cloud builds or App Store deployment from iPad.
+
+Lua Studio is free, with no advertising, in-app purchases, or subscriptions. Requires iPadOS 26.5 or later.

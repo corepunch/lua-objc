@@ -143,6 +143,7 @@ static void apply_scroll_container_widths(UIView *content, CGFloat viewportWidth
 }
 
 static CGSize measure_size(UIView *view, CGSize proposal);
+static CGFloat clamp_fill(UIView *view, CGFloat offered, BOOL horizontal);
 
 /* Use native trailing content width, with the same decision in measurement
  * and placement, so an existing header adapts to each width proposal. */
@@ -195,7 +196,7 @@ static CGSize measure_horizontal_children(UIView *view, CGSize proposal, CGSize 
 			CGFloat offer = MAX(0, round((weight > 0 ? remaining * weight / totalWeight : remaining - reserved) * scale) / scale);
 			sizes[i] = measure_size(children[i], CGSizeMake(offer, proposal.height));
 			/* Flex is a proposal; explicit minimum dimensions remain layout constraints. */
-			if (is_flexible(children[i])) sizes[i].width = MAX(offer, children[i].minWidth);
+			if (is_flexible(children[i])) sizes[i].width = clamp_fill(children[i], offer, YES);
 			remaining -= sizes[i].width;
 		}
 		result.width += sizes[i].width;
@@ -319,6 +320,11 @@ static CGSize measure_size(UIView *view, CGSize proposal) {
 	} else {
 		NSValue *imageSize = objc_getAssociatedObject(view, &kImageLayoutSizeKey);
 		size = imageSize ? imageSize.CGSizeValue : [view sizeThatFits:proposal];
+		if ([view isKindOfClass:UILabel.class] && !fixed_on_axis(view, YES)) {
+			// UILabel's single-line sizeThatFits can exceed the proposal. Give
+			// it the proposed frame so its native truncation can take effect.
+			size.width = MIN(size.width, proposal.width);
+		}
 		if (![view isKindOfClass:UILabel.class]) {
 			CGSize intrinsic = view.intrinsicContentSize;
 			if (intrinsic.width >= 0) size.width = intrinsic.width;

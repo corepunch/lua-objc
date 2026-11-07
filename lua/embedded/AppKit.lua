@@ -1272,18 +1272,19 @@ function AppKit.TextEditor(props)
 	return applyLayout(view, props)
 end
 
---- Displays source in a read-only native text view.
+--- Displays source in a native text view with optional editing.
 --- @prop language string optional. Syntax language name.
 --- @prop size number optional. Monospaced font size.
 --- @prop text string required. Source text.
 --- @platform AppKit NSTextView with SyntaxTextStorage.
 function AppKit.CodeView(props)
-	props = props or {}
-	return AppKit.TextEditor({ text = props.text or "", language = props.language or "lua",
-		editable = false, selectable = true, drawsBackground = props.drawsBackground,
-		wrapMode = props.wrapMode, size = props.size, flexGrow = props.flexGrow,
-		flexShrink = props.flexShrink, flexBasis = props.flexBasis, maxWidth = props.maxWidth,
-		maxHeight = props.maxHeight })
+	local editor = {}
+	for key, value in pairs(props or {}) do editor[key] = value end
+	editor.editable = editor.editable == true
+	editor.selectable = true
+	editor.text = editor.text or ""
+	editor.language = editor.language or "lua"
+	return AppKit.TextEditor(editor)
 end
 
 --- Displays prominent window or section title text.
@@ -2754,5 +2755,13 @@ end
 function AppKit.diskSpace(path)
 	return bridge._diskSpace(path)
 end
+
+
+--- App-scoped secrets stored by Apple's Keychain, outside project documents.
+AppKit.Credentials = {
+	get = bridge._credentialRead,
+	set = bridge._credentialWrite,
+	remove = bridge._credentialRemove,
+}
 
 return AppKit

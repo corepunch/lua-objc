@@ -1,22 +1,25 @@
 _G.__headless = true
 local t = require("TestKit")
 local xml = require("ui.xml")
-local Preview = require("apps.studio.models.Preview")
-local Chat = require("apps.studio.models.Chat")
-local Rail = require("apps.studio.models.Rail")
-local Theme = require("apps.studio.models.Theme")
+local Preview = require("apps.studio.helpers.Preview")
+local Chat = require("apps.studio.helpers.Chat")
+local Rail = require("apps.studio.helpers.Rail")
+local Theme = require("apps.studio.helpers.Theme")
 
 local projects = {
 	{ id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true },
 	{ id = "HabitTracker", title = "Habit Tracker", icon = "checklist" },
 }
-local window = xml.describeFile("apps/studio/views/Window.etlua", {canvas = Theme.canvas}).source
-local source = xml.describeFile("apps/studio/views/Workspace.etlua", {
+local window = xml.describeFile("apps/studio/views/layouts/Window.etlua", {canvas = Theme.canvas}).source
+local source = xml.describeFile("apps/studio/views/sections/Workspace.etlua", {
 	rail = Rail.presentation(),
 	preview = Preview.presentation(projects, {
 		{ title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", imagePath = "/Documents/StarterApp/ProjectIcons/rocket-sketch.png", selected = false, action = "selectProjectIcon_rocket-sketch" },
 	}),
-	chat = Chat.presentation(),
+	chat = Chat.presentation({ messages = {
+		{ role = "user", text = "Build an app" },
+		{ role = "agent", text = "Saved", changes = {{path = "views/pages/Today.etlua", added = 3, removed = 1, lines = {"+ new"}}} },
+	} }),
 }).source
 
 t.expect(not source:find("nil", 1, true), "partials render instead of inserting nil")
@@ -63,12 +66,12 @@ t.assertEqual(Rail.presentation("code").modes[2].selected, true, "the rail can o
 t.assertEqual(Rail.presentation("code").modes[1].selected, false, "only one mode is selected")
 
 local stage = assert(source:match('(<VStack id="previewPane".-)<VStack id="chatPane"'))
-t.expect(stage:find('id="previewPane" padding="16" spacing="12" width="440"', 1, true) ~= nil,
+t.expect(stage:find('id="previewPane" padding="16" spacing="12" maxWidth="440"', 1, true) ~= nil,
 	"the stage is only as wide as the device needs")
 t.expect(not stage:match('id="previewPane"[^>]-background='), "the device stands on the canvas, not a pane fill")
 t.expect(not stage:match('<Preview[^>]-tint='), "the previewed app keeps its own accent")
 t.expect(stage:find('flexGrow="1"', 1, true) ~= nil, "a focused stage can grow once its width is released")
-t.expect(not stage:find('title="Share"', 1, true) and not stage:find('title="Deploy"', 1, true),
+t.expect(not stage:find('accessibilityLabel="Share"', 1, true) and not stage:find('accessibilityLabel="Export"', 1, true),
 	"project actions leave the narrow stage bar")
 t.expect(stage:find('<Preview id="preview" background="clear"', 1, true) ~= nil,
 	"the device sits directly on the stage background")
@@ -78,7 +81,7 @@ local devicePreview = stage:find('<Preview', 1, true)
 local deviceBar = stage:find('id="deviceBar"', 1, true)
 t.expect(barPreview < devicePreview and devicePreview < deviceBar,
 	"glass bars sit above and below the device, never over it")
-t.expect(stageBar:find('<Menu id="projectMenu" title="Starter App"', 1, true) ~= nil,
+t.expect(stageBar:find('<Menu id="projectMenu"[^>]-title="Starter App"') ~= nil,
 	"the project menu names the selected project")
 t.expect(stageBar:find('title="Habit Tracker"', 1, true) ~= nil,
 	"the project menu lists every project")
@@ -89,11 +92,11 @@ t.expect(stageBar:find('action="reloadPreview" style="glassProminent"', 1, true)
 	"Run is the prominent stage action")
 t.expect(stageBar:find('action="toggleChat"', 1, true) and stageBar:find('accessibilityLabel="Focus Preview"', 1, true),
 	"icon-only chat toggle keeps an accessible name")
-t.expect(stageBar:find('<SystemImage name="checkmark.circle.fill"', 1, true) ~= nil,
+t.expect(stage:find('<SystemImage name="checkmark.circle.fill"', 1, true) ~= nil,
 	"the mutable preview status keeps its symbol as a separate view")
-local statusAt = assert(stageBar:find('<Label id="previewStatus"', 1, true))
-local statusEnd = assert(stageBar:find('/>', statusAt, true))
-t.expect(stageBar:sub(statusAt, statusEnd):find('systemImage=', 1, true) == nil,
+local statusAt = assert(stage:find('<Label id="previewStatus"', 1, true))
+local statusEnd = assert(stage:find('/>', statusAt, true))
+t.expect(stage:sub(statusAt, statusEnd):find('systemImage=', 1, true) == nil,
 	"the status ref points to a text label instead of a composite layout view")
 
 local chat = assert(source:match('(<VStack id="chatPane".-)</HStack>%s*$'))
@@ -102,7 +105,7 @@ t.expect(chat:find('id="chatPane" hidden="false" tint="systemIndigo" paddingVert
 t.expect(chat:find('id="chatCard"[^>]-background="background" cornerRadius="28" clipsToBounds="true"') ~= nil,
 	"the agent lives in a rounded card that clips its panes")
 t.expect(chat:find('maxWidth="720"', 1, true) ~= nil, "the conversation keeps a readable measure")
-t.expect(chat:find('title="Share"', 1, true) and chat:find('title="Deploy"', 1, true),
+t.expect(chat:find('accessibilityLabel="Share"', 1, true) and chat:find('accessibilityLabel="Export"', 1, true),
 	"Share and Deploy live in the chat header")
 t.expect(not chat:find('<Picker', 1, true), "the rail switches modes; the header has no mode picker")
 t.expect(chat:find('<ScrollView id="transcriptScroll" hidden="false" flexGrow="1"', 1, true) ~= nil,
@@ -118,17 +121,17 @@ t.expect(chat:find('<ZStack width="36" height="36">%s*<LinearGradient colors="[%
 	"the agent wears its gradient avatar in the header")
 t.expect(chat:find('<ZStack width="26" height="26">%s*<LinearGradient colors="[%w,]+" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="13" />') ~= nil,
 	"the agent wears its gradient avatar beside its turn")
-t.expect(chat:find('7 files changed', 1, true) and chat:find('+291', 1, true),
+t.expect(chat:find('1 file changed', 1, true) and chat:find('+3 −1', 1, true),
 	"the change card totals the agent's edits")
-t.expect(chat:find('text="Today.etlua"', 1, true) and chat:find('text="views"', 1, true),
+t.expect(chat:find('text="Today.etlua"', 1, true) and chat:find('text="views/pages"', 1, true),
 	"change rows show the file name with its folder")
 t.expect(chat:find('Describe a change…', 1, true) ~= nil, "the composer invites a change")
-t.expect(chat:find('accessibilityLabel="Send" style="glassProminent"', 1, true) ~= nil,
+t.expect(chat:find('accessibilityLabel="Send" action="sendMessage" style="glassProminent"', 1, true) ~= nil,
 	"send is the composer's prominent action")
 local composerAt = chat:find('id="composer"', 1, true)
 t.expect(composerAt > chat:find('</ScrollView>', 1, true), "the composer stays below the transcript")
 
-local empty = xml.describeFile("apps/studio/views/Workspace.etlua", {
+local empty = xml.describeFile("apps/studio/views/sections/Workspace.etlua", {
 	rail = Rail.presentation(),
 	preview = Preview.presentation({}),
 	chat = Chat.presentation(),
@@ -136,14 +139,14 @@ local empty = xml.describeFile("apps/studio/views/Workspace.etlua", {
 t.expect(empty:find('title="No Project"', 1, true) ~= nil, "an empty workspace still renders a project menu")
 -- The workspace is drawn from its state: the code mode, a hidden chat and a
 -- hidden project tree are attributes of the description, not later edits.
-local Code = require("apps.studio.models.Code")
+local Code = require("apps.studio.helpers.Code")
 local function workspaceWith(state)
 	local code = Code.presentation({ ["demo/playground/Controller.lua"] = "return {}" }, "Controller.lua")
 	local chat = Chat.presentation(nil, code)
 	chat.mode, chat.hidden, chat.treeHidden = state.mode, state.chatHidden, state.treeHidden
 	local preview = Preview.presentation(projects)
 	preview.chatHidden = state.chatHidden
-	return xml.describeFile("apps/studio/views/Workspace.etlua", {
+	return xml.describeFile("apps/studio/views/sections/Workspace.etlua", {
 		rail = Rail.presentation(state.mode), preview = preview, chat = chat,
 		code = code, codeFiles = code.files, syntaxRules = Code.rules,
 	}).source
@@ -156,6 +159,6 @@ t.expect(coding:find('id="treePane" hidden="true"', 1, true) and coding:find('id
 	and coding:find('accessibilityLabel="Show project tree"', 1, true), "a hidden tree hides its divider and offers to show it")
 local focused = workspaceWith({ mode = "chat", chatHidden = true })
 t.expect(focused:find('id="chatPane" hidden="true"', 1, true), "focusing the preview hides the chat")
-t.expect(not focused:match('id="previewPane"[^>]-width="440"') and focused:find('accessibilityLabel="Show Chat"', 1, true),
+t.expect(not focused:match('id="previewPane"[^>]-maxWidth="440"') and focused:find('accessibilityLabel="Show Chat"', 1, true),
 	"and the stage drops its fixed width")
 os.exit(t.summary() and 0 or 1)

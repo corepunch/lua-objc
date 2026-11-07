@@ -1,7 +1,7 @@
 local Workspace = {}
 
 local Versions = require("apps.studio.services.Versions")
-local Projects = require("apps.studio.models.Projects")
+local Projects = require("apps.studio.services.Projects")
 local PREFIX = "demo/playground/"
 local IGNORE = "/data/\n/settings.json\n.DS_Store\n"
 local ICONS = "apps/studio/ProjectIcons/"
@@ -76,37 +76,44 @@ local function initialize(ns, readBundled, git, project, definition)
 	end
 
 	local function save(value)
-		local names = {}
-		local present = {}
+		local names, present, writes = {}, {}, {}
 		for path, content in pairs(value.files) do
 			local relative = path:sub(1, #PREFIX) == PREFIX and path:sub(#PREFIX + 1) or nil
-			if not validRelative(relative) then return nil, "Invalid project file path: " .. tostring(path) end
-			local ok, err = ns._documentWrite(project .. "/" .. relative, content)
-			if not ok then return nil, err or ("Could not save " .. relative) end
+			if not validRelative(relative) or type(content) ~= "string" then return nil, "Invalid project source: " .. tostring(path) end
 			table.insert(names, relative)
 			present[relative] = true
-		end
-		-- Only remove files owned by the previous manifest. Other project assets
-		-- and Git metadata share this directory and must survive source edits.
-		for path in pairs(listed) do
-			if not present[path] and ns._documentRead(project .. "/" .. path) then
-				local ok, err = os.remove(ns._documentPath(project .. "/" .. path))
-				if not ok then return nil, err or ("Could not remove " .. path) end
-			end
+			writes[project .. "/" .. relative] = content
 		end
 		table.sort(names)
-		local nextMetadata = {
-			name = metadata.name,
-			bundleId = metadata.bundleId,
-			appIcon = metadata.appIcon,
-			projectIcon = metadata.projectIcon,
-			files = names,
-		}
-		local ok, err = ns._documentWrite(project .. "/project.lua", manifestSource(nextMetadata))
-		if not ok then return nil, err or "Could not save project file list" end
-		local settings = ns._jsonEncode({ model = value.model })
-		ok, err = ns._documentWrite(project .. "/settings.json", settings)
-		if not ok then return nil, err or "Could not save project settings" end
+		local nextMetadata = { name = metadata.name, bundleId = metadata.bundleId,
+			appIcon = metadata.appIcon, projectIcon = metadata.projectIcon, files = names }
+		writes[project .. "/project.lua"] = manifestSource(nextMetadata)
+		writes[project .. "/settings.json"] = ns._jsonEncode({ modelId = value.modelId })
+		for path in pairs(listed) do if not present[path] then writes[project .. "/" .. path] = false end end
+		local paths, before, changed = {}, {}, {}
+		for path in pairs(writes) do table.insert(paths, path) end
+		table.sort(paths)
+		for _, path in ipairs(paths) do before[path] = ns._documentRead(path) or false end
+		local function put(path, content)
+			if content == false then return ns._documentRemove(path) end
+			return ns._documentWrite(path, content)
+		end
+		for _, path in ipairs(paths) do
+			if writes[path] ~= before[path] then
+				local ok, err = put(path, writes[path])
+				if not ok then
+					-- Individual writes are atomic; restore earlier files if a later
+					-- write fails so a failed save does not leave a mixed project.
+					local rollbackError
+					for i = #changed, 1, -1 do
+						local restored, detail = put(changed[i], before[changed[i]])
+						if not restored then rollbackError = detail end
+					end
+					return nil, tostring(err or "Could not save project") .. (rollbackError and ("; restore failed: " .. rollbackError) or "")
+				end
+				table.insert(changed, path)
+			end
+		end
 		listed, metadata = {}, nextMetadata
 		for _, path in ipairs(names) do listed[path] = true end
 		return true
@@ -122,7 +129,7 @@ local function initialize(ns, readBundled, git, project, definition)
 	-- Materialize the bundled starter in Documents on first launch so the
 	-- project tree, code viewer and Files app all inspect the same source.
 	if not ns._documentRead(project .. "/project.lua") then
-		local ok, err = save({ files = seed, model = settings and settings.model or "openrouter/free" })
+		local ok, err = save({ files = seed, modelId = settings and settings.modelId or "openrouter/free" })
 		assert(ok, err)
 	end
 	definition = nil
@@ -160,11 +167,11 @@ local function initialize(ns, readBundled, git, project, definition)
 		localStorage = localStorage,
 		storage = {
 			load = function()
-				return { files = loadFiles(), model = settings and settings.model }
+				return { files = loadFiles(), modelId = settings and settings.modelId }
 			end,
 			save = function(value)
 				local ok, err = save(value)
-				if ok then settings = { model = value.model } end
+				if ok then settings = { modelId = value.modelId } end
 				return ok, err
 			end,
 		},

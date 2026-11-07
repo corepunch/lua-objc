@@ -18,6 +18,9 @@ static void uikit_scroll_mark_keyboard(UIView *view);
 static void uikit_reload_keyboard_toolbar(UIViewController *controller);
 
 @implementation LuaHostingController
+- (BOOL)prefersInterfaceOrientationLocked {
+	return self.orientation.length > 0;
+}
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
 	if ([self.orientation isEqualToString:@"landscape"]) return UIInterfaceOrientationMaskLandscape;
 	if ([self.orientation isEqualToString:@"portrait"]) return UIInterfaceOrientationMaskPortrait;
@@ -236,6 +239,7 @@ static int bridge_install_scene(lua_State *L) {
 	/* A locked orientation turns the screen now, not at the next rotation. */
 	if (orientation) {
 		[root setNeedsUpdateOfSupportedInterfaceOrientations];
+		[root setNeedsUpdateOfPrefersInterfaceOrientationLocked];
 		UIInterfaceOrientationMask mask = root.supportedInterfaceOrientations;
 		[window.windowScene requestGeometryUpdateWithPreferences:
 			[[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask] errorHandler:nil];

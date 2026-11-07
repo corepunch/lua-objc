@@ -1,0 +1,15 @@
+<%
+  -- Rail, stage and agent card, drawn from the workspace state: the mode the
+  -- rail selected, whether the chat or the project tree is hidden, the file
+  -- open in the code pane and the status line of the stage. An action changes the
+  -- state and the workspace is drawn again.
+%>
+<% if empty then %>
+<%- partial("EmptyWorkspace.etlua", {status = status}) %>
+<% else %>
+<HStack id="columns" spacing="0" maxWidth="infinity" maxHeight="infinity" alignment="top">
+	<%- partial("../components/Rail.etlua", rail) %>
+	<%- partial("PreviewPane.etlua", preview) %>
+	<%- partial("ChatPane.etlua", chat) %>
+</HStack>
+<% end %>

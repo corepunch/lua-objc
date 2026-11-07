@@ -9,9 +9,31 @@ int luaopen_Git(lua_State *L);
 int luaopen_Speech(lua_State *L);
 
 static UIWindow *gHostWindow;
+static const NSTimeInterval kInternalCaptureSettleDelay = 1.0;
+static const NSTimeInterval kInternalCaptureLayoutDelay = 0.1;
 
 UIWindow *LRTApplicationWindow(void) {
 	return gHostWindow;
+}
+
+@interface LRTApplicationController (InternalCapture)
+- (void)captureInternalScreenshotIfRequested;
+@end
+static int bridge_capture_internal(lua_State *L) {
+	[[LRTApplicationController shared] captureInternalScreenshotIfRequested];
+	return 0;
+}
+
+// Native geometry captured with the screenshot, for unattended layout checks.
+static NSDictionary *LRTLayoutRecord(UIView *view, UIWindow *window) {
+	NSMutableArray *children = [NSMutableArray array];
+	if (!view.hidden) for (UIView *child in view.subviews) [children addObject:LRTLayoutRecord(child, window)];
+	NSString *text = [view isKindOfClass:UILabel.class] ? ((UILabel *)view).text
+		: [view isKindOfClass:UITextView.class] ? ((UITextView *)view).text : @"";
+	CGRect rect = [view convertRect:view.bounds toView:window];
+	return @{@"class": NSStringFromClass(view.class), @"identifier": view.accessibilityIdentifier ?: @"", @"frame": NSStringFromCGRect(view.frame),
+		@"window": NSStringFromCGRect(rect), @"hidden": @(view.hidden),
+		@"text": text ?: @"", @"children": children};
 }
 
 @implementation LRTApplicationController {
@@ -192,6 +214,8 @@ static int bridge_read_file(lua_State *L) {
 	luaL_requiref(_L, "UIKitNative", luaopen_UIKitNative, 0);
 	lua_pushcfunction(_L, bridge_read_file);
 	lua_setfield(_L, -2, "_readFile");
+	lua_pushcfunction(_L, bridge_capture_internal);
+	lua_setfield(_L, -2, "_captureInternal");
 	lua_pop(_L, 1);
 	// iOS cannot load plugin dylibs from package.cpath, so the host links the
 	// Git and Speech modules (src/plugins) and offers them to require().
@@ -275,22 +299,66 @@ static int bridge_read_file(lua_State *L) {
 	lua_pushvalue(_L, -1);
 	_windowRef = luaL_ref(_L, LUA_REGISTRYINDEX);
 	[_window makeKeyAndVisible];
-	[self captureInternalScreenshotIfRequested];
+
+	if (![self env:@"LUA_OBJC_INTERNAL_CAPTURE_MANUAL" fallback:@""].length)
+		[self captureInternalScreenshotIfRequested];
 	return YES;
 }
 
 - (void)captureInternalScreenshotIfRequested {
 	NSString *requested = [self env:@"LUA_OBJC_INTERNAL_SCREENSHOT" fallback:@""];
-	if (requested.length == 0) return;
+	NSString *layout = [self env:@"LUA_OBJC_INTERNAL_LAYOUT" fallback:@""];
+	if (requested.length == 0 && layout.length == 0) return;
 
 	NSString *path = requested;
 	if (![path hasPrefix:@"/"]) {
 		path = [NSTemporaryDirectory() stringByAppendingPathComponent:path];
 	}
 	UIWindow *window = _window;
-	dispatch_async(dispatch_get_main_queue(), ^{
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kInternalCaptureSettleDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+		// Snapshot tests propose a window size directly. iPadOS windowed
+		// scenes can reject rotation requests; layout does not require one.
+		CGRect originalBounds = window.bounds;
+		CGAffineTransform originalTransform = window.transform;
+		NSString *size = [self env:@"LUA_OBJC_INTERNAL_CAPTURE_SIZE" fallback:@""];
+		NSArray<NSString *> *dimensions = [size componentsSeparatedByString:@"x"];
+		if (dimensions.count == 2 && dimensions[0].doubleValue > 0 && dimensions[1].doubleValue > 0) {
+			window.bounds = CGRectMake(0, 0, dimensions[0].doubleValue, dimensions[1].doubleValue);
+			window.rootViewController.view.frame = window.bounds;
+			// Keep every pixel on the physical simulator display. UIKit's
+			// hierarchy capture otherwise clips a wide logical window at the
+			// physical portrait edge. Layout still uses the requested bounds.
+			CGFloat scale = MIN(originalBounds.size.width / window.bounds.size.width,
+				originalBounds.size.height / window.bounds.size.height);
+			window.transform = CGAffineTransformMakeScale(scale, scale);
+			[window setNeedsLayout];
+			[window.rootViewController.view setNeedsLayout];
+		}
 		[window layoutIfNeeded];
-		NSData *png = LRTCaptureViewPNG(window);
+		[window.rootViewController.view layoutIfNeeded];
+		// Frame changes made by viewDidLayoutSubviews schedule leaf layout
+		// and text display. Capture on a later turn, after UIKit flushes them.
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kInternalCaptureLayoutDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+		[window layoutIfNeeded];
+		if (layout.length) {
+			NSData *record = [NSJSONSerialization dataWithJSONObject:LRTLayoutRecord(window, window)
+				options:NSJSONWritingPrettyPrinted error:nil];
+			[record writeToFile:layout options:NSDataWritingAtomic error:nil];
+		}
+		if (!requested.length) {
+			window.transform = originalTransform;
+			window.bounds = originalBounds;
+			window.rootViewController.view.frame = originalBounds;
+			[window setNeedsLayout];
+			return;
+		}
+		UIView *captureView = size.length && dimensions[0].doubleValue > originalBounds.size.width
+			? window.rootViewController.view : window;
+		NSData *png = LRTCaptureViewPNG(captureView);
+		window.transform = originalTransform;
+		window.bounds = originalBounds;
+		window.rootViewController.view.frame = originalBounds;
+		[window setNeedsLayout];
 		NSError *error = nil;
 		NSString *directory = [path stringByDeletingLastPathComponent];
 		[[NSFileManager defaultManager] createDirectoryAtPath:directory
@@ -303,6 +371,7 @@ static int bridge_read_file(lua_State *L) {
 			NSLog(@"[lua-objc] internal screenshot failed %@: %@",
 				path, error.localizedDescription ?: @"empty view");
 		}
+		});
 	});
 }
 

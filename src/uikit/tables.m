@@ -134,3 +134,18 @@ static int bridge_tableview_clear(lua_State *L) {
 		uikit_invalidate_layout((UIView *)obj);
 	return 0;
 }
+
+static int bridge_tableview_replace(lua_State *L) {
+	id obj = check_objc(L, 1);
+	LuaTableViewSource *source = objc_getAssociatedObject(obj, &kTableSourceKey);
+	if (!source) return luaL_error(L, "not a table view");
+	luaL_checktype(L, 2, LUA_TTABLE);
+	NSArray *rows = lua_to_objc_value(L, 2);
+	// An empty Lua table has no array shape for the generic value converter.
+	if (luaL_len(L, 2) == 0) rows = @[];
+	if (![rows isKindOfClass:NSArray.class]) return luaL_error(L, "expected row array");
+	source.rows = [rows mutableCopy];
+	[(UITableView *)obj reloadData];
+	if (!((UITableView *)obj).scrollEnabled) uikit_invalidate_layout(obj);
+	return 0;
+}

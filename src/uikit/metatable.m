@@ -79,6 +79,7 @@ static int nsview_index(lua_State *L) {
 			lua_pushcfunction(L, bridge_tableview_remove);
 			return 1;
 		}
+		if (strcmp(key, "replaceRows") == 0) { lua_pushcfunction(L, bridge_tableview_replace); return 1; }
 		if (strcmp(key, "clearRows") == 0) {
 			lua_pushcfunction(L, bridge_tableview_clear);
 			return 1;

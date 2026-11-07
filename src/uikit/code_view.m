@@ -30,6 +30,10 @@ static UIColor *code_view_color(NSString *name) {
 	self.textColor = UIColor.labelColor;
 	self.directionalLockEnabled = YES;
 	self.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+	self.autocorrectionType = UITextAutocorrectionTypeNo;
+	self.autocapitalizationType = UITextAutocapitalizationTypeNone;
+	self.smartQuotesType = UITextSmartQuotesTypeNo;
+	self.smartDashesType = UITextSmartDashesTypeNo;
 	return self;
 }
 

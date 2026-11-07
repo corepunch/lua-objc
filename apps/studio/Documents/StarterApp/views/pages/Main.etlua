@@ -1,0 +1,11 @@
+	<VStack maxWidth="infinity" maxHeight="infinity" alignment="center">
+		<Resources>
+			<Number id="pageSpacing" value="16" />
+			<Number id="pageInset" value="24" />
+		</Resources>
+		<VStack spacing="@pageSpacing" padding="@pageInset" alignment="center">
+			<Label text="My App" textStyle="largeTitle" weight="bold" />
+			<Label text="Count: <%= count %>" textStyle="title" />
+			<Button title="Add One" action="increment" style="borderedProminent" />
+		</VStack>
+	</VStack>

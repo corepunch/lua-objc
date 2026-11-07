@@ -1,0 +1,10 @@
+<Sheet>
+	<NavigationStack>
+		<Page title="Settings" titleDisplayMode="inline">
+			<Toolbar>
+				<ToolbarItem id="settingsDone" label="Done" systemItem="done" placement="confirmationAction" action="closeSheet" />
+			</Toolbar>
+			<VStack id="content" maxWidth="infinity" maxHeight="infinity" background="secondaryBackground" />
+		</Page>
+	</NavigationStack>
+</Sheet>

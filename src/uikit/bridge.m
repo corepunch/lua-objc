@@ -5,11 +5,15 @@
 #import <SceneKit/SceneKit.h>
 #import <GameController/GameController.h>
 #import <CoreText/CoreText.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
 
+static char kDocumentPickerDelegateKey;
+static const NSUInteger kTextImportMaxBytes = 128 * 1024;
+static const NSUInteger kTextImportMaxFiles = 4;
 static char kAxisKey;
 static char kWindowCloseKey;
 static char kTextFieldDelegateKey;
@@ -135,6 +139,7 @@ static const CGFloat kLazyCollectionHeight = 200.0;
 static const CGFloat kLazyRowHeight = 44.0;
 static const CGFloat kLazyItemSpacing = 8.0;
 static const CGFloat kCodeFontSize = 13.0;
+static const CGFloat kActivityPopoverAnchorSide = 1.0;
 static const CGFloat kLazyMinimumItemWidth = 1.0;
 static const CGFloat kLazyLayoutGuardPixels = 1.0;
 static const NSInteger kLazyStackColumns = 1;
@@ -161,6 +166,7 @@ static int bridge_UIKitNavigation_pop(lua_State *L);
 #define LUA_OBJC_DOCUMENT_ROOT() \
 	NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject
 #include "../shared/lua_documents.m"
+#include "../shared/credentials.m"
 #include "../shared/performance_signpost.m"
 #include "../shared/lua_dealloc_watch.m"
 
@@ -208,8 +214,12 @@ static const luaL_Reg bridge_lib[] = {
 	{"_documentPath", bridge_document_path},
 	{"_documentRead", bridge_document_read},
 	{"_documentWrite", bridge_document_write},
+	{"_documentRemove", bridge_document_remove},
 	{"_documentWriteData", bridge_document_write_data},
 	{"_documentExists", bridge_document_exists},
+	{"_credentialRead", bridge_credential_read},
+	{"_credentialWrite", bridge_credential_write},
+	{"_credentialRemove", bridge_credential_remove},
 	{"_jsonEncode", bridge_json_encode},
 	{"_httpRequest", bridge_http_request},
 	{"_cancelRequest", bridge_cancel_request},
@@ -316,6 +326,8 @@ static const luaL_Reg bridge_lib[] = {
 	LUA_OBJC_LAZY_COLLECTION_FUNCTIONS
 	{"_navigationLink", bridge_UIKitNavigation_link},
 	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
+	{"_shareFiles", bridge_UIKitPresentation_shareFiles},
+	{"_importTextFiles", bridge_UIKitPresentation_importTextFiles},
 	{"_dismiss", bridge_UIKitPresentation_dismiss},
 	{"_confirm", bridge_UIKitPresentation_confirm},
 	{"_setCurrentScope", bridge_set_current_scope},

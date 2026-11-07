@@ -2,7 +2,7 @@ _G.__headless = true
 
 local t = require("TestKit")
 local Preview = require("apps.studio.controllers.PreviewController")
-local Chat = require("apps.studio.models.Chat")
+local Chat = require("apps.studio.helpers.Chat")
 
 local presentation = Preview.new():presentation({
 	{ title = "Starter App", icon = "rocket.fill" },

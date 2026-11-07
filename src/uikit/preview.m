@@ -3,6 +3,8 @@
 // A controller boundary keeps navigation and compact traits scoped to the preview.
 @interface LuaPreviewView : UIView
 @property(nonatomic, strong) UIViewController *content;
+@property(nonatomic) CGFloat zoom;
+@property(nonatomic, copy) NSString *appearance;
 @property(nonatomic, strong) UIView *deviceBody;
 @property(nonatomic, strong) UIView *screen;
 @end
@@ -10,6 +12,7 @@
 - (instancetype)initWithFrame:(CGRect)frame {
 	self = [super initWithFrame:frame];
 	if (self) {
+		_zoom = 1;
 		// This is device artwork requested for the preview, not a replacement
 		// for a UIKit control. The embedded controller remains fully interactive.
 		_deviceBody = [UIView new];
@@ -31,6 +34,12 @@
 	UIResponder *responder = self.nextResponder;
 	while (responder && ![responder isKindOfClass:UIViewController.class]) responder = responder.nextResponder;
 	return (UIViewController *)responder;
+}
+- (void)setZoom:(CGFloat)zoom { _zoom = MAX(0, MIN(1, zoom)); [self setNeedsLayout]; }
+- (void)setAppearance:(NSString *)appearance {
+	_appearance = [appearance copy];
+	self.screen.overrideUserInterfaceStyle = [appearance isEqualToString:@"dark"] ? UIUserInterfaceStyleDark
+		: [appearance isEqualToString:@"light"] ? UIUserInterfaceStyleLight : UIUserInterfaceStyleUnspecified;
 }
 - (void)setContent:(UIViewController *)content {
 	[_content willMoveToParentViewController:nil];
@@ -56,6 +65,7 @@
 	CGSize bodySize = CGSizeMake(kPreviewWidth + 2 * kPreviewBezel, kPreviewHeight + 2 * kPreviewBezel);
 	CGFloat scale = MAX(0, MIN((self.bounds.size.width - 2 * kPreviewMargin) / bodySize.width,
 		(self.bounds.size.height - 2 * kPreviewMargin) / bodySize.height));
+	scale *= self.zoom;
 	self.deviceBody.bounds = (CGRect){CGPointZero, bodySize};
 	self.deviceBody.transform = CGAffineTransformMakeScale(scale, scale);
 	self.deviceBody.center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));

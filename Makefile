@@ -156,6 +156,22 @@ diskmap-showcase: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS)
 
 TEST_FILES = $(wildcard tests/*.test.lua)
 
+# The same vendored Lua as the iPad host, with no AppKit, simulator, network,
+# Ruby environment or downloaded dependencies needed for application logic.
+HEADLESS_LUA_SOURCES = $(filter-out vendor/lua-5.4.8/src/luac.c,$(wildcard vendor/lua-5.4.8/src/*.c))
+build/headless-lua: $(HEADLESS_LUA_SOURCES)
+	@mkdir -p build
+	$(CC) -O2 -DLUA_USE_MACOSX -Ivendor/lua-5.4.8/src -o $@ $(HEADLESS_LUA_SOURCES)
+
+.PHONY: studio-test studio-smoke
+studio-smoke:
+	python3 scripts/ipad/studio_smoke.py $(if $(STUDIO_SMOKE_DEVICE),--device $(STUDIO_SMOKE_DEVICE))
+
+studio-test: build/headless-lua
+	@set -e; for test in tests/studio_*.headless.test.lua; do \
+		LUA_PATH='./?.lua;./lua/?.lua;./lua/vendor/etlua/?.lua;;' build/headless-lua "$$test"; \
+	done
+
 test: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF)
 	@passed=0; failed=0; \
 	for t in $(TEST_FILES); do \
@@ -222,7 +238,7 @@ $(HOST_BINARY): $(IOS_LUA_A) $(IOS_HOST_SRCS) ios/LuaRuntime/LuaRuntime.h $(UIKI
 	@echo "Building iOS host..."
 	@mkdir -p $(HOST_BUNDLE)
 	@$(IOS_CC) $(IOS_CFLAGS) \
-		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework SceneKit -framework GameController -framework AVFoundation -framework Speech \
+		-framework UIKit -framework CoreText -framework Foundation -framework CoreGraphics -framework QuartzCore -framework Symbols -framework UserNotifications -framework Security -framework WebKit -framework SceneKit -framework GameController -framework UniformTypeIdentifiers -framework AVFoundation -framework Speech \
 		-o $(HOST_BUNDLE)/LuaRuntime \
 		$(IOS_HOST_SRCS) $(UIKIT_RUNTIME_SRC) src/plugins/git/Git.c src/plugins/speech/Speech.m $(IOS_LUA_A) \
 		$(IOS_LIBGIT2_A) $(LIBGIT2_LIBS)

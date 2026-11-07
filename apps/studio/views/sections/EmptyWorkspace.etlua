@@ -1,0 +1,6 @@
+<VStack maxWidth="infinity" maxHeight="infinity">
+	<ContentUnavailable title="No Projects" description="Create a project to start building your app." systemImage="folder">
+		<Button title="New Project" action="newProject" style="borderedProminent" />
+	</ContentUnavailable>
+	<Label text="<%= status %>" color="secondary" lines="0" />
+</VStack>

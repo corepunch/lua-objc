@@ -1,4 +1,4 @@
-local Model = require("apps.studio.models.Preview")
+local Model = require("apps.studio.helpers.Preview")
 local Controller = {}
 Controller.__index = Controller
 

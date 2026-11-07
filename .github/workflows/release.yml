@@ -99,8 +99,8 @@ jobs:
           NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
-          APPSTORE_CERTIFICATE_P12: ${{ secrets.APPSTORE_CERTIFICATE_P12 }}
-          APPSTORE_CERTIFICATE_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
+          APPSTORE_CERTIFICATE_P12: ${{ secrets[matrix.certificateSecret] }}
+          APPSTORE_CERTIFICATE_PASSWORD: ${{ secrets[matrix.certificatePasswordSecret] }}
           APPSTORE_INSTALLER_P12: ${{ secrets.APPSTORE_INSTALLER_P12 }}
           APPSTORE_INSTALLER_PASSWORD: ${{ secrets.APPSTORE_INSTALLER_PASSWORD }}
           APPSTORE_PROFILE: ${{ secrets[matrix.profileSecret] }}

@@ -1,0 +1,17 @@
+<VStack padding="@sheetInset" spacing="@sheetSpacing" maxWidth="infinity" maxHeight="infinity" alignment="leading">
+	<%- partial("../layouts/SheetResources.etlua") %>
+	<Label text="New Project" size="@sheetTitle" weight="bold" />
+	<Label text="Create a project with separate model, controller, and etlua views. Git history starts with the first snapshot." lines="0" color="secondary" maxWidth="infinity" />
+	<TextField id="projectName" text="<%= projectName %>" placeholder="Project name" accessibilityLabel="Project name" onChange="editProjectName" />
+	<Picker value="<%= templateIndex %>" onChange="chooseTemplate">
+		<Option title="Blank App" />
+		<Option title="Habit Tracker" />
+	</Picker>
+	<Label text="<%= message %>" color="secondary" lines="0" maxWidth="infinity" />
+	<Spacer />
+	<HStack alignment="center">
+		<Button title="Cancel" action="closeSheet" />
+		<Spacer />
+		<Button title="Create Project" action="createProject" style="borderedProminent" />
+	</HStack>
+</VStack>

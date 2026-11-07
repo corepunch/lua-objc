@@ -7,7 +7,9 @@ NSData *LRTCaptureViewPNG(UIView *view) {
 
 	UIGraphicsImageRendererFormat *format =
 		[UIGraphicsImageRendererFormat preferredFormat];
-	format.scale = view.window.screen.scale > 0 ? view.window.screen.scale : 1.0;
+	// A UIWindow has no containing window; its own screen supplies the scale.
+	UIWindow *window = [view isKindOfClass:UIWindow.class] ? (UIWindow *)view : view.window;
+	format.scale = window.screen.scale > 0 ? window.screen.scale : 1.0;
 	format.opaque = YES;
 	UIGraphicsImageRenderer *renderer =
 		[[UIGraphicsImageRenderer alloc] initWithSize:view.bounds.size format:format];

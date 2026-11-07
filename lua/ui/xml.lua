@@ -491,6 +491,22 @@ end
 -- node records the view it produced and renders its callbacks in its own
 -- Scope, so the reconciler can replace or remove one node's subtree and
 -- dispose exactly the callbacks it owned.
+-- Bound list rows are plain data. Keep a value snapshot so a caller may
+-- mutate its array in place without hiding the change from reconciliation.
+local function copyRows(value)
+    if type(value) ~= "table" then return value end
+    local result = {}
+    for key, item in pairs(value) do result[key] = copyRows(item) end
+    return result
+end
+local function sameRows(a, b)
+    if type(a) ~= type(b) then return false end
+    if type(a) ~= "table" then return a == b end
+    for key, item in pairs(a) do if not sameRows(item, b[key]) then return false end end
+    for key in pairs(b) do if a[key] == nil then return false end end
+    return true
+end
+
 local tracking = false
 
 local compile
@@ -594,6 +610,7 @@ compile = function(nodes, ns, registry, refs)
 				end
 				if tracking then
 					node.view, node.target, node.scope = view, paddedLeaves[view] or view, nodeScope
+					if node.tag == "List" and attrs.data then node.boundRows = copyRows(renderData[attrs.data] or {}) end
 				end
 				if node.attrs.id and type(view) == "userdata" then
 					local target = paddedLeaves[view] or view
@@ -960,7 +977,7 @@ local TAG_SCHEMA = {
         positional  = { "text", "value", default = "" },
         directArg   = "positional",
     },
-    Preview = { constructor = "Preview" },
+    Preview = { constructor = "Preview", props = { appearance = "str", zoom = "num" } },
     TextEditor = {
         constructor = "TextEditor",
         props = {
@@ -990,9 +1007,11 @@ local TAG_SCHEMA = {
             size = "num",
             wrapMode = "bool",
             drawsBackground = "bool",
+            editable = "bool",
         },
         transform = function(props, attrs)
             if renderData and attrs.syntaxRules then props.syntaxRules = renderData[attrs.syntaxRules] end
+            bindActions(props, attrs, { "onChange" })
         end,
     },
     SearchField = {
@@ -1556,6 +1575,7 @@ local TAG_SCHEMA = {
             action  = "str",
             validate = "str",
             placement = "str",
+            systemItem = "str",
             bordered = "bool",
             visibilityPriority = "num",
             badge = "num",
@@ -2305,6 +2325,8 @@ local TAG_INNER = {
         revealedCharacters = setter("revealedCharacters", number(-1)) },
     TextField = { text = EDITED_TEXT, value = EDITED_TEXT },
     TextEditor = { text = EDITED_TEXT, value = EDITED_TEXT },
+    CodeView = { text = EDITED_TEXT, value = EDITED_TEXT },
+    Preview = { appearance = setter("appearance", function(v) return v or "system" end), zoom = setter("zoom", number(1)) },
     Button = { title = setter("title", function(v) return v or "" end), label = setter("title", function(v) return v or "" end) },
     ProgressView = { value = function(view, v)
         for _, name in ipairs({ "doubleValue", "progress" }) do
@@ -2540,6 +2562,12 @@ reconcileNode = function(old, new, ns, plan, record)
     end
     local ops, changed = attributePatch(old, new, ns)
     if not ops then return nil end
+    if new.tag == "List" and new.attrs.data then
+        new.boundRows = copyRows(renderData[new.attrs.data] or {})
+        if not sameRows(old.boundRows, new.boundRows) then
+            table.insert(ops, function() old.target:replaceRows(new.boundRows) end)
+        end
+    end
     local childPlan = { ops = {}, removals = {}, built = {} }
     if not reconcileChildren(old, new, ns, childPlan) then
         for _, node in ipairs(childPlan.built) do disposeNode(node) end

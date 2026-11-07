@@ -1,0 +1,31 @@
+<%
+  -- Suggestions sit directly above the field they fill; the field and its
+  -- actions share one glass capsule so the composer reads as a single control.
+  local COMPOSER = { spacing = 10, chipSpacing = 8, radius = 24, fieldInset = 6, fieldSize = 15 }
+%>
+<VStack padding="<%= inset %>" spacing="<%= COMPOSER.spacing %>" maxWidth="<%= column %>" alignment="leading">
+	<FlowStack spacing="<%= COMPOSER.chipSpacing %>" maxWidth="infinity">
+		<% for _, suggestion in ipairs(suggestions) do %>
+		<Button title="<%= suggestion.title %>" systemImage="<%= suggestion.icon %>" action="<%= suggestion.action %>" disabled="<%= tostring(busy == true) %>" controlSize="small" style="glass" />
+		<% end %>
+	</FlowStack>
+	<% if #attachments > 0 then %>
+	<HStack spacing="8" maxWidth="infinity">
+		<Label text="<%= #attachments %> text file(s) attached" size="12" color="secondary" />
+		<Button title="Clear" action="removeAttachments" style="plain" />
+	</HStack>
+	<% end %>
+	<GlassEffect cornerRadius="<%= COMPOSER.radius %>" maxWidth="infinity">
+		<HStack padding="<%= COMPOSER.fieldInset %>" spacing="<%= COMPOSER.fieldInset %>" maxWidth="infinity" alignment="center">
+			<Button systemImage="plus" accessibilityLabel="Attach text files" action="attachContext" disabled="<%= tostring(busy == true) %>" style="plain" />
+			<TextField id="composer" text="<%= draft or "" %>" placeholder="Describe a change…" size="<%= COMPOSER.fieldSize %>" style="plain" onChange="editDraft" onCommand="composerCommand" disabled="<%= tostring(busy == true) %>" flexGrow="1" maxWidth="infinity" />
+			<Button systemImage="<%= listening and "waveform" or "mic" %>" accessibilityLabel="Dictate" action="toggleDictation" disabled="<%= tostring(busy == true) %>" style="plain" />
+			<% if busy then %>
+			<ProgressView accessibilityLabel="Agent working" />
+			<Button systemImage="stop.fill" accessibilityLabel="Stop" action="stopAgent" style="glassProminent" />
+			<% else %>
+			<Button systemImage="arrow.up" accessibilityLabel="Send" action="sendMessage" style="glassProminent" />
+			<% end %>
+		</HStack>
+	</GlassEffect>
+</VStack>

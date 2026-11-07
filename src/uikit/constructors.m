@@ -655,6 +655,8 @@ static int bridge_UIKitControls_pageControl(lua_State *L) {
 @end
 
 @implementation LuaGradientView
+// A fill has no intrinsic content; its previous frame is never a new ideal size.
+- (CGSize)sizeThatFits:(CGSize)size { return CGSizeZero; }
 - (void)layoutSubviews {
 	[super layoutSubviews];
 	self.gradient.frame = self.bounds;
@@ -924,6 +926,7 @@ static int bridge_UIKitControls_menu(lua_State *L) {
 		? [UIButtonConfiguration glassButtonConfiguration]
 		: [UIButtonConfiguration plainButtonConfiguration];
 	configuration.title = [NSString stringWithUTF8String:buttonTitle];
+	configuration.titleLineBreakMode = NSLineBreakByTruncatingTail;
 	configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 	UIImage *buttonImage = imagePath[0]
 		? [UIImage imageWithContentsOfFile:[NSString stringWithUTF8String:imagePath]] : nil;

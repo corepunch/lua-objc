@@ -99,6 +99,46 @@ class SigningTests(unittest.TestCase):
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_studio_is_an_ipad_only_app_store_release(self):
+        record = next(record for record in apps() if record['app'] == 'studio')
+        command = compile_command(record, Path('/tmp/LuaStudio.app'))
+        self.assertEqual(record['channels'], ['appStore'])
+        self.assertEqual(record['identifier'], 'org.luaobjc.studio')
+        self.assertIn('DEVICE_FAMILY=2', command)
+        self.assertIn('APP_BUNDLE=LuaStudio', command)
+        self.assertIn('FILE_SHARING=0', command)
+        self.assertEqual(record['certificateSecret'], 'STUDIO_APPSTORE_CERTIFICATE_P12')
+        self.assertIn('vendor/libgit2', record['submodules'])
+
+    def test_privacy_manifest_is_at_bundle_root_and_replaced_on_reuse(self):
+        previous = Path.cwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                Path('apps/test').mkdir(parents=True)
+                Path('apps/test/init.lua').write_text('return App')
+                Path('ios/LuaRuntime').mkdir(parents=True)
+                Path('ios/LuaRuntime/Info.plist').write_bytes(plistlib.dumps({}))
+                Path('ios/LuaRuntime/AppIcon.png').write_bytes(b'icon')
+                Path('runtime').write_bytes(b'compiled-binary')
+                manifest = Path('apps/test/PrivacyInfo.xcprivacy')
+                manifest.write_bytes(plistlib.dumps({'NSPrivacyTracking': False}))
+                arguments = ['bundle.py', '--binary', 'runtime', '--bundle', 'Test.app',
+                             '--sdk', 'iphoneos', '--identifier', 'org.luaobjc.test',
+                             '--minimum', '26.5', '--app', 'apps/test', '--entry', 'apps/test/init.lua',
+                             '--display-name', 'Test', '--device-family', '2']
+                with patch('sys.argv', arguments):
+                    bundle_app()
+                target = Path('Test.app/PrivacyInfo.xcprivacy')
+                self.assertEqual(target.read_bytes(), manifest.read_bytes())
+                self.assertFalse(Path('Test.app/Workspace/apps/test/PrivacyInfo.xcprivacy').exists())
+                manifest.unlink()
+                with patch('sys.argv', arguments):
+                    bundle_app()
+                self.assertFalse(target.exists())
+            finally:
+                os.chdir(previous)
+
     def test_universal_ios_bundle_has_both_device_families(self):
         previous = Path.cwd()
         with tempfile.TemporaryDirectory() as directory:
@@ -186,6 +226,7 @@ class ReleaseTests(unittest.TestCase):
                 runtime = ('init.lua', 'views/pages/Main.etlua', 'app.xml', 'shaders/Main.metal',
                            'data/model.bin', 'tour/page.jpg', 'assets/manifest.json')
                 excluded = ('README.md', 'Info.plist', 'AppStore.entitlements',
+                            'PrivacyInfo.xcprivacy', 'store-assets/app.json', 'fastlane/Fastfile',
                             'Build/main.lua', 'Test.xcodeproj/project.pbxproj',
                             'Assets.xcassets/AppIcon.png', '.git/config', 'ci_scripts/build.sh')
                 for name in (*runtime, *excluded):
@@ -260,7 +301,8 @@ class ReleaseTests(unittest.TestCase):
 
     def test_invalid_or_missing_platform_never_falls_back(self):
         for change in ({'platform': 'watch'}, {'platform': ''}, {'channels': []}, {'profileSecret': ''},
-                       {'appStoreIdVariable': ''}, {'app': '../test'}):
+                       {'appStoreIdVariable': ''}, {'certificateSecret': ''},
+                       {'certificatePasswordSecret': ''}, {'app': '../test'}):
             records = apps()
             records[0].update(change)
             with tempfile.TemporaryDirectory() as directory:

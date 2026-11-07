@@ -12,12 +12,12 @@ def copy_tree(source, workspace, lua_only=False, runtime_only=False):
     source = Path(source)
     for path in source.rglob('*'):
         relative = path.relative_to(source)
-        if not path.is_file() or any(part.startswith('.') or part in ('Build', '__pycache__', 'ci_scripts', 'store-assets')
+        if not path.is_file() or any(part.startswith('.') or part in ('Build', '__pycache__', 'ci_scripts', 'store-assets', 'fastlane')
                                    or part.endswith(('.xcodeproj', '.xcworkspace', '.xcassets')) for part in relative.parts):
             continue
         if lua_only and path.suffix not in ('.lua', '.etlua'):
             continue
-        if runtime_only and path.suffix in ('.md', '.plist', '.entitlements', '.sh', '.py', '.c', '.m', '.h'):
+        if runtime_only and path.suffix in ('.md', '.plist', '.entitlements', '.xcprivacy', '.sh', '.py', '.c', '.m', '.h'):
             continue
         target = workspace / path
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -78,12 +78,15 @@ def main():
     bundle.mkdir(parents=True, exist_ok=True)
     shutil.copy2(args.binary, bundle / 'LuaStudio')
     info = plistlib.loads(Path('ios/LuaRuntime/Info.plist').read_bytes())
+    app_info = Path(args.app) / 'Info.plist'
+    if app_info.is_file():
+        info.update(plistlib.loads(app_info.read_bytes()))
     info.update(CFBundleDisplayName=args.display_name, CFBundleName=args.display_name,
                 CFBundleExecutable='LuaStudio', CFBundleIdentifier=args.identifier,
                 CFBundleSupportedPlatforms=['iPhoneOS' if args.sdk == 'iphoneos' else 'iPhoneSimulator'],
                 UIDeviceFamily=[int(family) for family in args.device_family.split(',')], MinimumOSVersion=args.minimum,
                 LRTLocalEntry=args.entry)
-    if 2 in info['UIDeviceFamily']:
+    if 2 in info['UIDeviceFamily'] and 'UISupportedInterfaceOrientations~ipad' not in info:
         info['UISupportedInterfaceOrientations~ipad'] = [
             'UIInterfaceOrientationPortrait', 'UIInterfaceOrientationPortraitUpsideDown',
             'UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight']
@@ -96,6 +99,11 @@ def main():
         info.pop('CFBundleIcons', None)
         info.pop('CFBundleIcons~ipad', None)
     info.update(bundle_icon(args.app, bundle, args.sdk, args.minimum, args.device_family))
+    privacy = Path(args.app) / 'PrivacyInfo.xcprivacy'
+    if privacy.is_file():
+        shutil.copy2(privacy, bundle / privacy.name)
+    else:
+        (bundle / 'PrivacyInfo.xcprivacy').unlink(missing_ok=True)
     (bundle / 'Info.plist').write_bytes(plistlib.dumps(info))
     workspace = bundle / 'Workspace'
     if workspace.exists():

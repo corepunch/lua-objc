@@ -1,0 +1,12 @@
+{
+  "name": "Lua Studio: iPhone App Builder",
+  "bundleId": "org.luaobjc.studio",
+  "sku": "LUA-STUDIO-IPAD",
+  "appleId": "igor.chernakov@gmail.com",
+  "version": "1.0.0",
+  "locale": "en-US",
+  "copyright": "2026 Igor Chernakov",
+  "baseTerritory": "USA",
+  "screenshotDeviceType": "IPAD_PRO_3GEN_129",
+  "appStoreId": "6831704812"
+}

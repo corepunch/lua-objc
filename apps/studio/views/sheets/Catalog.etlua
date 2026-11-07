@@ -1,0 +1,16 @@
+<VStack padding="@sheetInset" spacing="@sheetSpacing" maxWidth="infinity" maxHeight="infinity" alignment="leading">
+	<%- partial("../layouts/SheetResources.etlua") %>
+	<Label text="<%= title %>" size="@sheetTitle" weight="bold" />
+	<% for _, item in ipairs(items) do %>
+	<HStack alignment="center" spacing="@sheetSpacing" maxWidth="infinity">
+		<SystemImage name="<%= item.icon %>" width="@sheetSymbol" />
+		<VStack alignment="leading" flexGrow="1">
+			<Label text="<%= item.title %>" weight="semibold" />
+			<Label text="<%= item.detail %>" color="secondary" lines="0" maxWidth="infinity" />
+		</VStack>
+		<% if item.action then %><Button title="<%= item.button %>" action="<%= item.action %>" /><% end %>
+	</HStack>
+	<% end %>
+	<Spacer />
+	<Button title="Done" action="closeSheet" style="borderedProminent" />
+</VStack>

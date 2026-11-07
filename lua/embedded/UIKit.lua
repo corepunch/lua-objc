@@ -179,7 +179,11 @@ end
 --- @example <Preview />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.Preview(props)
-	return applyLayout(bridge._preview(), props or {})
+	local v = bridge._preview()
+	props = props or {}
+	if props.appearance then v.appearance = props.appearance end
+	if props.zoom then v.zoom = props.zoom end
+	return applyLayout(v, props)
 end
 
 function UIKit.HostingController(view, onDisappear, props)
@@ -223,7 +227,11 @@ function UIKit.Sheet(props)
 	props = props or {}
 	assert(type(props[1]) == "userdata" and props[2] == nil,
 		"Sheet requires exactly one content child")
-	return props[1]
+	local controller = asViewController(props[1])
+	if props.width or props.height then
+		controller.preferredContentSize = UIKit.Size(props.width or 0, props.height or 0)
+	end
+	return controller
 end
 
 local navScreenScopes = setmetatable({}, { __mode = "k" })
@@ -329,7 +337,8 @@ function UIKit.NavigationLink(props)
 end
 
 -- Shares AppKit.presentSheet's signature. `options.detents` selects sheet
--- heights; `options.parent` is ignored because UIKit presents from the
+-- heights; `options.presentationStyle = "formSheet"` uses the Sheet's preferred
+-- size for a centered popup. `options.parent` is ignored because UIKit presents from the
 -- active view controller. Builder results (sheet, refs) are returned intact.
 function UIKit.presentSheet(contentOrBuilder, options)
 	options = options or {}
@@ -792,7 +801,7 @@ function UIKit.TextEditor(props)
 	return applyLayout(v, props)
 end
 
---- Displays read-only source with native, rule-driven syntax coloring.
+--- Displays source with native, rule-driven syntax coloring and optional editing.
 --- @prop language string required. Language key in `syntaxRules.languages`.
 --- @prop syntaxRules table required. Colors, regular-expression matches and embedded-language regions.
 --- @prop size number optional. Monospaced font size.
@@ -802,6 +811,8 @@ end
 function UIKit.CodeView(props)
 	props = props or {}
 	local v = bridge._codeView(props.text or "", props.language or "lua", props.syntaxRules or {})
+	v.editable = props.editable == true
+	if props.onChange then bridge._textEditorCallbacks(v, props.onChange) end
 	if props.size and props.size > 0 then v.font = bridge._font(props.size, "regular", false, "monospaced") end
 	return applyLayout(v, props)
 end
@@ -1216,13 +1227,7 @@ function UIKit.List(props)
 	})
 	if props.onSelect then tv:onSelect(props.onSelect) end
 	if props.scrollDisabled then tv.scrollEnabled = false end
-	if props.data and type(props.data) == "table" then
-		for _, row in ipairs(props.data) do
-			if type(row) == "table" then
-				tv:addRow(row)
-			end
-		end
-	end
+	if props.data then tv:replaceRows(props.data) end
 	if props.reorderable then
 		assert(type(props.onReorder) == "function",
 			"List reorderable requires an onReorder callback")
@@ -1757,6 +1762,24 @@ end
 function UIKit.fetch_json(url)
 	local body = UIKit.fetch(url)
 	return UIKit.json_parse(body)
+end
+
+
+--- App-scoped secrets stored by Apple's Keychain, outside project documents.
+UIKit.Credentials = {
+	get = bridge._credentialRead,
+	set = bridge._credentialWrite,
+	remove = bridge._credentialRemove,
+}
+
+--- Share an explicit set of Documents files as an archive using the system sheet.
+--- Each item has `source` (relative to Documents) or `text`, and `name` inside the archive.
+function UIKit.shareFiles(items, name)
+	return bridge._shareFiles(items, name)
+end
+
+function UIKit.importTextFiles(completion)
+	return bridge._importTextFiles(completion)
 end
 
 return UIKit

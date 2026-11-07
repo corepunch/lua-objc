@@ -1,5 +1,3 @@
-local bridge = require("AppKitNative")
-
 local TestKit = {}
 
 local failed = 0

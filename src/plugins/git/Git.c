@@ -4,13 +4,18 @@
  * serves the Mac as a standalone plugin (build/Git.dylib, `require("Git")`)
  * and is statically linked and preloaded by the iOS hosts.
  *
- * Operations are synchronous and local. Failures of the repository return
+ * Local operations are synchronous; push runs on a system background queue.
+ * Failures of the repository return
  * `nil, message` like io.open; wrong argument types raise errors.
  */
 #include <git2.h>
 #include <lauxlib.h>
 #include <lua.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdatomic.h>
+#include <dispatch/dispatch.h>
 
 #define REPOSITORY "Git.Repository"
 #define STATUS_FIELDS 6
@@ -112,7 +117,12 @@ static int git_lua_init(lua_State *L) {
 	git_repository_init_options options = GIT_REPOSITORY_INIT_OPTIONS_INIT;
 	options.flags = GIT_REPOSITORY_INIT_MKPATH;
 	options.initial_head = "main";
-	if (check_options(L, 2)) options.initial_head = opt_string_field(L, 2, "initialBranch", "main");
+	if (check_options(L, 2)) {
+		options.initial_head = opt_string_field(L, 2, "initialBranch", "main");
+		lua_getfield(L, 2, "bare");
+		if (lua_toboolean(L, -1)) options.flags |= GIT_REPOSITORY_INIT_BARE;
+		lua_pop(L, 1);
+	}
 	git_repository *repo = NULL;
 	if (git_repository_init_ext(&repo, path, &options) < 0) return push_failure(L);
 	return push_repo(L, repo);
@@ -530,7 +540,210 @@ static int repo_show(lua_State *L) {
 	return 1;
 }
 
+/* Network work owns an independent repository handle and a captured HEAD.
+ * Lua is touched only on the main queue. The transfer userdata clears the
+ * state pointer during lua_close, even if a worker is still finishing. */
+#define TRANSFER "Git.Transfer"
+typedef struct {
+	_Atomic int references;
+	_Atomic int cancelled;
+	lua_State *L;
+	int callback;
+	char *path, *url, *refspec, *username, *token, *error;
+	unsigned int attempts;
+} GitTransfer;
+typedef struct { GitTransfer *transfer; } TransferRef;
+
+static void transfer_release(GitTransfer *job) {
+	if (atomic_fetch_sub(&job->references, 1) != 1) return;
+	if (job->token) { memset_s(job->token, strlen(job->token), 0, strlen(job->token)); free(job->token); }
+	free(job->path); free(job->url); free(job->refspec); free(job->username); free(job->error); free(job);
+}
+static int transfer_cancel(lua_State *L) {
+	TransferRef *ref = luaL_checkudata(L, 1, TRANSFER);
+	if (ref->transfer) atomic_store(&ref->transfer->cancelled, 1);
+	return 0;
+}
+static int transfer_gc(lua_State *L) {
+	TransferRef *ref = lua_touserdata(L, 1);
+	if (!ref || !ref->transfer) return 0;
+	GitTransfer *job = ref->transfer;
+	atomic_store(&job->cancelled, 1);
+	if (job->L && job->callback != LUA_NOREF) luaL_unref(L, LUA_REGISTRYINDEX, job->callback);
+	job->L = NULL;
+	ref->transfer = NULL;
+	transfer_release(job);
+	return 0;
+}
+static int remote_credentials(git_credential **out, const char *url, const char *username, unsigned int allowed, void *payload) {
+	GitTransfer *job = payload;
+	/* Never forward a credential after a redirect or retry bad credentials. */
+	if (atomic_load(&job->cancelled) || strcmp(url, job->url) || !job->token) return GIT_EAUTH;
+	if (allowed & GIT_CREDENTIAL_USERNAME) return git_credential_username_new(out, job->username);
+	if (allowed & GIT_CREDENTIAL_USERPASS_PLAINTEXT) {
+		if (job->attempts++) return GIT_EAUTH;
+		return git_credential_userpass_plaintext_new(out, job->username, job->token);
+	}
+	return GIT_PASSTHROUGH;
+}
+static int remote_progress(unsigned int current, unsigned int total, size_t bytes, void *payload) {
+	return atomic_load(&((GitTransfer *)payload)->cancelled) ? GIT_EUSER : 0;
+}
+static int remote_pack_progress(int stage, uint32_t current, uint32_t total, void *payload) {
+	return atomic_load(&((GitTransfer *)payload)->cancelled) ? GIT_EUSER : 0;
+}
+static int remote_update(const char *refname, const char *status, void *payload) {
+	GitTransfer *job = payload;
+	if (status && !job->error) job->error = strdup(status);
+	return 0;
+}
+static void remote_complete(void *payload) {
+	GitTransfer *job = payload;
+	lua_State *L = job->L;
+	if (L && job->callback != LUA_NOREF) {
+		lua_rawgeti(L, LUA_REGISTRYINDEX, job->callback);
+		luaL_unref(L, LUA_REGISTRYINDEX, job->callback);
+		job->callback = LUA_NOREF;
+		if (atomic_load(&job->cancelled) || job->error) {
+			lua_pushnil(L);
+			lua_pushstring(L, atomic_load(&job->cancelled) ? "Push cancelled" : job->error);
+		} else { lua_pushboolean(L, 1); lua_pushnil(L); }
+		if (lua_pcall(L, 2, 0, 0) != LUA_OK) lua_pop(L, 1);
+	}
+	job->L = NULL;
+	transfer_release(job);
+}
+static void remote_worker(void *payload) {
+	GitTransfer *job = payload;
+	git_repository *repo = NULL;
+	git_remote *remote = NULL;
+	int result = git_repository_open(&repo, job->path);
+	if (result == 0) result = git_remote_create_anonymous(&remote, repo, job->url);
+	if (result == 0 && !atomic_load(&job->cancelled)) {
+		git_push_options options = GIT_PUSH_OPTIONS_INIT;
+		options.follow_redirects = GIT_REMOTE_REDIRECT_NONE;
+		options.callbacks.credentials = remote_credentials;
+		options.callbacks.push_transfer_progress = remote_progress;
+		options.callbacks.pack_progress = remote_pack_progress;
+		options.callbacks.push_update_reference = remote_update;
+		options.callbacks.payload = job;
+		git_strarray refs = { &job->refspec, 1 };
+		result = git_remote_push(remote, &refs, &options);
+	}
+	if (result < 0 && !job->error) {
+		const git_error *error = git_error_last();
+		job->error = strdup(error && error->message ? error->message : "Push failed");
+	}
+	git_remote_free(remote);
+	git_repository_free(repo);
+	dispatch_async_f(dispatch_get_main_queue(), job, remote_complete);
+}
+static int safe_remote_url(const char *url) {
+	const char *scheme = strstr(url, "://");
+	if (!scheme) return 0;
+	const char *authority = scheme + 3;
+	const char *end = strchr(authority, '/');
+	if (!end || memchr(authority, '@', (size_t)(end - authority)) || strchr(url, '?') || strchr(url, '#')) return 0;
+	return !strncmp(url, "https://", 8) || !strncmp(url, "file://", 7);
+}
+static int repo_remotes(lua_State *L) {
+	git_repository *repo = check_repo(L);
+	git_strarray names = {0};
+	if (git_remote_list(&names, repo) < 0) return push_failure(L);
+	lua_newtable(L);
+	for (size_t i = 0; i < names.count; i++) {
+		git_remote *remote = NULL;
+		if (git_remote_lookup(&remote, repo, names.strings[i]) < 0) continue;
+		lua_newtable(L);
+		lua_pushstring(L, names.strings[i]); lua_setfield(L, -2, "name");
+		lua_pushstring(L, git_remote_url(remote)); lua_setfield(L, -2, "url");
+		git_strarray specs = {0};
+		if (git_remote_get_push_refspecs(&specs, remote) == 0 && specs.count == 1 && !strncmp(specs.strings[0], "HEAD:refs/heads/", 16)) {
+			lua_pushstring(L, specs.strings[0] + 16); lua_setfield(L, -2, "branch");
+		}
+		git_strarray_dispose(&specs);
+		lua_rawseti(L, -2, (lua_Integer)i + 1);
+		git_remote_free(remote);
+	}
+	git_strarray_dispose(&names);
+	return 1;
+}
+static int repo_set_remote(lua_State *L) {
+	git_repository *repo = check_repo(L);
+	const char *name = luaL_checkstring(L, 2), *url = luaL_checkstring(L, 3);
+	luaL_argcheck(L, safe_remote_url(url), 3, "use an HTTPS or file URL without credentials, query or fragment");
+	const char *branch = luaL_optstring(L, 4, NULL);
+	char destination[256];
+	if (branch) {
+		luaL_argcheck(L, strlen(branch) < 200, 4, "branch is too long");
+		snprintf(destination, sizeof(destination), "refs/heads/%s", branch);
+		int valid = 0;
+		git_reference_name_is_valid(&valid, destination);
+		luaL_argcheck(L, valid, 4, "invalid branch name");
+	}
+	git_remote *remote = NULL;
+	int result = git_remote_lookup(&remote, repo, name);
+	if (result == GIT_ENOTFOUND) result = git_remote_create(&remote, repo, name, url);
+	else if (result == 0) result = git_remote_set_url(repo, name, url);
+	git_remote_free(remote);
+	if (result == 0 && branch) {
+		git_config *config = NULL;
+		result = git_repository_config(&config, repo);
+		if (result == 0) {
+			char key[256], spec[256];
+			snprintf(key, sizeof(key), "remote.%s.push", name);
+			snprintf(spec, sizeof(spec), "HEAD:%s", destination);
+			result = git_config_set_string(config, key, spec);
+		}
+		git_config_free(config);
+	}
+	if (result < 0) return push_failure(L);
+	lua_pushboolean(L, 1);
+	return 1;
+}
+static int repo_push(lua_State *L) {
+	git_repository *repo = check_repo(L);
+	const char *name = luaL_checkstring(L, 2);
+	luaL_checktype(L, 3, LUA_TTABLE);
+	luaL_checktype(L, 4, LUA_TFUNCTION);
+	const char *username = opt_string_field(L, 3, "username", "x-access-token");
+	const char *token = opt_string_field(L, 3, "token", NULL);
+	git_remote *remote = NULL;
+	if (git_remote_lookup(&remote, repo, name) < 0) return push_failure(L);
+	const char *url = git_remote_url(remote);
+	if (!url || !safe_remote_url(url) || (token && strncmp(url, "https://", 8))) {
+		git_remote_free(remote); lua_pushnil(L); lua_pushliteral(L, "Use an HTTPS remote without embedded credentials"); return 2;
+	}
+	git_reference *head = NULL;
+	if (git_repository_head(&head, repo) < 0) { git_remote_free(remote); return push_failure(L); }
+	if (!git_reference_is_branch(head)) { git_reference_free(head); git_remote_free(remote); lua_pushnil(L); lua_pushliteral(L, "Check out a branch before pushing"); return 2; }
+	char oid[GIT_OID_MAX_HEXSIZE + 1];
+	git_oid_tostr(oid, sizeof(oid), git_reference_target(head));
+	const char *branch = git_reference_name(head);
+	git_strarray specs = {0};
+	if (git_remote_get_push_refspecs(&specs, remote) == 0 && specs.count == 1 && !strncmp(specs.strings[0], "HEAD:refs/heads/", 16))
+		branch = specs.strings[0] + 5;
+	GitTransfer *job = calloc(1, sizeof(*job));
+	job->references = 2;
+	job->path = strdup(git_repository_path(repo)); job->url = strdup(url);
+	job->username = strdup(username); job->token = token ? strdup(token) : NULL;
+	job->refspec = malloc(strlen(oid) + strlen(branch) + 2);
+	sprintf(job->refspec, "%s:%s", oid, branch);
+	git_strarray_dispose(&specs);
+	git_reference_free(head); git_remote_free(remote);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD);
+	job->L = lua_tothread(L, -1); lua_pop(L, 1);
+	lua_pushvalue(L, 4); job->callback = luaL_ref(L, LUA_REGISTRYINDEX);
+	TransferRef *ref = lua_newuserdatauv(L, sizeof(*ref), 0); ref->transfer = job;
+	luaL_setmetatable(L, TRANSFER);
+	dispatch_async_f(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), job, remote_worker);
+	return 1;
+}
+
 static const luaL_Reg repo_methods[] = {
+	{"remotes", repo_remotes},
+	{"setRemote", repo_set_remote},
+	{"push", repo_push},
 	{"close", repo_close},
 	{"workdir", repo_workdir},
 	{"head", repo_head},
@@ -572,6 +785,13 @@ int luaopen_Git(lua_State *L) {
 		lua_setfield(L, -2, "__close");
 		lua_pushcfunction(L, repo_tostring);
 		lua_setfield(L, -2, "__tostring");
+	}
+	lua_pop(L, 1);
+	if (luaL_newmetatable(L, TRANSFER)) {
+		lua_newtable(L);
+		lua_pushcfunction(L, transfer_cancel); lua_setfield(L, -2, "cancel");
+		lua_setfield(L, -2, "__index");
+		lua_pushcfunction(L, transfer_gc); lua_setfield(L, -2, "__gc");
 	}
 	lua_pop(L, 1);
 	luaL_newlib(L, module_functions);

@@ -1,4 +1,4 @@
-local Model = require("apps.studio.models.Rail")
+local Model = require("apps.studio.helpers.Rail")
 local Controller = {}
 Controller.__index = Controller
 
