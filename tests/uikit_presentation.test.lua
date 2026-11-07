@@ -30,4 +30,12 @@ t.expect(navigation:find("UIBarButtonSystemItemDone",1,true) and navigation:find
 t.expect(hosting:find("prefersInterfaceOrientationLocked",1,true) and hosting:find("setNeedsUpdateOfPrefersInterfaceOrientationLocked",1,true),
 	"window orientation locks use the current native scene API")
 
+local makefile = assert(io.open("Makefile", "r")):read("*a")
+local imports = makefile:match("IOS_LUA_LOOKUP_SYMBOLS = (.-)comma :=")
+local target = makefile:match("build/UIKit%.dylib:(.-)uikit:")
+t.expect(imports and imports:find("_luaL_checkoption", 1, true),
+	"the UIKit module imports sheet option validation from its Lua host")
+t.expect(target and target:find("-framework UniformTypeIdentifiers", 1, true),
+	"the UIKit module links the document importer's native content types")
+
 os.exit(t.summary() and 0 or 1)

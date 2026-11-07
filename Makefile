@@ -8,7 +8,7 @@ IOS_SIM_SDK = $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 # dynamically looked up while linking all platform frameworks directly.
 IOS_LUA_LOOKUP_SYMBOLS = \
 	_luaL_argerror _luaL_checkinteger _luaL_checklstring _luaL_checknumber \
-	_luaL_checktype _luaL_checkudata _luaL_checkversion_ _luaL_error \
+	_luaL_checkoption _luaL_checktype _luaL_checkudata _luaL_checkversion_ _luaL_error \
 	_luaL_len _luaL_loadbufferx _luaL_newmetatable _luaL_optinteger \
 	_luaL_optlstring _luaL_optnumber _luaL_ref _luaL_requiref _luaL_setfuncs \
 	_luaL_setmetatable _luaL_testudata _luaL_typeerror _luaL_unref \
@@ -67,7 +67,7 @@ build/UIKit.dylib: $(UIKIT_RUNTIME_SRC) $(UIKIT_RUNTIME_FRAGMENTS) $(GENERATED_D
 	xcrun --sdk iphonesimulator $(CC) $(CFLAGS) -dynamiclib $(IOS_LUA_LOOKUP_FLAGS) \
 		-Ibuild -framework UIKit -framework CoreGraphics -framework CoreText -framework WebKit -framework SceneKit -framework GameController \
 		-framework Foundation -framework QuartzCore -framework Symbols -framework UserNotifications \
-		-framework Security -framework AVFAudio -framework AVFoundation \
+		-framework Security -framework UniformTypeIdentifiers -framework AVFAudio -framework AVFoundation \
 		-o $@ $(UIKIT_RUNTIME_SRC)
 
 uikit: build/UIKit.dylib
