@@ -1,0 +1,158 @@
+{
+  "source": "room-images-sheet.jpg",
+  "generatedWith": "OpenAI image generation",
+  "grid": [
+    4,
+    4
+  ],
+  "sheetSize": [
+    1254,
+    1254
+  ],
+  "tileSize": [
+    256,
+    256
+  ],
+  "rooms": [
+    {
+      "room": "CRADLE",
+      "file": "images/CRADLE.jpg",
+      "crop": [
+        2,
+        2,
+        312,
+        312
+      ]
+    },
+    {
+      "room": "HUB",
+      "file": "images/HUB.jpg",
+      "crop": [
+        316,
+        2,
+        625,
+        312
+      ]
+    },
+    {
+      "room": "WORKSHOP",
+      "file": "images/WORKSHOP.jpg",
+      "crop": [
+        629,
+        2,
+        938,
+        312
+      ]
+    },
+    {
+      "room": "GALLEY",
+      "file": "images/GALLEY.jpg",
+      "crop": [
+        942,
+        2,
+        1252,
+        312
+      ]
+    },
+    {
+      "room": "RECORDS",
+      "file": "images/RECORDS.jpg",
+      "crop": [
+        2,
+        316,
+        312,
+        625
+      ]
+    },
+    {
+      "room": "CLINIC",
+      "file": "images/CLINIC.jpg",
+      "crop": [
+        316,
+        316,
+        625,
+        625
+      ]
+    },
+    {
+      "room": "LAB",
+      "file": "images/LAB.jpg",
+      "crop": [
+        629,
+        316,
+        938,
+        625
+      ]
+    },
+    {
+      "room": "SERVICE",
+      "file": "images/SERVICE.jpg",
+      "crop": [
+        942,
+        316,
+        1252,
+        625
+      ]
+    },
+    {
+      "room": "COOLANT",
+      "file": "images/COOLANT.jpg",
+      "crop": [
+        2,
+        629,
+        312,
+        938
+      ]
+    },
+    {
+      "room": "RELAY",
+      "file": "images/RELAY.jpg",
+      "crop": [
+        316,
+        629,
+        625,
+        938
+      ]
+    },
+    {
+      "room": "RECEPTION",
+      "file": "images/RECEPTION.jpg",
+      "crop": [
+        629,
+        629,
+        938,
+        938
+      ]
+    },
+    {
+      "room": "QUARANTINE",
+      "file": "images/QUARANTINE.jpg",
+      "crop": [
+        942,
+        629,
+        1252,
+        938
+      ]
+    },
+    {
+      "room": "CORE",
+      "file": "images/CORE.jpg",
+      "crop": [
+        2,
+        942,
+        312,
+        1252
+      ]
+    },
+    {
+      "room": "LAUNCH",
+      "file": "images/LAUNCH.jpg",
+      "crop": [
+        316,
+        942,
+        625,
+        1252
+      ]
+    }
+  ]
+}

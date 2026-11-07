@@ -559,6 +559,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_documentRemove", bridge_document_remove},
 	{"_documentWriteData", bridge_document_write_data},
 	{"_documentExists", bridge_document_exists},
+	{"_documentList", bridge_document_list},
 	{"_credentialRead", bridge_credential_read},
 	{"_credentialWrite", bridge_credential_write},
 	{"_credentialRemove", bridge_credential_remove},

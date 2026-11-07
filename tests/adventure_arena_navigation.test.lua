@@ -2,7 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local ns = require("AppKit")
 local Adventures = require("apps.adventure-arena.models.Adventures")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local catalog = Adventures
 local sessionModel = Session.new({ engineFactory = function()
 	return { start = function() return { resume = function(_, command) return "Response to " .. command end }, "Opening" end }

@@ -6,7 +6,7 @@ local bridge = require("AppKitNative")
 local xml = require("ui.xml")
 local Template = require("ui.template")
 local Adventures = require("apps.adventure-arena.models.Adventures")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
@@ -80,9 +80,9 @@ t.assertEqual(#scene.links[1], 2, "the first paragraph carries its links")
 t.assertEqual(scene.paragraphs[2], "A brass plaque hangs askew.", "a single newline starts a separate object paragraph")
 t.assertEqual(#scene.links[2], 1, "the object paragraph carries its own link")
 t.assertEqual(scene.links[2][1].location, 2, "link offsets restart at each paragraph")
-t.assertEqual(commands(model:linkActions("plaque")), "take plaque,read plaque",
-	"readable text offers read instead of a duplicate examine, then the story's verbs by how often players use them")
-t.assertEqual(model:linkActions("plaque")[1].title, "Take", "menu titles show only the capitalized verb")
+t.assertEqual(commands(model:linkActions("plaque")), "examine plaque,take plaque,read plaque",
+	"examination remains available alongside reading and the story's other actions")
+t.assertEqual(model:linkActions("plaque")[1].title, "Examine", "menu titles show only the capitalized verb")
 local gateActions = model:linkActions("gate")
 t.assertEqual(gateActions[1].title, "Examine", "the first button omits the object")
 t.assertEqual(gateActions[2].title, "Open", "the second button omits the object")
@@ -94,14 +94,14 @@ t.assertEqual(commands(model:linkActions("door")), "examine door,open door",
 t.assertEqual(commands(model:linkActions("north")), "north", "a direction walks")
 t.assertEqual(model:linkActions("north")[1].title, "Go north", "a direction's action says where it goes")
 t.assertEqual(commands(model:linkActions("d")), "down", "direction abbreviations walk too")
-t.assertEqual(commands(model:linkActions("ghost")), "examine ghost", "an unknown thing can still be examined")
+t.assertEqual(commands(model:linkActions("ghost")), "", "a prose mention outside parser scope offers no phantom action")
 t.assertEqual(#model:linkActions(""), 0, "an empty target offers nothing")
 
 -- Overflow retains every supported action, with short titles and full commands.
 local many = Session.new { engineFactory = engine }
 many.items = { { name = "door", noun = "door", verbs = { "open", "close", "read", "take", "push", "pull", "touch" } } }
 local overflow = many:linkActions("door")
-t.assertEqual(#overflow, 7, "actions beyond three and the old six-item cap stay available")
+t.assertEqual(#overflow, 8, "actions beyond three and the old six-item cap stay available")
 for _, action in ipairs(overflow) do
 	t.expect(not action.title:find("door", 1, true), "overflow labels omit the noun too")
 	t.expect(action.command:find(" door$") ~= nil, "overflow commands retain their target")
@@ -135,10 +135,10 @@ t.assertEqual(#live, 2, "the page marks the scene's links")
 t.assertEqual(live[1].text, "iron gates", "a link underlines the words of the prose")
 local plaque = bridge._paragraphLinks(page().paragraph_1_2)[1]
 t.assertEqual(plaque.text, "brass plaque", "links in later lines keep their place")
-t.assertEqual(table.concat(plaque.titles, ","), "Take,Read", "a link's menu lists its actions")
+t.assertEqual(table.concat(plaque.titles, ","), "Examine,Take,Read", "a link's menu lists its actions")
 t.assertEqual(page().paragraph_1_1.text, scene.paragraphs[1], "the page shows the prose without markup")
 
-bridge._paragraphPerformLink(page().paragraph_1_2, 1, 2)
+bridge._paragraphPerformLink(page().paragraph_1_2, 1, 3)
 t.assertEqual(model.history[#model.history], "read plaque", "choosing an action sends its command")
 t.assertEqual(page().command_2.text, "read plaque", "the command appears on the page")
 t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 2, "links stay live while the reader stays in the room")
@@ -189,7 +189,7 @@ if game then
 	end
 	t.expect(targets.gate and targets.north and targets.plaque, "the opening links the gate, the path north and the plaque")
 	t.expect(not table.concat(opening.paragraphs, "\n"):find("[[", 1, true), "no markup reaches the page")
-	t.assertEqual(commands(story:linkActions("plaque")), "take plaque,read plaque",
+	t.assertEqual(commands(story:linkActions("plaque")), "examine brass plaque,take brass plaque,read brass plaque,pull brass plaque",
 		"the plaque offers the verbs the story accepts")
 	story:submit("north")
 	t.assertEqual(story.roomTitle, "Sanitarium Entrance Hall", "walking north enters the hall")

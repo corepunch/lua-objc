@@ -348,28 +348,41 @@ the plugin standards that have held up in practice:
 | Idea | Prior art | Here |
 |---|---|---|
 | The host declares what can be extended and what plugins may call | Eclipse extension points; CLAP's `clap_host`; VS Code's `vscode` API | `Plugins.extensionPoint{name, api, manifest, host}` |
-| A plugin describes itself declaratively; the host reads that without running plugin code | CLAP's `clap_plugin_descriptor`; VS Code's `package.json` contributions | a manifest table returned by `init.lua`, type-checked against `manifest` |
-| Plugin code runs only when needed, through a factory | CLAP's plugin factory; VS Code's activation events and `activate(context)` | optional `create(host, ...)`, called by `point:create(id, ...)` |
+| A plugin describes itself declaratively; the host reads that without running plugin code | CLAP's `clap_plugin_descriptor`; VS Code's `package.json` contributions | a manifest table returned by the plugin file, type-checked against `manifest` |
+| Plugin code runs only when needed | CLAP's plugin factory; VS Code's activation events and `activate(context)` | manifest functions the host calls by name, `point:invoke(id, "reply", ...)`; a factory is `create`, `point:create(id, ...)` |
 | A versioned contract | `clap_version_is_compatible` | the manifest's `api` must equal the extension point's |
-| Isolation | CLAP plugins see only the host struct | each `init.lua` runs in its own environment with pure standard libraries only — no `require`, `io`, `os`, `load`, `debug` or `package` — and receives the host API read-only |
+| Isolation | CLAP plugins see only the host struct | each plugin runs in its own environment with pure standard libraries only — no `require`, `io`, `os`, `load`, `debug` or `package` — and receives the host API read-only |
 | Per-plugin context | VS Code's `ExtensionContext` | `host.id`, `host.directory`, `host.resource(file)` |
+| One file is a plugin | the lite editor's `plugins/*.lua`, dropped into a folder | `<prefix>/<id>.lua`; a folder, `<prefix>/<id>/init.lua`, when it ships assets |
 
-A plugin is a folder, `<prefix>/<id>/init.lua`, plus any assets it ships
-(`host.resource("Scene.metal")`). Extension points load an explicit list,
-`point:load(prefix, {"a", "b"})`, rather than scanning directories: the same
-code then loads from disk on macOS and from the packager on iOS, and the list
-is the order pickers show. A broken plugin raises with its module name.
-Plugins never enter `package.loaded`, so the app cannot `require` them and
-they cannot reach each other.
+A plugin is one Lua file, `<prefix>/<id>.lua`, or a folder with assets,
+`<prefix>/<id>/init.lua` (`host.resource("Scene.metal")`). Extension points
+load an explicit list, `point:load(prefix, {"a", "b"})`, rather than scanning
+directories: the same code then loads from disk on macOS and from the
+packager on iOS, and the list is the order pickers show. A broken bundled
+plugin raises with its module name. Plugins never enter `package.loaded`, so
+the app cannot `require` them and they cannot reach each other. Code several
+plugins would repeat (a wire dialect many providers speak) lives in the host
+API once, not in a plugin the others would `require`.
+
+An app that lets the user drop plugins in reads the files itself and hands
+each to `point:loadSource(id, source, where)`; `Plugins.pluginName` turns a
+folder listing into ids (`openai.lua` is `openai`; `_off.lua` and folders are
+skipped). A user plugin that fails to load is reported by the app and the
+rest load, as an editor opens its log and starts anyway.
 
 Native extensions are a different thing: `App.loadNativePlugin(path, name)`
 loads a Lua C module from a dylib (`src/plugins/*`). They share the process
 and are trusted code.
 
-The reference app is `apps/dnb`: music styles are plugins of data (flavours,
-grooves, bass lines) against a style host API
+The reference apps are `apps/dnb`, where music styles are plugins of data
+(flavours, grooves, bass lines) against a style host API
 (`apps/dnb/host/StyleKit.lua`) and visualizer scenes are plugins
-contributing Metal functions linked into one program. See its README.
+contributing Metal functions linked into one program, and `apps/studio`,
+where every model provider (Anthropic, OpenAI, Gemini, OpenRouter) is one
+file of `plugins/providers/` turning a neutral turn into an HTTPS request
+and a response into a reply, and the user adds providers by dropping files
+into Documents/Plugins. See their READMEs.
 
 ---
 

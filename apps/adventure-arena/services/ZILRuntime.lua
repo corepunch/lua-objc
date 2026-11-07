@@ -119,6 +119,7 @@ function ZILRuntime.new(game, readFile, seed)
 					local engine = runtime.create_game(env, true)
 					local opening = engine:start()
 					return {
+						isRunning = function() return engine:is_running() end,
 						resume = function(_, command)
 							return withContext(readFile, paths, function() return engine:resume(command) end)
 						end,
@@ -126,7 +127,7 @@ function ZILRuntime.new(game, readFile, seed)
 							return {
 								score = tonumber(env.SCORE) or 0,
 								moves = tonumber(env.MOVES) or 0,
-								maxScore = tonumber(env["SCORE-MAX"]) or 0,
+								maxScore = tonumber(env.SCORE_MAX) or 0,
 							}
 						end,
 						roomName = function()
@@ -152,7 +153,12 @@ function ZILRuntime.new(game, readFile, seed)
 						items = function()
 							return withContext(readFile, paths, function()
 								local ok, items = pcall(function() return engine:resume("room-items") end)
-								return ok and type(items) == "table" and items or {}
+								if not ok or type(items) ~= "table" then return {} end
+								local heldOK, held = pcall(function() return engine:resume("inventory-items") end)
+								if heldOK and type(held) == "table" then
+									for _, item in ipairs(held) do table.insert(items, item) end
+								end
+								return items
 							end)
 						end,
 						exits = function()

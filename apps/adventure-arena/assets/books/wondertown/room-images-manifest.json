@@ -1,0 +1,138 @@
+{
+  "source": "room-images-sheet.jpg",
+  "generatedWith": "OpenAI image generation",
+  "grid": [
+    4,
+    4
+  ],
+  "sheetSize": [
+    1254,
+    1254
+  ],
+  "tileSize": [
+    256,
+    256
+  ],
+  "rooms": [
+    {
+      "room": "WORKSHOP-FLOOR",
+      "file": "images/WORKSHOP-FLOOR.jpg",
+      "crop": [
+        2,
+        2,
+        312,
+        312
+      ]
+    },
+    {
+      "room": "WORKBENCH-TOP",
+      "file": "images/WORKBENCH-TOP.jpg",
+      "crop": [
+        316,
+        2,
+        625,
+        312
+      ]
+    },
+    {
+      "room": "TOOL-BENCH",
+      "file": "images/TOOL-BENCH.jpg",
+      "crop": [
+        629,
+        2,
+        938,
+        312
+      ]
+    },
+    {
+      "room": "COUNTERTOP",
+      "file": "images/COUNTERTOP.jpg",
+      "crop": [
+        942,
+        2,
+        1252,
+        312
+      ]
+    },
+    {
+      "room": "STORAGE-LOFT",
+      "file": "images/STORAGE-LOFT.jpg",
+      "crop": [
+        2,
+        316,
+        312,
+        625
+      ]
+    },
+    {
+      "room": "SNOWY-ALLEY",
+      "file": "images/SNOWY-ALLEY.jpg",
+      "crop": [
+        316,
+        316,
+        625,
+        625
+      ]
+    },
+    {
+      "room": "CLOCK-SQUARE",
+      "file": "images/CLOCK-SQUARE.jpg",
+      "crop": [
+        629,
+        316,
+        938,
+        625
+      ]
+    },
+    {
+      "room": "MAILBOX-CORNER",
+      "file": "images/MAILBOX-CORNER.jpg",
+      "crop": [
+        942,
+        316,
+        1252,
+        625
+      ]
+    },
+    {
+      "room": "SCRAP-YARD",
+      "file": "images/SCRAP-YARD.jpg",
+      "crop": [
+        2,
+        629,
+        312,
+        938
+      ]
+    },
+    {
+      "room": "FOX-DEN",
+      "file": "images/FOX-DEN.jpg",
+      "crop": [
+        316,
+        629,
+        625,
+        938
+      ]
+    },
+    {
+      "room": "TOLLIVER-STUDY",
+      "file": "images/TOLLIVER-STUDY.jpg",
+      "crop": [
+        629,
+        629,
+        938,
+        938
+      ]
+    },
+    {
+      "room": "WORKSHOP-HEART",
+      "file": "images/WORKSHOP-HEART.jpg",
+      "crop": [
+        942,
+        629,
+        1252,
+        938
+      ]
+    }
+  ]
+}

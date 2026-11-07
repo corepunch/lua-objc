@@ -1,5 +1,5 @@
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local JsonDocument = require("apps.adventure-arena.services.JsonDocument")
 local Store = require("apps.adventure-arena.Store")
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")

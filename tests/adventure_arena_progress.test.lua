@@ -4,7 +4,7 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Adventures = require("apps.adventure-arena.models.Adventures")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Controller = require("apps.adventure-arena.Controller")
 
 -- A scripted engine: "take egg" scores, everything else echoes.

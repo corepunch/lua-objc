@@ -147,6 +147,7 @@ are parsed up front, but native views are created only for visible cells.
 | `Slider` | AppKit `NSSlider` | `min`, `max`, `value`, `style` (`level`), `tickMarks`, `allowsTickMarkValuesOnly`, `tint`, plus layout attributes |
 | `Stepper` | AppKit `NSStepper` | `min`, `max`, `value`, `increment`, `wraps`, `autorepeat`, plus layout attributes |
 | `Picker` | AppKit `NSPopUpButton` | zero-based `value`, plus one or more `Option` children |
+| `Menu` | Native pull-down menu button of `MenuItem` and `Separator` children | `title`, `systemImage`, `imagePath`, `style` (`plain`, `glass`), `symbolSize`, `accessibilityLabel`; on UIKit, `cornerRadius` with `imagePath` makes the button a tile the artwork fills |
 | `Option` | Child descriptor consumed by `Picker` | `title`, `label`, or `value` |
 | `Image` | Native image view or SF Symbol | `src`/`path`, or `system`/`symbol`; `label`, `size`, `weight`, `color`, `resizable`, `contentMode` |
 | `SystemImage` | Native SF Symbol image | `name` or `symbol`, `label`, `size`, `weight`, `color` |

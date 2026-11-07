@@ -1,0 +1,128 @@
+{
+  "source": "room-images-sheet.jpg",
+  "generatedWith": "OpenAI image generation",
+  "grid": [
+    4,
+    4
+  ],
+  "sheetSize": [
+    1254,
+    1254
+  ],
+  "tileSize": [
+    256,
+    256
+  ],
+  "rooms": [
+    {
+      "room": "ASHWORTH-MANOR-GATE",
+      "file": "images/ASHWORTH-MANOR-GATE.jpg",
+      "crop": [
+        2,
+        2,
+        312,
+        312
+      ]
+    },
+    {
+      "room": "ASHWORTH-ENTRANCE-HALL",
+      "file": "images/ASHWORTH-ENTRANCE-HALL.jpg",
+      "crop": [
+        316,
+        2,
+        625,
+        312
+      ]
+    },
+    {
+      "room": "STUDY",
+      "file": "images/STUDY.jpg",
+      "crop": [
+        629,
+        2,
+        938,
+        312
+      ]
+    },
+    {
+      "room": "LIBRARY",
+      "file": "images/LIBRARY.jpg",
+      "crop": [
+        942,
+        2,
+        1252,
+        312
+      ]
+    },
+    {
+      "room": "DINING-ROOM",
+      "file": "images/DINING-ROOM.jpg",
+      "crop": [
+        2,
+        316,
+        312,
+        625
+      ]
+    },
+    {
+      "room": "KITCHEN",
+      "file": "images/KITCHEN.jpg",
+      "crop": [
+        316,
+        316,
+        625,
+        625
+      ]
+    },
+    {
+      "room": "GARDEN",
+      "file": "images/GARDEN.jpg",
+      "crop": [
+        629,
+        316,
+        938,
+        625
+      ]
+    },
+    {
+      "room": "GREENHOUSE",
+      "file": "images/GREENHOUSE.jpg",
+      "crop": [
+        942,
+        316,
+        1252,
+        625
+      ]
+    },
+    {
+      "room": "SERVANTS-QUARTERS",
+      "file": "images/SERVANTS-QUARTERS.jpg",
+      "crop": [
+        2,
+        629,
+        312,
+        938
+      ]
+    },
+    {
+      "room": "SECRET-PASSAGE",
+      "file": "images/SECRET-PASSAGE.jpg",
+      "crop": [
+        316,
+        629,
+        625,
+        938
+      ]
+    },
+    {
+      "room": "PANTRY",
+      "file": "images/PANTRY.jpg",
+      "crop": [
+        629,
+        629,
+        938,
+        938
+      ]
+    }
+  ]
+}

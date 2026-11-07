@@ -1,9 +1,11 @@
+static UIColor *lua_objc_uikit_system_color(const char *name);
 #pragma mark - LuaTableViewSource (iOS UITableView)
 
 @interface LuaTableViewSource : NSObject <UITableViewDataSource, UITableViewDelegate,
 	UITableViewDragDelegate, UITableViewDropDelegate>
 @property (nonatomic, strong) NSMutableArray *rows;
 @property (nonatomic, strong) NSMutableArray *columns;
+- (void)replaceRows:(NSArray *)rows;
 @property (nonatomic, weak) UITableView *tableView;
 @property (nonatomic, strong) LuaReg *moveReg;
 @property (nonatomic, strong) LuaReg *selectionReg;
@@ -179,22 +181,42 @@
 		id val = rowData[key];
 		[values addObject:val ? [val description] : @""];
 	}
+	UIListContentConfiguration *content = cell.defaultContentConfiguration;
 	// A `section` row is the AppKit group-row header; reused cells reset the
 	// header styling before showing an ordinary row.
 	id section = rowData[@"section"];
 	BOOL isSection = [section respondsToSelector:@selector(boolValue)] && [section boolValue];
 	if (isSection) {
 		id title = rowData[@"title"] ?: rowData[@"name"];
-		cell.textLabel.text = title ? [title description] : @"";
-		cell.textLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
-		cell.textLabel.textColor = UIColor.secondaryLabelColor;
+		content.text = title ? [title description] : @"";
+		content.textProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+		content.textProperties.color = UIColor.secondaryLabelColor;
 		cell.selectionStyle = UITableViewCellSelectionStyleNone;
 	} else {
-		cell.textLabel.text = [values componentsJoinedByString:@"  "];
-		cell.textLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
-		cell.textLabel.textColor = UIColor.labelColor;
+		content.text = [values componentsJoinedByString:@"  "];
+		content.textProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
+		content.textProperties.color = UIColor.labelColor;
+		/* The first column's cell keys name row fields, as on AppKit: a
+		 * symbol beside the text (`image`, tinted by `imageColor`) and a
+		 * secondary line beneath it (`secondary`). */
+		NSDictionary *cellSpec = _columns.firstObject[@"cell"];
+		NSString *imageKey = cellSpec[@"image"];
+		id symbol = imageKey ? rowData[imageKey] : nil;
+		if ([symbol isKindOfClass:NSString.class] && [symbol length]) {
+			content.image = [UIImage systemImageNamed:symbol];
+			NSString *colorKey = cellSpec[@"imageColor"];
+			id color = colorKey ? rowData[colorKey] : nil;
+			content.imageProperties.tintColor = [color isKindOfClass:NSString.class]
+				? lua_objc_uikit_system_color([color UTF8String]) : nil;
+		}
+		NSString *secondaryKey = cellSpec[@"secondary"];
+		id secondary = secondaryKey ? rowData[secondaryKey] : nil;
+		content.secondaryText = [secondary isKindOfClass:NSString.class] && [secondary length] ? secondary : nil;
+		content.secondaryTextProperties.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+		content.secondaryTextProperties.color = UIColor.secondaryLabelColor;
 		cell.selectionStyle = UITableViewCellSelectionStyleDefault;
 	}
+	cell.contentConfiguration = content;
 	LUA_OBJC_PERF_END("uikit.cell.dequeue", signpost);
 	return cell;
 }
@@ -214,6 +236,11 @@
 
 - (void)clearRows {
 	[_rows removeAllObjects];
+	[_tableView reloadData];
+}
+
+- (void)replaceRows:(NSArray *)rows {
+	[_rows setArray:rows];
 	[_tableView reloadData];
 }
 

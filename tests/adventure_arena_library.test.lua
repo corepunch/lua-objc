@@ -3,7 +3,7 @@ local t = require("TestKit")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 
 -- The library is designed for 20-30 adventures; build a synthetic 30-game
--- catalog so shelf, chart and search limits are exercised past today's nine.
+-- catalog so shelf, chart and search limits are exercised past today's twelve.
 local collections = { "The Zork Trilogy", "Infocom Classics", "Arena Originals", "Mysteries" }
 local genres = { "Classic Adventure", "Sci-Fi Adventure", "Psychological Horror", "Victorian Mystery", "Fantasy Adventure" }
 local games = {}
@@ -76,7 +76,7 @@ local realShelves = {}
 for _, shelf in ipairs(real:shelves()) do realShelves[shelf.title] = shelf.count end
 t.assertEqual(realShelves["The Zork Trilogy"], 3, "the Zork trilogy shares a shelf")
 t.assertEqual(realShelves["Infocom Classics"], 3, "classic Infocom titles share a shelf")
-t.assertEqual(realShelves["Arena Originals"], 3, "studio titles share a shelf")
+t.assertEqual(realShelves["Arena Originals"], 6, "studio titles share a shelf")
 t.assertEqual(real:related("infocom.zork1")[1].id, "infocom.zork2", "Zork I suggests the rest of the trilogy")
 t.assertEqual(#real:search("zork"), 3, "searching Zork finds the trilogy")
 

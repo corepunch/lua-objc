@@ -42,7 +42,7 @@
     "channels": ["github", "appStore"],
     "identifier": "org.luaobjc.adventure-arena",
     "displayName": "Adventure Arena",
-    "assets": "ios/AdventureArena/Assets.xcassets",
+    "assets": "apps/adventure-arena/Assets.xcassets",
     "profileSecret": "ADVENTURE_ARENA_APPSTORE_PROFILE",
     "certificateSecret": "APPSTORE_CERTIFICATE_P12",
     "certificatePasswordSecret": "APPSTORE_CERTIFICATE_PASSWORD",

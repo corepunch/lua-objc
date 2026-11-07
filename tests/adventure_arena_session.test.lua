@@ -1,6 +1,6 @@
 _G.__headless = true
 local t = require("TestKit")
-local Session = require("apps.adventure-arena.models.Session")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 
 local function kinds(session)
 	local list = {}

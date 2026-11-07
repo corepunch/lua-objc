@@ -4,7 +4,7 @@
 transcribing the microphone through `AVAudioEngine`. It uses public Speech
 and AVFoundation APIs only and is iOS-only (it configures `AVAudioSession`).
 iOS cannot load plugin dylibs, so the iOS hosts (`make ios-host`,
-`scripts/ipad/build.mk`, `ios/AdventureArena`) link it and add it to
+`scripts/ipad/build.mk`, `apps/adventure-arena`) link it and add it to
 `package.preload`. Where it is not linked, `require("Speech")` fails, so an
 app treats it as optional. Adventure Arena (`apps/adventure-arena`) is the
 client.

@@ -22,7 +22,7 @@
 
       <ScrollView id="facts" horizontal="true" vertical="false">
         <HStack spacing="0" paddingHorizontal="8" paddingVertical="14" alignment="center">
-          <%- partial("../components/Fact.etlua", { caption = "Rating", value = string.format("%.1f", game.rating), detail = game.reviewCount .. " ratings", divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = "Rating", value = game.reviewCount > 0 and string.format("%.1f", game.rating) or "—", detail = game.reviewCount > 0 and (game.reviewCount .. " ratings") or "No ratings yet", divider = true }) %>
           <%- partial("../components/Fact.etlua", { caption = "Difficulty", value = game.difficulty or "—", detail = "Infocom level", divider = true }) %>
           <%- partial("../components/Fact.etlua", { caption = "Genre", value = game.genre:gsub(" Adventure$", ""), detail = "Adventure", divider = true }) %>
           <%- partial("../components/Fact.etlua", { caption = "Released", value = tostring(game.year), detail = game.author, divider = false }) %>

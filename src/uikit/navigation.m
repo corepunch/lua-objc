@@ -128,11 +128,36 @@ static int bridge_UIKitNavigation_push(lua_State *L) {
 	return 0;
 }
 
+/* Navigation bars own their custom views' frames. A retained template can
+ * start empty and gain content after the item is installed, so publish its
+ * current fitting size and lay it out whenever UIKit sizes the item. */
+@interface LuaToolbarItemHost : UIView
+@property(nonatomic, strong) UIView *luaContent;
+@property(nonatomic) CGFloat maximumWidth;
+@end
+@implementation LuaToolbarItemHost
+- (CGSize)sizeThatFits:(CGSize)proposal {
+	return measure_size(self.luaContent, CGSizeMake(MIN(proposal.width, self.maximumWidth), proposal.height));
+}
+- (CGSize)intrinsicContentSize {
+	return [self sizeThatFits:CGSizeMake(self.maximumWidth, CGFLOAT_MAX)];
+}
+- (void)layoutSubviews {
+	[super layoutSubviews];
+	self.luaContent.frame = self.bounds;
+	layout_recursive(self.luaContent, self.bounds.size.width);
+}
+@end
+
 static UIView *page_toolbar_view(UIView *view, CGFloat maxWidth) {
-	CGSize size = measure_size(view, CGSizeMake(maxWidth, CGFLOAT_MAX));
-	view.frame = CGRectMake(0, 0, size.width, size.height);
-	layout_recursive(view, size.width);
-	return view;
+	LuaToolbarItemHost *host = [[LuaToolbarItemHost alloc] initWithFrame:CGRectZero];
+	host.luaContent = view;
+	host.maximumWidth = maxWidth;
+	[host addSubview:view];
+	CGSize size = host.intrinsicContentSize;
+	host.frame = CGRectMake(0, 0, size.width, size.height);
+	[host setNeedsLayout];
+	return host;
 }
 
 /* The bar above the keyboard for a page's `keyboard` toolbar items, set as
