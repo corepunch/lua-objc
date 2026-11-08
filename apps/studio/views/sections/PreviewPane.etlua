@@ -29,8 +29,8 @@
 		</HStack>
 	</GlassEffectContainer>
 			<HStack spacing="6" alignment="center" flexShrink="1">
-				<SystemImage name="checkmark.circle.fill" size="<%= STAGE.statusSize %>" color="secondary" />
-				<Label id="previewStatus" text="<%= status %>" size="<%= STAGE.statusSize %>" color="secondary" lines="1" truncation="tail" />
+				<SystemImage name="<%= failed and "exclamationmark.triangle.fill" or "checkmark.circle.fill" %>" size="<%= STAGE.statusSize %>" color="<%= failed and "systemOrange" or "secondary" %>" />
+				<Label id="previewStatus" text="<%= status %>" size="<%= STAGE.statusSize %>" color="<%= failed and "systemOrange" or "secondary" %>" lines="1" truncation="tail" />
 			</HStack>
 	<Preview id="preview" background="clear" appearance="<%= appearance or "system" %>" zoom="<%= zoomValue or 1 %>" flexGrow="1" maxWidth="infinity" maxHeight="infinity" />
 	<HStack spacing="0" maxWidth="infinity">

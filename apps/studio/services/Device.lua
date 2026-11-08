@@ -1,4 +1,14 @@
 local Device = {}
+local function providerError(status, detail)
+	local hints = {
+		[401] = "Check your API key in Settings.",
+		[402] = "Check your OpenRouter credits or choose a free model in Settings.",
+		[404] = "Choose an available provider/model in Settings.",
+		[429] = "Try again later or choose another model in Settings.",
+	}
+	local hint = hints[status] or "Try again or choose another model in Settings."
+	return "OpenRouter HTTP " .. status .. ": " .. detail .. ". " .. hint
+end
 function Device.new(ns)
 	local ok, speech = pcall(require, "Speech")
 	local json = { encode = ns._jsonEncode, decode = ns.json_parse }
@@ -40,14 +50,16 @@ function Device.new(ns)
 			local request = ns._httpRequest("https://openrouter.ai/api/v1/chat/completions", {
 				Authorization = "Bearer " .. key, ["Content-Type"] = "application/json", ["X-Title"] = "Lua Studio",
 			}, json.encode(payload), function(body, err, status)
-				if err then completion(nil, err); return end
+				if err then completion(nil, "OpenRouter request failed: " .. tostring(err) .. ". Try again or choose another model in Settings."); return end
 				status = tonumber(status) or 0
 				local ok, result = pcall(json.decode, body or "")
-				if not ok or type(result) ~= "table" then completion(nil, "OpenRouter returned invalid JSON (HTTP " .. status .. ")"); return end
-				if status < 200 or status >= 300 or result.error then
-					local detail = type(result.error) == "table" and result.error.message or "Request failed"
-					completion(nil, "OpenRouter HTTP " .. status .. ": " .. tostring(detail)); return
+				local decoded = ok and type(result) == "table"
+				if status < 200 or status >= 300 or (decoded and result.error) then
+					local detail = decoded and result.error
+					if type(detail) == "table" then detail = detail.message end
+					completion(nil, providerError(status, type(detail) == "string" and detail or "Request failed")); return
 				end
+				if not decoded then completion(nil, "OpenRouter returned invalid JSON (HTTP " .. status .. "). Try again or choose another model in Settings."); return end
 				completion(result)
 			end)
 			return function() ns._cancelRequest(request) end

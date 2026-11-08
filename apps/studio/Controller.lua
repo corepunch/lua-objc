@@ -117,7 +117,8 @@ function Controller:openProject(id)
 	self.selectedFile, self.showcase = "Controller.lua", nil
 	self.actions = self:workspaceActions()
 	self.chat:attach(self.session, self.device, function() return self:reloadPreview() end,
-		DataModel.bound(self.store, function() self:render(); self:showLatestTurn() end))
+		DataModel.bound(self.store, function() self:render(); self:showLatestTurn() end),
+		function(action, value) return self.preview:interact(action, value) end)
 	self:reloadPreview()
 	return true
 end
@@ -126,6 +127,7 @@ function Controller:workspaceData()
 	if not self.model then return {empty = true, status = self.status or "", actions = self.actions} end
 	local preview = self.previewPane:presentation(self.projects, self:iconChoices())
 	preview.status, preview.chatHidden = self.status or preview.status, self.chatHidden
+	preview.failed = self.preview and self.preview.lastError ~= nil
 	preview.appearance, preview.zoomValue = self.previewAppearance, self.previewZoom
 	preview.zoom = self.previewZoom == 1 and "Fit" or "75%"
 	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")

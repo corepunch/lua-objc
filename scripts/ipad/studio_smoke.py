@@ -15,7 +15,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 BUNDLE = ROOT / 'build/studio-smoke-runtime/iphonesimulator-arm64/LuaStudioSmoke.app'
 IDENTIFIER = 'org.luaobjc.studio.smoke'
-SCENARIOS = ('github', 'github-busy', 'github-error', 'agent', 'code', 'long', 'busy', 'settings', 'popup-settings', 'popup-delete', 'project', 'templates', 'template-create', 'export', 'share', 'attach', 'appearance', 'create')
+SCENARIOS = ('github', 'github-busy', 'github-error', 'agent', 'preview-error', 'interaction', 'provider-error', 'code', 'long', 'busy', 'settings', 'popup-settings', 'popup-delete', 'project', 'templates', 'template-create', 'export', 'share', 'attach', 'appearance', 'create')
 LIFECYCLE = ('lifecycle-create', 'lifecycle-settings', 'lifecycle-edit', 'lifecycle-invalid', 'lifecycle-reopen',
              'lifecycle-delete-confirm', 'lifecycle-delete', 'lifecycle-empty', 'lifecycle-recreate')
 SCENARIOS += LIFECYCLE

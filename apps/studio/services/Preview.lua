@@ -4,6 +4,36 @@ Preview.__index = Preview
 
 local FRAMEWORK_HOOKS = { _insertSubview = true, _removeSubview = true, _hasLayoutAxis = true }
 
+local function evaluate(ns, scope, fn)
+	local oldHook, mask, count = debug.gethook()
+	local ticks = 0
+	debug.sethook(function()
+		ticks = ticks + 1
+		if ticks > 500 then error("Preview exceeded its execution budget") end
+	end, "", 10000)
+	local ok, result = xpcall(function() return ns.Scope.withScope(scope, fn) end, debug.traceback)
+	debug.sethook(oldHook, mask, count)
+	return ok, result
+end
+
+local function snapshot(value, depth, budget)
+	local kind = type(value)
+	if kind == "string" then return #value > 2048 and value:sub(1, utf8.offset(value, 0, 2049) - 1) or value end
+	if kind == "boolean" then return value end
+	if kind == "number" and value == value and math.abs(value) ~= math.huge then return value end
+	if kind ~= "table" or depth == 0 or budget.remaining == 0 then return nil end
+	local result, count = {}, 0
+	for key, item in pairs(value) do
+		if key ~= "actions" and (type(key) == "string" or type(key) == "number") then
+			budget.remaining = budget.remaining - 1
+			local plain = snapshot(item, depth - 1, budget)
+			if plain ~= nil then result[key] = plain; count = count + 1 end
+			if count == 128 or budget.remaining == 0 then break end
+		end
+	end
+	return result
+end
+
 function Preview.new(ns, readFramework, localStorage)
 	return setmetatable({ ns = ns, readFramework = readFramework, localStorage = localStorage }, Preview)
 end
@@ -74,26 +104,32 @@ function Preview:render(files, entry)
 		return loaded[name]
 	end
 	env.require = requireModule
-	local oldHook, mask, count = debug.gethook()
-	local ticks = 0
-	debug.sethook(function()
-		ticks = ticks + 1
-		if ticks > 500 then error("Preview exceeded its execution budget") end
-	end, "", 10000)
-	local scope = self.ns.Scope.new()
-	local ok, result = xpcall(function()
-		return self.ns.Scope.withScope(scope, function()
-			local controller = requireModule(entry or "demo.playground.init").new()
-			return controller:createWindow()
-		end)
-	end, debug.traceback)
-	debug.sethook(oldHook, mask, count)
-	if not ok then scope:dispose(); return nil, result end
+	local scope, controller = self.ns.Scope.new(), nil
+	local ok, result = evaluate(self.ns, scope, function()
+		controller = requireModule(entry or "demo.playground.init").new()
+		return controller:createWindow()
+	end)
+	if not ok then scope:dispose(); self.lastError = result; return nil, result end
 	self:close()
-	self.scope = scope
+	self.scope, self.controller, self.lastError = scope, controller, nil
+	return result
+end
+function Preview:interact(action, value)
+	if self.lastError then return nil, "Current source did not render: " .. self.lastError end
+	local controller = self.controller
+	if not controller or not self.scope then return nil, "Run a working preview first" end
+	if type(action) ~= "string" or type(controller.actions) ~= "table" or type(controller.actions[action]) ~= "function" then
+		return nil, "No preview controller action: " .. tostring(action)
+	end
+	local ok, result = evaluate(self.ns, self.scope, function()
+		controller.actions[action](value)
+		return type(controller.data) == "function" and snapshot(controller:data(), 5, {remaining=256}) or {}
+	end)
+	if not ok then return nil, result end
 	return result
 end
 function Preview:close()
 	if self.scope then self.scope:dispose(); self.scope = nil end
+	self.controller, self.lastError = nil, nil
 end
 return Preview
