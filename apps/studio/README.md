@@ -52,6 +52,17 @@ requires a user-supplied key; provider charges may apply for other models. Befor
 enabling it, Settings explains that messages, selected attachments, and source
 requested by the agent are sent to OpenRouter and its model provider. Send starts
 a real tool loop, Stop cancels it, and changed-file cards describe actual edits.
+The agent can read a bundled reference for the actual control, model and template APIs.
+Its `testAction` tool runs a named controller action in the current preview and returns
+bounded plain data, so it can check input, creation, filters and toggles after rendering.
+These actions change the running app, including its local data when it saves. Action
+tests use the same execution budget as initial rendering. A turn is limited to 24
+provider requests. Truncated, empty and failed provider responses end with a visible
+error; incomplete tool batches are rejected before edits. Saved-file cards distinguish
+a working preview from a failed reload that kept the previous preview. Provider
+failures retain completed conversation context for a manual retry and explain
+when to check the key, wait for a rate limit, or choose another model. Studio
+does not automatically retry or switch to a paid model.
 New Conversation clears the in-memory conversation. Dictation uses Apple's Speech
 service on demand; the attachment button accepts up to four UTF-8 text files,
 128 KB each, as context. Neither sends anything until Send is pressed.
@@ -105,8 +116,8 @@ Simulator.app need not be open. The snapshot harness proposes landscape standard
 (1210 × 834), wide (1366 × 834), and small (1024 × 768) window sizes directly.
 A separate `org.luaobjc.studio.smoke` app and build folder use
 `test/studio-smoke/` and a deterministic provider; no API key or network request is
-needed. Native editor events, project creation/switching, generated edits and
-preview reloads are exercised. The real Files picker and ZIP share sheet are
+needed. Native editor events, project creation/switching, generated edits,
+failed-preview recovery, agent-driven action tests and preview reloads are exercised. The real Files picker and ZIP share sheet are
 presented; the exported ZIP is inspected. Screenshots, native geometry snapshots,
 and `results.json` are written under `build/studio-smoke/`; a failure includes a
 screenshot and startup log. The script checks important control frames for clipping

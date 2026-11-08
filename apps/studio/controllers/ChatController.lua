@@ -7,11 +7,11 @@ function Controller.new()
 	return setmetatable({ model = Model, draft = "" }, Controller)
 end
 
-function Controller:attach(session, device, preview, changed)
+function Controller:attach(session, device, preview, changed, interact)
 	self:stop()
 	self.session, self.device, self.changed = session, device, changed
 	self.draft, self.attachments = "", {}
-	self.agent = Agent.new(session, device.transport, device.json, preview, changed)
+	self.agent = Agent.new(session, device.transport, device.json, preview, changed, interact)
 end
 
 function Controller:presentation(conversation, code)

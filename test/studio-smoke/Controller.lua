@@ -16,15 +16,26 @@ function Harness.new()
 			request = function(_, _, _, _, callback) callback({login="octocat",id=1,name="Example Author"}); return function() end end,
 		},
 		credentials = {read = function() return "smoke-test-only" end},
-		transport = function(_, _, callback)
+		transport = function(payload, _, callback)
 			state.responses = state.responses + 1
-			local response = {content = "Updated the counter to add two. Try it in the preview."}
-			if state.responses == 1 then
+			local response = {content = os.getenv("STUDIO_SMOKE_SCENARIO") == "preview-error" and "The saved source has a runtime error. Undo is available." or "Updated the counter to add two. Try it in the preview."}
+			local failure
+			if os.getenv("STUDIO_SMOKE_SCENARIO") == "provider-error" then
+				if state.responses == 1 then failure = "OpenRouter HTTP 503: Provider unavailable. Try again or choose another model in Settings." end
+				state.retryWithContext = state.responses == 2 and #payload.messages == 3 and payload.messages[2].content == "Change the starter counter to add two."
+				response = {content="The provider recovered. Project source is unchanged."}
+			elseif state.responses == 1 and os.getenv("STUDIO_SMOKE_SCENARIO") == "interaction" then
+				response = {tool_calls={{id="test",["function"]={name="testAction",arguments=ns._jsonEncode({action="increment"})}}}}
+			elseif state.responses == 1 then
 				response = {tool_calls = {{id = "edit", ["function"] = {name = "applyFiles",
-					arguments = ns._jsonEncode({files = {{path = "demo/playground/Model.lua", content = COUNTER}}})}}}}
+					arguments = ns._jsonEncode({files = {{path = "demo/playground/Model.lua", content = os.getenv("STUDIO_SMOKE_SCENARIO") == "preview-error" and 'error("Preview stress failure")' or COUNTER}}})}}}}
 			end
 			local active = true
-			ns._timerAfter(0, function() if active then callback({choices = {{message = response}}}) end end)
+			ns._timerAfter(0, function()
+				if active then
+					if failure then callback(nil,failure) else callback({choices = {{message = response}}}) end
+				end
+			end)
 			return function() active = false end
 		end,
 	}})
@@ -55,15 +66,42 @@ function Harness:createWindow()
 		end)
 		return window
 	end
-	if scenario == "agent" then
+	if scenario == "preview-error" or scenario == "interaction" then
+		self:showNewProject()
+		self.sheetData.projectName = scenario == "preview-error" and "Preview Error Proof" or "Interaction Proof"
+		assert(self:createProject())
+	end
+	if scenario == "agent" or scenario == "preview-error" or scenario == "interaction" or scenario == "provider-error" then
+		local working = self.previewContent
 		local changed = self.chat.agent.changed
 		self.chat.agent.changed = function()
 			changed()
 			if self.chat.agent.busy then return end
+			if scenario == "provider-error" and self.smokeState.responses == 1 then
+				self.chat.draft = "Try again"
+				assert(self:sendMessage())
+				return
+			end
 			finish(xpcall(function()
 				assert(self.smokeState.responses == 2, self.model:transcript())
-				assert(self.model.files["demo/playground/Model.lua"]:find("value+2", 1, true), "generated edit was not saved")
-				assert(self.previewContent, "generated app did not preview")
+				if scenario == "provider-error" then
+					assert(self.smokeState.retryWithContext,"retry lost the original user request")
+					assert(self.model.revision == 0 and self.previewContent == working,"provider failure or retry changed the source or preview")
+					assert(self.model:transcript():find("503",1,true),"the provider error was hidden")
+				elseif scenario == "interaction" then
+					assert(self.preview.controller:data().count == 1, "the tool did not interact with the live counter")
+				elseif scenario == "preview-error" then
+					assert(self.previewContent == working, "failed code replaced the working preview")
+					assert(self.status:find("Preview stress failure",1,true), "the runtime error was hidden")
+					local found
+					for _, message in ipairs(self.model.messages) do
+						if message.changes then found = message.previewState == "error" end
+					end
+					assert(found, "the change card claimed preview success")
+				else
+					assert(self.model.files["demo/playground/Model.lua"]:find("value+2", 1, true), "generated edit was not saved")
+					assert(self.previewContent, "generated app did not preview")
+				end
 			end, debug.traceback))
 		end
 		self.chat.draft = "Change the starter counter to add two."

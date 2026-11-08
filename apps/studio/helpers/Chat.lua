@@ -48,7 +48,8 @@ function Model.presentation(conversation, code)
 	local source = conversation or { messages = {} }
 	local messages = {}
 	for index, message in ipairs(source.messages or {}) do
-		local entry = { id = index, role = message.role, text = message.text, conclusion = message.conclusion }
+		local entry = { id = index, role = message.role, text = message.text, conclusion = message.conclusion,
+			previewState = message.previewState, previewError = message.previewError }
 		if message.changes and #message.changes > 0 then
 			entry.changes, entry.summary = Model.changes(message.changes)
 		end

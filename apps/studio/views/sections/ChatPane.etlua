@@ -64,8 +64,10 @@
 						<% if message.conclusion then %>
 						<Label text="<%= message.conclusion %>" size="<%= CHAT.bodySize %>" lines="0" maxWidth="infinity" />
 						<% end %>
-						<% if message.changes then %>
+						<% if message.previewState == "ready" then %>
 						<Label text="Preview updated" systemImage="checkmark.circle.fill" iconSize="<%= CHAT.captionSize %>" size="<%= CHAT.captionSize %>" color="secondary" />
+						<% elseif message.previewState == "error" then %>
+						<Label text="Preview failed. Last working version kept." systemImage="exclamationmark.triangle.fill" iconSize="<%= CHAT.captionSize %>" size="<%= CHAT.captionSize %>" color="systemOrange" lines="0" maxWidth="infinity" />
 						<% end %>
 					</VStack>
 				</HStack>

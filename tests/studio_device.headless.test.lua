@@ -21,7 +21,18 @@ t.assertEqual(last.body.model,"provider/model","the selected model reaches trans
 callback({choices={}},nil,200); t.expect(response~=nil and message==nil,"valid provider JSON reaches the agent")
 callback("broken",nil,200); t.expect(message:find("invalid JSON",1,true),"invalid JSON is reported")
 callback({error={message="Unauthorized"}},nil,401); t.expect(message:find("401: Unauthorized",1,true),"HTTP errors preserve actionable provider detail")
-callback(nil,"offline",0); t.assertEqual(message,"offline","network errors are reported")
+callback(nil,"offline",0); t.expect(message:find("offline",1,true) and message:find("Settings",1,true),"network errors explain how to recover")
+for _,sample in ipairs({
+	{status=401,body={error={message="Unauthorized"}},hint="API key"},
+	{status=402,body={error={message="Insufficient credits"}},hint="free model"},
+	{status=404,body={error="Model unavailable"},hint="available provider/model"},
+	{status=429,body="broken",hint="Try again later"},
+	{status=503,body={error={message="Provider unavailable"}},hint="another model"},
+}) do
+	callback(sample.body,nil,sample.status)
+	t.expect(response==nil and message:find(tostring(sample.status),1,true),"failed provider responses preserve their HTTP status")
+	t.expect(message:find(sample.hint,1,true),"provider failure gives a recovery action")
+end
 cancel(); t.assertEqual(cancelled,7,"cancellation targets the native request")
 device.credentials.clear(); t.assertEqual(device.credentials.read(),nil,"credentials can be removed")
 device.github.credentials.save("github-fixture")

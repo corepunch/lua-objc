@@ -1901,8 +1901,18 @@ local function extractProps(propDefs, attrs)
     return props
 end
 
+-- Input changes carry a value; button actions do not. Reject the wrong
+-- event name instead of rendering an input that can never update its model.
+local VALUE_INPUTS = { TextField = true, TextEditor = true, Toggle = true, Picker = true, Slider = true, Stepper = true }
+local function validateInputAction(tag, attrs)
+    if VALUE_INPUTS[tag] and attrs.action then
+        error("xml: <" .. tag .. "> uses onChange=\"" .. attrs.action .. "\", not action", 0)
+    end
+end
+
 local function makeSchemaHandler(tag, def)
     return function(ns, attrs, children)
+        validateInputAction(tag, attrs)
         if def.kind == "record" then
             local rec = extractProps(def.props, attrs)
             if def.flag then rec[def.flag] = true end
@@ -2191,13 +2201,13 @@ end
 -- change: removing an action must fail before reconciliation mutates views.
 function M.validateActions(description)
     local actions = description.data.actions
-    if not actions then return end
     local function walk(nodes)
         for _, node in ipairs(nodes) do
             if node.kind == "element" then
+                validateInputAction(node.tag, node.attrs)
                 for name, value in pairs(node.attrs) do
-                    if name:match("^on%u") or name == "rowMenu" or name == "dragItem" or name == "validate"
-                        or (name == "action" and (node.tag == "Button" or node.tag == "MenuItem" or node.tag == "ToolbarItem")) then
+                    if actions and (name:match("^on%u") or name == "rowMenu" or name == "dragItem" or name == "validate"
+                        or (name == "action" and (node.tag == "Button" or node.tag == "MenuItem" or node.tag == "ToolbarItem"))) then
                         if type(actions[value]) ~= "function" then
                             error("xml: " .. name .. "=\"" .. value .. "\" requires a controller action", 0)
                         end
