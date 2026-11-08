@@ -73,6 +73,16 @@
 --   	{"owner", fetch = function(location) return Apps:owning(location.path) end},
 --   }})
 --
+-- `remote` keeps a model's rows online (docs/backend.md): it names who reads
+-- a row, `fields` are its columns and `indexes` its indexes, parsed into
+-- `Model.columns` and `Model.indexes` when the model is declared:
+--
+--   Model:extend("notes", {remote = "private",
+--   	fields = {title = "string(255)", body = "text?", tags = "string(32)[]?",
+--   		priority = {"integer?", min = 0, max = 3, default = 0}},
+--   	indexes = {{"listId", "dueAt desc"}, {"title", fulltext = true}},
+--   })
+--
 -- `Model.enum{...}` names the positions of a list, a picker's options:
 --   Files.filters = Model.enum{"Yours", "All", "Unused for a year"}
 --   Files.filters[2] == "All"; Files.filters:index("All") == 2
@@ -304,10 +314,138 @@ end
 -- methods. `spec` sets `primaryKey` (default "id"), `source(db)`,
 -- `relations`, `constraints` and `singular`; any other field is a constant
 -- of the class.
+-- Remote tables (docs/backend.md). `remote` names who reads a row; `fields`
+-- are the table's columns and `indexes` its indexes, both declared here so
+-- the models are the schema. They are parsed when the model is declared, so
+-- a mistake is an error at require time, not at provisioning. Nothing here
+-- knows Appwrite: data/appwrite/schema.lua maps the parsed columns.
+local REMOTE = {private = true, shared = true, public = true}
+local KINDS = {text = true, integer = true, float = true, boolean = true, datetime = true, email = true, url = true}
+-- The fields every remote row has; a model reads them but never declares them.
+local SYSTEM = {id = true, createdAt = true, updatedAt = true}
+local COLUMN_KEY = "^[%a][%w_]*$"
+
+local function columnError(tableName, key, message)
+	error("model " .. tableName .. " field " .. tostring(key) .. ": " .. message, 0)
+end
+
+-- "string(255)", "enum(draft|done)[]?", {"integer?", min = 0, default = 0}
+-- -> {key, kind, size, elements, array, required, min, max, default}
+local function parseColumn(tableName, key, spec)
+	if type(key) ~= "string" or not key:match(COLUMN_KEY) or #key > 36 then
+		columnError(tableName, key, "a column name is a letter then letters, digits or _, at most 36")
+	end
+	if SYSTEM[key] then columnError(tableName, key, "id, createdAt and updatedAt belong to every row") end
+	local options = {}
+	if type(spec) == "table" then options, spec = spec, spec[1] end
+	if type(spec) ~= "string" then columnError(tableName, key, "a column is a type such as \"string(64)\"") end
+	local column = {key = key, required = true, array = false}
+	local text = spec
+	if text:sub(-1) == "?" then column.required, text = false, text:sub(1, -2) end
+	if text:sub(-2) == "[]" then column.array, text = true, text:sub(1, -3) end
+	local size = text:match("^string%((%d+)%)$")
+	local elements = text:match("^enum%((.+)%)$")
+	if size then
+		column.kind, column.size = "string", tonumber(size)
+		if column.size < 1 then columnError(tableName, key, "a string holds at least one character") end
+	elseif elements then
+		column.kind, column.elements = "enum", {}
+		for element in (elements .. "|"):gmatch("([^|]*)|") do
+			if element == "" then columnError(tableName, key, "an enum lists its values as enum(a|b|c)") end
+			table.insert(column.elements, element)
+		end
+	elseif KINDS[text] then
+		column.kind = text
+	else
+		columnError(tableName, key, "unknown type " .. spec .. "; use string(n), text, integer, float, "
+			.. "boolean, datetime, email, url or enum(a|b), with [] for a list and ? when optional")
+	end
+	if options.min ~= nil or options.max ~= nil then
+		if column.kind ~= "integer" and column.kind ~= "float" then
+			columnError(tableName, key, "only a number has min and max")
+		end
+		column.min, column.max = options.min, options.max
+	end
+	if options.default ~= nil then
+		-- Appwrite's rule: a required column and a list have no default.
+		if column.required then columnError(tableName, key, "a required column has no default; make it optional (?)") end
+		if column.array then columnError(tableName, key, "a list has no default") end
+		column.default = options.default
+	end
+	for option in pairs(options) do
+		if option ~= 1 and option ~= "min" and option ~= "max" and option ~= "default" then
+			columnError(tableName, key, "unknown option " .. tostring(option))
+		end
+	end
+	return column
+end
+
+-- {"listId", "dueAt desc", unique = true, key = "…"} -> {key, type, columns, orders}
+local function parseIndex(tableName, columns, spec)
+	if type(spec) ~= "table" or #spec == 0 then
+		error("model " .. tableName .. ": an index lists its columns, {\"listId\", \"dueAt desc\"}", 0)
+	end
+	if spec.unique and spec.fulltext then error("model " .. tableName .. ": an index is unique or fulltext, not both", 0) end
+	local index = {type = spec.unique and "unique" or spec.fulltext and "fulltext" or "key", columns = {}, orders = {}}
+	for _, entry in ipairs(spec) do
+		local name, direction = tostring(entry):match("^(%S+)%s*(%a*)$")
+		direction = (direction or ""):lower()
+		if not name or (direction ~= "" and direction ~= "asc" and direction ~= "desc") then
+			error("model " .. tableName .. ": index column " .. tostring(entry) .. " is \"name\" or \"name desc\"", 0)
+		end
+		if not columns[name] and not SYSTEM[name] then
+			error("model " .. tableName .. ": index column " .. name .. " is not a field", 0)
+		end
+		table.insert(index.columns, name)
+		table.insert(index.orders, direction == "desc" and "DESC" or "ASC")
+	end
+	index.key = spec.key or ("idx_" .. table.concat(index.columns, "_"))
+	if not index.key:match(COLUMN_KEY) or #index.key > 36 then
+		error("model " .. tableName .. ": index key " .. index.key .. " is longer than 36 characters; name it with key = \"…\"", 0)
+	end
+	return index
+end
+
+local function declareRemote(class, spec)
+	local tableName = class.tableName
+	if spec.remote == nil then
+		if spec.fields or spec.indexes then
+			error("model " .. tableName .. ": fields and indexes describe a remote table; add remote = \"private\"", 0)
+		end
+		return
+	end
+	if not REMOTE[spec.remote] then error("model " .. tableName .. ": remote is \"private\", \"shared\" or \"public\"", 0) end
+	if not tableName:match("^[%w][%w%._%-]*$") or #tableName > 36 then
+		error("model " .. tableName .. ": a remote table name is letters, digits, . _ or -, at most 36", 0)
+	end
+	if spec.source then error("model " .. tableName .. ": a computed model cannot be remote", 0) end
+	if class.primaryKey ~= "id" then error("model " .. tableName .. ": a remote row's key is id", 0) end
+	if type(spec.fields) ~= "table" or next(spec.fields) == nil then
+		error("model " .. tableName .. ": a remote model declares its fields", 0)
+	end
+	local columns, byKey = {}, {}
+	for key, column in pairs(spec.fields) do
+		local parsed = parseColumn(tableName, key, column)
+		byKey[key] = parsed
+		table.insert(columns, parsed)
+	end
+	-- Fields are a map, so the column order is the names' order: stable output.
+	table.sort(columns, function(a, b) return a.key < b.key end)
+	local indexes, keys = {}, {}
+	for _, indexSpec in ipairs(spec.indexes or {}) do
+		local index = parseIndex(tableName, byKey, indexSpec)
+		if keys[index.key] then error("model " .. tableName .. ": two indexes are named " .. index.key, 0) end
+		keys[index.key] = true
+		table.insert(indexes, index)
+	end
+	class.remote, class.columns, class.indexes = spec.remote, columns, indexes
+end
+
 function Model:extend(tableName, spec)
 	if type(tableName) ~= "string" or tableName == "" then error("Model:extend needs a table name", 2) end
 	spec = spec or {}
 	local class = setmetatable({tableName = tableName, primaryKey = spec.primaryKey or "id"}, Base)
+	declareRemote(class, spec)
 	local row = setmetatable({}, {__index = Row})
 	row.__index = row
 	function row.model() return class end
@@ -315,7 +453,8 @@ function Model:extend(tableName, spec)
 	for key, value in pairs(spec) do
 		if key == "source" then
 			class.source = function(_, db) return value(db) end
-		elseif key ~= "relations" and key ~= "primaryKey" then
+		elseif key ~= "relations" and key ~= "primaryKey" and key ~= "remote"
+				and key ~= "fields" and key ~= "indexes" then
 			class[key] = value
 		end
 	end

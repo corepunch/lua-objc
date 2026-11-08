@@ -1,8 +1,9 @@
 # Online data: Appwrite backend (design)
 
-Status: agreed design, being built. Done: the HTTP request and the Appwrite
-client (`lua/data/appwrite/`); the "Pieces" table marks each step. The
-decisions taken are listed at the end.
+Status: agreed design, being built. Done: the HTTP request, the Appwrite
+client (`lua/data/appwrite/`), and remote model declarations with their
+schema. The "Pieces" table marks each step; the decisions taken are listed at
+the end.
 
 An app that keeps its data online declares it the way it declares local data:
 a model is a table of rows. A model marked `remote` is a table in an
@@ -90,12 +91,12 @@ local Notes, Note = Model:extend("notes", {
 	remote = "private",
 	fields = {
 		title = "string(255)",
-		body = "string(100000)",
-		done = "boolean",
-		dueAt = "datetime",
+		body = "text?",
+		done = {"boolean?", default = false},
+		dueAt = "datetime?",
 		listId = "string(36)",
 	},
-	indexes = {{"listId", "dueAt"}},
+	indexes = {{"listId", "dueAt desc"}},
 	constraints = {
 		title = function(_, title) if title:match("^%s*$") then return "A title is required" end end,
 	},
@@ -105,10 +106,19 @@ local Notes, Note = Model:extend("notes", {
 
 - **Table → table.** The model's table name is the Appwrite table ID (Appwrite
   accepts custom IDs of up to 36 characters).
-- **`fields`** are Appwrite columns: `string(n)`, `integer`, `float`,
-  `boolean`, `datetime`, `email`, `url`, `enum(a|b|c)`; a trailing `[]` makes
-  an array (`"string(32)[]"`). A field ending in `?` is optional; the others
-  are required. A local model has no `fields` and keeps working as it does.
+- **`fields`** are Appwrite columns: `string(n)` (a `varchar` of n), `text`,
+  `integer`, `float` (Appwrite's `double`), `boolean`, `datetime`, `email`,
+  `url`, `enum(a|b|c)`; a trailing `[]` makes a list (`"string(32)[]"`). A
+  field ending in `?` is optional; the others are required. The table form
+  adds options: `{"integer?", min = 0, max = 3, default = 0}`. Appwrite's
+  rules hold at declaration: a required column or a list has no default.
+  Fields and indexes are parsed when the model is declared, so a mistake is
+  an error at `require`. A local model has no `fields` and keeps working as it
+  does; `fields` without `remote` is an error.
+- **`indexes`** list columns, each `"name"` or `"name desc"`, and take
+  `unique = true` or `fulltext = true` and a `key` (default
+  `idx_<columns>`, at most 36 characters). `createdAt` and `updatedAt` may be
+  indexed.
 - **System fields.** `$id` reads as `id` (the primary key), `$createdAt` and
   `$updatedAt` as `createdAt` and `updatedAt`; the other `$` fields are not
   exposed.
@@ -191,7 +201,8 @@ is a separate decision with its own cost.
 appwrite push tables --config build/notes.appwrite.json
 ```
 
-`--appwrite-schema` loads the app's models headlessly and writes the
+`--appwrite-schema` (added with the manifest's `<Backend>`, which names the
+project and database) loads the app's models headlessly and writes the
 [`appwrite.json`](https://appwrite.io/docs/tooling/command-line/tables)
 that the official Appwrite CLI pushes: the database, one table per remote
 model, its columns, indexes and table permissions. The generated file
@@ -215,9 +226,9 @@ column is gone.
 | Queries (done) | `lua/data/appwrite/query.lua` | ported from orca, camelCase (`Query.equal`, `Query.orderDesc`) |
 | Account (done) | `lua/data/appwrite/account.lua` | anonymous start, stored session, register, sign in/out; the secret store is injected |
 | Rows (done) | `lua/data/appwrite/rows.lua` | TablesDB list/create/update/delete, `$` field mapping, row IDs, permissions |
-| Schema | `lua/data/appwrite/schema.lua` | models → `appwrite.json` |
+| Schema (done) | `lua/data/appwrite/schema.lua` | remote models → `appwrite.json`: one TablesDB database, a table per model, `create("users")`, row security |
 | Backend service | `lua/data/backend.lua` | runs a route's `load`, merges rows, sends writes, undoes failures |
-| Model | `lua/data/model.lua` | `remote`, `fields`, `indexes`, `query()`; writes go through the backend |
+| Model | `lua/data/model.lua` | done: `remote`, `fields`, `indexes` parsed into `columns` and `indexes`; to do: `query()`, writes through the backend |
 | Manifest | `lua/data/manifest.lua` | `<Backend>` |
 | Sign-in | `lua/components/SignIn.etlua`, a bundled flow | the sheet and its actions |
 
