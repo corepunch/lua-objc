@@ -99,6 +99,19 @@ function Model.bind(db)
 	return db
 end
 
+-- Connects the backend that remote models write through and read from
+-- (lua/data/backend.lua): the launcher of an app with a `<Backend>` does
+-- this once. nil disconnects it.
+Model.backend = nil
+function Model.connect(backend)
+	Model.backend = backend
+	return backend
+end
+
+local function remoteBackend(class)
+	return Model.backend or error("model " .. class.tableName .. " is remote, but the app has no <Backend>", 3)
+end
+
 -- `fn` with `db` bound: for code that enters an app from outside (a
 -- callback of a service, an action of one window of several) when more
 -- than one store is open.
@@ -256,9 +269,30 @@ function Base:create(record)
 	if not db then error("model " .. self.tableName .. ": no store is bound", 2) end
 	local message = check(self, wrap(self, record), record)
 	if message then return nil, message end
+	local backend = self.remote and remoteBackend(self)
+	-- A remote row's ID is made here, so the stored row and the server's
+	-- share it from the start.
+	if backend and record.id == nil then record.id = backend:newId() end
 	db[self.tableName] = db[self.tableName] or {}
 	table.insert(db[self.tableName], record)
+	if backend then backend:create(self, record, db) end
 	return record
+end
+
+-- The request for the rows a page shows: a route's `load` returns it, the
+-- page controller sends it, and the rows matching `where` are replaced by
+-- the answer (docs/backend.md). `where` is a table of exact fields; `opts`
+-- takes `order` ("field" or "field desc"), `limit` and `after` (a row ID:
+-- the next window, appended).
+function Base:query(where, opts)
+	if not self.remote then error("model " .. self.tableName .. " is not remote; read it with select", 2) end
+	if where ~= nil and type(where) ~= "table" then
+		error("model " .. self.tableName .. ": a query's where is a table of fields; a function cannot be sent", 2)
+	end
+	if opts and type(opts.order) == "function" then
+		error("model " .. self.tableName .. ": a query orders by \"field\" or \"field desc\"", 2)
+	end
+	return {model = self, where = where or {}, opts = opts or {}}
 end
 
 local Row = {}
@@ -268,15 +302,33 @@ function Row:update(fields)
 	local class = self:model()
 	local message = check(class, self, fields)
 	if message then return nil, message end
-	for key, value in pairs(fields) do self[key] = value end
+	local backend = class.remote and remoteBackend(class)
+	if backend then
+		for key in pairs(fields) do
+			if key == "id" or key == "createdAt" or key == "updatedAt" then
+				error("model " .. class.tableName .. ": " .. key .. " belongs to the server", 2)
+			end
+		end
+	end
+	local previous = {}
+	for key, value in pairs(fields) do
+		previous[key] = self[key]
+		self[key] = value
+	end
+	if backend then backend:update(class, self, fields, previous) end
 	return true
 end
 
 -- Removes the row from the stored table.
 function Row:delete()
-	local rows = self:model():source(Model.db) or {}
+	local class, db = self:model(), Model.db
+	local rows = class:source(db) or {}
 	for index, record in ipairs(rows) do
-		if record == self then table.remove(rows, index); return true end
+		if record == self then
+			table.remove(rows, index)
+			if class.remote then remoteBackend(class):delete(class, self, db, index) end
+			return true
+		end
 	end
 	return false
 end

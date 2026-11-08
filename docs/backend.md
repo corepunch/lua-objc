@@ -2,8 +2,10 @@
 
 Status: agreed design, being built. Done: the HTTP request, the Appwrite
 client (`lua/data/appwrite/`), remote model declarations with their
-schema, and `<Backend>` with the development project. The "Pieces" table
-marks each step; the decisions taken are listed at the end.
+schema, `<Backend>` with the development project, and the backend service
+that loads and writes remote rows. Left: the sign-in sheet and `demo/notes`.
+The "Pieces" table marks each step; the decisions taken are listed at the
+end.
 
 An app that keeps its data online declares it the way it declares local data:
 a model is a table of rows. A model marked `remote` is a table in an
@@ -152,7 +154,7 @@ return {
 	end,
 	data = function(self, state)
 		return {notes = Notes:select({listId = self.params.list}, {order = "dueAt"}),
-			loading = state.loading, error = state.error}
+			loading = state.loading, failure = state.error}
 	end,
 }
 ```
@@ -174,6 +176,12 @@ return {
 - `load` runs on mount and after each action of that page, nowhere else.
   Nothing polls and nothing listens: a page you are only looking at sends no
   requests and uses no CPU.
+- A load waits until every write sent has answered: one that overtook a
+  create would replace the new row away. Loads also wait for the account at
+  launch; offline they run anyway and report it.
+- Name the message something other than `error` in template data: a view
+  that tests `<% if error %>` finds Lua's `error` function when the page has
+  none, and is always true.
 
 A table `<Column>` and every other view read the same store rows as before;
 they do not know a row came from the network.
@@ -187,8 +195,12 @@ they do not know a row came from the network.
 3. send the request (`createRow`, `updateRow`, `deleteRow`).
    A new row's `id` is generated on the device (20 characters of
    `[a-z0-9]`), so the stored row and the Appwrite row share it from the start;
-4. on failure, undo the local change and request the page again with
-   `state.error` set.
+4. on failure, undo the local change (a created row leaves, an update's
+   fields take their old values, a deleted row returns to its place) and
+   request the page again with `state.error` set. A write's message stays
+   until the next action; a delete of a row the server no longer has counts
+   as done. Without a signed-in user (offline at launch) a create is undone
+   at once.
 
 There is no offline queue and no conflict resolution: the server is the truth,
 the last write wins, a write made offline fails and is undone. Adding a queue
@@ -228,8 +240,9 @@ column is gone.
 | Account (done) | `lua/data/appwrite/account.lua` | anonymous start, stored session, register, sign in/out; the secret store is injected |
 | Rows (done) | `lua/data/appwrite/rows.lua` | TablesDB list/create/update/delete, `$` field mapping, row IDs, permissions |
 | Schema (done) | `lua/data/appwrite/schema.lua` | remote models → `appwrite.json`: one TablesDB database, a table per model, `create("users")`, row security |
-| Backend service | `lua/data/backend.lua` | runs a route's `load`, merges rows, sends writes, undoes failures |
-| Model | `lua/data/model.lua` | done: `remote`, `fields`, `indexes` parsed into `columns` and `indexes`; to do: `query()`, writes through the backend |
+| Backend service (done) | `lua/data/backend.lua` | runs a route's `load`, replaces rows, sends writes, undoes refused ones; built by the launcher (`App.backend`) and connected with `Model.connect` |
+| Page controller (done) | `lua/data/pagecontroller.lua` | runs `load()` on mount and after actions; `state.loading`, `state.error` |
+| Model (done) | `lua/data/model.lua` | `remote`, `fields`, `indexes` parsed into `columns` and `indexes`; `query()`; remote writes through the backend |
 | Manifest (done) | `lua/data/manifest.lua` | `<Backend>` → `manifest.backend` `{provider, endpoint, project, database, development}` |
 | Development project (done) | `lua/data/appwrite/development.lua` | LuaStudio on Appwrite Cloud Frankfurt, `6af0e3d0002aa438b655` |
 | Schema script (done) | `scripts/appwrite/schema.lua` | an app folder → its `appwrite.json` |

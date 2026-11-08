@@ -29,6 +29,13 @@
 -- page that can be shown in more than one state says which with
 -- `location()`, the params its `focus(params)` takes back: Back and Forward
 -- return to them, as a browser returns to a URL.
+--
+-- A page of remote rows (docs/backend.md) names them with `load()`, which
+-- returns a Model:query. The controller sends it through `context.backend`
+-- when the page is shown and after each action, draws the page with
+-- `state.loading` while it is out, and again when the rows are in the store.
+-- `state.error` is the message of a load or a write that failed; a write's
+-- stays until the next action.
 local Template = require("ui.template")
 local Model = require("data.model")
 local Routes = require("data.routes")
@@ -65,6 +72,7 @@ function PageController:mount(host, state)
 				if request.before then request:before() end
 				return method(request, ...)
 			end, function(err) return Routes.refusal(err) and err or debug.traceback(err, 2) end, ...))
+			self.writeError = nil
 			if not results[1] then
 				-- A refusal is drawn on the page; anything else is a bug.
 				if not Routes.refusal(results[2]) then error(results[2], 0) end
@@ -81,13 +89,44 @@ function PageController:mount(host, state)
 				end
 			end
 			-- The action may have left the page (a row that opens another).
-			if self.template and not (request.queries and request.queries[name]) then self:update(self.state) end
+			if self.template and not (request.queries and request.queries[name]) then
+				if self.request == request then self:load() end
+				self:update(self.state)
+			end
 			return table.unpack(results, 2, results.n)
 		end
 	end })
+	self:load()
 	self:update(state)
 	if self.request.activate then self.request:activate() end
 	return self.refs
+end
+
+-- Sends the page's `load()` query, if it has one; draws the page again when
+-- the rows are in. Only the latest load of the page draws: an earlier one
+-- that answers late fills the store all the same.
+function PageController:load()
+	local request, backend = self.request, self.context.backend
+	if not (backend and type(request) == "table" and request.load) then return end
+	if self.context.store then Model.bind(self.context.store) end
+	local query = request:load()
+	if not query then return end
+	self.loads = (self.loads or 0) + 1
+	local token = self.loads
+	self.loading = true
+	backend:load(query, self.context.store, function(err)
+		if token ~= self.loads then return end
+		self.loading = false
+		self.loadError = err and err.message or nil
+		if self.template then self:update(self.state) end
+	end)
+end
+
+-- The backend answered a write: draw the page again, with the message of
+-- one it refused.
+function PageController:remoteChanged(message)
+	if message then self.writeError = message end
+	if self.template then self:update(self.state) end
 end
 
 -- Asks the page again and draws the answer.
@@ -97,7 +136,13 @@ function PageController:update(state)
 	local request = self.request
 	if self.context.store then Model.bind(self.context.store) end
 	if request.before then request:before() end
-	local data = request:data(state or {})
+	-- A page of an app with a backend also hears whether its rows are loading
+	-- and what failed; other pages get their state as it was given.
+	local asked = state or {}
+	if self.context.backend then
+		asked = setmetatable({loading = self.loading == true, error = self.writeError or self.loadError}, {__index = asked})
+	end
+	local data = request:data(asked)
 	-- A refusal shows on the one draw that follows it.
 	data.errors, self.errors = self.errors, nil
 	-- The page entry without its section, which points back at the page.
@@ -139,6 +184,8 @@ function PageController:dispose()
 	if self.template and self.request.deactivate then self.request:deactivate() end
 	if self.template then self.template:dispose() end
 	self.template, self.refs = nil, nil
+	-- A load still out answers into the store but draws nothing.
+	self.loads = (self.loads or 0) + 1
 end
 
 return PageController

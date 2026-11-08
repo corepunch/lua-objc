@@ -18,6 +18,13 @@
 --
 -- That is "playable from every scene": a page asks its models for what it
 -- shows, so it runs on its own.
+--
+-- A manifest with `<Backend>` gets the backend of its remote models
+-- (lua/data/backend.lua): an Appwrite client over `ns.http`, the account
+-- whose session secret is in the Keychain (`ns.Credentials`, one entry per
+-- project), connected to the models. `options.backend` replaces it (tests
+-- pass one over a recording transport). The account starts when the window
+-- is made; pages that load before then wait for it.
 local ns = require("ns")
 local xml = require("ui.xml")
 local Resources = require("ui.resources")
@@ -25,6 +32,9 @@ local Model = require("data.model")
 local Manifest = require("data.manifest")
 local Routes = require("data.routes")
 local PageController = require("data.pagecontroller")
+local Backend = require("data.backend")
+local Client = require("data.appwrite.client")
+local Account = require("data.appwrite.account")
 
 local SHELL = "lua/data/views/Shell.etlua"
 local SIDEBAR = "lua/data/views/Sidebar.etlua"
@@ -99,9 +109,30 @@ function Launcher.create(path, options)
 	if store == nil then store = App.optional(self.module .. ".Store") end
 	if type(store) == "function" then store = store() end
 	if store then self.store = Model.bind(store) end
+	local backend = options.backend
+	if backend == nil and self.manifest.backend then backend = App.backend(self.manifest.backend) end
+	if backend then
+		-- Remote rows need a store to land in, seeded or not.
+		self.store = self.store or Model.bind({})
+		self.backend = Model.connect(backend)
+		backend.changed = function(message) if self.page then self.page:remoteChanged(message) end end
+	end
 	local resources = xml.source(self.dir .. "/resources.xml")
 	self.resources = resources and Resources.fromNodes(xml.parse(resources)) or nil
 	return self
+end
+
+-- The backend of a manifest's `<Backend>` over the platform's HTTP, JSON and
+-- Keychain.
+function App.backend(spec)
+	local client = Client.new({endpoint = spec.endpoint, project = spec.project, http = ns.http, decode = ns.json_parse})
+	local entry = "appwrite." .. spec.project
+	local account = Account.new(client, {
+		read = function() return ns.Credentials.get(entry) end,
+		write = function(secret) return ns.Credentials.set(entry, secret) end,
+		remove = function() return ns.Credentials.remove(entry) end,
+	})
+	return Backend.new({client = client, account = account, database = spec.database})
 end
 
 -- The page `id` built from its route, the first time it is asked for.
@@ -118,7 +149,7 @@ function Launcher:show(id)
 	if not entry then error("no page " .. tostring(id), 0) end
 	if self.page then self.page:dispose() end
 	self.page = PageController.new({ page = entry, request = self:request(id), ns = ns,
-		viewsDir = self.dir .. "/views/", resources = self.resources, store = self.store })
+		viewsDir = self.dir .. "/views/", resources = self.resources, store = self.store, backend = self.backend })
 	self.refs = self.page:mount(self.content)
 	self.current = id
 	self:select(id)
@@ -189,6 +220,7 @@ function Launcher:createWindow()
 	-- hosted tree when it is installed, not views added to it afterwards.
 	self:show(self.startup)
 	self.window = ns.Window(config)
+	if self.backend then self.backend:start() end
 	return self.window
 end
 
