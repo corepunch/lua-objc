@@ -6,7 +6,7 @@
 -- full height at -z (the kit's slopes); an `arch` bows up along x from
 -- `low` at its ends to the full height in the middle (the kit's curves).
 --
--- Each block's model is `block-<biome>-<model>.obj`. A block nothing stands
+-- Each block's model is `block-<biome>-<model>.glb`. A block nothing stands
 -- on shows the kit's overhang variant, its grass or snow draping over the
 -- edge; one buried under another block shows the plain variant.
 return {

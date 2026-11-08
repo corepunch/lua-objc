@@ -1,0 +1,37 @@
+-- Race 2: a zig-zag of tight hairpins, two laps. Small corners ("right",
+-- "left") must be taken slowly; two in a row turn the road right round.
+return {
+	id = "hairpin",
+	title = "Hairpin Hills",
+	laps = 2,
+	track = {
+		"start", "long", "long", "right", "right",
+		"long", "left", "left",
+		"long", "right", "right",
+		"long", "long", "long", "wideRight", "wideRight",
+	},
+	rivals = {
+		{"raceCarGreen", pace = 0.78},
+		{"raceCarOrange", pace = 0.84},
+		{"raceCarWhite", pace = 0.88},
+	},
+	scenery = {
+		{"overheadLights", 0, 1.0, yaw = 0},
+		{"grandStand", 1.5, 3.0, yaw = 90, scale = 1.4},
+		{"bannerTowerRed", 1.0, 5.6, yaw = 20},
+		{"bannerTowerGreen", 1.0, 0.4, yaw = -15},
+		{"treeLarge", 1.3, 7.6, yaw = 30},
+		{"treeSmall", -0.9, 7.8, yaw = 75},
+		{"treeLarge", -2.3, 8.0, yaw = 5},
+		{"treeLarge", -4.4, 6.9, yaw = 110},
+		{"treeSmall", -4.6, 4.2, yaw = 40},
+		{"tentLong", -5.0, 1.0, yaw = 85},
+		{"treeLarge", -4.3, -2.6, yaw = 60},
+		{"lightPostLarge", -1.0, -2.6, yaw = 180},
+		{"treeSmall", 1.4, -1.6, yaw = 12},
+		{"pylon", -1.0, 2.0, yaw = 0},
+		{"pylon", -1.25, 2.4, yaw = 30},
+		{"pylon", -1.0, 2.8, yaw = 60},
+		{"billboard", -2.0, 2.2, yaw = 180},
+	},
+}

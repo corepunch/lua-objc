@@ -77,4 +77,12 @@ t.assertEqual(#Catalog.new(ns,git,read):list(),0,"a fresh session does not resur
 local fresh=assert(catalog:create("Fresh","StarterApp"))
 t.assertEqual(fresh.id,"Fresh","creation works after deleting all projects")
 t.assertEqual(#catalog:list(),1,"only the new project returns to the catalog")
+local ids={}; for _, entry in ipairs(catalog:templates()) do table.insert(ids, entry.id) end
+t.assertEqual(table.concat(ids,","),"StarterApp,HabitTracker,Platformer,Racing","templates are listed in sheet order")
+local platformer=assert(catalog:create("My Game","Platformer"))
+t.assertEqual(platformer.id,"MyGame","a game template creates a project")
+t.expect(documents["MyGame/AGENTS.md"] ~= nil,"a game project carries its agent rulebook")
+t.expect(documents["MyGame/models/systems/Hero.lua"] ~= nil and documents["MyGame/catalog/levels/meadow.lua"] ~= nil,
+	"nested template folders are copied")
+t.expect(platformer.workspace.seed["demo/playground/AGENTS.md"] ~= nil,"the agent can read AGENTS.md from the project")
 os.exit(t.summary() and 0 or 1)

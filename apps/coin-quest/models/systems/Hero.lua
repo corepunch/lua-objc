@@ -6,7 +6,7 @@
 -- running off an edge, still counts. Landing on a spring throws the hero
 -- high.
 local Terrain = require("apps.coin-quest.models.Terrain")
-local Camera = require("apps.coin-quest.models.systems.Camera")
+local Camera = require("game.cameras.Leash")
 
 local Hero = {}
 
@@ -31,7 +31,7 @@ function Hero.update(world, dt, input)
 	p.vz = approach(p.vz, az * rules.runSpeed, accel)
 	if ax ~= 0 or az ~= 0 then p.yaw = math.deg(math.atan(ax, az)) end
 	-- Jumping.
-	if input and input.takeJump and input:takeJump() then p.jumpPressedAt = world.time end
+	if input and input.take and input:take("jump") then p.jumpPressedAt = world.time end
 	local coyote = p.airborneAt and not p.jumpedAt and world.time - p.airborneAt <= rules.coyoteTime
 	if p.jumpPressedAt and world.time - p.jumpPressedAt <= rules.jumpBuffer and (p.grounded or coyote) then
 		p.vy, p.grounded, p.standing = rules.jumpSpeed, false, nil

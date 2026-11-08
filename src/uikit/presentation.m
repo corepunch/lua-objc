@@ -8,10 +8,35 @@ static UIViewController *lua_uikit_presenter(void) {
 	return presenter;
 }
 
+/* A sheet the user drags away (or the system dismisses) ends without a Lua
+ * call; the delegate reports it so the sheet's scope can close as it does
+ * after `dismiss`. A programmatic dismissal does not reach this delegate. */
+@interface LuaSheetDismissDelegate : NSObject <UIAdaptivePresentationControllerDelegate>
+@property(nonatomic, strong) LuaReg *callback;
+@end
+@implementation LuaSheetDismissDelegate
+- (void)presentationControllerDidDismiss:(__unused UIPresentationController *)presentationController {
+	LuaReg *callback = self.callback;
+	self.callback = nil;
+	if (!callback) return;
+	lua_State *L = lua_reg_live_state(callback);
+	if (L && lua_reg_push(callback)) lua_objc_pcall(L, 0, 0, "sheet dismissed");
+	[callback dispose];
+}
+- (void)dealloc { [_callback dispose]; }
+@end
+static char kSheetDismissDelegateKey;
+
 static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 	UIViewController *sheet = check_view_controller(L, 1);
 	UIViewController *presenter = lua_uikit_presenter();
 	if (!presenter) return luaL_error(L, "no UIKit presenter is installed");
+	LuaReg *dismissed = lua_reg_opt(L, 3);
+	if (dismissed) {
+		LuaSheetDismissDelegate *delegate = [LuaSheetDismissDelegate new];
+		delegate.callback = dismissed;
+		objc_setAssociatedObject(sheet, &kSheetDismissDelegateKey, delegate, OBJC_ASSOCIATION_RETAIN);
+	}
 
 	static const char *styles[] = { "pageSheet", "formSheet", NULL };
 	int style = 0;
@@ -28,6 +53,7 @@ static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 		lua_pop(L, 1);
 	}
 	[presenter presentViewController:sheet animated:!UIAccessibilityIsReduceMotionEnabled() completion:nil];
+	sheet.presentationController.delegate = objc_getAssociatedObject(sheet, &kSheetDismissDelegateKey);
 	UISheetPresentationController *presentation = sheet.sheetPresentationController;
 	if (presentation && lua_istable(L, 2)) {
 		lua_getfield(L, 2, "detents");

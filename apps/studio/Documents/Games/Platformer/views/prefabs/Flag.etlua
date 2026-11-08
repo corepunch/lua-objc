@@ -1,0 +1,2 @@
+<!-- The goal. It appears once every coin is taken, and rises into place. -->
+<Node id="flag" model="<%= assets %>flag.glb" position="<%= flag.x %> <%= flag.y %> <%= flag.z %>" scale="1.4" transition="rise" />

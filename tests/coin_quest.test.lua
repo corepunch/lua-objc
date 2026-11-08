@@ -14,10 +14,10 @@ local Reach = require("apps.coin-quest.models.Reach")
 local World = require("apps.coin-quest.models.World")
 local Animation = require("apps.coin-quest.models.Animation")
 local Platforms = require("apps.coin-quest.models.systems.Platforms")
-local Camera = require("apps.coin-quest.models.systems.Camera")
+local Camera = require("game.cameras.Leash")
 local Model = require("apps.coin-quest.Model")
 local Levels = require("apps.coin-quest.catalog.Levels")
-local InputController = require("apps.coin-quest.controllers.InputController")
+local Input = require("game.Input")
 local StageController = require("apps.coin-quest.controllers.StageController")
 local HudController = require("apps.coin-quest.controllers.HudController")
 local Controller = require("apps.coin-quest.Controller")
@@ -29,8 +29,8 @@ local function near(a, b, tolerance) return math.abs(a - b) < (tolerance or 1e-6
 local function pad(x, z)
 	local input = {x = x or 0, z = z or 0, jumps = 0}
 	function input.axis() return input.x, input.z end
-	function input.takeJump()
-		if input.jumps > 0 then
+	function input.take(_, button)
+		if button == "jump" and input.jumps > 0 then
 			input.jumps = input.jumps - 1
 			return true
 		end
@@ -460,7 +460,7 @@ t.assertEqual(session:status().totalStars, 0, "status knows the level's stars")
 
 -- ── Input ──────────────────────────────────────────────────────────────
 local commands = {}
-input = InputController.new({advance = function() table.insert(commands, "advance") end,
+input = Input.new({advance = function() table.insert(commands, "advance") end,
 	restart = function() table.insert(commands, "restart") end})
 t.expect(input:key("left", true), "arrow keys are handled")
 local ax, az = input:axis()
@@ -471,7 +471,7 @@ t.expect(ax == -1 and az == -1, "two held keys run diagonally")
 input:key("left", false); input:key("up", false)
 ax, az = input:axis()
 t.expect(ax == 0 and az == 0, "nothing held, standing still")
-t.expect(input:key("space", true) and input:takeJump() and not input:takeJump(), "space jumps once per press")
+t.expect(input:key("space", true) and input:take("jump") and not input:take("jump"), "space jumps once per press")
 t.expect(input:key("return", true) and input:key("r", true), "command keys are handled")
 t.expect(commands[1] == "advance" and commands[2] == "restart", "command keys run their commands")
 t.expect(not input:key("p", true), "other keys are left to the system")
@@ -487,15 +487,15 @@ ax = input:axis()
 t.assertEqual(ax, 0, "a swipe the other way stops")
 input:gamepad({stickX = 0.5, stickY = 0.8, a = true})
 ax, az = input:axis()
-t.expect(near(ax, 0.5) and near(az, -0.8) and input:takeJump(), "the stick runs, y up, and A jumps")
+t.expect(near(ax, 0.5) and near(az, -0.8) and input:take("jump"), "the stick runs, y up, and A jumps")
 input:gamepad({stickX = 0.05, stickY = 0.05, a = true, x = true})
 ax, az = input:axis()
-t.expect(ax == 0 and az == 0 and not input:takeJump(), "a resting stick is still, and a held A jumps once")
+t.expect(ax == 0 and az == 0 and not input:take("jump"), "a resting stick is still, and a held A jumps once")
 t.assertEqual(input:turn(), -1, "X turns the camera the other way")
 input:gamepad(nil)
 t.assertEqual(input:turn(), 0, "no controller, no turning")
-input:jump(); input:reset()
-t.expect(not input:takeJump(), "reset forgets a queued jump")
+input:press("jump"); input:reset()
+t.expect(not input:take("jump"), "reset forgets a queued jump")
 
 -- ── Animation ──────────────────────────────────────────────────────────
 local function volume(look) return look.scaleX * look.scaleY * look.scaleZ end
@@ -528,14 +528,14 @@ t.expect(poses[1].scaleX and poses[1].scaleY and poses[#poses].id == "flag", "po
 local scene = Model.new(Levels):scene()
 local data = StageController.viewData(scene)
 t.assertEqual(#data.blocks, #scene.blocks, "every block is drawn")
-t.expect(StageController.blockModel({kind = "large"}, "grass") == "block-grass-overhang-large.obj",
+t.expect(StageController.blockModel({kind = "large"}, "grass") == "block-grass-overhang-large.glb",
 	"a top block drapes its grass over the edge")
-t.expect(StageController.blockModel({kind = "large", buried = true}, "snow") == "block-snow-large.obj",
+t.expect(StageController.blockModel({kind = "large", buried = true}, "snow") == "block-snow-large.glb",
 	"a buried block is plain, in its biome")
-t.expect(StageController.propModel("pine", "snow") == "tree-pine-snow.obj", "a snow level has snowy trees")
+t.expect(StageController.propModel("pine", "snow") == "tree-pine-snow.glb", "a snow level has snowy trees")
 t.expect(data.coins[1] ~= scene.coins[1], "templates receive copies, never live entities")
 t.expect(data.flag == nil, "the flag is not drawn until it rises")
-local cameraPose = StageController.cameraPose({position = {x = 0, y = 4, z = 6}, focus = {x = 0, y = 1, z = 0}})
+local cameraPose = StageController:cameraPose({position = {x = 0, y = 4, z = 6}, focus = {x = 0, y = 1, z = 0}})
 t.expect(cameraPose.id == "camera" and cameraPose.lookX == 0 and cameraPose.lookZ == 0, "the camera is aimed at its focus")
 local hud = HudController.viewData({level = "L", stage = "Level 1 of 3", coins = 2, totalCoins = 5, score = 2,
 	levelStars = 1, totalStars = 3, lives = 1, maxLives = 3, state = "playing"})
@@ -545,7 +545,7 @@ t.expect(hud.hearts[1].filled and not hud.hearts[2].filled, "hearts show lives l
 t.expect(hud.message == nil, "no message while playing")
 t.expect(hud.hint:find("Arrows"), "the HUD hints at keys by default")
 t.expect(HudController.viewData({level = "L", stage = "s", coins = 0, totalCoins = 1, score = 0, lives = 1, maxLives = 1,
-	state = "playing", totalStars = 0}, "Stick runs").hint == "Stick runs", "the HUD takes the touch hint")
+	state = "playing", totalStars = 0}, {touch = true}).hint:find("Stick runs"), "a touch screen gets the touch hint")
 
 -- ── The whole game, headless ───────────────────────────────────────────
 local app = Controller.new({levels = {oneCoin("mini"), oneCoin("next")}})

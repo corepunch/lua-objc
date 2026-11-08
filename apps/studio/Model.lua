@@ -15,7 +15,8 @@ local function validPath(path)
 	for part in path:gmatch("[^/]+") do
 		if part == "." or part == ".." or part:lower() == ".git" then return false end
 	end
-	return path:match("%.lua$") ~= nil or path:match("%.etlua$") ~= nil
+	-- A project's agent guide is the one file that is not code.
+	return path:match("%.lua$") ~= nil or path:match("%.etlua$") ~= nil or path == PREFIX .. "AGENTS.md"
 end
 
 local function validate(files)
@@ -26,7 +27,9 @@ local function validate(files)
 		if type(source) ~= "string" or #source > LIMITS.fileBytes then return nil, "File too large: " .. path end
 		total = total + #source
 		local ok, err
-		if path:match("%.lua$") then
+		if path:match("%.md$") then
+			ok = true
+		elseif path:match("%.lua$") then
 			ok, err = load(source, "@" .. path, "t", {})
 		else
 			local parser = require("etlua").Parser()

@@ -4,8 +4,9 @@
 	<Label text="Create a project with separate model, controller, and etlua views. Git history starts with the first snapshot." lines="0" color="secondary" maxWidth="infinity" />
 	<TextField id="projectName" text="<%= projectName %>" placeholder="Project name" accessibilityLabel="Project name" onChange="editProjectName" />
 	<Picker value="<%= templateIndex %>" onChange="chooseTemplate">
-		<Option title="Blank App" />
-		<Option title="Habit Tracker" />
+		<% for _, template in ipairs(templates or {}) do -%>
+		<Option title="<%= template.title %>" />
+		<% end -%>
 	</Picker>
 	<Label text="<%= message %>" color="secondary" lines="0" maxWidth="infinity" />
 	<Spacer />

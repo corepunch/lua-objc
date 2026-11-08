@@ -14,6 +14,8 @@ local catalog = {
 		end
 		return result
 	end,
+	templates = function() return {{id = "StarterApp", title = "Blank App"}, {id = "HabitTracker", title = "Habit Tracker"},
+		{id = "Platformer", title = "3-D Platformer"}} end,
 	open = function(_, id) return { seed = seed, versions = {close = function() closed = closed + 1 end},
 		storage = {load = function() return saved[id] end, save = function(value) saved[id] = value; return true end} } end,
 }
@@ -71,6 +73,7 @@ root.actions.showTemplates(); t.expect(not root.chat.listening,"opening a sheet 
 root.actions.newBlank(); t.assertEqual(sheet.kind, "Project", "Blank opens project creation")
 t.assertEqual(sheet.data.templateIndex,0,"Blank selects the first native picker item")
 root.actions.newHabit(); t.assertEqual(sheet.data.templateIndex,1,"Habit selects the second native picker item")
+t.assertEqual(#sheet.data.templates,3,"the picker lists every bundled template")
 root.actions.newConversation(); t.assertEqual(#root.model.messages, 0, "New Conversation clears real turns")
 t.expect(not pcall(Export.items,"Two", {["private/key.lua"] = "secret"}), "export rejects sources outside the project")
 catalog.create = function(_, title, template)

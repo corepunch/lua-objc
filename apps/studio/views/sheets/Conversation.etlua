@@ -1,0 +1,24 @@
+<%
+  -- The conversation on a phone: the same turns as the iPad card, in the
+  -- sheet. The measure is the sheet; the composer sits in the bottom
+  -- safe-area inset so it rises with the keyboard, and the suggestions
+  -- shelve sideways above the field.
+  local CHAT = {
+    inset = 16, spacing = 18, emptyTitleSize = 20, bodySize = 15, bubbleInset = 12, bubbleRadius = 18, bubbleIndent = 48,
+    turnAvatar = 26, turnSpacing = 10, captionSize = 12,
+  }
+%>
+<SafeAreaInset edge="bottom" keyboardBottomInset="0" tint="<%= tint %>" maxWidth="infinity" maxHeight="infinity">
+	<ScrollView id="transcriptScroll" scrollDismissesKeyboard="interactively" flexGrow="1" maxWidth="infinity" maxHeight="infinity">
+		<VStack padding="<%= CHAT.inset %>" spacing="<%= CHAT.spacing %>" maxWidth="infinity" alignment="leading">
+			<% if #messages == 0 then %>
+			<Label text="Ask for a change" size="<%= CHAT.emptyTitleSize %>" weight="semibold" />
+			<Label text="Describe what the app behind this sheet should do differently. The agent edits the project and the screen updates. Add your OpenRouter key in Settings first." lines="0" color="secondary" maxWidth="infinity" />
+			<% end %>
+			<%- partial("../components/Turns.etlua", { messages = messages, agent = agent, brand = brand, metrics = CHAT }) %>
+		</VStack>
+	</ScrollView>
+	<VStack id="composerPane" spacing="0" maxWidth="infinity" alignment="center">
+		<%- partial("../components/Composer.etlua", { suggestions = suggestions, draft = draft, listening = listening, inset = CHAT.inset, column = "infinity", busy = busy, attachments = attachments, shelf = true }) %>
+	</VStack>
+</SafeAreaInset>

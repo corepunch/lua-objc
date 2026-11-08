@@ -60,7 +60,7 @@ local function initialize(ns, readBundled, git, project, definition)
 	end
 	local listed = {}
 	for _, path in ipairs(metadata.files) do
-		assert(validRelative(path) and (path:match("%.lua$") or path:match("%.etlua$")),
+		assert(validRelative(path) and (path:match("%.lua$") or path:match("%.etlua$") or path == "AGENTS.md"),
 			"Invalid project file: " .. tostring(path))
 		listed[path] = true
 	end

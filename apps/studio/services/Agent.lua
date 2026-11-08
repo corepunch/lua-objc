@@ -3,8 +3,9 @@ local Api = require("apps.studio.helpers.Api")
 local Agent = {}
 Agent.__index = Agent
 local LIMITS = {steps=24, outputTokens=8192}
-local PROMPT = [[You develop the user's Lua app running in a live UIKit preview on iPad.
+local PROMPT = [[You develop the user's Lua app, which runs live in UIKit on the iPhone or iPad in front of the user.
 Use listFiles and readFile before editing. Read each needed file once; multiple readFile calls may share a reply.
+If the project has demo/playground/AGENTS.md, read it first and follow it: it is the project's own rulebook. A game project also needs readDocumentation("games").
 Call readDocumentation before using controls, model methods, or templates not demonstrated in the starter.
 Never guess event bindings, model methods, or pass custom action arguments through Resources. Apply complete files with applyFiles; changes reload immediately.
 applyFiles takes {"files":[{"path":"demo/playground/Model.lua","content":"complete source"}]}.
@@ -28,8 +29,11 @@ local TOOLS = {
 	tool("listFiles", "List project source paths", { project = { type = "string", description = "Use playground" } }, { "project" }),
 	tool("readFile", "Read a project source file", { path = { type = "string" } }, { "path" }),
 	tool("readDocumentation", "Read the actual supported app API with working examples before adding controls or model operations", {
-		topic = {type = "string", enum = {"controls", "models", "templates"}},
+		topic = {type = "string", enum = {"controls", "models", "templates", "games"}},
 	}, {"topic"}),
+	tool("readKit", "Read a shared 3-D asset kit's manifest: every model's size, pivot, tags and animation clips. Read it before placing models", {
+		kit = {type = "string", description = "Kit folder name, such as platformer-kit"},
+	}, {"kit"}),
 	tool("applyFiles", "Atomically save files, validate syntax, and reload preview; returns errors for repair", {
 		files = { type = "array", description = "An array of file objects, NOT a JSON-encoded string. Each content is the complete source text.", items = { type = "object", properties = { path = { type = "string" }, content = { type = "string" } }, required = { "path", "content" } } },
 	}, { "files" }),
@@ -41,8 +45,8 @@ local TOOLS = {
 	}, {"action"}),
 	tool("preview", "Reload the app and get its runtime error, if any", { project = { type = "string" } }, { "project" }),
 }
-function Agent.new(session, transport, json, preview, changed, interact)
-	return setmetatable({ session = session, transport = transport, json = json, preview = preview,
+function Agent.new(session, transport, json, preview, changed, interact, readFramework)
+	return setmetatable({ session = session, transport = transport, json = json, preview = preview, readFramework = readFramework,
 		changed = changed, interact = interact, generation = 0, conversation = { { role = "system", content = PROMPT } } }, Agent)
 end
 local function cancelRequest(agent)
@@ -65,6 +69,11 @@ function Agent:execute(call)
 	if fn.name == "readDocumentation" then
 		local guide, err = Api.read(args.topic)
 		return guide or {error=err}
+	end
+	if fn.name == "readKit" then
+		if not self.readFramework then return {error = "Asset kits are not available here"} end
+		local manifest, err = Api.kit(args.kit, self.readFramework)
+		return manifest or {error = err}
 	end
 	if fn.name == "applyFiles" then
 		if type(args.files) ~= "table" or #args.files == 0 then

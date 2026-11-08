@@ -27,22 +27,9 @@
 
 static char kTabBarDelegateKey;
 
-/* SwiftUI `tabViewBottomAccessory`: iOS 26 floats the accessory in its own
- * Liquid Glass capsule above the tab bar, and moves it inline beside the
- * minimized bar while content scrolls. UIKit sizes the capsule, so the host
- * lays out the Lua content whenever the system changes that size. */
-@interface LuaTabAccessoryHost : UIView
-@property(nonatomic, strong) UIView *luaContent;
-@end
-@implementation LuaTabAccessoryHost
-- (void)layoutSubviews {
-	[super layoutSubviews];
-	self.luaContent.frame = self.bounds;
-	layout_recursive(self.luaContent, self.bounds.size.width);
-}
-@end
-
-/* `accessoryHidden` is SwiftUI's `tabViewBottomAccessory(isEnabled:)`: the
+/* The accessory host (LuaTabAccessoryHost) is shared with the preview, which
+ * places the same kind of capsule over a hosted app (preview.m).
+ * `accessoryHidden` is SwiftUI's `tabViewBottomAccessory(isEnabled:)`: the
  * accessory keeps its content and state while it is removed from the bar. */
 @interface LuaTabBarController : UITabBarController
 @property(nonatomic, strong) UITabAccessory *luaAccessory;

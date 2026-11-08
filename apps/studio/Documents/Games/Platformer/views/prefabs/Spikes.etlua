@@ -1,0 +1,2 @@
+<!-- A spike trap: touching it costs a life. -->
+<Node id="<%= spikes.id %>" model="<%= assets %>trap-spikes.glb" position="<%= spikes.x %> <%= spikes.y %> <%= spikes.z %>" scale="1.3" />

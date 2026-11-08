@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 import plistlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -22,6 +23,19 @@ def copy_tree(source, workspace, lua_only=False, runtime_only=False):
         target = workspace / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
+
+
+def asset_kits(*roots):
+    """Shared asset kits (assets/kenney/<kit>) the app's sources name.
+
+    Kits live once at the repository root rather than inside each app, so a
+    bundle copies exactly the kits its Lua and templates refer to."""
+    kits = set()
+    for root in roots:
+        for path in Path(root).rglob('*'):
+            if path.is_file() and path.suffix in ('.lua', '.etlua', '.xml'):
+                kits.update(re.findall(r'assets/kenney/([a-z0-9-]+)/', path.read_text(errors='ignore')))
+    return sorted(kit for kit in kits if (Path('assets/kenney') / kit).is_dir())
 
 
 def resolve_app_and_entry(app, entry):
@@ -112,6 +126,8 @@ def main():
     copy_tree(args.app, workspace, runtime_only=True)
     if args.app == 'apps/studio':
         copy_tree('demo/playground', workspace)
+    for kit in asset_kits(args.app, *(['demo/playground'] if args.app == 'apps/studio' else [])):
+        copy_tree(f'assets/kenney/{kit}', workspace, runtime_only=True)
     for overlay in args.overlay:
         root = Path(overlay)
         for path in root.rglob('*'):

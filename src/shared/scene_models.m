@@ -5,9 +5,12 @@
  * (modules/reel/native/scene.m), so a model imports, resolves its textures
  * and samples its palette identically in the app and in a promo render.
  *
- * Each file loads once through SceneKit's importers (OBJ with its MTL and
- * textures, DAE, USDZ, SCN) into a prototype; every use is a clone sharing
- * its geometry and materials. */
+ * Each file loads once into a prototype, glTF (.glb, .gltf) through
+ * scene_gltf.m and everything else through SceneKit's importers (OBJ with
+ * its MTL and textures, DAE, USDZ, SCN); every use is a clone sharing its
+ * geometry and materials. */
+
+#include "scene_gltf.m"
 
 static NSMutableDictionary<NSString *, SCNNode *> *scene_model_cache(void) {
 	static NSMutableDictionary *cache;
@@ -46,14 +49,24 @@ static SCNNode *scene_model(NSString *path, NSString **error) {
 			return nil;
 		}
 		NSURL *url = [NSURL fileURLWithPath:path];
-		NSError *loadError = nil;
-		SCNScene *scene = [SCNScene sceneWithURL:url options:nil error:&loadError];
-		if (!scene) {
-			if (error) *error = loadError.localizedDescription ?: @"unreadable model";
-			return nil;
+		NSString *extension = path.pathExtension.lowercaseString;
+		if ([extension isEqual:@"glb"] || [extension isEqual:@"gltf"]) {
+			NSString *failure = nil;
+			prototype = scene_gltf_load(url, &failure);
+			if (!prototype) {
+				if (error) *error = [NSString stringWithFormat:@"cannot load model %@: %@", path, failure ?: @"unreadable"];
+				return nil;
+			}
+		} else {
+			NSError *loadError = nil;
+			SCNScene *scene = [SCNScene sceneWithURL:url options:nil error:&loadError];
+			if (!scene) {
+				if (error) *error = loadError.localizedDescription ?: @"unreadable model";
+				return nil;
+			}
+			prototype = [SCNNode node];
+			for (SCNNode *child in scene.rootNode.childNodes) [prototype addChildNode:child];
 		}
-		prototype = [SCNNode node];
-		for (SCNNode *child in scene.rootNode.childNodes) [prototype addChildNode:child];
 		scene_resolve_textures(prototype, url.URLByDeletingLastPathComponent);
 		scene_model_cache()[path] = prototype;
 	}

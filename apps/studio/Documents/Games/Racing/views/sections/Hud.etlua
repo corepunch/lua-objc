@@ -1,0 +1,56 @@
+<!-- The heads-up display over the stage: the race across the top left, the
+    place and lap at the top right, the countdown or end-of-race message
+    in the middle, the controls at the foot. -->
+<VStack padding="20" spacing="0" maxWidth="infinity" maxHeight="infinity">
+	<HStack spacing="8" alignment="top" maxWidth="infinity">
+		<GlassEffect style="clear" cornerRadius="18">
+			<VStack paddingHorizontal="12" paddingVertical="10" spacing="2" alignment="leading">
+				<Label id="stage" lines="1" text="<%= stage %>" size="11" weight="bold" color="secondary" />
+				<Label id="title" lines="1" text="<%= title %>" size="18" weight="heavy" />
+			</VStack>
+		</GlassEffect>
+		<Spacer />
+		<GlassEffect style="clear" cornerRadius="18">
+			<VStack paddingHorizontal="12" paddingVertical="10" spacing="2" alignment="trailing">
+				<HStack spacing="4" alignment="center" accessibilityLabel="<%= placeLabel %>">
+					<Label id="place" lines="1" text="<%= place %>" size="22" weight="heavy" monospacedDigit="true" />
+					<Label id="cars" lines="1" text="<%= cars %>" size="13" weight="semibold" color="secondary" />
+				</HStack>
+				<Label id="lap" lines="1" text="<%= lap %>" size="13" weight="bold" monospacedDigit="true" />
+				<% if bestLap then -%>
+				<Label id="bestLap" lines="1" text="<%= bestLap %>" size="11" color="secondary" monospacedDigit="true" />
+				<% end -%>
+			</VStack>
+		</GlassEffect>
+	</HStack>
+	<Spacer />
+	<% if message then -%>
+	<HStack maxWidth="infinity">
+		<Spacer />
+		<GlassEffect cornerRadius="24">
+			<VStack paddingHorizontal="32" paddingVertical="22" spacing="6" alignment="center">
+				<Label id="messageTitle" text="<%= message.title %>" size="30" weight="heavy" />
+				<Label id="messageDetail" text="<%= message.detail %>" size="14" color="secondary" />
+			</VStack>
+		</GlassEffect>
+		<Spacer />
+	</HStack>
+	<Spacer />
+	<% elseif countdown then -%>
+	<HStack maxWidth="infinity">
+		<Spacer />
+		<GlassEffect cornerRadius="24">
+			<Label id="countdown" paddingHorizontal="28" paddingVertical="14" text="<%= countdown %>" size="54" weight="heavy" monospacedDigit="true" />
+		</GlassEffect>
+		<Spacer />
+	</HStack>
+	<Spacer />
+	<% end -%>
+	<HStack maxWidth="infinity">
+		<Spacer />
+		<GlassEffect style="clear" cornerRadius="14">
+			<Label paddingHorizontal="14" paddingVertical="8" text="<%= hint %>" size="12" color="secondary" lines="1" />
+		</GlassEffect>
+		<Spacer />
+	</HStack>
+</VStack>

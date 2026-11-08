@@ -53,9 +53,28 @@ After mutation call self.template:update(self:data()). This reconciles native co
 <% for _, task in ipairs(tasks) do %> ... <% end %> repeats rows. Supply empty arrays instead of nil.
 Related model/controller/view changes belong in ONE applyFiles batch, so no intermediate file set disagrees about the data contract.
 A ready preview confirms initial rendering only. Test event handlers too; do not claim interactions work just because preview() returned ready.]],
+	games = [[A game project extends the shared game layer (require("game.Game"), game.Session, game.World, game.Input, game.Stage, a camera from game.cameras: Leash follows a hero, Chase rides behind a car).
+Read the project's AGENTS.md first: it says where each kind of change goes and which tests must keep passing.
+Levels are data in catalog/ (catalog/levels/*.lua, or catalog/tracks/*.lua in a racing game). A new level is a new data file plus one line in the catalog list; never code. Each level is checked when it loads; a failed check names the problem: fix the data, never weaken the check.
+A rule is a system: models/systems/<Name>.lua with update(world, dt, input), listed in models/World.lua SYSTEMS. Systems emit events (world:emit("coin", coin)); Model.lua REACTIONS says what each event means. Every emitted event needs a reaction.
+input:axis() returns x, z (up is z -1, away from the camera); input:take("jump") is true once per press; input:held("fire") while held.
+The look of an entity kind is views/prefabs/<Kind>.etlua: <Node id="<%= coin.id %>" model="<%= assets %>coin-gold.glb" spin="150" bob="0.08" transition="pop" />.
+Node attributes: id, model, position "x y z", rotation "x y z" degrees, scale, spin, bob, transition (pop, rise, fade), animation (a model clip such as idle, walk, jump), hidden, opacity.
+Moving things move by poses: World:poses() returns {id=..., x=..., y=..., z=..., yaw=...}; never re-render the stage to move something.
+Models come from shared kits: assets/kenney/<kit>/models/<name>.glb. Call readKit before placing a model: it lists every model's size {w, h, d}, pivot, tags and clips. Use only names it lists.
+Place scenery freely: any position, any yaw, overlapping is fine; no grid. Check the size so pieces touch instead of floating. A racing track is the exception: its road is a list of pieces the game joins end to end (see AGENTS.md).
+Do not add timers, per-frame template renders, or ns view constructors. The game loop already runs.]],
 }
 function Api.read(topic)
-	if not GUIDES[topic] then return nil, "Choose controls, models, or templates" end
+	if not GUIDES[topic] then return nil, "Choose controls, models, templates, or games" end
 	return GUIDES[topic]
+end
+
+-- A shared asset kit's generated manifest (assets/kenney/<kit>/manifest.lua).
+function Api.kit(name, read)
+	if type(name) ~= "string" or not name:match("^[a-z0-9%-]+$") then return nil, "Name a kit such as platformer-kit" end
+	local ok, source = pcall(read, "assets/kenney/" .. name .. "/manifest.lua")
+	if not ok or not source then return nil, "No asset kit named " .. name end
+	return source
 end
 return Api

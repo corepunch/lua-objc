@@ -7,6 +7,7 @@ local bridge = require("AppKitNative")
 -- declaration.
 local AppKit = bridge
 AppKit.platform = "AppKit"
+AppKit.idiom = "mac"
 local Scope = require("ui.scope")(bridge)
 AppKit.Scope = Scope
 local commands = require("ui.commands")
@@ -2161,7 +2162,7 @@ end
 --- @prop onSwipe function optional. `onSwipe(view, direction)` with `left`, `right`, `up` or `down`, sent as soon as a drag (a finger, or the mouse) has travelled far enough.
 --- @prop onTap function optional. `onTap(view)` when a press is released without travelling. A drag is one swipe or one tap, never both.
 --- @prop showsStatistics boolean optional. Shows SceneKit's frame-rate and draw-call overlay.
---- @example <SceneView background="#8fd3f4"><Camera position="0 6 8" lookAt="0 0 0" /><Light type="directional" rotation="-60 30 0" castsShadow="true" /><Node model="assets/coin.obj" spin="90" /></SceneView>
+--- @example <SceneView background="#8fd3f4"><Camera position="0 6 8" lookAt="0 0 0" /><Light type="directional" rotation="-60 30 0" castsShadow="true" /><Node model="assets/kenney/platformer-kit/models/coin-gold.glb" spin="90" /></SceneView>
 --- @platform AppKit and UIKit.
 function AppKit.SceneView(props)
 	props = props or {}

@@ -1,0 +1,2 @@
+<!-- A spring pad: landing on it throws the hero high. -->
+<Node id="<%= spring.id %>" model="<%= assets %>spring.glb" position="<%= spring.x %> <%= spring.y %> <%= spring.z %>" />

@@ -1,0 +1,34 @@
+<%
+  -- The sheet of the conversation: a navigation stack so the code can push
+  -- over the transcript. The project is the title, the model its subtitle;
+  -- the project menu leads, Code and Done trail. The menu gathers what the
+  -- iPad spreads over its stage bar, chat header and rail.
+%>
+<Sheet>
+	<NavigationStack id="conversationNav" title="<%= project.title %>" subtitle="<%= modelId %>" background="background">
+		<Toolbar>
+			<ToolbarItem id="sheetProject" placement="topBarLeading">
+				<Menu id="projectMenu" systemImage="<%= project.icon %>" imagePath="<%= project.imagePath or "" %>" style="plain" accessibilityLabel="Project: <%= project.title %>">
+					<% for _, item in ipairs(projects) do %>
+					<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" imagePath="<%= item.imagePath or "" %>" checked="<%= tostring(item.selected == true) %>" action="<%= item.action or "" %>" />
+					<% end %>
+					<Separator />
+					<MenuItem title="Run Again" systemImage="arrow.clockwise" action="reloadPreview" />
+					<MenuItem title="Undo Last Change" systemImage="arrow.uturn.backward" action="undoChange" />
+					<MenuItem title="New Conversation" systemImage="square.and.pencil" action="newConversation" />
+					<Separator />
+					<MenuItem title="Commit" systemImage="point.3.connected.trianglepath.dotted" action="commitProject" />
+					<MenuItem title="Share…" systemImage="square.and.arrow.up" action="shareProject" />
+					<MenuItem title="GitHub…" systemImage="arrow.triangle.branch" action="showGitHub" />
+					<Separator />
+					<MenuItem title="New Project…" systemImage="plus" action="newProject" />
+					<MenuItem title="Delete Project…" systemImage="trash" action="showDeleteProject" />
+					<MenuItem title="Settings…" systemImage="gearshape" action="showSettings" />
+				</Menu>
+			</ToolbarItem>
+			<ToolbarItem id="sheetCode" icon="chevron.left.forwardslash.chevron.right" label="Code" placement="topBarTrailing" action="showCode" />
+			<ToolbarItem id="sheetDone" label="Done" systemItem="done" placement="confirmationAction" action="closeConversation" />
+		</Toolbar>
+		<VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+	</NavigationStack>
+</Sheet>

@@ -1,13 +1,26 @@
-# Lua Studio for iPad
+# Lua Studio
 
-A standalone Lua app development workspace: interactive phone-sized UIKit preview
-on the left, OpenRouter coding agent on the right, and an editable local project.
-The iPad runs Lua and etlua directly; ordinary app changes need no native build or
-Mac packager.
+A standalone Lua app development workspace: an interactive UIKit preview of the
+project, an OpenRouter coding agent, and an editable local project. The device
+runs Lua and etlua directly; ordinary app changes need no native build or Mac
+packager.
 
-Studio is landscape-only. Both landscape directions are supported; portrait and
+On iPad the workspace is three landscape columns: the phone-sized preview, the
+agent and the code. Both landscape directions are supported; portrait and
 portrait-upside-down are excluded from the bundle and the live window. Keep this
 requirement in [AGENTS.md](AGENTS.md) and verify with landscape screenshots.
+
+On iPhone (portrait) the project itself fills the screen, running as it will
+ship, and Studio is the capsule in its tab bar, where Music keeps its player.
+The capsule says what the agent last did; a tap unfolds the conversation as a
+sheet with the project still live beneath, and Code pushes the editor over the
+transcript. The project menu in the sheet gathers the project, Run, Undo, Commit,
+Share, GitHub, New Project, Delete Project and Settings. Run it in the iPhone
+Simulator with the streaming host:
+
+```sh
+make ios-run PROJECT=apps/studio
+```
 
 ## Install
 

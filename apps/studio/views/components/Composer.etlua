@@ -1,14 +1,26 @@
 <%
   -- Suggestions sit directly above the field they fill; the field and its
   -- actions share one glass capsule so the composer reads as a single control.
+  -- On the iPad card the suggestions wrap; on a phone (`shelf`) they scroll
+  -- sideways in one row, so the field keeps its height.
   local COMPOSER = { spacing = 10, chipSpacing = 8, radius = 24, fieldInset = 6, fieldSize = 15 }
 %>
 <VStack padding="<%= inset %>" spacing="<%= COMPOSER.spacing %>" maxWidth="<%= column %>" alignment="leading">
+	<% if shelf then %>
+	<ScrollView horizontal="true" vertical="false" maxWidth="infinity">
+		<HStack spacing="<%= COMPOSER.chipSpacing %>">
+			<% for _, suggestion in ipairs(suggestions) do %>
+			<Button title="<%= suggestion.title %>" systemImage="<%= suggestion.icon %>" action="<%= suggestion.action %>" disabled="<%= tostring(busy == true) %>" controlSize="small" style="glass" />
+			<% end %>
+		</HStack>
+	</ScrollView>
+	<% else %>
 	<FlowStack spacing="<%= COMPOSER.chipSpacing %>" maxWidth="infinity">
 		<% for _, suggestion in ipairs(suggestions) do %>
 		<Button title="<%= suggestion.title %>" systemImage="<%= suggestion.icon %>" action="<%= suggestion.action %>" disabled="<%= tostring(busy == true) %>" controlSize="small" style="glass" />
 		<% end %>
 	</FlowStack>
+	<% end %>
 	<% if #attachments > 0 then %>
 	<HStack spacing="8" maxWidth="infinity">
 		<Label text="<%= #attachments %> text file(s) attached" size="12" color="secondary" />

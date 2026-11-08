@@ -10,7 +10,7 @@ local xml = require("ui.xml")
 local Template = require("ui.template")
 local bridge = require("AppKitNative")
 
-local COIN = "apps/coin-quest/assets/models/coin-gold.obj"
+local COIN = "assets/kenney/platformer-kit/models/coin-gold.glb"
 
 local function near(a, b) return math.abs(a - b) < 1e-4 end
 

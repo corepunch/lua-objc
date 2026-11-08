@@ -11,7 +11,7 @@ function Controller:attach(session, device, preview, changed, interact)
 	self:stop()
 	self.session, self.device, self.changed = session, device, changed
 	self.draft, self.attachments = "", {}
-	self.agent = Agent.new(session, device.transport, device.json, preview, changed, interact)
+	self.agent = Agent.new(session, device.transport, device.json, preview, changed, interact, device.readFramework)
 end
 
 function Controller:presentation(conversation, code)

@@ -1,22 +1,18 @@
--- The running state of one level: its entities, the clock and the events of
--- the current step.
+-- The running state of one Coin Quest level (a game.World): its entities,
+-- the clock and the events of the current step.
 --
--- Entities are plain tables grouped by kind. Behaviour lives in systems
--- (models/systems/), each a module with `update(world, dt, input)` run in a
--- fixed order every step, so a rule is one small file that can be tested
--- alone with a hand-built world. Systems talk to the session through events
--- (`coin`, `star`, `heart`, `key`, `unlocked`, `checkpoint`, `flagRaised`,
--- `cleared`, `hurt`, `sprung`, `crumbled`) instead of calling it.
+-- Behaviour lives in systems (models/systems/), each a module with
+-- `update(world, dt, input)` run in SYSTEMS order every step. Systems talk
+-- to the session through events (`coin`, `star`, `heart`, `key`,
+-- `unlocked`, `checkpoint`, `flagRaised`, `cleared`, `hurt`, `sprung`,
+-- `crumbled`) instead of calling it.
 local Animation = require("apps.coin-quest.models.Animation")
 local Level = require("apps.coin-quest.models.Level")
 local Terrain = require("apps.coin-quest.models.Terrain")
-local Camera = require("apps.coin-quest.models.systems.Camera")
-
-local World = {}
-World.__index = World
+local Camera = require("game.cameras.Leash")
 
 -- Tuning, in seconds and scene units.
-World.RULES = {
+local RULES = {
 	runSpeed = 5, -- units per second
 	acceleration = 40, -- how quickly the hero reaches running speed
 	airControl = 0.6, -- of which this much in the air
@@ -55,7 +51,7 @@ World.RULES = {
 -- touches counts before anything can hurt them, and the camera follows.
 -- (Parenthesised: `require` returns a second value that would join the
 -- list.)
-World.SYSTEMS = {
+local SYSTEMS = {
 	(require("apps.coin-quest.models.systems.Platforms")),
 	(require("apps.coin-quest.models.systems.Hero")),
 	(require("apps.coin-quest.models.systems.Patrol")),
@@ -66,19 +62,11 @@ World.SYSTEMS = {
 	Camera,
 }
 
-local function spawnAll(list, prefix, extra)
-	local entities = {}
-	for index, spawn in ipairs(list) do
-		local entity = {id = prefix .. "-" .. index}
-		for k, v in pairs(spawn) do entity[k] = v end
-		if extra then extra(entity) end
-		table.insert(entities, entity)
-	end
-	return entities
-end
+local World = require("game.World"):extend({RULES = RULES, SYSTEMS = SYSTEMS})
+local spawnAll = World.spawnAll
 
 function World.new(level, rules)
-	local self = setmetatable({level = level, rules = rules or World.RULES, time = 0, events = {}}, World)
+	local self = World.create(level, rules, World)
 	local spawns = level.spawns
 	self.coins = spawnAll(spawns.coins, "coin")
 	self.stars = spawnAll(spawns.stars, "star")
@@ -118,10 +106,6 @@ function World:respawn()
 	player.yaw, player.landedAt, player.jumpedAt = 0, nil, nil
 end
 
-function World:emit(name, entity)
-	table.insert(self.events, {name = name, entity = entity})
-end
-
 -- Everything solid this frame: the level, the ferries and planks where
 -- they are, and the gates still locked.
 function World:solids()
@@ -135,20 +119,6 @@ function World:solids()
 		if not gate.open then table.insert(solids, gate.solid) end
 	end
 	return solids
-end
-
--- Advances every system by `dt` seconds and returns the events it raised.
-function World:step(dt, input)
-	self.events = {}
-	self.time = self.time + dt
-	for _, system in ipairs(World.SYSTEMS) do system.update(self, dt, input) end
-	return self.events
-end
-
--- Time passes on a finished level, so the hero can celebrate: nothing else
--- moves.
-function World:idle(dt)
-	self.time = self.time + dt
 end
 
 function World:coinsLeft()

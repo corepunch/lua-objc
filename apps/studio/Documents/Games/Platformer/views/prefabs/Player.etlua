@@ -1,0 +1,4 @@
+<!-- The hero. The template places it at the start; the world's poses move
+    and turn it. `animation` is one of the model's own clips (idle, walk,
+    jump; the kit's manifest lists them all). -->
+<Node id="player" model="<%= assets %>character-oobi.glb" position="<%= start.x %> <%= start.y %> <%= start.z %>" animation="<%= animation %>" />

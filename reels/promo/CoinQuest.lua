@@ -50,7 +50,8 @@ function CoinQuest.new(options)
 			end
 			return x, z
 		end,
-		takeJump = function()
+		take = function(_, button)
+			if button ~= "jump" then return false end
 			for index, press in ipairs(presses) do
 				if press[2] == "jump" and not jumped[index] and clock >= press[1] then
 					jumped[index] = true

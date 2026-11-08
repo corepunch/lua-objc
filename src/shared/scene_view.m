@@ -290,6 +290,12 @@ static float scene_ease_out_back(float t) {
 	} else if (CHANGED(@"spin") || CHANGED(@"bob") || CHANGED(@"bobPeriod")) {
 		[self applyBehaviours:entry];
 	}
+	/* A model's own clip (glTF animations), by name: `animation="walk"`. */
+	if ((rebuild || CHANGED(@"animation")) && spec[@"model"]) {
+		NSString *clip = [spec[@"animation"] isKindOfClass:NSString.class] ? spec[@"animation"] : nil;
+		if (!scene_model_play(entry.content, clip) && clip.length && !error)
+			error = [NSString stringWithFormat:@"model %@ has no animation '%@'", spec[@"model"], clip];
+	}
 	if (CHANGED(@"id") && spec[@"id"]) node.name = spec[@"id"];
 	if (CHANGED(@"position")) node.position = scene_vector(spec, @"position", SCNVector3Make(0, 0, 0));
 	if (CHANGED(@"rotation")) {
@@ -846,6 +852,46 @@ static int bridge_scene_nodes(lua_State *L) {
 		lua_pushboolean(L, [entry.content actionForKey:@"spin"] != nil); lua_setfield(L, -2, "spinning");
 		lua_pushboolean(L, [entry.content actionForKey:@"bob"] != nil); lua_setfield(L, -2, "bobbing");
 		lua_pushboolean(L, view.pointOfView == node); lua_setfield(L, -2, "camera");
+		if (entry.spec[@"model"]) {
+			/* The model as loaded: its clips, the one playing, whether its
+			 * skins deform with bones inside this clone, and its bounds. */
+			NSArray<NSString *> *clips = scene_model_clips(entry.content);
+			lua_newtable(L);
+			for (NSUInteger i = 0; i < clips.count; i++) { lua_pushstring(L, clips[i].UTF8String); lua_rawseti(L, -2, (lua_Integer)i + 1); }
+			lua_setfield(L, -2, "clips");
+			__block NSString *playing = nil;
+			__block BOOL skinned = NO, ownBones = YES;
+			[entry.content enumerateHierarchyUsingBlock:^(SCNNode *child, BOOL *stop) {
+				(void)stop;
+				for (NSString *key in child.animationKeys) {
+					SCNAnimationPlayer *player = [child animationPlayerForKey:key];
+					NSRange dot = [key rangeOfString:@"." options:NSBackwardsSearch];
+					if (!player.paused && dot.location != NSNotFound) playing = [key substringToIndex:dot.location];
+				}
+				if (child.skinner) {
+					skinned = YES;
+					for (SCNNode *bone in child.skinner.bones) {
+						SCNNode *ancestor = bone;
+						while (ancestor && ancestor != entry.content) ancestor = ancestor.parentNode;
+						if (!ancestor) ownBones = NO;
+					}
+				}
+			}];
+			if (playing) { lua_pushstring(L, playing.UTF8String); lua_setfield(L, -2, "animation"); }
+			lua_pushboolean(L, skinned); lua_setfield(L, -2, "skinned");
+			lua_pushboolean(L, skinned && ownBones); lua_setfield(L, -2, "ownBones");
+			SCNVector3 low, high;
+			[entry.content getBoundingBoxMin:&low max:&high];
+			lua_pushnumber(L, high.x - low.x); lua_setfield(L, -2, "width");
+			lua_pushnumber(L, high.y - low.y); lua_setfield(L, -2, "height");
+			lua_pushnumber(L, high.z - low.z); lua_setfield(L, -2, "length");
+			lua_pushnumber(L, low.y); lua_setfield(L, -2, "bottom");
+			lua_pushnumber(L, low.x); lua_setfield(L, -2, "minX");
+			lua_pushnumber(L, high.x); lua_setfield(L, -2, "maxX");
+			lua_pushnumber(L, high.y); lua_setfield(L, -2, "maxY");
+			lua_pushnumber(L, low.z); lua_setfield(L, -2, "minZ");
+			lua_pushnumber(L, high.z); lua_setfield(L, -2, "maxZ");
+		}
 		if (node.light) {
 			SCNLight *light = node.light;
 			lua_pushstring(L, light.type.UTF8String); lua_setfield(L, -2, "light");

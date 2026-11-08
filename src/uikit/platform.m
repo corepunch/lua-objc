@@ -1,5 +1,15 @@
 #pragma mark - Show
 
+/* The device family: an app chooses its layout by it, as SwiftUI reads
+ * `horizontalSizeClass`. "phone", "pad", "mac" (Catalyst) or "other". */
+static int bridge_idiom(lua_State *L) {
+	UIUserInterfaceIdiom idiom = UIDevice.currentDevice.userInterfaceIdiom;
+	lua_pushstring(L, idiom == UIUserInterfaceIdiomPhone ? "phone"
+		: idiom == UIUserInterfaceIdiomPad ? "pad"
+		: idiom == UIUserInterfaceIdiomMac ? "mac" : "other");
+	return 1;
+}
+
 static int bridge_show(lua_State *L) {
 	UIWindow *w = (__bridge UIWindow *)((ObjCRef *)lua_touserdata(L, 1))->ptr;
 	[w makeKeyAndVisible];

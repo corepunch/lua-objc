@@ -825,13 +825,14 @@ local TAG_SCHEMA = {
     -- A scene node: a model file or a primitive geometry, posed by
     -- position/rotation (degrees)/scale, with idle `spin` (degrees per
     -- second about y, or "x y z") and `bob` behaviours and an insertion/removal `transition` (pop, rise, fade).
+    -- `animation` plays one of a glTF model's own clips by name ("walk"), looping.
     -- Child records hang from it and move with it.
     Node = {
         kind = "record", children = "items",
         props = { id = "str", model = "str", geometry = "str", position = "str", rotation = "str", scale = "str",
             width = "num", height = "num", length = "num", radius = "num", chamfer = "num", color = "str",
             hidden = "bool", opacity = "num", castsShadow = "bool", spin = "str", bob = "num", bobPeriod = "num",
-            transition = "str", lookAt = "str" },
+            transition = "str", lookAt = "str", animation = "str" },
         transform = function(rec) rec.sceneKind = "node" end,
     },
     -- The first camera is the view's point of view. `fieldOfViewAxis`
@@ -977,7 +978,21 @@ local TAG_SCHEMA = {
         positional  = { "text", "value", default = "" },
         directArg   = "positional",
     },
-    Preview = { constructor = "Preview", props = { appearance = "str", zoom = "num" } },
+    -- A hosted app: the device-framed preview of the iPad canvas, or the
+    -- whole view (`fullScreen`) with an optional <BottomAccessory>.
+    Preview = {
+        constructor = "Preview",
+        props = { appearance = "str", zoom = "num", fullScreen = "bool" },
+        collect = function(props, children)
+            for _, c in ipairs(children) do
+                if type(c) ~= "table" or not c.__bottomAccessory then
+                    error("xml: <Preview> accepts only a <BottomAccessory>")
+                end
+                if props.accessory then error("xml: <Preview> accepts one <BottomAccessory>") end
+                props.accessory = c
+            end
+        end,
+    },
     TextEditor = {
         constructor = "TextEditor",
         props = {
@@ -1804,6 +1819,15 @@ local TAG_SCHEMA = {
             props.content = children[1]
         end,
     },
+    -- A <Preview> host's capsule: it joins the hosted app's tab bar as its
+    -- accessory, or floats on glass above a tab-less app.
+    BottomAccessory = {
+        kind = "record", flag = "__bottomAccessory",
+        collect = function(props, children)
+            if #children ~= 1 then error("xml: <BottomAccessory> requires one view") end
+            props.content = children[1]
+        end,
+    },
     TopPalette = {
         kind = "record", flag = "__navigationPalette",
         collect = function(props, children)
@@ -2006,10 +2030,21 @@ end
 --   <%= yield("content") %>
 --   <%= partial("MessageRow", msg) %>
 
+-- `rel` against the directory of `base`, with "." and ".." folded away: a
+-- template read from a file map (Lua Studio's preview, the iOS packager)
+-- is found by its canonical path, and only the file system knows "..".
 local function resolvePath(base, rel)
     if rel:match("^/") or rel:match("^%a:") then return rel end
     local dir = base:match("^(.-)[^/\\]*$")
-    return dir .. rel
+    local parts = {}
+    for part in (dir .. rel):gmatch("[^/]+") do
+        if part == ".." and #parts > 0 and parts[#parts] ~= ".." then
+            table.remove(parts)
+        elseif part ~= "." then
+            table.insert(parts, part)
+        end
+    end
+    return (dir:sub(1, 1) == "/" and "/" or "") .. table.concat(parts, "/")
 end
 
 local function nativeReadFile()

@@ -42,13 +42,24 @@ function Catalog:delete(id)
 	return true
 end
 
+-- The bundled templates (Documents/templates.lua): {id, title, path}.
+function Catalog:templates()
+	local source = assert(self.readBundled("apps/studio/Documents/templates.lua"), "Template list is missing")
+	return assert(load(source, "@templates.lua", "t", {}))()
+end
+
+function Catalog:template(id)
+	for _, entry in ipairs(self:templates()) do if entry.id == id then return entry end end
+end
+
 function Catalog:create(title, template)
 	local reserved = {}
 	for _, project in ipairs(self:list()) do reserved[project.id] = true end
 	if type(title) ~= "string" then return nil, "Enter a project name" end
 	title = title:match("^%s*(.-)%s*$")
 	if title == "" or #title > 80 then return nil, "Use a project name between 1 and 80 characters" end
-	if template ~= "StarterApp" and template ~= "HabitTracker" then return nil, "Choose a bundled template" end
+	local entry = self:template(template)
+	if not entry then return nil, "Choose a bundled template" end
 	local base = title:gsub("[^%w_%-]", "")
 	if base == "" then base = "Project" end
 	local id, suffix = base, 1
@@ -56,7 +67,7 @@ function Catalog:create(title, template)
 		suffix = suffix + 1
 		id = base .. suffix
 	end
-	local root = "apps/studio/Documents/" .. template .. "/"
+	local root = "apps/studio/Documents/" .. entry.path .. "/"
 	local source = assert(self.readBundled(root .. "project.lua"), "Template metadata is missing")
 	local metadata = assert(load(source, "@project.lua", "t", {}))()
 	local files = {}

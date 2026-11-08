@@ -14,6 +14,8 @@ function Device.new(ns)
 	local json = { encode = ns._jsonEncode, decode = ns.json_parse }
 	return {
 		json = json,
+		-- Framework and shared asset files bundled with Studio (asset kit manifests).
+		readFramework = ns._readFile,
 		github = {
 			credentials = {
 				read = function() return ns.Credentials.get("github") end,

@@ -27,12 +27,18 @@ Read only the material needed for the current task:
   SceneKit: captures, component motion, camera, traps, performance
 - [docs/backend.md](docs/backend.md) — online data in Appwrite (design
   proposal): remote models, the two kinds of account, provisioning
+- [docs/assistant.md](docs/assistant.md) — plain-words requests over typed
+  intents: Help search, command palette, on-device model (design proposal)
 - [docs/data-driven.md](docs/data-driven.md) — manifests, pages as requests over
   models, `@name` resources, the model graph
 - [docs/components.md](docs/components.md) — components: new XML tags
   written as etlua templates, the bundled set, resolution
 - [docs/scenekit.md](docs/scenekit.md) — `<SceneView>` 3-D scenes: scene
   records, reconciliation by id, per-frame poses, game architecture
+- [lua/game/README.md](lua/game/README.md) — the shared game layer (session,
+  world, input, stage, loop) that games and Lua Studio's game templates extend
+- [assets/kenney/README.md](assets/kenney/README.md) — shared 3-D asset kits
+  (glTF) and their generated manifests
 - [docs/ios.md](docs/ios.md) — iPhone Simulator host, streamed Lua/assets,
   in-process reload (the host does not quit)
 - [docs/research/XCODE_UI_ARCHITECTURE.md](docs/research/XCODE_UI_ARCHITECTURE.md)

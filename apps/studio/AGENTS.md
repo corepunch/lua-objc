@@ -1,8 +1,14 @@
 # Lua Studio product requirements
 
-- Studio is a landscape-only iPad app. Never allow portrait or portrait-upside-down.
-  Keep the window's landscape lock and both bundled orientation lists aligned.
-  Verify the real landscape scene; screenshots and test window sizes must be landscape.
+- On iPad, Studio is landscape only. Never allow portrait or portrait-upside-down
+  there. Keep the window's landscape lock and the `~ipad` orientation list aligned,
+  and verify the real landscape scene: iPad screenshots and test window sizes are
+  landscape.
+- On iPhone, Studio is portrait. The project runs full screen in the preview host
+  under the Studio capsule (`views/layouts/Phone.etlua`,
+  `controllers/PhoneController.lua`); the conversation is a sheet over it. The
+  root controller picks the layout by `ns.idiom`. Verify with portrait iPhone
+  Simulator screenshots.
 - Use native iOS presentations and actions. Destructive confirmation is a system
   alert with native Cancel and Delete actions. Settings uses a native navigation
   bar with the system Done item. Do not build replacement dialog button rows.

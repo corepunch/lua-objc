@@ -439,6 +439,19 @@ moves inline beside the minimized bar while content scrolls. Toggle it with
 content keeps its state and refs while hidden. macOS has no tab-bar accessory,
 so AppKit retains the view for its refs without showing it.
 
+`<Preview>` hosts another app's window content (Studio's running project):
+on the iPad canvas a scaled phone with a bezel and phone traits, or with
+`fullScreen="true"` the whole view with the device's own traits. Its one
+optional child, `<BottomAccessory>`, is the host's capsule: it joins the
+hosted app's tab bar as its `UITabAccessory` when the content is a tab bar
+controller, and floats on Liquid Glass above the content otherwise, the way
+Music keeps its player over any screen; the content keeps clear of it as it
+keeps clear of a tab bar. `ns.idiom` is `"phone"`, `"pad"` or `"mac"`: the
+layout an app chooses by, as SwiftUI reads the size class. A sheet the user
+drags away is reported: `ns.presentSheet(builder, {onDismiss = fn})` runs
+`fn` after a user dismissal, and the sheet's scope closes either way, so the
+templates it mounted know they are gone.
+
 `ns._documentRead(name)` / `ns._documentWrite(name, text)` keep small UTF-8
 documents (settings, autosaves) under a relative name that cannot escape the
 root: the app sandbox's Documents on iOS, `~/Library/Application

@@ -79,6 +79,10 @@ animation or terrain renderer.
 
 ## Layers
 
+The genre-neutral half lives in [`lua/game/`](../../lua/game/README.md):
+session, world, input, the leash camera, stage and the game loop. What
+follows is Coin Quest's own.
+
 ```
 catalog/levels/*.lua        one world each: blocks, props and items placed in 3-D
 catalog/Levels.lua          the worlds in play order
@@ -87,19 +91,18 @@ catalog/Props.lua           the kit's other pieces: model, scale, collision box
 models/Level.lua            builds a world: stacks the blocks, places props and items
 models/Terrain.lua          collision: turned boxes with flat, ramp and arch tops
 models/Reach.lua            checks a world can be cleared with the hero's jump
-models/World.lua            one running world: entities, clock, events, poses()
-models/systems/*.lua        one rule each: Platforms, Hero, Patrol, Traps, Locks, Pickups, Hazards, Camera
+models/World.lua            one running world (a game.World): entities, poses()
+models/systems/*.lua        one rule each: Platforms, Hero, Patrol, Traps, Locks, Pickups, Hazards
 models/Animation.lua        the hero's squash, stretch, shake and spin; springs; the flag
-Model.lua                   the session: worlds, lives, score, stars, state machine
-controllers/InputController keys, swipes and game controllers -> a run direction, jumps, camera turns
-controllers/StageController scene data -> Stage.etlua; poses and the camera -> SceneView
+Model.lua                   the session (a game.Session): what each event means, status, scene
+controllers/StageController scene data -> Stage.etlua (a game.Stage)
 controllers/HudController   status -> Hud.etlua
-Controller.lua              window, game loop, coordination
+Controller.lua              game.Game with Coin Quest's parts: window, loop, input
 views/Window.etlua          toolbar, stage and HUD hosts; landscape on a touch screen
 views/Stage.etlua           camera, lights and the world's scene graph
 views/prefabs/*.etlua       one prefab per entity kind
 views/Hud.etlua             world, coins, stars, lives, messages
-assets/models/              Kenney Platformer Kit models (CC0, see License.txt)
+models come from the shared kit assets/kenney/platformer-kit (glTF, CC0)
 ```
 
 ### Data: a world is a scene of the kit's pieces
@@ -157,7 +160,7 @@ holding one rule:
 | `Locks` | the key opens the gates |
 | `Pickups` | coins, stars, hearts, keys, checkpoints; the last coin raises the flag |
 | `Hazards` | saws, raised spikes and the water hurt |
-| `Camera` | the leash camera follows the hero and turns when asked |
+| `Camera` | the leash camera (`game.cameras.Leash`) follows the hero and turns when asked |
 
 Systems never reach up into the session. They emit events (`coin`,
 `flagRaised`, `hurt`, `cleared`). `Model` (the session) turns those into
@@ -175,7 +178,7 @@ squash and stretch, a shake when hurt and a victory spin.
 views, and the prefabs are partials:
 
 ```xml
-<Node id="<%= coin.id %>" model="<%= assets %>coin-gold.obj" position="…" spin="150" bob="0.08" transition="pop" />
+<Node id="<%= coin.id %>" model="<%= assets %>coin-gold.glb" position="…" spin="150" bob="0.08" transition="pop" />
 ```
 
 The spin and bob run natively as SceneKit actions. When a coin is taken the

@@ -1,0 +1,40 @@
+-- Race 3: the grand prix, three laps against three quick rivals. A long
+-- sweeping corner, a chicane (left then right) and a back straight.
+return {
+	id = "grandprix",
+	title = "Grand Prix",
+	laps = 3,
+	track = {
+		"start", "long", "long", "sweepRight",
+		"long", "right", "long", "left", "right",
+		"long", "long", "straight", "wideRight",
+		"long", "straight", "wideRight",
+	},
+	rivals = {
+		{"raceCarGreen", pace = 0.8},
+		{"raceCarOrange", pace = 0.86},
+		{"raceCarWhite", pace = 0.9},
+	},
+	scenery = {
+		{"overheadLights", 0, 1.0, yaw = 0},
+		{"grandStandCovered", 1.6, 1.6, yaw = 90, scale = 1.4},
+		{"grandStandCovered", 1.6, 3.4, yaw = 90, scale = 1.4},
+		{"grandStandCoveredRound", 2.6, 8.6, yaw = 135, scale = 1.4},
+		{"pitsGarage", -1.6, 2.2, yaw = -90},
+		{"pitsGarage", -1.6, 3.2, yaw = -90},
+		{"pitsOffice", -1.6, 4.4, yaw = -90},
+		{"treeLarge", -3.4, 3.4, yaw = 20},
+		{"treeSmall", -3.0, 5.4, yaw = 80},
+		{"treeLarge", -3.8, 6.8, yaw = 140},
+		{"tent", -3.4, 2.0, yaw = 15},
+		{"billboard", -4.0, 10.0, yaw = 180},
+		{"treeLarge", -7.4, 8.5, yaw = 10},
+		{"treeSmall", -7.4, 6.2, yaw = 65},
+		{"bannerTowerRed", -7.2, 4.3, yaw = 0},
+		{"lightPostLarge", -7.3, 1.5, yaw = 90},
+		{"treeLarge", -6.6, -2.8, yaw = 30},
+		{"billboardLow", -3.0, -2.7, yaw = 180},
+		{"treeSmall", 1.4, -1.5, yaw = 50},
+		{"treeLarge", 2.0, 9.6, yaw = 100},
+	},
+}

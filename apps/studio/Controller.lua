@@ -11,6 +11,7 @@ local ChatController = require("apps.studio.controllers.ChatController")
 local RailController = require("apps.studio.controllers.RailController")
 local GitHubController = require("apps.studio.controllers.GitHubController")
 local SheetController = require("apps.studio.controllers.SheetController")
+local PhoneController = require("apps.studio.controllers.PhoneController")
 local Theme = require("apps.studio.helpers.Theme")
 local Projects = require("apps.studio.services.Projects")
 local Code = require("apps.studio.helpers.Code")
@@ -123,6 +124,21 @@ function Controller:openProject(id)
 	return true
 end
 
+-- The code pane: the project files and the selected source.
+function Controller:codeData()
+	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
+	self.selectedFile = code.selected
+	if code.selected then code.text = self.model:source(PREFIX .. code.selected) end
+	return code
+end
+
+-- The conversation, as the chat pane and the phone sheet present it.
+function Controller:chatData(code)
+	local chat = self.chat:presentation(self.showcase and self.showcase.conversation, code)
+	chat.projectTitle = self.activeProject and self.activeProject.title or "Project"
+	return chat
+end
+
 function Controller:workspaceData()
 	if not self.model then return {empty = true, status = self.status or "", actions = self.actions} end
 	local preview = self.previewPane:presentation(self.projects, self:iconChoices())
@@ -130,32 +146,36 @@ function Controller:workspaceData()
 	preview.failed = self.preview and self.preview.lastError ~= nil
 	preview.appearance, preview.zoomValue = self.previewAppearance, self.previewZoom
 	preview.zoom = self.previewZoom == 1 and "Fit" or "75%"
-	local code = Code.presentation(self.model.files, self.selectedFile or "Controller.lua")
-	self.selectedFile = code.selected
-	if code.selected then code.text = self.model:source(PREFIX .. code.selected) end
-	local chat = self.chat:presentation(self.showcase and self.showcase.conversation, code)
+	local code = self:codeData()
+	local chat = self:chatData(code)
 	chat.mode, chat.hidden, chat.treeHidden = self.mode, self.chatHidden, self.treeHidden
-	chat.projectTitle = self.activeProject and self.activeProject.title or "Project"
 	return { rail = self.rail:presentation(self.mode), preview = preview, chat = chat,
 		code = code, codeFiles = code.files, syntaxRules = Code.rules, actions = self.actions }
 end
 
 function Controller:render()
+	if self.phone then return self.phone:render() end
 	if not self.workspace then return end
 	local _, refs = self.workspace:update(self:workspaceData())
 	self.refs = refs
-	if not refs.preview then return end
-	if refs.preview ~= self.previewView or self.renderedPreviewContent ~= self.previewContent then
-		if self.previewContent or self.renderedPreviewContent then refs.preview.content = self.previewContent end
-		self.previewView, self.renderedPreviewContent = refs.preview, self.previewContent
-	end
+	if refs.preview then self:showPreview(refs.preview) end
+end
+
+-- The rendered project goes into the preview host once per change.
+function Controller:showPreview(view)
+	if view == self.previewView and self.renderedPreviewContent == self.previewContent then return end
+	if self.previewContent or self.renderedPreviewContent then view.content = self.previewContent end
+	self.previewView, self.renderedPreviewContent = view, self.previewContent
 end
 
 function Controller:createWindow()
 	self.ns = self.ns or require("ns")
 	local ns = self.ns
-	assert(ns.Preview, "Lua Studio requires the iPad runtime. Use make ipad-run.")
+	assert(ns.Preview, "Lua Studio requires the iOS runtime. Use make ipad-run, or make ios-run PROJECT=apps/studio for an iPhone.")
 	DataModel.bind(self.store)
+	-- A phone runs the project full screen under the Studio capsule; the
+	-- iPad lays the workspace out in columns.
+	if ns.idiom == "phone" then self.phone = PhoneController.new(self, ns) end
 	self.catalog = self.catalog or Catalog.new(ns, require("Git"), ns._readFile)
 	self.device = self.device or Device.new(ns)
 	self.sheets = self.sheets or SheetController.new(ns)
@@ -165,6 +185,7 @@ function Controller:createWindow()
 	else self.projects = projects; self.actions = self:workspaceActions() end
 	self.showcase = showcase(ns._readFile)
 	if self.showcase then self:reloadPreview() end
+	if self.phone then return self.phone:createWindow() end
 	local config, refs = xml.renderFile("apps/studio/views/layouts/Window.etlua", {canvas = Theme.canvas}, ns)
 	self.workspace = Template.new(refs.workspace, "apps/studio/views/sections/Workspace.etlua", ns)
 	self:render()
@@ -194,6 +215,7 @@ function Controller:selectProjectIcon(choice)
 end
 
 function Controller:showLatestTurn()
+	if self.phone then return self.phone:showLatestTurn() end
 	if self.refs and self.refs.transcriptScroll then self.refs.transcriptScroll:scrollTo("bottom", false) end
 end
 
@@ -221,7 +243,9 @@ function Controller:showSettings()
 end
 
 function Controller:showNewProject(template)
-	self:showSheet("Project", {title = "New Project", projectName = "", templateIndex = template == "HabitTracker" and 1 or 0, message = ""})
+	local templates, index = self.catalog:templates(), 0
+	for i, entry in ipairs(templates) do if entry.id == template then index = i - 1 end end
+	self:showSheet("Project", {title = "New Project", projectName = "", templateIndex = index, templates = templates, message = ""})
 end
 
 function Controller:createProject()
@@ -231,7 +255,8 @@ function Controller:createProject()
 		local saved, err = self.session:saveDrafts()
 		if not saved then self:updateSheet("Save or undo your edits first: " .. tostring(err)); return nil, err end
 	end
-	local created, err = self.catalog:create(data.projectName, data.templateIndex == 1 and "HabitTracker" or "StarterApp")
+	local template = self.catalog:templates()[(data.templateIndex or 0) + 1]
+	local created, err = self.catalog:create(data.projectName, template and template.id)
 	if not created then self:updateSheet(err); return nil, err end
 	-- Catalog creation has already initialized Git; reopen through the same
 	-- path as every project so the controller owns just one repository handle.
@@ -415,6 +440,7 @@ function Controller:workspaceActions()
 		actions[suggestion.action] = function() self.chat.draft = suggestion.prompt; self:render() end
 	end
 	for name, action in pairs(actions) do actions[name] = DataModel.bound(self.store, action) end
+	if self.phone then self.phone:extendActions(actions, function(action) return DataModel.bound(self.store, action) end) end
 	return actions
 end
 return Controller

@@ -196,4 +196,13 @@ t.expect(session.workspace.messages[#session.workspace.messages].text:find("Coul
 t.assertEqual(encodingFailure.conversation[#encodingFailure.conversation].role,"user","a partial tool exchange is removed before retry")
 agent:send("Stop explicitly", "test-key"); agent:stop()
 t.assertEqual(#agent.conversation,1,"explicit Stop still starts a clean conversation")
+-- A project's AGENTS.md is the one non-code file the agent may edit; other
+-- text files stay out, and the readKit tool serves a kit's manifest.
+t.expect(session:apply({{path = "demo/playground/AGENTS.md", content = "# Rules"}}), "AGENTS.md saves without a syntax check")
+t.expect(not session:apply({{path = "demo/playground/notes.md", content = "notes"}}), "other markdown files are refused")
+local Api = require("apps.studio.helpers.Api")
+local manifest = Api.kit("platformer-kit", function(path) local f = io.open(path, "rb"); local s = f and f:read("a"); if f then f:close() end; return s end)
+t.expect(manifest and manifest:find('"coin%-gold"'), "readKit returns a kit's manifest")
+t.expect(not Api.kit("../secrets", function() return "x" end), "readKit takes only kit names")
+t.expect(Api.read("games"):find("readKit"), "the games guide points at readKit")
 os.exit(t.summary() and 0 or 1)

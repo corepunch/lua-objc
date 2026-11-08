@@ -1,0 +1,22 @@
+<%
+  -- The Studio capsule: the conversation folded to one line, as Music folds
+  -- the player. The mark of the agent, what it last did, and the controls
+  -- that fit: dictation and Open while idle, progress and Stop while the
+  -- agent works. A tap anywhere on it unfolds the conversation. The
+  -- accessory supplies the glass, so the capsule draws nothing of its own.
+  local CAPSULE = { insetLeading = 6, insetTrailing = 8, spacing = 10, avatar = 34, titleSize = 15, detailSize = 12 }
+%>
+<HStack id="capsule" tint="<%= tint %>" paddingLeading="<%= CAPSULE.insetLeading %>" paddingTrailing="<%= CAPSULE.insetTrailing %>" spacing="<%= CAPSULE.spacing %>" maxWidth="infinity" maxHeight="infinity" alignment="center" onTap="openConversation" accessibilityLabel="<%= title %>. <%= detail %>">
+	<%- partial("../components/Avatar.etlua", { size = CAPSULE.avatar, colors = brand, icon = "sparkles", label = "Assistant" }) %>
+	<VStack spacing="1" alignment="leading" flexGrow="1" flexShrink="1">
+		<Label id="capsuleTitle" text="<%= title %>" size="<%= CAPSULE.titleSize %>" weight="semibold" color="<%= failed and "systemOrange" or "label" %>" lines="1" truncation="tail" />
+		<Label id="capsuleDetail" text="<%= detail %>" size="<%= CAPSULE.detailSize %>" color="secondary" lines="1" truncation="tail" />
+	</VStack>
+	<% if busy then %>
+	<ProgressView accessibilityLabel="Agent working" />
+	<Button id="stopAgent" systemImage="stop.fill" accessibilityLabel="Stop" action="stopAgent" style="glassProminent" />
+	<% else %>
+	<Button id="dictate" systemImage="mic" accessibilityLabel="Dictate" action="dictate" style="plain" />
+	<Button id="openConversation" systemImage="arrow.up" accessibilityLabel="Open conversation" action="openConversation" style="glassProminent" />
+	<% end %>
+</HStack>

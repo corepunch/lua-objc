@@ -1,4 +1,4 @@
-"""Offline checks for Studio's landscape-only bundles."""
+"""Offline checks for Studio's orientations: portrait on iPhone, landscape on iPad."""
 import importlib.util
 import os
 from pathlib import Path
@@ -13,12 +13,13 @@ bundle = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bundle)
 STUDIO = plistlib.loads((ROOT / 'apps/studio/Info.plist').read_bytes())
 LANDSCAPE = ['UIInterfaceOrientationLandscapeLeft', 'UIInterfaceOrientationLandscapeRight']
+PORTRAIT = ['UIInterfaceOrientationPortrait']
 
 
 class OrientationTest(unittest.TestCase):
-    def test_studio_declares_only_landscape(self):
-        for key in ['UISupportedInterfaceOrientations', 'UISupportedInterfaceOrientations~ipad']:
-            self.assertEqual(STUDIO[key], LANDSCAPE)
+    def test_studio_declares_portrait_phone_and_landscape_pad(self):
+        self.assertEqual(STUDIO['UISupportedInterfaceOrientations'], PORTRAIT)
+        self.assertEqual(STUDIO['UISupportedInterfaceOrientations~ipad'], LANDSCAPE)
         self.assertNotIn('UIRequiresFullScreen', STUDIO)
 
     def test_device_and_simulator_preserve_app_orientation(self):
@@ -38,12 +39,13 @@ class OrientationTest(unittest.TestCase):
                     args = ['bundle.py', '--binary', 'runtime', '--bundle', 'Test.app',
                             '--sdk', sdk, '--identifier', 'org.luaobjc.test', '--minimum', '26.5',
                             '--app', 'apps/test', '--entry', 'apps/test/init.lua',
-                            '--display-name', 'Test', '--device-family', '2']
+                            '--display-name', 'Test', '--device-family', '1,2']
                     with patch('sys.argv', args):
                         bundle.main()
                     info = plistlib.loads(Path('Test.app/Info.plist').read_bytes())
-                    self.assertEqual(info['UISupportedInterfaceOrientations'], LANDSCAPE)
+                    self.assertEqual(info['UISupportedInterfaceOrientations'], PORTRAIT)
                     self.assertEqual(info['UISupportedInterfaceOrientations~ipad'], LANDSCAPE)
+                    self.assertEqual(info['UIDeviceFamily'], [1, 2])
                     self.assertEqual(info['CFBundleIdentifier'], 'org.luaobjc.test')
                 finally:
                     os.chdir(previous)

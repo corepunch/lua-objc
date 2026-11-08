@@ -129,6 +129,10 @@ static const CGFloat kPreviewTrimWidth = 2.0;
 /* In dark mode a black body would merge with a black app; a graphite body
  * keeps the device outline, as dark device mockups draw it. */
 static const CGFloat kPreviewDarkBodyWhite = 0.18;
+/* A full-screen preview's floating accessory: the capsule of a tab bar
+ * accessory, kept above the home indicator by the same margin as its sides. */
+static const CGFloat kPreviewAccessoryHeight = 56.0;
+static const CGFloat kPreviewAccessoryMargin = 16.0;
 static const CGFloat kBenchmarkScrollPointsPerSecond = 1500.0;
 static const CGFloat kEdgeSwipeBackDistance = 80.0;
 static const CGFloat kEdgeSwipeHorizontalRatio = 1.5;
@@ -282,6 +286,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_glassEffect", bridge_UIKitControls_glassEffect},
 	{"_glassEffectContainer", bridge_UIKitControls_glassEffectContainer},
 	LUA_OBJC_WEBVIEW_FUNCTIONS
+	{"_idiom", bridge_idiom},
 	{"_hapticsAvailable", bridge_UIKit_hapticsAvailable},
 	{"_reduceMotionEnabled", bridge_UIKit_reduceMotionEnabled},
 	{"_hapticImpact", bridge_UIKit_hapticImpact},

@@ -52,7 +52,7 @@ coin-and-flag progression reproduces Mario 64's mission structure.
 ## Objects and visual composition
 
 Use the actual [Kenney Platformer Kit](https://kenney.nl/assets/platformer-kit)
-models already in `assets/models/`, including their grass and snow variants
+models in the shared `assets/kenney/platformer-kit/models/`, including their grass and snow variants
 and shared `Textures/colormap.png`. Keep the simple palette and rounded
 silhouettes consistent with the supplied reference image.
 

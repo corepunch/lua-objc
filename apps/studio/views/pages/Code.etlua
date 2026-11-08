@@ -1,0 +1,11 @@
+<%
+  -- The source, pushed over the conversation. Run is the one bar action; the
+  -- editor beneath is a retained template, so the file menu, Save and the
+  -- code update in place as files change.
+%>
+<Page title="<%= project.title %>" titleDisplayMode="inline" onDisappear="codeClosed">
+	<Toolbar>
+		<ToolbarItem id="runCode" icon="play.fill" label="Run" placement="primaryAction" action="reloadPreview" />
+	</Toolbar>
+	<VStack id="editorHost" maxWidth="infinity" maxHeight="infinity" />
+</Page>

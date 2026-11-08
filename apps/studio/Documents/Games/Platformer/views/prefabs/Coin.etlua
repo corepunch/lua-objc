@@ -1,0 +1,3 @@
+<!-- A coin. Spin and bob are native SceneKit actions; when the coin is taken
+    it leaves the scene data and pops away by itself. -->
+<Node id="<%= coin.id %>" model="<%= assets %>coin-gold.glb" position="<%= coin.x %> <%= coin.y %> <%= coin.z %>" spin="150" bob="0.08" transition="pop" />

@@ -1,0 +1,20 @@
+<%
+  -- The editor on a phone: the project tree is a menu titled with the open
+  -- file, since there is no room for a sidebar beside the code. The same
+  -- root actions edit, save and select as on the iPad.
+  local CODE = { inset = 14, barSpacing = 10, barInset = 8, captionSize = 11 }
+%>
+<VStack spacing="0" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background">
+	<HStack paddingHorizontal="<%= CODE.inset %>" paddingVertical="<%= CODE.barInset %>" spacing="<%= CODE.barSpacing %>" maxWidth="infinity" alignment="center">
+		<Menu id="fileMenu" title="<%= code.name %>" systemImage="folder" style="glass" accessibilityLabel="Project files" flexShrink="1">
+			<% for _, file in ipairs(code.files) do %>
+			<MenuItem title="<%= file.display %>" systemImage="<%= file.icon %>" checked="<%= tostring(file.id == code.selected) %>" action="selectFile_<%= file.id %>" />
+			<% end %>
+		</Menu>
+		<Spacer />
+		<Label id="codeLanguage" text="<%= code.language:upper() %>" size="<%= CODE.captionSize %>" weight="semibold" color="secondary" />
+		<Button accessibilityLabel="Save" systemImage="square.and.arrow.down" action="saveSource" disabled="<%= tostring(busy == true) %>" style="glass" />
+	</HStack>
+	<Divider />
+	<CodeView id="sourceCode" text="<%= code.text %>" language="<%= code.language %>" editable="<%= tostring(not busy) %>" onChange="editSource" syntaxRules="syntaxRules" wrapMode="true" flexGrow="1" maxWidth="infinity" maxHeight="infinity" />
+</VStack>

@@ -1,0 +1,6 @@
+<!-- A car. The world's poses move and turn the outer node along the car's
+    heading; the kit's cars face -z, so the model inside turns round to
+    face the way the car drives. -->
+<Node id="<%= car.id %>" position="<%= car.x %> 0 <%= car.z %>" rotation="0 <%= car.yaw %> 0">
+	<Node model="<%= assets .. car.model %>" rotation="0 180 0" scale="<%= scale %>" />
+</Node>

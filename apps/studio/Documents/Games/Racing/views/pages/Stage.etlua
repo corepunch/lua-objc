@@ -1,0 +1,18 @@
+<!-- The 3-D stage. Camera and lights stay across races; everything a race
+    owns hangs from one node named after it, so loading another race
+    replaces the whole subtree. The road and scenery stand still; the
+    world's poses move the cars and the camera every frame. -->
+<SceneView id="scene" background="<%= sky %>" onKey="key" onFrame="frame" onSwipe="swipe" onTap="tap" virtualGamepad="true">
+	<Camera id="camera" position="<%= camera.position %>" lookAt="<%= camera.lookAt %>" fieldOfView="<%= camera.fieldOfView %>" fieldOfViewAxis="<%= camera.fieldOfViewAxis %>" />
+	<Light id="sun" type="directional" rotation="-55 35 0" intensity="1150" castsShadow="true" shadowRadius="1" shadowSampleCount="4" shadowOpacity="0.6" />
+	<Light id="skylight" type="ambient" intensity="300" color="#d6ecff" />
+	<Node id="ground" geometry="floor" color="<%= ground %>" position="0 -0.01 0" castsShadow="false" />
+	<Node id="track-<%= level %>">
+		<% for _, piece in ipairs(pieces) do -%>
+		<Node model="<%= assets .. piece.model %>" position="<%= piece.x %> <%= piece.y %> <%= piece.z %>" rotation="0 <%= piece.yaw %> 0" scale="<%= piece.scale %>" />
+		<% end -%>
+		<% for _, car in ipairs(cars) do -%>
+		<%- partial("../prefabs/Car.etlua", {car = car, assets = assets, scale = carScale}) %>
+		<% end -%>
+	</Node>
+</SceneView>

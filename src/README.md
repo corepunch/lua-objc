@@ -46,6 +46,7 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `shared/lua_reg.m` | state-bound callback registrations included by `lua_async.m` | `LuaReg`, `lua_reg_opt`, `Scope` |
 | `shared/lua_dealloc_watch.m` | test-only native deallocation sentinel | `bridge_dealloc_watch`, `bridge_dealloc_count` |
 | `shared/scene_models.m` | SceneKit model files loaded once and cloned, textures resolved against the model; shared with Reel's offline renderer | `scene_model` |
+| `shared/scene_gltf.m` | glTF 2.0 reader (.glb/.gltf): nodes, meshes, base-colour materials, skins, clips as paused animation players | `scene_gltf_load`, `scene_model_play` |
 | `shared/lua_error.m` | protected callback error reporting | `report_lua_error` |
 
 The fragments are not independent libraries and must not be added as separate

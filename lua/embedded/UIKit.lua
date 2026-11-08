@@ -2,6 +2,9 @@
 local bridge = require("UIKitNative")
 local UIKit = bridge
 UIKit.platform = "UIKit"
+-- "phone", "pad" or "mac": the layout an app chooses, as SwiftUI reads the
+-- size class.
+UIKit.idiom = bridge._idiom()
 local Scope = require("ui.scope")(bridge)
 UIKit.Scope = Scope
 
@@ -173,16 +176,24 @@ function UIKit.TabView(props)
 	return tbc
 end
 
---- Creates a fixed-size preview root for the IDE canvas.
+--- Hosts another app's window content: a scaled phone with a bezel on the
+--- iPad canvas, or the whole view when `fullScreen`, where the device's own
+--- traits apply. Its `content` is the hosted window's controller.
 ---
 --- This component is backed by the platform control or container. Prefer its XML tag in an `.etlua` template; keep view-tree construction out of controllers.
---- @example <Preview />
+--- @prop appearance string optional. `system`, `light` or `dark` for the hosted app.
+--- @prop zoom number optional. Scale of the device artwork, 0–1.
+--- @prop fullScreen boolean optional. The hosted app fills the view without device artwork.
+--- @prop accessory table optional. A `BottomAccessory` record: the host's capsule, in the hosted app's tab bar when it has one and floating on glass above its content otherwise.
+--- @example <Preview fullScreen="true"><BottomAccessory><HStack id="capsule" /></BottomAccessory></Preview>
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
 function UIKit.Preview(props)
 	local v = bridge._preview()
 	props = props or {}
+	if props.fullScreen ~= nil then v.fullScreen = props.fullScreen == true end
 	if props.appearance then v.appearance = props.appearance end
 	if props.zoom then v.zoom = props.zoom end
+	if props.accessory then v.accessory = props.accessory.content end
 	return applyLayout(v, props)
 end
 
@@ -340,6 +351,7 @@ end
 -- heights; `options.presentationStyle = "formSheet"` uses the Sheet's preferred
 -- size for a centered popup. `options.parent` is ignored because UIKit presents from the
 -- active view controller. Builder results (sheet, refs) are returned intact.
+-- `options.onDismiss` runs after the user drags the sheet away.
 function UIKit.presentSheet(contentOrBuilder, options)
 	options = options or {}
 	local sheetScope = Scope.push()
@@ -351,15 +363,24 @@ function UIKit.presentSheet(contentOrBuilder, options)
 			error(results[2], 2)
 		end
 	end
-	bridge._presentSheet(asViewController(results[2]), options)
-	table.insert(sheetScopes, sheetScope)
+	-- A sheet the user drags away ends as one dismissed from Lua does: its
+	-- scope closes, so the templates it mounted know they are gone.
+	local entry = { scope = sheetScope }
+	bridge._presentSheet(asViewController(results[2]), options, function()
+		for index = #sheetScopes, 1, -1 do
+			if sheetScopes[index] == entry then table.remove(sheetScopes, index) end
+		end
+		entry.scope:close()
+		if type(options.onDismiss) == "function" then options.onDismiss() end
+	end)
+	table.insert(sheetScopes, entry)
 	return table.unpack(results, 2, results.n)
 end
 
 function UIKit.dismiss()
-	local sheetScope = table.remove(sheetScopes)
+	local entry = table.remove(sheetScopes)
 	local ok, err = pcall(bridge._dismiss)
-	if sheetScope then sheetScope:close() end
+	if entry then entry.scope:close() end
 	if not ok then error(err, 2) end
 end
 
@@ -818,8 +839,9 @@ function UIKit.CodeView(props)
 end
 
 -- The host streams files from the packager instead of holding them, but
--- SceneKit imports models from disk: stage each model, the materials its
--- OBJ names and their textures where it can read them, and point the record
+-- SceneKit imports models from disk: stage each model, the files it names
+-- (an OBJ's materials and their textures; a glTF's external images and
+-- buffers, its JSON's `uri`s) where it can read them, and point the record
 -- at the staged copy. Records already pointing at a local path pass through.
 local stagedModels = {}
 
@@ -833,9 +855,20 @@ local function stageModel(path)
 	if stagedModels[path] then return stagedModels[path] end
 	local local_, body = stageFile(path)
 	local dir = path:match("^(.*)/[^/]*$") or "."
-	for name in body:gmatch("mtllib%s+([^\r\n]+)") do
-		local _, mtl = stageFile(dir .. "/" .. name)
-		for texture in mtl:gmatch("map_%w+%s+([^\r\n]+)") do stageFile(dir .. "/" .. texture) end
+	if path:match("%.glb$") or path:match("%.gltf$") then
+		-- A .glb's JSON chunk is plain text near its start; a .gltf is all JSON.
+		local staged = {}
+		for uri in body:gmatch('"uri"%s*:%s*"([^"]+)"') do
+			if not uri:match("^data:") and not staged[uri] then
+				staged[uri] = true
+				stageFile(dir .. "/" .. uri:gsub("%%20", " "))
+			end
+		end
+	else
+		for name in body:gmatch("mtllib%s+([^\r\n]+)") do
+			local _, mtl = stageFile(dir .. "/" .. name)
+			for texture in mtl:gmatch("map_%w+%s+([^\r\n]+)") do stageFile(dir .. "/" .. texture) end
+		end
 	end
 	stagedModels[path] = local_
 	return local_
@@ -865,7 +898,7 @@ end
 --- @prop onSwipe function optional. `onSwipe(view, direction)` with `left`, `right`, `up` or `down`, sent as soon as a drag (a finger, or the mouse) has travelled far enough.
 --- @prop onTap function optional. `onTap(view)` when a press is released without travelling. A drag is one swipe or one tap, never both.
 --- @prop showsStatistics boolean optional. Shows SceneKit's frame-rate and draw-call overlay.
---- @example <SceneView background="#8fd3f4"><Camera position="0 6 8" lookAt="0 0 0" /><Light type="directional" rotation="-60 30 0" castsShadow="true" /><Node model="assets/coin.obj" spin="90" /></SceneView>
+--- @example <SceneView background="#8fd3f4"><Camera position="0 6 8" lookAt="0 0 0" /><Light type="directional" rotation="-60 30 0" castsShadow="true" /><Node model="assets/kenney/platformer-kit/models/coin-gold.glb" spin="90" /></SceneView>
 --- @platform UIKit.
 function UIKit.SceneView(props)
 	props = props or {}

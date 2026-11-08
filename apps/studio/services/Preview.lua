@@ -91,6 +91,12 @@ function Preview:render(files, entry)
 		local source, path
 		if name == "ui.xml" or name == "ui.component" or name == "ui.template" or name == "ui.resources" or name == "data.model" then
 			path = "lua/" .. name:gsub("%.", "/") .. ".lua"; source = self.readFramework(path)
+		elseif name:match("^game%.[%w_.]+$") then
+			-- The shared game layer (lua/game): a game template extends it.
+			path = "lua/" .. name:gsub("%.", "/") .. ".lua"; source = self.readFramework(path)
+		elseif name:match("^assets%.kenney%.[%w%-]+%.manifest$") then
+			-- A shared asset kit's generated manifest: sizes for collision and placement.
+			path = name:gsub("%.", "/") .. ".lua"; source = self.readFramework(path)
 		elseif name == "etlua" then
 			path = "lua/vendor/etlua/etlua.lua"; source = self.readFramework(path)
 		else

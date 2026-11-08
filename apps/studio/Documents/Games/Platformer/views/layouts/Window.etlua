@@ -1,0 +1,7 @@
+<!-- The game's window: the 3-D stage with the HUD over it. -->
+<Window title="Platformer" width="1100" height="660" minWidth="720" minHeight="420" orientation="landscape">
+	<ZStack maxWidth="infinity" maxHeight="infinity">
+		<VStack id="stage" maxWidth="infinity" maxHeight="infinity" />
+		<VStack id="hud" maxWidth="infinity" maxHeight="infinity" allowsHitTesting="false" />
+	</ZStack>
+</Window>

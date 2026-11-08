@@ -1,0 +1,14 @@
+<%
+  -- The project is the window. It runs full screen in the preview host,
+  -- with the traits of the real device, and Studio takes the one slot iOS
+  -- 26 reserves above a tab bar: the bottom accessory, where Music keeps
+  -- its player. A project without a tab bar gets the same capsule floating
+  -- on glass above its content. The capsule is a retained template.
+%>
+<Window title="Lua Studio" width="402" height="874">
+	<Preview id="stage" fullScreen="true" maxWidth="infinity" maxHeight="infinity">
+		<BottomAccessory>
+			<VStack id="chrome" maxWidth="infinity" maxHeight="infinity" />
+		</BottomAccessory>
+	</Preview>
+</Window>

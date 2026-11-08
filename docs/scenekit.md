@@ -28,11 +28,11 @@ is the reference game.
 	<Light type="ambient" intensity="480" />
 	<Node id="ground" geometry="box" width="10" height="1" length="6" color="systemGreen" position="5 -0.5 3" />
 	<% for _, coin in ipairs(coins) do -%>
-	<Node id="<%= coin.id %>" model="apps/game/assets/coin-gold.obj" position="<%= coin.x %> 0.15 <%= coin.z %>"
+	<Node id="<%= coin.id %>" model="assets/kenney/platformer-kit/models/coin-gold.glb" position="<%= coin.x %> 0.15 <%= coin.z %>"
 	      spin="150" bob="0.08" transition="pop" />
 	<% end -%>
 	<Node id="saw" position="2 0 1">
-		<Node model="apps/game/assets/saw.obj" position="0 0.42 0" spin="0 0 -540" />
+		<Node model="assets/kenney/platformer-kit/models/saw.glb" position="0 0.42 0" spin="0 0 -540" />
 	</Node>
 </SceneView>
 ```
@@ -43,16 +43,23 @@ proposal. It takes the keyboard when it appears.
 | Tag | Attributes |
 |---|---|
 | `SceneView` | `background` (semantic name or `#rrggbb`), `onKey`, `onFrame`, `onSwipe`, `onTap`, `virtualGamepad`, `showsStatistics`, plus layout attributes |
-| `Node` | `id`, `model` or `geometry`, `width`, `height`, `length`, `radius`, `chamfer`, `color`, `position`, `rotation`, `scale`, `hidden`, `opacity`, `castsShadow`, `spin`, `bob`, `bobPeriod`, `transition`, `lookAt` |
+| `Node` | `id`, `model` or `geometry`, `width`, `height`, `length`, `radius`, `chamfer`, `color`, `position`, `rotation`, `scale`, `hidden`, `opacity`, `castsShadow`, `spin`, `bob`, `bobPeriod`, `transition`, `lookAt`, `animation` |
 | `Camera` | `id`, `position`, `rotation`, `lookAt`, `fieldOfView`, `fieldOfViewAxis`, `zNear`, `zFar`, `orthographicScale` |
 | `Light` | `id`, `type`, `position`, `rotation`, `lookAt`, `intensity`, `color`, `castsShadow`, `shadowRadius`, `shadowOpacity`, `shadowMapSize`, `shadowSampleCount`, `shadowBias`, `automaticallyAdjustsShadowProjection`, `orthographicScale`, `zNear`, `zFar` |
 
 - **Units.** Positions and sizes are scene units; `rotation` is `"x y z"` in
   degrees; `position` and `scale` take `"x y z"` or one number for all three.
-- **Content.** `model` loads a file SceneKit imports: OBJ with its MTL and
-  textures, DAE, USDZ or SCN. Paths are relative to the working directory,
-  like image paths; textures named in an MTL resolve next to the model. Each
-  file loads once and is cloned per node, sharing geometry and materials.
+- **Content.** `model` loads a glTF file (`.glb`, or `.gltf` with its
+  buffers) through the project's own reader, `src/shared/scene_gltf.m`, or
+  any file SceneKit imports: OBJ with its MTL and textures, DAE, USDZ or SCN.
+  glTF is the format Kenney's kits ship; use it. Paths are relative to the
+  working directory, like image paths; textures resolve next to the model.
+  Each file loads once and is cloned per node, sharing geometry and
+  materials; a skinned model's clone gets bones of its own.
+- **Clips.** `animation` plays one of a glTF model's own clips by name
+  (`"idle"`, `"walk"`, `"jump"`), looping, blending from the previous one.
+  SceneKit runs it; changing the attribute switches clips, removing it
+  returns the model to its rest pose. An unknown name is reported.
   `geometry` is `box`, `sphere`, `cylinder`, `cone`, `plane` or `floor`,
   filled with `color`.
 - **Hierarchy.** Child records hang from their node and move with it.
@@ -172,6 +179,15 @@ Test hooks: `bridge._sceneSend(view, "swipe", direction)`, `"tap"`, and
 classifier.
 
 ## Architecture for a game
+
+The genre-neutral half of a game is shared in [`lua/game/`](../lua/game/README.md):
+the session's state machine (`game.Session`), the world and its systems
+(`game.World`), input (`game.Input`), the stage and HUD controllers
+(`game.Stage`, `game.Hud`), the game loop (`game.Game`) and a follow camera
+(`game.cameras.Leash`). A game extends them; Coin Quest and Lua Studio's
+Platformer template do. Models come from the shared kits in
+`assets/kenney/<kit>/`, each with a generated `manifest.lua` of sizes, pivots,
+tags and animation clips.
 
 A game keeps the project's MVC rules. Each concern has one home:
 
