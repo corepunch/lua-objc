@@ -1,13 +1,17 @@
 # Online data: Appwrite backend (design)
 
-Status: agreed design, not implemented yet. The decisions taken are listed at
-the end.
+Status: agreed design, being built. Done: the HTTP request and the Appwrite
+client (`lua/data/appwrite/`); the "Pieces" table marks each step. The
+decisions taken are listed at the end.
 
 An app that keeps its data online declares it the way it declares local data:
-a model is a table of rows. A model marked `remote` is a collection in an
-[Appwrite](https://appwrite.io/docs) database, its rows are documents, and the
-store holds the rows last read from it. The app author never creates a table
-by hand: the models are the schema, and one command makes the database match.
+a model is a table of rows. A model marked `remote` is a table in an
+[Appwrite](https://appwrite.io/docs) TablesDB database and its rows are that
+table's rows. Appwrite 1.8 names them as our models do
+(`/tablesdb/{db}/tables/{table}/rows`), so this design uses TablesDB, not the
+older Databases API of collections and documents. The store holds the rows last
+read from it. The app author never creates a table by hand: the models are the
+schema, and one command makes the database match.
 
 The Lua client is ported from orca (`share/orca/plugins/appwrite/query.lua`,
 `apps/chat/api/appwrite_auth.lua`, `apps/chat/api/orca_transport.lua`), keeping
@@ -54,7 +58,7 @@ The device and release builds (`make ipad`, `make ipad-deploy`,
 `<Backend>` names no `project`, with a message that says to create one. The
 simulator, `make run` and the streaming iOS host accept it.
 
-An Appwrite API key (needed to create collections) never ships in an app and
+An Appwrite API key (needed to create tables) never ships in an app and
 never enters the repository. It lives in the Mac's Keychain and is used only
 by the provisioning command, as the `asc` profile is.
 
@@ -62,13 +66,15 @@ by the provisioning command, as the `asc` profile is.
 
 Every app opens an **anonymous session** at first launch
 (`POST /account/sessions/anonymous`): data saves at once, with no sign-up
-screen. Signing in later with email, a magic link or OAuth turns that same
-account into a permanent one (`PATCH /account/email` on the anonymous account),
-so the rows stay with the person. Signing out ends the session; the next launch
-opens a new anonymous account.
+screen. Registering later (an email and a password) turns that same account
+into a permanent one (`PATCH /account/email` on the anonymous account), so the
+rows stay with the person. Signing in to an account that already exists is a
+move to that account: the anonymous one's rows stay behind with it. Signing
+out ends the session; the next launch opens a new anonymous account. Magic
+links and OAuth come later; they end in the same kind of session.
 
 The session secret is stored with the existing Keychain bridge
-(`ns.credentials`, `src/shared/credentials.m`) under the account
+(`ns.Credentials`, `src/shared/credentials.m`) under the account
 `appwrite.<project>`, never in the store.
 
 The sign-in sheet is a bundled etlua component (`lua/components/`), and the
@@ -97,27 +103,27 @@ local Notes, Note = Model:extend("notes", {
 })
 ```
 
-- **Table → collection.** The table name is the collection ID (Appwrite
+- **Table → table.** The model's table name is the Appwrite table ID (Appwrite
   accepts custom IDs of up to 36 characters).
-- **`fields`** are Appwrite attributes: `string(n)`, `integer`, `float`,
+- **`fields`** are Appwrite columns: `string(n)`, `integer`, `float`,
   `boolean`, `datetime`, `email`, `url`, `enum(a|b|c)`; a trailing `[]` makes
   an array (`"string(32)[]"`). A field ending in `?` is optional; the others
   are required. A local model has no `fields` and keeps working as it does.
 - **System fields.** `$id` reads as `id` (the primary key), `$createdAt` and
   `$updatedAt` as `createdAt` and `updatedAt`; the other `$` fields are not
   exposed.
-- **Relations** stay ours: a `belongsTo` is a plain `listId` attribute, not an
-  Appwrite relationship attribute. The models already follow them over the
+- **Relations** stay ours: a `belongsTo` is a plain `listId` column, not an
+  Appwrite relationship column. The models already follow them over the
   store.
 - **`remote`** names who may read and write a row:
 
-  | `remote` | collection | each document |
+  | `remote` | table | each row |
   |---|---|---|
   | `"private"` | create: `users` | read, update, delete: `user:<id>` |
   | `"shared"` | create: `users` | read: `users`; update, delete: `user:<id>` |
   | `"public"` | create: `users` | read: `any`; update, delete: `user:<id>` |
 
-  Document security is on for every remote collection. Anything finer (teams,
+  Row security is on for every remote table. Anything finer (teams,
   labels) is out of scope for now.
 
 ## Reading: the store is the cache
@@ -148,8 +154,8 @@ return {
   be sent and is an error.
 - The page controller runs the route's `load` through the backend service,
   renders once with `state.loading = true`, then **replaces** the store rows
-  that match the query's `where` with the returned documents and requests the
-  page again. Replacing, not merging by `id`, is what removes a document
+  that match the query's `where` with the returned rows and requests the
+  page again. Replacing, not merging by `id`, is what removes a row
   deleted on the server or by another device; rows that do not match `where`
   (another list, another page's query) are left alone. A query with
   `opts.after` loads the next window of the same `where` and appends to it
@@ -168,9 +174,9 @@ they do not know a row came from the network.
 
 1. run the constraints locally (nil, message as today; nothing is sent);
 2. change the store at once, so the action's own page request shows it;
-3. send the request (`createDocument`, `updateDocument`, `deleteDocument`).
+3. send the request (`createRow`, `updateRow`, `deleteRow`).
    A new row's `id` is generated on the device (20 characters of
-   `[a-z0-9]`), so the stored row and the document share it from the start;
+   `[a-z0-9]`), so the stored row and the Appwrite row share it from the start;
 4. on failure, undo the local change and request the page again with
    `state.error` set.
 
@@ -182,32 +188,33 @@ is a separate decision with its own cost.
 
 ```sh
 ./lua-objc --appwrite-schema=build/notes.appwrite.json apps/notes/init.lua
-appwrite push collections --config build/notes.appwrite.json
+appwrite push tables --config build/notes.appwrite.json
 ```
 
 `--appwrite-schema` loads the app's models headlessly and writes the
-[`appwrite.json`](https://appwrite.io/docs/tooling/command-line/collections)
-that the official Appwrite CLI pushes: the database, one collection per remote
-model, its attributes, indexes and collection permissions. The generated file
+[`appwrite.json`](https://appwrite.io/docs/tooling/command-line/tables)
+that the official Appwrite CLI pushes: the database, one table per remote
+model, its columns, indexes and table permissions. The generated file
 lives in `build/` and is not committed; the models are the source.
 
 We do not write our own provisioning: Appwrite's CLI already creates,
-changes and removes collections, as `asc` does for App Store Connect. The CLI
+changes and removes tables, as `asc` does for App Store Connect. The CLI
 signs in with the developer's key from the Keychain.
 
 Per the project rules there are no migrations. Removing or retyping a field
-and pushing again makes the collection match the model; data in a removed
-attribute is gone.
+and pushing again makes the table match the model; data in a removed
+column is gone.
 
 ## Pieces
 
 | Piece | File | What it does |
 |---|---|---|
 | HTTP (done) | `src/shared/lua_async.m` | `ns.http{method, url, headers, body}` → `done({status, headers, body})` or `done(nil, err)`, on AppKit and UIKit |
-| Client | `lua/data/appwrite/client.lua` | endpoint, project header, session header, JSON, error shape |
-| Queries | `lua/data/appwrite/query.lua` | ported from orca as is |
-| Account | `lua/data/appwrite/account.lua` | anonymous session, sign in/up/out, upgrade, Keychain |
-| Documents | `lua/data/appwrite/documents.lua` | list/create/update/delete, `$` field mapping, permissions |
+| Client (done) | `lua/data/appwrite/client.lua` | endpoint, project header, credential, JSON, one error shape `{type, message, status}` |
+| JSON (done) | `lua/data/appwrite/json.lua` | request bodies: empty objects and `null`, which the native encoder cannot write |
+| Queries (done) | `lua/data/appwrite/query.lua` | ported from orca, camelCase (`Query.equal`, `Query.orderDesc`) |
+| Account (done) | `lua/data/appwrite/account.lua` | anonymous start, stored session, register, sign in/out; the secret store is injected |
+| Rows (done) | `lua/data/appwrite/rows.lua` | TablesDB list/create/update/delete, `$` field mapping, row IDs, permissions |
 | Schema | `lua/data/appwrite/schema.lua` | models → `appwrite.json` |
 | Backend service | `lua/data/backend.lua` | runs a route's `load`, merges rows, sends writes, undoes failures |
 | Model | `lua/data/model.lua` | `remote`, `fields`, `indexes`, `query()`; writes go through the backend |
