@@ -46,6 +46,17 @@ static int bridge_UIKitPresentation_presentSheet(lua_State *L) {
 			if (detents.count > 0) presentation.detents = detents;
 		}
 		lua_pop(L, 1);
+		/* Apple Maps' sheet: content stays interactive beneath the sheet
+		 * up to this detent, and UIKit dims it only above. */
+		lua_getfield(L, 2, "largestUndimmedDetent");
+		if (lua_isstring(L, -1)) {
+			const char *name = lua_tostring(L, -1);
+			if (strcmp(name, "medium") == 0)
+				presentation.largestUndimmedDetentIdentifier = UISheetPresentationControllerDetentIdentifierMedium;
+			else if (strcmp(name, "large") == 0)
+				presentation.largestUndimmedDetentIdentifier = UISheetPresentationControllerDetentIdentifierLarge;
+		}
+		lua_pop(L, 1);
 		lua_getfield(L, 2, "dragIndicator");
 		if (lua_isboolean(L, -1))
 			presentation.prefersGrabberVisible = lua_toboolean(L, -1);

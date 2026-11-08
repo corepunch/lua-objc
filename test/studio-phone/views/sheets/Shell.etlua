@@ -1,0 +1,25 @@
+<%
+  -- The sheet of the conversation: a navigation stack so the code page can
+  -- push over the transcript. The project is the title, the model its
+  -- subtitle; the project menu leads, the code and Done trail.
+%>
+<Sheet>
+	<NavigationStack id="chatNav" title="<%= project.title %>" subtitle="<%= project.model %>" background="background">
+		<Toolbar>
+			<ToolbarItem id="sheetProject" placement="topBarLeading">
+				<Menu id="projectMenu" systemImage="<%= project.icon %>" style="plain" accessibilityLabel="Project: <%= project.title %>">
+					<% for _, item in ipairs(projects) do %>
+					<MenuItem title="<%= item.title %>" systemImage="<%= item.icon %>" checked="<%= tostring(item.selected == true) %>" />
+					<% end %>
+					<Separator />
+					<MenuItem title="Run Again" systemImage="arrow.clockwise" action="reloadPreview" />
+					<MenuItem title="New Project" systemImage="plus" />
+					<MenuItem title="Settings" systemImage="gearshape" />
+				</Menu>
+			</ToolbarItem>
+			<ToolbarItem id="sheetCode" icon="chevron.left.forwardslash.chevron.right" label="Code" placement="topBarTrailing" action="showCode" />
+			<ToolbarItem id="sheetDone" label="Done" systemItem="done" placement="confirmationAction" action="closeSheet" />
+		</Toolbar>
+		<VStack id="content" maxWidth="infinity" maxHeight="infinity" />
+	</NavigationStack>
+</Sheet>

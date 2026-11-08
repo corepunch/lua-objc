@@ -207,6 +207,8 @@ static UIColor *lua_objc_uikit_system_color(const char *name) {
 	if (strcmp(name, "yellow") == 0) return UIColor.systemYellowColor;
 	if (strcmp(name, "separator") == 0) return UIColor.separatorColor;
 	if (strcmp(name, "secondaryBackground") == 0) return UIColor.secondarySystemBackgroundColor;
+	if (strcmp(name, "tertiaryBackground") == 0 || strcmp(name, "tertiarySystemBackground") == 0)
+		return UIColor.tertiarySystemBackgroundColor;
 	if (strcmp(name, "background") == 0) return UIColor.systemBackgroundColor;
 	return UIColor.labelColor;
 }

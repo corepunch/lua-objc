@@ -5,6 +5,7 @@ local t = require("TestKit")
 
 local examples = {
 	"test/paragraph-actions/init.lua",
+	"test/studio-phone/init.lua",
 	"apps/diskmap/init.lua",
 	"apps/studio/init.lua",
 	"demo/playground/init.lua",

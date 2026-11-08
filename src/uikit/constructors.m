@@ -461,6 +461,11 @@ static int bridge_UIKitControls_spacer(lua_State *L) {
 	UIView *obj = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 10)];
 	objc_setAssociatedObject(obj, &kFlexibleKey, @YES, OBJC_ASSOCIATION_RETAIN);
 	objc_setAssociatedObject(obj, &kFlexBasisKey, @0, OBJC_ASSOCIATION_RETAIN);
+	/* SwiftUI's Spacer is empty space: it never claims a touch, so a stack
+	 * laid over other content (a floating bar above an app) passes touches
+	 * in its spacers through to what lies beneath. */
+	obj.userInteractionEnabled = NO;
+	objc_setAssociatedObject(obj, &kHitTestingDisabledKey, @YES, OBJC_ASSOCIATION_RETAIN);
 	push_objc(L, obj, "uiview");
 	return 1;
 }
