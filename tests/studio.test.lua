@@ -34,15 +34,12 @@ t.expect(preview:render(model.files) ~= nil, "hook restored after budget error")
 -- Inspect the two-pane workspace template without constructing native UI.
 local description = require("ui.xml").describeFile("apps/studio/views/sections/Workspace.etlua", {
 	rail = require("apps.studio.helpers.Rail").presentation(),
-	preview = require("apps.studio.helpers.Preview").presentation({
-		{ title = "HabitPal", icon = "checklist", selected = true },
-	}),
+	side = { panel = "preview", width = 440, preview = require("apps.studio.helpers.Preview").presentation() },
 	chat = require("apps.studio.helpers.Chat").presentation(),
 })
-t.expect(description.source:find("HabitPal", 1, true) ~= nil, "project navigation renders")
-t.expect(description.source:find("maxWidth=\"440\"", 1, true) ~= nil, "preview is sized to the device")
+t.expect(description.source:find("maxWidth=\"440\"", 1, true) ~= nil, "the side column is sized to the device")
 t.expect(description.source:find("minWidth=\"280\"", 1, true) ~= nil, "chat keeps a usable minimum width")
-t.expect(description.source:find("toggleChat", 1, true) ~= nil, "chat visibility customization remains available")
+t.expect(description.source:find('id="chatPane"', 1, true) ~= nil, "the chat always stands beside the side column")
 local Projects = require("apps.studio.services.Projects")
 t.assertEqual(#Projects.iconChoices, 3, "Studio offers three project icons")
 t.assertEqual(Projects.defaultProjectIcon, "rocket-sketch", "the rocket sketch is the default project artwork")
@@ -51,7 +48,7 @@ local listed = Projects.list(function(path)
 	if path == "projects.json" then return '["Demo"]' end
 	if path == "Demo/project.lua" then return 'return { name = "Demo", bundleId = "org.example.demo" }' end
 end, ns.json_parse, ns._jsonEncode, function(path, value) writes[path] = value; return true end)
-t.assertEqual(listed[1].appIcon, "rocket.fill", "projects get a consistent default app icon")
+t.assertEqual(listed[1].appIcon, "paperplane.fill", "projects get a consistent default app icon")
 t.assertEqual(listed[1].projectIcon, "rocket-sketch", "projects use the rocket sketch artwork by default")
 t.assertEqual(listed[1].bundleId, "org.example.demo", "Lua metadata loads bundle identifier")
 local ok = Projects.save(function(path, value) writes[path] = value; return true end, "Demo", {

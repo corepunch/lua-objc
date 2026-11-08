@@ -23,13 +23,14 @@ function Phone.new(root, ns)
 	return setmetatable({ root = root, ns = ns }, Phone)
 end
 
-function Phone:createWindow()
+-- The window config for the root, which alone creates the window.
+function Phone:windowConfig()
 	local ns = self.ns
 	local config, refs = xml.renderFile(VIEWS .. "layouts/Phone.etlua", {}, ns)
 	self.stage = refs.stage
 	self.capsule = Template.new(refs.chrome, VIEWS .. "sections/Capsule.etlua", ns)
 	self:render()
-	return ns.Window(config)
+	return config
 end
 
 function Phone:busy()

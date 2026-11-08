@@ -13,6 +13,9 @@ local GitHubController = require("apps.studio.controllers.GitHubController")
 local SheetController = require("apps.studio.controllers.SheetController")
 local PhoneController = require("apps.studio.controllers.PhoneController")
 local Theme = require("apps.studio.helpers.Theme")
+local Rail = require("apps.studio.helpers.Rail")
+local Git = require("apps.studio.helpers.Git")
+local ProjectList = require("apps.studio.helpers.ProjectList")
 local Projects = require("apps.studio.services.Projects")
 local Code = require("apps.studio.helpers.Code")
 local Store = require("apps.studio.Store")
@@ -38,7 +41,7 @@ function Controller.new(options)
 	return setmetatable({ ns = options.ns, store = Store(), catalog = options.catalog,
 		device = options.device, sheets = options.sheets, previewFactory = options.previewFactory,
 		previewPane = PreviewController.new(), chat = ChatController.new(), rail = RailController.new(),
-		mode = "chat", previewAppearance = "system", previewZoom = 1 }, Controller)
+		panel = "preview", commitDraft = "", mode = "chat", previewAppearance = "system", previewZoom = 1 }, Controller)
 end
 
 function Controller:renderPreview()
@@ -72,17 +75,22 @@ function Controller:selectFile(path)
 	self:render()
 end
 
+-- A commit reports on the Source Control status line, whatever its outcome.
 function Controller:commitProject(message)
-	if not self.versions then self.status = "No project repository"; self:render(); return nil, self.status end
+	local function report(status, ...)
+		self.status, self.commitStatus = status, status
+		self:render()
+		return ...
+	end
+	if not self.versions then return report("No project repository", nil, "No project repository") end
 	if self.session then
 		local saved, err = self.session:saveDrafts()
-		if not saved then self.status = tostring(err); self:render(); return nil, err end
+		if not saved then return report(tostring(err), nil, err) end
 	end
 	local id, err = self.versions:record(message)
-	if id == nil then self.status = "Commit failed: " .. tostring(err)
-	else self.status = id and "Committed " .. id:sub(1, 7) or "No changes to commit" end
-	self:render()
-	return id, err
+	if id == nil then return report("Commit failed: " .. tostring(err), id, err) end
+	if id then self.commitDraft = "" end
+	return report(id and "Committed " .. id:sub(1, 7) or "No changes to commit", id, err)
 end
 
 function Controller:openProject(id)
@@ -90,7 +98,7 @@ function Controller:openProject(id)
 	DataModel.bind(self.store)
 	local projects, found = self.catalog:list(), false
 	for _, project in ipairs(projects) do if project.id == id then found = true end end
-	if not found then self.status = "Choose a project from the project menu"; self:render(); return nil, self.status end
+	if not found then self.status = "Choose a project in Projects"; self:render(); return nil, self.status end
 	if self.session then
 		local ok, err = self.session:saveDrafts()
 		if not ok then self.status = "Save or undo your edits first: " .. tostring(err); self:render(); return nil, err end
@@ -132,6 +140,41 @@ function Controller:codeData()
 	return code
 end
 
+-- The side column: the view the rail chose. Only the shown view's data is
+-- gathered, so the history is read from Git only while it is on screen.
+function Controller:sideData()
+	local preview = self.previewPane:presentation()
+	preview.appearance, preview.zoomValue = self.previewAppearance, self.previewZoom
+	preview.zoom = self.previewZoom == 1 and "Fit" or "75%"
+	local side = { panel = self.panel, width = Rail.columnWidth, preview = preview,
+		files = { projectTitle = self.activeProject and self.activeProject.title or "Project" },
+		git = Git.presentation({ message = self.commitDraft, status = self.commitStatus, busy = self.chat.agent.busy }),
+		projects = ProjectList.presentation(self.projects, self:iconChoices()) }
+	local history = self.panel == "git" and self.versions and Git.history(self.versions:log(50), os.time()) or {}
+	return side, history, ProjectList.rows(self.projects)
+end
+
+function Controller:iconChoices()
+	local choices = {}
+	local project = self.activeProject
+	for _, choice in ipairs(Projects.iconChoices) do
+		table.insert(choices, {title = choice.title, symbol = choice.symbol,
+			imagePath = project and self.ns._documentPath(project.id .. "/ProjectIcons/" .. choice.file) or "",
+			selected = project ~= nil and project.projectIcon == choice.id, action = "selectProjectIcon_" .. choice.id})
+	end
+	return choices
+end
+
+function Controller:selectProjectIcon(choice)
+	local ok, err = self.projectWorkspace.selectIcon(choice.id)
+	if ok then
+		local project = self.activeProject
+		project.projectIcon, project.appIcon, project.icon = choice.id, choice.symbol, choice.symbol
+		self.status = "Project icon: " .. choice.title
+	else self.status = "Icon update failed: " .. tostring(err) end
+	self:render()
+end
+
 -- The conversation, as the chat pane and the phone sheet present it.
 function Controller:chatData(code)
 	local chat = self.chat:presentation(self.showcase and self.showcase.conversation, code)
@@ -141,16 +184,13 @@ end
 
 function Controller:workspaceData()
 	if not self.model then return {empty = true, status = self.status or "", actions = self.actions} end
-	local preview = self.previewPane:presentation(self.projects, self:iconChoices())
-	preview.status, preview.chatHidden = self.status or preview.status, self.chatHidden
-	preview.failed = self.preview and self.preview.lastError ~= nil
-	preview.appearance, preview.zoomValue = self.previewAppearance, self.previewZoom
-	preview.zoom = self.previewZoom == 1 and "Fit" or "75%"
+	local side, history, projectRows = self:sideData()
 	local code = self:codeData()
 	local chat = self:chatData(code)
-	chat.mode, chat.hidden, chat.treeHidden = self.mode, self.chatHidden, self.treeHidden
-	return { rail = self.rail:presentation(self.mode), preview = preview, chat = chat,
-		code = code, codeFiles = code.files, syntaxRules = Code.rules, actions = self.actions }
+	chat.mode = self.mode
+	return { rail = self.rail:presentation(self.panel), side = side, chat = chat,
+		code = code, codeFiles = code.files, history = history, projectRows = projectRows,
+		syntaxRules = Code.rules, actions = self.actions }
 end
 
 function Controller:render()
@@ -185,33 +225,12 @@ function Controller:createWindow()
 	else self.projects = projects; self.actions = self:workspaceActions() end
 	self.showcase = showcase(ns._readFile)
 	if self.showcase then self:reloadPreview() end
-	if self.phone then return self.phone:createWindow() end
+	if self.phone then return ns.Window(self.phone:windowConfig()) end
 	local config, refs = xml.renderFile("apps/studio/views/layouts/Window.etlua", {canvas = Theme.canvas}, ns)
 	self.workspace = Template.new(refs.workspace, "apps/studio/views/sections/Workspace.etlua", ns)
 	self:render()
 	self:showLatestTurn()
 	return ns.Window(config)
-end
-
-function Controller:iconChoices()
-	local choices = {}
-	local project = self.activeProject
-	for _, choice in ipairs(Projects.iconChoices) do
-		table.insert(choices, {title = choice.title, symbol = choice.symbol,
-			imagePath = project and self.ns._documentPath(project.id .. "/ProjectIcons/" .. choice.file) or "",
-			selected = project ~= nil and project.projectIcon == choice.id, action = "selectProjectIcon_" .. choice.id})
-	end
-	return choices
-end
-
-function Controller:selectProjectIcon(choice)
-	local ok, err = self.projectWorkspace.selectIcon(choice.id)
-	if ok then
-		local project = self.activeProject
-		project.projectIcon, project.appIcon, project.icon = choice.id, choice.symbol, choice.symbol
-		self.status = "Project icon: " .. choice.title
-	else self.status = "Icon update failed: " .. tostring(err) end
-	self:render()
 end
 
 function Controller:showLatestTurn()
@@ -350,12 +369,18 @@ function Controller:workspaceActions()
 			local ok, err = self.model:edit(PREFIX .. self.selectedFile, text)
 			if not ok then self.status = err; self:render() end
 		end,
-		commitProject = function() return self:commitProject("Update project") end,
+		commitProject = function()
+			return self:commitProject(self.commitDraft ~= "" and self.commitDraft or Git.defaultMessage)
+		end,
+		editCommitMessage = function(text) self.commitDraft = text end,
 		showChat = function() self.mode = "chat"; self:render() end,
-		showCode = function() self.chat:stopDictation(); self.mode = "code"; self:render() end,
-		toggleChat = function() self.chatHidden = not self.chatHidden; if self.chatHidden then self.chat:stopDictation() end; self:render() end,
-		toggleTree = function() self.treeHidden = not self.treeHidden; self:render() end,
-		selectFile = function(_, _, row) if row and row.id then self:selectFile(row.id) end end,
+		selectFile = function(_, _, row)
+			if not (row and row.id) then return end
+			self.chat:stopDictation()
+			self.mode = "code"
+			self:selectFile(row.id)
+		end,
+		openProjectRow = function(_, _, row) if row and row.id then return self:openProject(row.id) end end,
 		editDraft = function(text) self.chat.draft = text end,
 		sendMessage = function() return self:sendMessage() end,
 		composerCommand = function(command) if command == "submit" then return self:sendMessage() end end,
@@ -429,6 +454,9 @@ function Controller:workspaceActions()
 		end,
 		toggleZoom = function() self.previewZoom = self.previewZoom == 1 and 0.75 or 1; self:render() end,
 	}
+	for _, panel in ipairs(Rail.panels) do
+		actions["showPanel_" .. panel.id] = function() self.panel = panel.id; self:render() end
+	end
 	for _, choice in ipairs(Projects.iconChoices) do actions["selectProjectIcon_" .. choice.id] = function() self:selectProjectIcon(choice) end end
 	for _, project in ipairs(self.projects or {}) do
 		actions["openProject_" .. project.id] = function()

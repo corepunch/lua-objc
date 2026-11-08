@@ -6,16 +6,10 @@ local Chat = require("apps.studio.helpers.Chat")
 local Rail = require("apps.studio.helpers.Rail")
 local Theme = require("apps.studio.helpers.Theme")
 
-local projects = {
-	{ id = "StarterApp", title = "Starter App", icon = "rocket.fill", selected = true },
-	{ id = "HabitTracker", title = "Habit Tracker", icon = "checklist" },
-}
 local window = xml.describeFile("apps/studio/views/layouts/Window.etlua", {canvas = Theme.canvas}).source
 local source = xml.describeFile("apps/studio/views/sections/Workspace.etlua", {
 	rail = Rail.presentation(),
-	preview = Preview.presentation(projects, {
-		{ title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", imagePath = "/Documents/StarterApp/ProjectIcons/rocket-sketch.png", selected = false, action = "selectProjectIcon_rocket-sketch" },
-	}),
+	side = { panel = "preview", width = Rail.columnWidth, preview = Preview.presentation() },
 	chat = Chat.presentation({ messages = {
 		{ role = "user", text = "Build an app" },
 		{ role = "agent", text = "Saved", changes = {{path = "views/pages/Today.etlua", added = 3, removed = 1, lines = {"+ new"}}} },
@@ -23,7 +17,6 @@ local source = xml.describeFile("apps/studio/views/sections/Workspace.etlua", {
 }).source
 
 t.expect(not source:find("nil", 1, true), "partials render instead of inserting nil")
-t.expect(source:find("Use Rocket Sketch Icon", 1, true) ~= nil, "the project menu renders icon choices")
 local canvas = assert(window:match('(<ZStack id="canvas".-)<VStack id="workspace"'))
 t.expect(canvas:find('id="canvas" maxWidth="infinity" maxHeight="infinity" background="secondaryBackground"', 1, true) ~= nil,
 	"the canvas washes over the system background, so it follows light and dark")
@@ -35,72 +28,70 @@ t.expect(not canvas:find('tint=', 1, true), "the canvas sets no tint, so the pre
 
 local workspace = source
 local railAt = workspace:find('id="rail"', 1, true)
-local previewAt = workspace:find('id="previewPane"', 1, true)
+local sideAt = workspace:find('id="sidePane"', 1, true)
 local chatAt = workspace:find('id="chatPane"', 1, true)
-t.expect(railAt and previewAt and chatAt and railAt < previewAt and previewAt < chatAt,
-	"rail, stage, and agent card run left to right")
+t.expect(railAt and sideAt and chatAt and railAt < sideAt and sideAt < chatAt,
+	"rail, side column, and agent card run left to right")
 t.expect(not workspace:find('<Divider orientation="vertical" />', 1, true),
 	"the columns float on the canvas; no rule divides them")
-t.expect(not source:find('id="toolbar"', 1, true), "the stage owns workspace actions; no separate toolbar strip")
+t.expect(not source:find('id="toolbar"', 1, true), "no separate toolbar strip")
 
-local rail = assert(workspace:match('(<VStack id="rail".-)<VStack id="previewPane"'))
+local rail = assert(workspace:match('(<VStack id="rail".-)<VStack id="sidePane"'))
 t.expect(rail:find('id="rail" tint="systemIndigo" width="68"', 1, true) ~= nil, "the rail is a narrow icon column")
 t.expect(not rail:find('background=', 1, true), "the rail rests on the canvas")
 t.expect(not rail:find('title=', 1, true), "rail items are icon-only")
-for _, name in ipairs({ "Lua Studio", "Chat, selected", "Code", "Templates", "Examples", "Plugins", "Settings" }) do
+for _, name in ipairs({ "Lua Studio", "Preview, selected", "Files", "Source Control", "Projects", "Templates", "Examples", "Plugins", "Settings" }) do
 	t.expect(rail:find('accessibilityLabel="' .. name .. '"', 1, true) ~= nil, "icon-only " .. name .. " keeps an accessible name")
 end
+t.expect(not rail:find('accessibilityLabel="Chat', 1, true) and not rail:find('accessibilityLabel="Code"', 1, true),
+	"the rail chooses side views; the agent card is always beside them")
 t.expect(rail:find('<LinearGradient colors="' .. Theme.brand .. '" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="12" />', 1, true) ~= nil,
 	"the brand mark is a gradient tile")
-t.expect(rail:find('<ZStack id="rail/chat/on" width="44" height="44" accessibilityLabel="Chat, selected">', 1, true) ~= nil,
-	"the selected mode shows its gradient highlight")
-t.expect(not rail:find('id="rail/chat/off"', 1, true), "and no plain button")
-t.expect(not rail:find('id="rail/code/on"', 1, true), "an unselected mode has no highlight")
-t.expect(rail:find('id="rail/code/off"[^>]-action="showCode"') ~= nil,
-	"an unselected mode is a plain button that selects it")
+t.expect(rail:find('<ZStack id="rail/preview/on" width="44" height="44" accessibilityLabel="Preview, selected">', 1, true) ~= nil,
+	"the selected view shows its gradient highlight")
+t.expect(not rail:find('id="rail/preview/off"', 1, true), "and no plain button")
+t.expect(not rail:find('id="rail/git/on"', 1, true), "an unselected view has no highlight")
+for _, panel in ipairs({ "files", "git", "projects" }) do
+	t.expect(rail:find('id="rail/' .. panel .. '/off"[^>]-action="showPanel_' .. panel .. '"') ~= nil,
+		"an unselected view is a plain button that shows it: " .. panel)
+end
+t.expect(rail:find('id="rail/projects/off"', 1, true) < rail:find('<Divider', 1, true)
+	and rail:find('<Divider', 1, true) < rail:find('id="rail/templates"', 1, true),
+	"a rule separates the views from the catalogs")
 t.expect(rail:find('id="rail/plugins"', 1, true) < rail:find('<Spacer />', 1, true)
 	and rail:find('<Spacer />', 1, true) < rail:find('id="rail/settings"', 1, true),
 	"settings sits at the foot of the rail")
+t.expect(not rail:find('id="rail/github"', 1, true), "GitHub lives in Source Control, not on the rail")
 
-t.assertEqual(Rail.presentation("code").modes[2].selected, true, "the rail can open on the code")
-t.assertEqual(Rail.presentation("code").modes[1].selected, false, "only one mode is selected")
+local git = Rail.presentation("git").panels
+t.assertEqual(git[3].selected, true, "the rail can show Source Control")
+local _, selected = (function() local n = 0; for _, p in ipairs(git) do if p.selected then n = n + 1 end end; return nil, n end)()
+t.assertEqual(selected, 1, "only one view is selected")
 
-local stage = assert(source:match('(<VStack id="previewPane".-)<VStack id="chatPane"'))
-t.expect(stage:find('id="previewPane" padding="16" spacing="12" maxWidth="440"', 1, true) ~= nil,
-	"the stage is only as wide as the device needs")
+local side = assert(source:match('(<VStack id="sidePane".-)<VStack id="chatPane"'))
+t.expect(side:find('<VStack id="sidePane" paddingVertical="12" paddingTrailing="12" spacing="0" maxWidth="440"', 1, true) ~= nil,
+	"the side column is only as wide as the device needs, and meets the card edges")
+local stage = assert(side:match('(<VStack id="previewPane".*)'))
 t.expect(not stage:match('id="previewPane"[^>]-background='), "the device stands on the canvas, not a pane fill")
+t.expect(not side:find('id="sideCard"', 1, true), "the preview needs no card")
 t.expect(not stage:match('<Preview[^>]-tint='), "the previewed app keeps its own accent")
-t.expect(stage:find('flexGrow="1"', 1, true) ~= nil, "a focused stage can grow once its width is released")
-t.expect(not stage:find('accessibilityLabel="Share"', 1, true) and not stage:find('accessibilityLabel="Export"', 1, true),
-	"project actions leave the narrow stage bar")
 t.expect(stage:find('<Preview id="preview" background="clear"', 1, true) ~= nil,
 	"the device sits directly on the stage background")
-local stageBar = assert(stage:match('(<HStack id="stageBar".-<Button id="chatVisibility".-/>)'))
-local barPreview = stage:find('id="stageBar"', 1, true)
 local devicePreview = stage:find('<Preview', 1, true)
-local deviceBar = stage:find('id="deviceBar"', 1, true)
-t.expect(barPreview < devicePreview and devicePreview < deviceBar,
-	"glass bars sit above and below the device, never over it")
-t.expect(stageBar:find('<Menu id="projectMenu"[^>]-title="Starter App"') ~= nil,
-	"the project menu names the selected project")
-t.expect(stageBar:find('title="Habit Tracker"', 1, true) ~= nil,
-	"the project menu lists every project")
-t.expect(stageBar:find('title="New Project"', 1, true) ~= nil, "the project menu makes a new project")
-t.expect(not stageBar:find('title="Settings"', 1, true) and not stageBar:find('title="Plugins"', 1, true),
-	"workspace destinations moved to the rail")
-t.expect(stageBar:find('action="reloadPreview" style="glassProminent"', 1, true) ~= nil,
-	"Run is the prominent stage action")
-t.expect(stageBar:find('action="toggleChat"', 1, true) and stageBar:find('accessibilityLabel="Focus Preview"', 1, true),
-	"icon-only chat toggle keeps an accessible name")
-t.expect(stage:find('<SystemImage name="checkmark.circle.fill"', 1, true) ~= nil,
-	"the mutable preview status keeps its symbol as a separate view")
-local statusAt = assert(stage:find('<Label id="previewStatus"', 1, true))
-local statusEnd = assert(stage:find('/>', statusAt, true))
-t.expect(stage:sub(statusAt, statusEnd):find('systemImage=', 1, true) == nil,
-	"the status ref points to a text label instead of a composite layout view")
+local deviceBar = assert(stage:match('(<HStack id="deviceBar".-</HStack>)'))
+t.expect(devicePreview < stage:find('id="deviceBar"', 1, true),
+	"the device leads the stage; one glass bar sits beneath it, never over it")
+t.expect(not stage:find('id="stageBar"', 1, true) and not stage:find('id="previewStatus"', 1, true),
+	"no bar or status line above the device takes its height")
+t.expect(deviceBar:find('<Button id="runButton" accessibilityLabel="Run" systemImage="play.fill" action="reloadPreview" style="glassProminent" />', 1, true) ~= nil,
+	"Run is the prominent action of the bar beneath the device")
+local _, reloads = deviceBar:gsub('action="reloadPreview"', "")
+t.assertEqual(reloads, 1, "Run is the only reload of the bar; no second button repeats it")
+t.expect(deviceBar:find('accessibilityLabel="Preview device"', 1, true) < deviceBar:find('id="runButton"', 1, true),
+	"Run follows the device it runs on")
 
 local chat = assert(source:match('(<VStack id="chatPane".-)</HStack>%s*$'))
-t.expect(chat:find('id="chatPane" hidden="false" tint="systemIndigo" paddingVertical="12" paddingTrailing="12" spacing="0" flexGrow="1"', 1, true) ~= nil,
+t.expect(chat:find('id="chatPane" tint="systemIndigo" paddingVertical="12" paddingTrailing="12" spacing="0" flexGrow="1"', 1, true) ~= nil,
 	"the chat takes the remaining width, inset from the window edge")
 t.expect(chat:find('id="chatCard"[^>]-background="background" cornerRadius="28" clipsToBounds="true"') ~= nil,
 	"the agent lives in a rounded card that clips its panes")
@@ -131,34 +122,66 @@ t.expect(chat:find('accessibilityLabel="Send" action="sendMessage" style="glassP
 local composerAt = chat:find('id="composer"', 1, true)
 t.expect(composerAt > chat:find('</ScrollView>', 1, true), "the composer stays below the transcript")
 
-local empty = xml.describeFile("apps/studio/views/sections/Workspace.etlua", {
-	rail = Rail.presentation(),
-	preview = Preview.presentation({}),
-	chat = Chat.presentation(),
-}).source
-t.expect(empty:find('title="No Project"', 1, true) ~= nil, "an empty workspace still renders a project menu")
--- The workspace is drawn from its state: the code mode, a hidden chat and a
--- hidden project tree are attributes of the description, not later edits.
+-- The workspace is drawn from its state: the side view and whether the card
+-- shows the open file are attributes of the description, not later edits.
 local Code = require("apps.studio.helpers.Code")
+local Git = require("apps.studio.helpers.Git")
+local ProjectList = require("apps.studio.helpers.ProjectList")
+local projects = {
+	{ id = "StarterApp", title = "Starter App", icon = "paperplane.fill", bundleId = "org.example.starter", selected = true },
+	{ id = "HabitTracker", title = "Habit Tracker", icon = "checklist", bundleId = "org.example.habits" },
+}
 local function workspaceWith(state)
-	local code = Code.presentation({ ["demo/playground/Controller.lua"] = "return {}" }, "Controller.lua")
+	local code = Code.presentation({ ["demo/playground/Controller.lua"] = "return {}", ["demo/playground/views/pages/Main.etlua"] = "" }, "Controller.lua")
 	local chat = Chat.presentation(nil, code)
-	chat.mode, chat.hidden, chat.treeHidden = state.mode, state.chatHidden, state.treeHidden
-	local preview = Preview.presentation(projects)
-	preview.chatHidden = state.chatHidden
+	chat.mode = state.mode
 	return xml.describeFile("apps/studio/views/sections/Workspace.etlua", {
-		rail = Rail.presentation(state.mode), preview = preview, chat = chat,
-		code = code, codeFiles = code.files, syntaxRules = Code.rules,
+		rail = Rail.presentation(state.panel),
+		side = { panel = state.panel, width = Rail.columnWidth, preview = Preview.presentation(),
+			files = { projectTitle = "Starter App" }, git = Git.presentation({}),
+			projects = ProjectList.presentation(state.projects or projects, {
+				{ title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", imagePath = "", selected = true, action = "selectProjectIcon_rocket-sketch" },
+			}) },
+		chat = chat, code = code, codeFiles = code.files, history = {}, projectRows = ProjectList.rows(state.projects or projects),
+		syntaxRules = Code.rules,
 	}).source
 end
-local coding = workspaceWith({ mode = "code", treeHidden = true })
+local coding = workspaceWith({ panel = "files", mode = "code" })
 t.expect(coding:find('id="codePane" hidden="false"', 1, true) and coding:find('id="transcriptScroll" hidden="true"', 1, true)
-	and coding:find('id="composerPane" hidden="true"', 1, true), "code mode shows the code pane in place of the conversation")
-t.expect(coding:find('id="rail/code/on"', 1, true) and coding:find('id="rail/chat/off"', 1, true), "the rail highlights the code mode")
-t.expect(coding:find('id="treePane" hidden="true"', 1, true) and coding:find('id="treeDivider" hidden="true"', 1, true)
-	and coding:find('accessibilityLabel="Show project tree"', 1, true), "a hidden tree hides its divider and offers to show it")
-local focused = workspaceWith({ mode = "chat", chatHidden = true })
-t.expect(focused:find('id="chatPane" hidden="true"', 1, true), "focusing the preview hides the chat")
-t.expect(not focused:match('id="previewPane"[^>]-maxWidth="440"') and focused:find('accessibilityLabel="Show Chat"', 1, true),
-	"and the stage drops its fixed width")
+	and coding:find('id="composerPane" hidden="true"', 1, true), "an open file replaces the conversation in the card")
+t.expect(coding:find('id="closeCode"[^>]-action="showChat"') ~= nil, "the editor leads with a way back to the conversation")
+t.expect(not coding:find('id="treePane"', 1, true) and not coding:find('id="treeToggle"', 1, true),
+	"the editor has no tree of its own; the Files view is the tree")
+t.expect(coding:find('id="rail/files/on"', 1, true) ~= nil, "the rail highlights Files")
+t.expect(not coding:find('<Preview', 1, true), "the preview leaves the column while another view shows")
+local files = assert(coding:match('(<VStack id="sideCard".-)<VStack id="chatPane"'))
+t.expect(files:find('id="sideCard"[^>]-background="background" cornerRadius="28" clipsToBounds="true"') ~= nil,
+	"list views sit in a card matching the agent card")
+t.expect(files:find('<List id="codeFiles" data="codeFiles" onSelect="selectFile"', 1, true) ~= nil, "Files lists the project and opens a file")
+t.expect(files:find('<Column id="name" title="" imageKey="icon" subtitleKey="folder" />', 1, true) ~= nil,
+	"a file row shows its symbol, name and folder")
+t.expect(files:find('text="Starter App"', 1, true) ~= nil, "Files is titled with the project")
+
+local listed = workspaceWith({ panel = "projects", mode = "chat" })
+t.expect(listed:find('<List id="projectList" data="projectRows" onSelect="openProjectRow"', 1, true) ~= nil, "Projects lists and opens projects")
+t.expect(listed:find('id="newProjectButton"[^>]-action="newProject"') ~= nil, "Projects makes a new project")
+t.expect(listed:find('id="deleteProjectButton"[^>]-role="destructive"[^>]-action="showDeleteProject"') ~= nil, "the current project can be deleted")
+t.expect(listed:find('<MenuItem title="Rocket Sketch"[^>]-action="selectProjectIcon_rocket%-sketch"') ~= nil, "the current project takes an icon")
+local none = workspaceWith({ panel = "projects", mode = "chat", projects = {} })
+t.expect(not none:find('id="deleteProjectButton"', 1, true), "with no current project there is nothing to delete")
+
+local rows = ProjectList.rows(projects)
+t.assertEqual(#rows, 2, "every project is a row")
+t.assertEqual(rows[1].detail, "Current project", "the open project is marked")
+t.assertEqual(rows[2].detail, "org.example.habits", "the others show their bundle identifier")
+t.assertEqual(ProjectList.presentation(projects).current.id, "StarterApp", "the selected project is current")
+t.assertEqual(ProjectList.presentation({}).current, nil, "no projects, no current project")
+t.assertEqual(#ProjectList.rows(nil), 0, "missing projects are safe")
+
+-- Header symbols share one column, so the titles of every view start at one edge.
+for _, panel in ipairs({ "files", "git", "projects" }) do
+	local view = workspaceWith({ panel = panel, mode = "chat" })
+	t.expect(view:find('<SystemImage name="[%w.]+" size="16" width="22" color="secondary" />') ~= nil,
+		"the header symbol has a fixed column: " .. panel)
+end
 os.exit(t.summary() and 0 or 1)

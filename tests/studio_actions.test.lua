@@ -4,15 +4,9 @@ local t = require("TestKit")
 local Preview = require("apps.studio.controllers.PreviewController")
 local Chat = require("apps.studio.helpers.Chat")
 
-local presentation = Preview.new():presentation({
-	{ title = "Starter App", icon = "rocket.fill" },
-	{ title = "Habit Tracker", icon = "checklist", selected = true },
-})
-t.assertEqual(presentation.project.title, "Habit Tracker", "the selected project heads the stage")
-t.assertEqual(#presentation.projects, 2, "every project is offered")
-t.assertEqual(Preview.new():presentation({ { title = "Only", icon = "app" } }).project.title, "Only",
-	"the first project is current when none is selected")
-t.assertEqual(Preview.new():presentation().project.title, "No Project", "missing projects are safe")
+local presentation = Preview.new():presentation()
+t.assertEqual(presentation.runLabel, "Run", "the stage names its run action")
+t.assertEqual(presentation.project, nil, "the stage carries no project; it shows the running app only")
 
 local changes, summary = Chat.changes({
 	{ path = "init.lua", added = 2 },

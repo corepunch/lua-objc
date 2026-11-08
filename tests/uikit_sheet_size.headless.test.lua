@@ -2,6 +2,7 @@ local t = require("TestKit")
 local child = assert(io.tmpfile())
 local controller = {}
 package.loaded.UIKitNative = {
+	_idiom = function() return "pad" end,
 	_hostingController = function(content) assert(content==child);return controller end,
 	Size = function(width,height) return {width=width,height=height} end,
 }

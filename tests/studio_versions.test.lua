@@ -171,12 +171,42 @@ controller.versions, controller.versionsError = nil, "no repository"
 t.expect(controller:commitProject("x") == nil, "commit without a repository fails")
 t.assertEqual(controller.status, "No project repository", "the missing repository is shown")
 
-local source = require("ui.xml").describeFile("apps/studio/views/sections/Workspace.etlua", {
-	rail = require("apps.studio.helpers.Rail").presentation(),
-	preview = require("apps.studio.helpers.Preview").presentation({}),
-	chat = require("apps.studio.helpers.Chat").presentation(),
-}).source
-t.expect(source:find('accessibilityLabel="Commit"[^>]*action="commitProject"') ~= nil, "the chat header's Commit button commits")
+t.assertEqual(controller.commitStatus, "No project repository", "every outcome reaches the Source Control status line")
+
+-- Source Control commits from its own panel; the chat header no longer does.
+local Git = require("apps.studio.helpers.Git")
+local function workspace(panel)
+	return require("ui.xml").describeFile("apps/studio/views/sections/Workspace.etlua", {
+		rail = require("apps.studio.helpers.Rail").presentation(panel),
+		side = { panel = panel, width = 440, preview = require("apps.studio.helpers.Preview").presentation(),
+			git = Git.presentation({ message = "", status = "Committed 0123456" }) },
+		chat = require("apps.studio.helpers.Chat").presentation(),
+		history = {},
+	}).source
+end
+local git = workspace("git")
+t.expect(git:find('<Button id="commitButton" title="Commit" action="commitProject"', 1, true) ~= nil, "Source Control commits")
+t.expect(git:find('id="commitMessage"[^>]-placeholder="Update project"[^>]-onChange="editCommitMessage"') ~= nil,
+	"the message field shows the message an empty field commits with")
+t.expect(git:find('<Label id="gitStatus" text="Committed 0123456"', 1, true) ~= nil, "the status line reports the last commit")
+t.expect(git:find('<List id="history" data="history"', 1, true) ~= nil, "the history lists the commits")
+t.expect(git:find('id="githubButton"[^>]-action="showGitHub"') ~= nil, "GitHub publishing opens from the Source Control header")
+t.expect(not git:find('accessibilityLabel="Commit"', 1, true), "the chat header has no Commit button")
+t.expect(not workspace("preview"):find('id="history"', 1, true), "the history is drawn only while Source Control shows")
+
+local now = 1800000000
+local rows = Git.history({
+	{ id = "a", shortId = "aaaaaaa", summary = "Newest", time = now - 30 },
+	{ id = "b", shortId = "bbbbbbb", summary = "Older", time = now - 7200 },
+	{ id = "c", shortId = "ccccccc", summary = "Oldest", time = now - 5 * 86400 },
+}, now)
+t.assertEqual(#rows, 3, "every log entry is a row")
+t.assertEqual(rows[1].summary, "Newest", "the newest commit leads")
+t.assertEqual(rows[1].detail, "aaaaaaa · just now", "a row names its short id and age")
+t.assertEqual(rows[2].detail, "bbbbbbb · 2 h ago", "hours are counted")
+t.expect(rows[3].detail:find("^ccccccc · %a+ %d+$") ~= nil, "older commits show their date")
+t.expect(rows[1].icon ~= rows[2].icon, "the head commit is marked")
+t.assertEqual(#Git.history(nil, now), 0, "an empty log has no rows")
 
 os.execute("/bin/rm -rf " .. root)
 os.exit(t.summary() and 0 or 1)

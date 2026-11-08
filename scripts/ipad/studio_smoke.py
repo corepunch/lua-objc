@@ -36,8 +36,8 @@ def sim(*args, **kwargs):
 
 def validate_layout(path):
     root = json.loads(path.read_text())
-    tracked = {'columns', 'previewPane', 'chatPane', 'chatCard', 'stageBar', 'codePane',
-               'sourceCode', 'codeFileTitle', 'projectMenu', 'composer', 'runButton', 'chatVisibility'}
+    tracked = {'columns', 'previewPane', 'chatPane', 'chatCard', 'deviceBar', 'codePane',
+               'sourceCode', 'codeFileTitle', 'projectMenu', 'composer', 'runButton'}
     def rect(value):
         return list(map(float, re.findall(r'-?[0-9]+(?:\.[0-9]+)?', value)))
     def visit(node, parent=None, menu=None):

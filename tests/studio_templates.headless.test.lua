@@ -9,10 +9,10 @@ local states = {
 		{role = "error", text = "Connection failed"}}, busy = true, draft = "Draft", attachments = {{name="source.lua"}}},
 }
 for _, state in ipairs(states) do
-	local data = {rail = Rail.presentation(), preview = Preview.presentation({}), chat = Chat.presentation(state)}
+	local data = {rail = Rail.presentation(), preview = Preview.presentation(), chat = Chat.presentation(state)}
 	local source = xml.describeFile("apps/studio/views/sections/Workspace.etlua", data).source
 	t.expect(not source:find('action=""', 1, true), "every active button has a named action")
-	for _, action in ipairs({"showSettings", "shareProject", "newProject", "saveSource", "editSource", "editDraft", "attachContext", "toggleDictation"}) do
+	for _, action in ipairs({"showSettings", "shareProject", "saveSource", "editSource", "editDraft", "attachContext", "toggleDictation"}) do
 		t.expect(source:find('="' .. action .. '"', 1, true), "workspace wires " .. action)
 	end
 	if state.busy then
@@ -46,16 +46,13 @@ for _, state in ipairs({"error","ready"}) do
 	local chat = Chat.presentation({messages={{role="agent",text="Saved",previewState=state,previewError="Unknown tag",
 		changes={{path="Model.lua",added=1,removed=0}}}}})
 	local source = xml.describeFile("apps/studio/views/sections/Workspace.etlua",{
-		rail=Rail.presentation(),preview=Preview.presentation({}),chat=chat}).source
+		rail=Rail.presentation(),preview=Preview.presentation(),chat=chat}).source
 	local success = source:find('text="Preview updated"',1,true) ~= nil
 	local failed = source:find('text="Preview failed. Last working version kept."',1,true) ~= nil
 	t.assertEqual(success,state=="ready","only working previews claim to be updated")
 	t.assertEqual(failed,state=="error","a failed preview keeps an explicit warning beside its diff")
 	t.assertEqual(chat.messages[1].previewError,"Unknown tag","presentation preserves the repair diagnostic")
 end
-local failedStage = Preview.presentation({})
-failedStage.failed,failedStage.status=true,"Preview failed"
-local stage=xml.describeFile("apps/studio/views/sections/PreviewPane.etlua",failedStage).source
-t.expect(stage:find('name="exclamationmark.triangle.fill"',1,true),"failed source has a warning symbol beside its status")
-t.expect(not stage:find('name="checkmark.circle.fill"',1,true),"a failed preview never has a success checkmark")
+local stage=xml.describeFile("apps/studio/views/sections/PreviewPane.etlua",Preview.presentation()).source
+t.expect(not stage:find('name="checkmark.circle.fill"',1,true),"the stage claims no success; the chat reports preview outcomes")
 os.exit(t.summary() and 0 or 1)

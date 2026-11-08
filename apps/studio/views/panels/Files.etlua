@@ -1,0 +1,8 @@
+<%
+  -- The project files. Choosing one opens it in the editor of the agent card.
+  local FILES = { rowHeight = 52 }
+%>
+<%- partial("Header.etlua", { icon = "folder.fill", title = projectTitle }) %>
+<List id="codeFiles" data="codeFiles" onSelect="selectFile" style="plain" header="false" alternatingRows="false" rowHeight="<%= FILES.rowHeight %>" maxWidth="infinity" maxHeight="infinity">
+	<Column id="name" title="" imageKey="icon" subtitleKey="folder" />
+</List>

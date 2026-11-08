@@ -37,6 +37,9 @@ function Backend.new(options)
 		rows = Rows.new(options.client, options.database),
 		started = false,
 		writes = 0,     -- writes sent and not yet answered
+		-- The stores rows were loaded into or written in: another account's
+		-- rows leave them when the account changes.
+		stores = setmetatable({}, {__mode = "k"}),
 		waiting = {},   -- loads held until the account is known and writes are done
 		-- `changed(message)` after a load or a write answered; message when it failed.
 		changed = function() end,
@@ -97,6 +100,7 @@ end
 -- asked), then `done(err)`. Held until the account is known and no write is
 -- in flight.
 function Backend:load(query, db, done)
+	self.stores[db] = true
 	local run = function()
 		self.rows:list(query.model.tableName, Backend.queries(query), function(records, err)
 			if err then done(err); return end
@@ -135,6 +139,7 @@ end
 
 -- `record` is in `db` already. On refusal it leaves it again.
 function Backend:create(model, record, db)
+	self.stores[db] = true
 	local user = self.account.user
 	if not user then
 		removeRecord(db[model.tableName], record)
@@ -182,6 +187,49 @@ function Backend:delete(model, record, db, index)
 		-- A row already gone is deleted all the same.
 		self:answered(nil)
 	end)
+end
+
+-- The account (docs/backend.md). Each is sent like a write: loads wait for
+-- it, and `changed(message)` follows. `accountBusy` is true while one is out.
+-- Signing in or out moves to another account, so the remote rows of the
+-- stores leave and the pages load the new account's.
+
+function Backend:forgetRows()
+	local Model = require("data.model")
+	for db in pairs(self.stores) do
+		for name, model in pairs(Model.models) do
+			if model.remote then db[name] = {} end
+		end
+	end
+end
+
+function Backend:accountStep(step, moves)
+	self.writes = self.writes + 1
+	self.accountBusy = true
+	step(function(_, err)
+		self.accountBusy = false
+		if not err and moves then self:forgetRows() end
+		self:answered(err and err.message or nil)
+	end)
+end
+
+-- Gives the anonymous account an email and password; its rows stay.
+function Backend:register(email, password)
+	self:accountStep(function(done) self.account:register(email, password, done) end, false)
+end
+
+function Backend:signIn(email, password)
+	self:accountStep(function(done) self.account:signIn(email, password, done) end, true)
+end
+
+-- Ends the session and opens a new anonymous one, so the app keeps saving.
+function Backend:signOut()
+	self:accountStep(function(done)
+		self.account:signOut(function(_, err)
+			if err then done(nil, err); return end
+			self.account:anonymous(done)
+		end)
+	end, true)
 end
 
 return Backend

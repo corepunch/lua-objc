@@ -11,6 +11,7 @@ local bridge = {
 	sidebarExpandedWidth = 208,
 	sidebarCompactWidth = 184,
 	sidebarCollapsedWidth = 64,
+	_idiom = function() return "pad" end,
 	_separator = function(value)
 		orientation = value
 		return {}

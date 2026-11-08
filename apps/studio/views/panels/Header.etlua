@@ -1,0 +1,15 @@
+<%
+  -- The title row every side panel opens with: a symbol in a fixed column,
+  -- the panel title, and the panel action at the trailing edge. The
+  -- metrics match the agent card header so both cards read as one row.
+  local HEADER = { inset = 16, vertical = 12, spacing = 10, symbol = 16, symbolColumn = 22, title = 16 }
+%>
+<HStack paddingHorizontal="<%= HEADER.inset %>" paddingVertical="<%= HEADER.vertical %>" spacing="<%= HEADER.spacing %>" maxWidth="infinity" alignment="center">
+	<SystemImage name="<%= icon %>" size="<%= HEADER.symbol %>" width="<%= HEADER.symbolColumn %>" color="secondary" />
+	<Label text="<%= title %>" size="<%= HEADER.title %>" weight="semibold" lines="1" truncation="tail" flexShrink="1" />
+	<Spacer />
+	<% if action then %>
+	<Button id="<%= action.id %>" accessibilityLabel="<%= action.title %>" systemImage="<%= action.icon %>" action="<%= action.action %>" style="glass" />
+	<% end %>
+</HStack>
+<Divider />

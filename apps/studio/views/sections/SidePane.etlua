@@ -1,0 +1,22 @@
+<%
+  -- The side column: whichever view the rail chose, beside the agent card.
+  -- Every view shares this one frame and width, so switching views never
+  -- moves the card. The running app stands on the canvas; the lists sit in
+  -- a card matching the agent card, aligned with its top and bottom edges.
+  local SIDE = { margin = 12, radius = 28 }
+%>
+<VStack id="sidePane" paddingVertical="<%= SIDE.margin %>" paddingTrailing="<%= SIDE.margin %>" spacing="0" maxWidth="<%= width %>" flexGrow="1" flexBasis="0" minWidth="280" maxHeight="infinity">
+	<% if panel == "preview" then %>
+	<%- partial("PreviewPane.etlua", preview) %>
+	<% else %>
+	<VStack id="sideCard" spacing="0" flexGrow="1" maxWidth="infinity" maxHeight="infinity" alignment="leading" background="background" cornerRadius="<%= SIDE.radius %>" clipsToBounds="true">
+		<% if panel == "files" then %>
+		<%- partial("../panels/Files.etlua", files) %>
+		<% elseif panel == "git" then %>
+		<%- partial("../panels/Git.etlua", git) %>
+		<% else %>
+		<%- partial("../panels/Projects.etlua", projects) %>
+		<% end %>
+	</VStack>
+	<% end %>
+</VStack>

@@ -26,6 +26,7 @@
 @property(nonatomic, copy) NSString *appearance;
 @property(nonatomic, strong) UIView *deviceBody;
 @property(nonatomic, strong) UIView *screen;
+@property(nonatomic, strong) NSArray<UIView *> *sideButtons;
 /* The host's bottom accessory (Lua content). It joins the content's own tab
  * bar as a UITabAccessory when the content is a tab bar controller, and
  * floats on glass above the content otherwise, the way Music keeps its
@@ -52,6 +53,20 @@
 		_deviceBody.layer.cornerCurve = kCACornerCurveContinuous;
 		_deviceBody.layer.borderWidth = kPreviewTrimWidth;
 		[self addSubview:_deviceBody];
+		// The side buttons stand off the body's edges, so they are its
+		// subviews outside its bounds, drawn in the body's own colour.
+		NSMutableArray<UIView *> *buttons = [NSMutableArray array];
+		for (size_t i = 0; i < sizeof(kPreviewButtons) / sizeof(kPreviewButtons[0]); i++) {
+			UIView *button = [UIView new];
+			button.backgroundColor = _deviceBody.backgroundColor;
+			button.layer.cornerRadius = kPreviewButtonRadius;
+			button.layer.maskedCorners = kPreviewButtons[i].trailing
+				? kCALayerMaxXMinYCorner | kCALayerMaxXMaxYCorner
+				: kCALayerMinXMinYCorner | kCALayerMinXMaxYCorner;
+			[_deviceBody addSubview:button];
+			[buttons addObject:button];
+		}
+		_sideButtons = buttons;
 		[self updateTrim];
 		// A layer colour does not follow the appearance on its own.
 		[self registerForTraitChanges:@[UITraitUserInterfaceStyle.class]
@@ -151,7 +166,21 @@
 	[self addSubview:glass];
 	[self setNeedsLayout];
 }
-- (void)didMoveToWindow { [super didMoveToWindow]; [self attachContent]; }
+/* The hosted controller lives as long as Lua holds it, not as long as this
+ * view: when the workspace drops the preview (the rail shows another view)
+ * the controller leaves with it, so a later preview can host it again and an
+ * off-screen app stops drawing. */
+- (void)detachContent {
+	if (!_content.parentViewController) return;
+	[_content willMoveToParentViewController:nil];
+	[_content.view removeFromSuperview];
+	[_content removeFromParentViewController];
+}
+- (void)didMoveToWindow {
+	[super didMoveToWindow];
+	if (self.window) [self attachContent];
+	else [self detachContent];
+}
 - (void)layoutSubviews {
 	[super layoutSubviews];
 	[self attachContent];
@@ -171,13 +200,20 @@
 		return;
 	}
 	CGSize bodySize = CGSizeMake(kPreviewWidth + 2 * kPreviewBezel, kPreviewHeight + 2 * kPreviewBezel);
-	CGFloat scale = MAX(0, MIN((self.bounds.size.width - 2 * kPreviewMargin) / bodySize.width,
+	/* The buttons widen the artwork, so the fit leaves room for them. */
+	CGFloat artWidth = bodySize.width + 2 * kPreviewButtonDepth;
+	CGFloat scale = MAX(0, MIN((self.bounds.size.width - 2 * kPreviewMargin) / artWidth,
 		(self.bounds.size.height - 2 * kPreviewMargin) / bodySize.height));
 	scale *= self.zoom;
 	self.deviceBody.bounds = (CGRect){CGPointZero, bodySize};
 	self.deviceBody.transform = CGAffineTransformMakeScale(scale, scale);
 	self.deviceBody.center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
 	self.screen.frame = CGRectMake(kPreviewBezel, kPreviewBezel, kPreviewWidth, kPreviewHeight);
+	[self.sideButtons enumerateObjectsUsingBlock:^(UIView *button, NSUInteger i, __unused BOOL *stop) {
+		LuaPreviewButton spec = kPreviewButtons[i];
+		button.frame = CGRectMake(spec.trailing ? bodySize.width : -kPreviewButtonDepth, spec.top,
+			kPreviewButtonDepth, spec.length);
+	}];
 	_content.view.frame = self.screen.bounds;
 	[_content.view setNeedsLayout];
 	[_content.view layoutIfNeeded];

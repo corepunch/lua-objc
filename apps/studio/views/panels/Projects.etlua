@@ -1,0 +1,22 @@
+<%
+  -- The projects on this iPad. Choosing one opens it; the current project
+  -- takes its icon and can be deleted from the foot of the card.
+  local PROJECTS = { inset = 16, spacing = 10, rowHeight = 56 }
+%>
+<%- partial("Header.etlua", { icon = "square.stack.fill", title = "Projects",
+	action = { id = "newProjectButton", title = "New Project", icon = "plus", action = "newProject" } }) %>
+<List id="projectList" data="projectRows" onSelect="openProjectRow" style="plain" header="false" alternatingRows="false" rowHeight="<%= PROJECTS.rowHeight %>" maxWidth="infinity" maxHeight="infinity">
+	<Column id="title" title="" imageKey="icon" subtitleKey="detail" />
+</List>
+<% if current then %>
+<Divider />
+<HStack padding="<%= PROJECTS.inset %>" spacing="<%= PROJECTS.spacing %>" maxWidth="infinity" alignment="center">
+	<Menu id="projectIconMenu" title="Icon" systemImage="<%= current.icon %>" imagePath="<%= current.imagePath or "" %>" style="glass" accessibilityLabel="Project icon">
+		<% for _, choice in ipairs(iconChoices) do %>
+		<MenuItem title="<%= choice.title %>" systemImage="<%= choice.symbol %>" imagePath="<%= choice.imagePath %>" checked="<%= tostring(choice.selected) %>" action="<%= choice.action %>" />
+		<% end %>
+	</Menu>
+	<Spacer />
+	<Button id="deleteProjectButton" title="Delete Project…" systemImage="trash" role="destructive" action="showDeleteProject" style="glass" />
+</HStack>
+<% end %>

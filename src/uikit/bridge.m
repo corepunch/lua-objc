@@ -126,6 +126,18 @@ static const CGFloat kPreviewBezel = 10.0;
 static const CGFloat kPreviewScreenRadius = 55.0;
 static const CGFloat kPreviewMargin = 8.0;
 static const CGFloat kPreviewTrimWidth = 2.0;
+/* The device's side buttons stand proud of the body by this depth. Each is
+ * placed on an iPhone 16's edges in body points from the top: on the left
+ * the Action button and the volume pair, on the right the side button and
+ * Camera Control. The device artwork is scaled with the stage, so they keep
+ * their place on the frame at any zoom. */
+static const CGFloat kPreviewButtonDepth = 3.0;
+static const CGFloat kPreviewButtonRadius = 1.5;
+typedef struct { BOOL trailing; CGFloat top, length; } LuaPreviewButton;
+static const LuaPreviewButton kPreviewButtons[] = {
+	{NO, 150, 32}, {NO, 215, 62}, {NO, 292, 62},
+	{YES, 240, 98}, {YES, 560, 58},
+};
 /* In dark mode a black body would merge with a black app; a graphite body
  * keeps the device outline, as dark device mockups draw it. */
 static const CGFloat kPreviewDarkBodyWhite = 0.18;

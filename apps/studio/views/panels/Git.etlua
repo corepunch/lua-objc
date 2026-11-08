@@ -1,0 +1,19 @@
+<%
+  -- Source control: commit the saved project with a message, read its
+  -- history, and publish to GitHub from the header. The status line reports
+  -- the last commit or why it did not happen.
+  local GIT = { inset = 16, spacing = 10, rowHeight = 56, caption = 12 }
+%>
+<%- partial("Header.etlua", { icon = "point.3.connected.trianglepath.dotted", title = "Source Control",
+	action = { id = "githubButton", title = "GitHub", icon = "arrow.triangle.branch", action = "showGitHub" } }) %>
+<VStack padding="<%= GIT.inset %>" spacing="<%= GIT.spacing %>" maxWidth="infinity" alignment="leading">
+	<HStack spacing="<%= GIT.spacing %>" maxWidth="infinity" alignment="center">
+		<TextField id="commitMessage" text="<%= message %>" placeholder="<%= placeholder %>" accessibilityLabel="Commit message" onChange="editCommitMessage" disabled="<%= tostring(busy == true) %>" flexGrow="1" />
+		<Button id="commitButton" title="Commit" action="commitProject" disabled="<%= tostring(busy == true) %>" style="glassProminent" />
+	</HStack>
+	<Label id="gitStatus" text="<%= status %>" size="<%= GIT.caption %>" color="secondary" lines="2" truncation="tail" maxWidth="infinity" />
+</VStack>
+<Divider />
+<List id="history" data="history" style="plain" header="false" alternatingRows="false" rowHeight="<%= GIT.rowHeight %>" maxWidth="infinity" maxHeight="infinity">
+	<Column id="summary" title="" imageKey="icon" subtitleKey="detail" />
+</List>

@@ -1,11 +1,11 @@
 local Projects = {}
 
-Projects.defaultIcon = "rocket.fill"
+Projects.defaultIcon = "paperplane.fill"
 Projects.defaultProjectIcon = "rocket-sketch"
 Projects.iconChoices = {
 	{ id = "rocket-sketch", title = "Rocket Sketch", symbol = "pencil.tip.crop.circle", file = "rocket-sketch.png" },
 	{ id = "desk", title = "Studio Desk", symbol = "pencil.and.ruler", file = "desk.png" },
-	{ id = "rocket", title = "Lua-objc Rocket", symbol = "rocket.fill", file = "rocket.png" },
+	{ id = "rocket", title = "Lua-objc Rocket", symbol = "paperplane.fill", file = "rocket.png" },
 }
 
 function Projects.iconChoice(id)

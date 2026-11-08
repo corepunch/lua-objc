@@ -14,44 +14,54 @@ root.session = require("apps.studio.services.Session").open({load = function() e
 	["demo/playground/init.lua"] = "return {}", ["demo/playground/views/pages/Main.etlua"] = '<Label text="Hello" />',
 }, "Test")
 root.model = root.session.workspace
-root.projects = { { id = "StarterApp", title = "Starter App", action = "openProject_StarterApp", icon = "rocket.fill", selected = true } }
+root.projects = { { id = "StarterApp", title = "Starter App", action = "openProject_StarterApp", icon = "paperplane.fill", selected = true } }
 root.mode = "chat"
 root.chat.agent = {busy = false}
 root.actions = root:workspaceActions()
 root.workspace = Template.new(ns.VStack {}, "apps/studio/views/sections/Workspace.etlua", ns)
 root:render()
-local codePane, chatPane, previewPane = root.refs.codePane, root.refs.chatPane, root.refs.previewPane
+local codePane, chatPane = root.refs.codePane, root.refs.chatPane
 t.expect(codePane.hidden and not root.refs.transcriptScroll.hidden, "the workspace opens on the conversation")
-t.expect(root.refs["rail/chat/on"] ~= nil and root.refs["rail/code/on"] == nil, "the rail highlights the chat")
+t.expect(root.refs["rail/preview/on"] ~= nil and root.refs.preview ~= nil, "beside the preview")
+t.assertEqual(root.refs.sidePane.maxWidth, 440, "in a side column sized to the device")
 
-root.actions.showCode()
-t.expect(not root.refs.codePane.hidden and root.refs.transcriptScroll.hidden and root.refs.composerPane.hidden,
-	"code mode shows the code pane in place of the conversation")
-t.assertEqual(root.refs.codePane, codePane, "the code pane keeps its view")
-t.expect(root.refs["rail/code/on"] ~= nil and root.refs["rail/chat/on"] == nil, "the rail highlight follows the mode")
-
-root.actions.toggleTree()
-t.expect(root.refs.treePane.hidden and root.refs.treeDivider.hidden, "hiding the tree hides its divider too")
-t.assertEqual(root.refs.treeToggle.accessibilityLabel, "Show project tree", "the toggle offers to show it again")
-root.actions.toggleTree()
-t.expect(not root.refs.treePane.hidden, "the tree comes back")
-
-root.actions.toggleChat()
-t.expect(root.refs.chatPane.hidden, "focusing the preview hides the chat")
-t.assertEqual(root.refs.chatPane, chatPane, "the chat keeps its view")
-t.assertEqual(root.refs.previewPane.maxWidth, nil, "and the stage drops its fixed width")
-t.assertEqual(root.refs.chatVisibility.accessibilityLabel, "Show Chat", "the toggle offers the chat back")
-root.actions.toggleChat()
-t.expect(not root.refs.chatPane.hidden, "the chat comes back")
-t.assertEqual(root.refs.previewPane.maxWidth, 440, "beside a stage sized to the device")
-t.assertEqual(root.refs.previewPane, previewPane, "the stage keeps its view")
+root.actions.showPanel_files()
+t.expect(root.refs["rail/files/on"] ~= nil and root.refs["rail/preview/on"] == nil, "the rail highlight follows the view")
+t.expect(root.refs.preview == nil and root.refs.codeFiles ~= nil, "Files replaces the preview in the column")
+t.assertEqual(root.refs.chatPane, chatPane, "the agent card keeps its view")
+t.expect(codePane.hidden, "showing Files alone opens no file")
 
 root.actions.selectFile(nil, nil, { id = "Model.lua" })
+t.expect(not root.refs.codePane.hidden and root.refs.transcriptScroll.hidden and root.refs.composerPane.hidden,
+	"choosing a file opens it in place of the conversation")
+t.assertEqual(root.refs.codePane, codePane, "the code pane keeps its view")
 t.assertEqual(root.refs.codeFileTitle.text, "Model.lua", "selecting a file names it")
 t.assertEqual(root.refs.sourceCode.text, "return 1", "and shows its source")
+root.actions.showChat()
+t.expect(root.refs.codePane.hidden and not root.refs.transcriptScroll.hidden, "closing the file returns to the conversation")
+t.assertEqual(root.actions.showCode, nil, "the iPad opens code through Files only")
+t.assertEqual(root.actions.toggleTree, nil, "the editor has no tree to toggle")
 
-root.versions = { record = function() return "0123456789" end }
+local recorded = {}
+root.versions = {
+	record = function(_, message) table.insert(recorded, message); return "0123456789" end,
+	log = function() return { { id = "0123456789", shortId = "0123456", summary = "Update project", time = os.time() } } end,
+}
+root.actions.showPanel_git()
+t.expect(root.refs.history ~= nil and root.refs.commitButton ~= nil, "Source Control shows the history and commits")
+root.actions.editCommitMessage("Add a tab")
 root.actions.commitProject()
-t.assertEqual(root.refs.previewStatus.text, "Committed 0123456", "the status line is drawn from the state")
+t.assertEqual(recorded[1], "Add a tab", "the typed message is committed")
+t.assertEqual(root.refs.gitStatus.text, "Committed 0123456", "the status line reports the commit")
+t.assertEqual(root.refs.commitMessage.text, "", "a commit clears the message")
+root.actions.commitProject()
+t.assertEqual(recorded[2], "Update project", "an empty field commits with the default message")
+
+root.actions.showPanel_projects()
+t.expect(root.refs.projectList ~= nil and root.refs.newProjectButton ~= nil, "Projects lists the projects")
+t.expect(root.actions["selectProjectIcon_rocket-sketch"] ~= nil, "project icons are offered again")
+
+root.actions.showPanel_preview()
+t.expect(root.refs.preview ~= nil and root.refs.history == nil, "the preview comes back to the column")
 
 os.exit(t.summary() and 0 or 1)

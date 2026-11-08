@@ -1,7 +1,7 @@
 <%
   -- The activity rail: icon-only, as in an editor. The brand mark sits at the
-  -- top, the modes of the agent card beneath it, workspace destinations after
-  -- a rule, and settings at the foot. The rail has no background of its own;
+  -- top, the views of the side column beneath it, the catalogs after a
+  -- rule, and settings at the foot. The rail has no background of its own;
   -- it rests on the workspace gradient.
   local RAIL = { width = 68, inset = 12, spacing = 6, item = 44, itemRadius = 14, symbol = 19, mark = 40, markRadius = 12, markSymbol = 19, rule = 24 }
 %>
@@ -11,14 +11,14 @@
 		<SystemImage name="<%= brand.icon %>" size="<%= RAIL.markSymbol %>" weight="semibold" color="white" label="" />
 	</ZStack>
 	<Spacer height="<%= RAIL.spacing %>" />
-	<% for _, mode in ipairs(modes) do %>
-	<% if mode.selected then %>
-	<ZStack id="rail/<%= mode.id %>/on" width="<%= RAIL.item %>" height="<%= RAIL.item %>" accessibilityLabel="<%= mode.title %>, selected">
+	<% for _, panel in ipairs(panels) do %>
+	<% if panel.selected then %>
+	<ZStack id="rail/<%= panel.id %>/on" width="<%= RAIL.item %>" height="<%= RAIL.item %>" accessibilityLabel="<%= panel.title %>, selected">
 		<LinearGradient colors="<%= brand.colors %>" startPoint="topLeading" endPoint="bottomTrailing" cornerRadius="<%= RAIL.itemRadius %>" />
-		<SystemImage name="<%= mode.icon %>" size="<%= RAIL.symbol %>" weight="semibold" color="white" label="<%= mode.title %>, selected" />
+		<SystemImage name="<%= panel.icon %>" size="<%= RAIL.symbol %>" weight="semibold" color="white" label="<%= panel.title %>, selected" />
 	</ZStack>
 	<% else %>
-	<Button id="rail/<%= mode.id %>/off" systemImage="<%= mode.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= mode.title %>" action="<%= mode.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
+	<Button id="rail/<%= panel.id %>/off" systemImage="<%= panel.icon %>" symbolSize="<%= RAIL.symbol %>" foregroundStyle="secondary" accessibilityLabel="<%= panel.title %>" action="<%= panel.action %>" style="plain" width="<%= RAIL.item %>" height="<%= RAIL.item %>" />
 	<% end %>
 	<% end %>
 	<Divider width="<%= RAIL.rule %>" />

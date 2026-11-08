@@ -44,7 +44,7 @@ local accessory = assert(layout:match("<BottomAccessory>(.-)</BottomAccessory>")
 t.expect(accessory:find('id="chrome"', 1, true) ~= nil, "which hosts the capsule template")
 t.expect(not layout:find("<GlassEffect", 1, true) and not layout:find("orientation=", 1, true),
 	"nothing floats over the project and the phone is not locked to landscape")
-t.expect(not pcall(xml.describe, '<Preview><Label text="x" /></Preview>', {}), "a Preview takes no child but an accessory")
+t.expect(not pcall(xml.render, '<Preview><Label text="x" /></Preview>', {}, require("AppKit")), "a Preview takes no child but an accessory")
 
 local function capsule(state)
 	state.brand, state.tint, state.actions = Theme.brand, Theme.tint, {}

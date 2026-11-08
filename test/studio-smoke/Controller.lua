@@ -152,7 +152,6 @@ function Harness:createWindow()
 					self.actions.saveModel()
 					assert(self.model.modelId == "openrouter/auto")
 				elseif scenario == "lifecycle-edit" then
-					self.actions.selectProjectIcon_desk()
 					self.actions.showCode()
 					self:selectFile("views/pages/Main.etlua")
 					local source = self.model:source("demo/playground/views/pages/Main.etlua"):gsub("My App", "Workflow Saved")
