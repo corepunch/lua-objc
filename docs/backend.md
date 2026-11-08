@@ -1,9 +1,9 @@
 # Online data: Appwrite backend (design)
 
 Status: agreed design, being built. Done: the HTTP request, the Appwrite
-client (`lua/data/appwrite/`), and remote model declarations with their
-schema. The "Pieces" table marks each step; the decisions taken are listed at
-the end.
+client (`lua/data/appwrite/`), remote model declarations with their
+schema, and `<Backend>` with the development project. The "Pieces" table
+marks each step; the decisions taken are listed at the end.
 
 An app that keeps its data online declares it the way it declares local data:
 a model is a table of rows. A model marked `remote` is a table in an
@@ -197,12 +197,13 @@ is a separate decision with its own cost.
 ## Provisioning: the models are the schema
 
 ```sh
-./lua-objc --appwrite-schema=build/notes.appwrite.json apps/notes/init.lua
+./lua-objc scripts/appwrite/schema.lua demo/notes build/notes.appwrite.json
 appwrite push tables --config build/notes.appwrite.json
 ```
 
-`--appwrite-schema` (added with the manifest's `<Backend>`, which names the
-project and database) loads the app's models headlessly and writes the
+`scripts/appwrite/schema.lua` reads the project, endpoint and database from
+the app's `<Backend>`, loads every model in its `models/` folder headlessly
+and writes the
 [`appwrite.json`](https://appwrite.io/docs/tooling/command-line/tables)
 that the official Appwrite CLI pushes: the database, one table per remote
 model, its columns, indexes and table permissions. The generated file
@@ -229,7 +230,9 @@ column is gone.
 | Schema (done) | `lua/data/appwrite/schema.lua` | remote models → `appwrite.json`: one TablesDB database, a table per model, `create("users")`, row security |
 | Backend service | `lua/data/backend.lua` | runs a route's `load`, merges rows, sends writes, undoes failures |
 | Model | `lua/data/model.lua` | done: `remote`, `fields`, `indexes` parsed into `columns` and `indexes`; to do: `query()`, writes through the backend |
-| Manifest | `lua/data/manifest.lua` | `<Backend>` |
+| Manifest (done) | `lua/data/manifest.lua` | `<Backend>` → `manifest.backend` `{provider, endpoint, project, database, development}` |
+| Development project (done) | `lua/data/appwrite/development.lua` | LuaStudio on Appwrite Cloud Frankfurt, `6af0e3d0002aa438b655` |
+| Schema script (done) | `scripts/appwrite/schema.lua` | an app folder → its `appwrite.json` |
 | Sign-in | `lua/components/SignIn.etlua`, a bundled flow | the sheet and its actions |
 
 ### Native HTTP

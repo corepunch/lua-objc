@@ -1,0 +1,4 @@
+<App name="Backend fixture" startup="items">
+	<Backend provider="appwrite" endpoint="https://fra.cloud.appwrite.io/v1" project="fixture-project" />
+	<Page id="items" title="Items" />
+</App>

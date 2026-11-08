@@ -35,9 +35,51 @@
 -- names a class of the app that coordinates the whole window -- a root
 -- controller with services, scanning, sheets -- and replaces the framework's
 -- launcher; it still takes its pages, sidebar rows and Go menu from this file.
+--
+-- `<Backend provider="appwrite" />` keeps the remote models' rows online
+-- (docs/backend.md). With no `project` it is our development project
+-- (lua/data/appwrite/development.lua); an app's own project names both
+-- `endpoint` and `project`. `database` is the app folder's name when omitted.
+-- `manifest.backend` is then `{provider, endpoint, project, database,
+-- development}`; an app without the element has none and stays local.
 local Manifest = {}
 
+local Development = require("data.appwrite.development")
+
 local function fail(message) error("manifest: " .. message, 0) end
+
+local function validId(id)
+	return type(id) == "string" and #id <= 36 and id:match("^[%w][%w%._%-]*$") ~= nil
+end
+
+-- The backend of a `<Backend>` element's attributes.
+function Manifest.backend(attrs)
+	if attrs.provider ~= "appwrite" then fail("<Backend> needs provider=\"appwrite\"") end
+	for key in pairs(attrs) do
+		if key ~= "provider" and key ~= "endpoint" and key ~= "project" and key ~= "database" then
+			fail("<Backend> has no attribute " .. key .. "; use provider, endpoint, project and database")
+		end
+	end
+	local backend = {provider = attrs.provider, database = attrs.database}
+	if attrs.project then
+		if not validId(attrs.project) then fail("<Backend> project " .. attrs.project .. " is not an Appwrite project ID") end
+		if not (attrs.endpoint or ""):match("^https?://") then
+			fail("<Backend project=\"" .. attrs.project .. "\"> names its endpoint, such as https://fra.cloud.appwrite.io/v1")
+		end
+		backend.project, backend.endpoint, backend.development = attrs.project, attrs.endpoint, false
+	else
+		if attrs.endpoint then fail("<Backend> without a project is the development project; it names no endpoint") end
+		if not Development.project then
+			fail("<Backend> without a project needs the development project, "
+				.. "which lua/data/appwrite/development.lua does not name yet; give the app's own project")
+		end
+		backend.project, backend.endpoint, backend.development = Development.project, Development.endpoint, true
+	end
+	if backend.database ~= nil and not validId(backend.database) then
+		fail("<Backend> database " .. backend.database .. " is not an Appwrite database ID")
+	end
+	return backend
+end
 
 function Manifest.parse(nodes)
 	local root
@@ -86,6 +128,9 @@ function Manifest.parse(nodes)
 						table.insert(manifest.toolbar, child.attrs)
 					end
 				end
+			elseif node.tag == "Backend" then
+				if manifest.backend then fail("an app has one <Backend>") end
+				manifest.backend = Manifest.backend(node.attrs)
 			elseif node.tag == "Page" then
 				-- Pages before the first section lead the sidebar without a header.
 				if #manifest.sections > 1 and current.title then
@@ -94,7 +139,7 @@ function Manifest.parse(nodes)
 				end
 				page(node, current)
 			else
-				fail("<" .. node.tag .. "> is not part of the manifest; use Section, Page or Toolbar")
+				fail("<" .. node.tag .. "> is not part of the manifest; use Section, Page, Toolbar or Backend")
 			end
 		end
 	end
@@ -119,7 +164,14 @@ end
 -- Parses the manifest file at `path`.
 function Manifest.load(path)
 	local xml = require("ui.xml")
-	return Manifest.parse(xml.parse(xml.source(path) or error("manifest: cannot read " .. path, 0)))
+	local manifest = Manifest.parse(xml.parse(xml.source(path) or error("manifest: cannot read " .. path, 0)))
+	-- The database is named after the app's folder: apps/notes -> notes.
+	if manifest.backend and not manifest.backend.database then
+		local folder = path:match("([^/]+)/[^/]+$")
+		if not validId(folder) then fail("<Backend> needs a database; " .. tostring(folder) .. " is not an ID") end
+		manifest.backend.database = folder
+	end
+	return manifest
 end
 
 -- The launch options in `args` (the process arguments): `--page=<id>` and
