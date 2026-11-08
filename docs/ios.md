@@ -677,7 +677,7 @@ ns.Defaults.get/set
 ns.DocumentDirectory()
 ns.onScenePhase(fn)
 ns.ForEach / Group
-ns.async / sleep / fetch / fetch_json / json_parse
+ns.async / sleep / http / fetch / fetch_json / json_parse
 ```
 
 ### XML `TAG_SCHEMA` additions (`lua/ui/xml.lua`)

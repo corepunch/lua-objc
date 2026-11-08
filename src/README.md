@@ -40,7 +40,7 @@ See [object and state ownership](../ARCHITECTURE.md#object-and-state-ownership).
 | `uikit/runtime.m` / `uikit/metatable.m` | userdata conversion and property access | `push_objc`, `nsview_index` |
 | `uikit/platform.m` | window display and native values | `bridge_show`, `bridge_font` |
 | `shared/lua_bridge_support.m` | userdata retain/release, interned handles, Foundation conversion | `ObjCRef`, `push_objc`, `gc_objc`, `lua_to_objc_value` |
-| `shared/lua_async.m` | state owners, timers, HTTP, and JSON for both platforms | `LuaStateOwner`, `bridge_http_get` |
+| `shared/lua_async.m` | state owners, timers, HTTP, and JSON for both platforms | `LuaStateOwner`, `bridge_http_request` |
 | `shared/lua_documents.m` | the app's Documents folder: read, write, exists, list; JSON encoding | `bridge_document_read`, `bridge_document_list` |
 | `shared/credentials.m` | app-scoped Keychain credentials outside project documents | `bridge_credential_read`, `bridge_credential_write`, `bridge_credential_remove` |
 | `shared/lua_reg.m` | state-bound callback registrations included by `lua_async.m` | `LuaReg`, `lua_reg_opt`, `Scope` |

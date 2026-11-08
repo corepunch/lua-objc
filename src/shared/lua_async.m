@@ -269,39 +269,137 @@ static int bridge_uptime(lua_State *L) {
 
 #pragma mark - HTTP & JSON
 
-static int bridge_http_get(lua_State *L) {
-	const char *url = luaL_checkstring(L, 1);
+/* _httpRequest{method, url, headers, body, timeout}, done) -> handle
+ *
+ * One request for both platforms. `done(response)` receives
+ * {status, headers, body} for every HTTP answer, 4xx and 5xx included: the
+ * status is the caller's to judge. `done(nil, message)` means no answer
+ * arrived (offline, DNS, TLS, timeout). A cancelled request calls nothing.
+ *
+ * Bodies are bytes both ways (lua_tolstring / lua_pushlstring), so images and
+ * files pass unchanged. Response header names are lowercased: HTTP names are
+ * case-insensitive and callers compare them as plain Lua keys.
+ *
+ * The session keeps no cookies and no cache. A request carries exactly the
+ * headers Lua gives it, so two accounts of one backend (an Appwrite session
+ * secret per window) never share a cookie jar behind the caller's back. */
+static NSURLSession *http_session(void) {
+	static NSURLSession *session;
+	static dispatch_once_t once;
+	dispatch_once(&once, ^{
+		NSURLSessionConfiguration *config =
+			NSURLSessionConfiguration.ephemeralSessionConfiguration;
+		config.HTTPCookieStorage = nil;
+		config.HTTPShouldSetCookies = NO;
+		config.HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyNever;
+		config.URLCache = nil;
+		config.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+		session = [NSURLSession sessionWithConfiguration:config];
+	});
+	return session;
+}
+
+typedef struct {
+	void *task; /* retained NSURLSessionDataTask */
+} LuaHTTPHandle;
+
+static int gc_http_handle(lua_State *L) {
+	LuaHTTPHandle *handle = luaL_checkudata(L, 1, "lua_objc.http_request");
+	if (handle->task) CFRelease(handle->task);
+	handle->task = NULL;
+	return 0;
+}
+
+static NSString *http_string_field(lua_State *L, int table, const char *name) {
+	lua_getfield(L, table, name);
+	NSString *value = nil;
+	if (lua_type(L, -1) == LUA_TSTRING) value = @(lua_tostring(L, -1));
+	else if (!lua_isnil(L, -1)) luaL_error(L, "HTTP request %s must be a string", name);
+	lua_pop(L, 1);
+	return value;
+}
+
+static int bridge_http_request(lua_State *L) {
+	luaL_checktype(L, 1, LUA_TTABLE);
 	luaL_checktype(L, 2, LUA_TFUNCTION);
+
+	NSString *address = http_string_field(L, 1, "url");
+	NSURL *url = address ? [NSURL URLWithString:address] : nil;
+	NSString *scheme = url.scheme.lowercaseString;
+	if (!url || !([scheme isEqualToString:@"https"] || [scheme isEqualToString:@"http"])) {
+		return luaL_error(L, "HTTP request needs an http or https url");
+	}
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+	request.HTTPMethod = (http_string_field(L, 1, "method") ?: @"GET").uppercaseString;
+	[request setValue:LUA_OBJC_HTTP_USER_AGENT forHTTPHeaderField:@"User-Agent"];
+
+	lua_getfield(L, 1, "headers");
+	if (lua_istable(L, -1)) {
+		lua_pushnil(L);
+		while (lua_next(L, -2)) {
+			if (lua_type(L, -2) != LUA_TSTRING || lua_type(L, -1) != LUA_TSTRING) {
+				return luaL_error(L, "HTTP request headers map names to strings");
+			}
+			[request setValue:@(lua_tostring(L, -1)) forHTTPHeaderField:@(lua_tostring(L, -2))];
+			lua_pop(L, 1);
+		}
+	} else if (!lua_isnil(L, -1)) {
+		return luaL_error(L, "HTTP request headers must be a table");
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "body");
+	if (lua_type(L, -1) == LUA_TSTRING) {
+		size_t length = 0;
+		const char *bytes = lua_tolstring(L, -1, &length);
+		request.HTTPBody = [NSData dataWithBytes:bytes length:length];
+	} else if (!lua_isnil(L, -1)) {
+		return luaL_error(L, "HTTP request body must be a string");
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "timeout");
+	if (lua_isnumber(L, -1)) request.timeoutInterval = lua_tonumber(L, -1);
+	lua_pop(L, 1);
 
 	/* L may be a coroutine; extraspace inherits from the main thread. */
 	LuaStateOwner *owner = owner_for_state(L);
 	if (!owner) return luaL_error(L, "async runtime is not initialized");
-
 	LuaReg *reg = lua_reg_create(L, 2, YES);
 
-	NSMutableURLRequest *req = [NSMutableURLRequest
-		requestWithURL:[NSURL URLWithString:[NSString stringWithUTF8String:url]]];
-	[req setValue:LUA_OBJC_HTTP_USER_AGENT forHTTPHeaderField:@"User-Agent"];
-
 	/* __block so the completion block can untrack itself by name. */
-	__block NSURLSessionDataTask *task = [[NSURLSession sharedSession]
-		dataTaskWithRequest:req
-		completionHandler:^(NSData *data, NSURLResponse *resp, NSError *error) {
+	__block NSURLSessionDataTask *task = [http_session()
+		dataTaskWithRequest:request
+		completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
 			dispatch_async(dispatch_get_main_queue(), ^{
 				[owner _untrack:task];
 				lua_State *callL = lua_reg_live_state(reg);
-				if (callL && !owner.cancelled) {
+				BOOL dropped = [error.domain isEqualToString:NSURLErrorDomain]
+					&& error.code == NSURLErrorCancelled;
+				if (callL && !owner.cancelled && !dropped) {
 					lua_reg_push(reg);
-					if (error) {
+					NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class]
+						? (NSHTTPURLResponse *)response : nil;
+					if (error || !http) {
 						lua_pushnil(callL);
-						lua_pushstring(callL, error.localizedDescription.UTF8String);
+						lua_pushstring(callL, (error.localizedDescription
+							?: @"The server sent no HTTP response").UTF8String);
 					} else {
-						NSString *body = [[NSString alloc] initWithData:data
-							encoding:NSUTF8StringEncoding];
-						lua_pushstring(callL, body.UTF8String ?: "");
+						lua_createtable(callL, 0, 3);
+						lua_pushinteger(callL, http.statusCode);
+						lua_setfield(callL, -2, "status");
+						lua_newtable(callL);
+						[http.allHeaderFields enumerateKeysAndObjectsUsingBlock:^(id key, id value, BOOL *stop) {
+							lua_pushstring(callL, [key description].lowercaseString.UTF8String);
+							lua_pushstring(callL, [value description].UTF8String);
+							lua_settable(callL, -3);
+						}];
+						lua_setfield(callL, -2, "headers");
+						lua_pushlstring(callL, data.bytes ?: "", data.length);
+						lua_setfield(callL, -2, "body");
 						lua_pushnil(callL);
 					}
-					lua_objc_pcall(callL, 2, 0, "http");
+					lua_objc_pcall(callL, 2, 0, "HTTP request");
 				}
 				[reg dispose];
 			});
@@ -309,6 +407,23 @@ static int bridge_http_get(lua_State *L) {
 
 	[owner trackTask:task];
 	[task resume];
+
+	LuaHTTPHandle *handle = lua_newuserdata(L, sizeof(LuaHTTPHandle));
+	handle->task = (void *)CFBridgingRetain(task);
+	if (luaL_newmetatable(L, "lua_objc.http_request")) {
+		lua_pushcfunction(L, gc_http_handle);
+		lua_setfield(L, -2, "__gc");
+	}
+	lua_setmetatable(L, -2);
+	return 1;
+}
+
+/* _httpCancel(handle): a cancelled request never calls `done`, as one whose
+ * state owner was cancelled does not; the caller cancelled because it no
+ * longer wants the answer. Cancelling a finished request does nothing. */
+static int bridge_http_cancel(lua_State *L) {
+	LuaHTTPHandle *handle = luaL_checkudata(L, 1, "lua_objc.http_request");
+	if (handle->task) [(__bridge NSURLSessionDataTask *)handle->task cancel];
 	return 0;
 }
 

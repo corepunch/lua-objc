@@ -25,6 +25,8 @@ Read only the material needed for the current task:
   template reconciliation and steady live updates
 - [docs/reels.md](docs/reels.md) — making 3-D promo reels with Reel and
   SceneKit: captures, component motion, camera, traps, performance
+- [docs/backend.md](docs/backend.md) — online data in Appwrite (design
+  proposal): remote models, the two kinds of account, provisioning
 - [docs/data-driven.md](docs/data-driven.md) — manifests, pages as requests over
   models, `@name` resources, the model graph
 - [docs/components.md](docs/components.md) — components: new XML tags

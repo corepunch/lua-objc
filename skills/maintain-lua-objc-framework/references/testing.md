@@ -200,7 +200,7 @@ that expected native names are embedded:
 
 ```sh
 file build/UIKit.dylib
-strings build/UIKit.dylib | rg '^(_timerAfter|_httpGet|_jsonParse)$'
+strings build/UIKit.dylib | rg '^(_timerAfter|_httpRequest|_jsonParse)$'
 ```
 
 A successful dylib build checks Objective-C syntax, API availability, fragment

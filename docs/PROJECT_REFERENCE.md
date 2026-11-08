@@ -1669,6 +1669,34 @@ end)
 ns.Window { title = "Live Data", width = 600, height = 400, tv }
 ```
 
+## Lua API — HTTP
+
+One native request serves both platforms (`bridge_http_request` in
+`src/shared/lua_async.m`):
+
+```lua
+local cancel = ns.http({
+	method = "POST",                       -- default GET
+	url = "https://example.com/v1/items",  -- http or https
+	headers = {["Content-Type"] = "application/json"},
+	body = json,                           -- a string of bytes; optional
+	timeout = 30,                          -- seconds; optional
+}, function(response, err)
+	-- response = {status = 201, headers = {["content-type"] = ...}, body = bytes}
+	-- err is set, and response nil, only when no answer arrived
+end)
+cancel()                                   -- a cancelled request calls nothing
+```
+
+Every HTTP answer reaches `done`, 4xx and 5xx included; judging the status is
+the caller's. Response header names are lowercase. The session keeps no
+cookies and no cache, so a request carries exactly the headers it is given.
+Requests are cancelled with their state owner (a reloaded app drops them).
+
+`ns.fetch(url)` and `ns.fetch_json(url)` are the coroutine form of a GET for
+use inside `ns.async`: they return the body (or its decoded JSON) and raise
+when no answer arrived or the status is outside 2xx.
+
 ## Conventions
 
 **CamelCase naming.** New method names and property keys use camelCase to match

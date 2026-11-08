@@ -1738,19 +1738,36 @@ function UIKit.async(fn)
 	resumeCoroutine(co)
 end
 
+--- Sends one HTTP request, `{method, url, headers, body, timeout}`; only
+--- `url` is required and `method` defaults to GET. `done(response)` receives
+--- `{status, headers, body}` for every answer, error statuses included:
+--- header names are lowercase and the body is bytes. `done(nil, message)`
+--- means no answer arrived. No cookies are kept or sent: a request carries
+--- exactly its own headers. Returns a function that cancels the request; a
+--- cancelled request calls nothing.
+function UIKit.http(request, done)
+	local handle = bridge._httpRequest(request, done)
+	return function() bridge._httpCancel(handle) end
+end
+
+--- The body of a GET of `url`, from within a coroutine (use async()). An
+--- answer outside 2xx is an error, as no answer is.
 function UIKit.fetch(url)
 	local co = coroutine.running()
 	if not co then
 		error("fetch() must be called from within a coroutine (use async())")
 	end
-	local body, err = nil, nil
-	bridge._httpGet(url, function(b, e)
-		body, err = b, e
+	local response, err = nil, nil
+	UIKit.http({url = url}, function(r, e)
+		response, err = r, e
 		resumeCoroutine(co)
 	end)
 	coroutine.yield()
 	if err then error(err) end
-	return body
+	if response.status < 200 or response.status >= 300 then
+		error("HTTP " .. response.status .. " from " .. url)
+	end
+	return response.body
 end
 
 function UIKit.json_parse(str)

@@ -21,19 +21,19 @@ function Device.new(ns)
 				clear = function() return ns.Credentials.remove("github") end,
 			},
 			request = function(method, path, token, body, completion)
-				local request = ns._httpRequest("https://api.github.com" .. path, {
+				return ns.http({method = method, url = "https://api.github.com" .. path, headers = {
 					Authorization = "Bearer " .. token, Accept = "application/vnd.github+json", ["User-Agent"] = "Lua-Studio",
 					["Content-Type"] = "application/json", ["X-GitHub-Api-Version"] = "2022-11-28",
-				}, body and json.encode(body) or "", function(source, err, status)
+				}, body = body and json.encode(body) or nil}, function(response, err)
 					if err then completion(nil, err); return end
-					local ok, result = pcall(json.decode, source or "")
+					local status = response.status
+					local ok, result = pcall(json.decode, response.body)
 					if not ok or type(result) ~= "table" then completion(nil, "GitHub returned invalid JSON"); return end
 					if status < 200 or status >= 300 then
 						completion(nil, "GitHub HTTP " .. status .. ": " .. tostring(result.message or "Request failed")); return
 					end
 					completion(result)
-				end, method)
-				return function() ns._cancelRequest(request) end
+				end)
 			end,
 		},
 		speech = ok and speech or nil,
@@ -47,12 +47,12 @@ function Device.new(ns)
 			clear = function() return ns.Credentials.remove("openrouter") end,
 		},
 		transport = function(payload, key, completion)
-			local request = ns._httpRequest("https://openrouter.ai/api/v1/chat/completions", {
+			return ns.http({method = "POST", url = "https://openrouter.ai/api/v1/chat/completions", headers = {
 				Authorization = "Bearer " .. key, ["Content-Type"] = "application/json", ["X-Title"] = "Lua Studio",
-			}, json.encode(payload), function(body, err, status)
+			}, body = json.encode(payload)}, function(response, err)
 				if err then completion(nil, "OpenRouter request failed: " .. tostring(err) .. ". Try again or choose another model in Settings."); return end
-				status = tonumber(status) or 0
-				local ok, result = pcall(json.decode, body or "")
+				local status = response.status
+				local ok, result = pcall(json.decode, response.body)
 				local decoded = ok and type(result) == "table"
 				if status < 200 or status >= 300 or (decoded and result.error) then
 					local detail = decoded and result.error
@@ -62,7 +62,6 @@ function Device.new(ns)
 				if not decoded then completion(nil, "OpenRouter returned invalid JSON (HTTP " .. status .. "). Try again or choose another model in Settings."); return end
 				completion(result)
 			end)
-			return function() ns._cancelRequest(request) end
 		end,
 	}
 end
