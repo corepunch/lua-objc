@@ -3,7 +3,8 @@
 Status: agreed design, being built. Done: the HTTP request, the Appwrite
 client (`lua/data/appwrite/`), remote model declarations with their
 schema, `<Backend>` with the development project, and the backend service
-that loads and writes remote rows. Left: the sign-in sheet and `demo/notes`.
+that loads and writes remote rows, the account page and `demo/cloud-notes`.
+Left: the release-build check and a first push of the schema to LuaStudio.
 The "Pieces" table marks each step; the decisions taken are listed at the
 end.
 
@@ -80,9 +81,17 @@ The session secret is stored with the existing Keychain bridge
 (`ns.Credentials`, `src/shared/credentials.m`) under the account
 `appwrite.<project>`, never in the store.
 
-The sign-in sheet is a bundled etlua component (`lua/components/`), and the
-account actions are a flow (`Flow:extend`) any page can call. An app that never
-shows sign-in still works: its people simply stay anonymous on that device.
+Account is a page, not a sheet: pages are requests, and a sheet would need a
+controller class to coordinate it. The framework owns its route
+(`require("data.account").route({view = "pages/Account"})` in `routes.lua`);
+the app owns its view, as every page's view is the app's. The route checks the
+email and the password length (8, Appwrite's minimum) before sending, keeps the
+password only while it is typed, and calls the backend's `register`, `signIn`
+and `signOut`, which loads wait for like writes. Signing in or out moves to
+another account, so the remote rows leave the store and the pages load the new
+account's; signing out opens a new anonymous session so the app keeps saving.
+An app that never shows the page still works: its people stay anonymous on
+that device.
 
 ## Remote models
 
@@ -209,8 +218,8 @@ is a separate decision with its own cost.
 ## Provisioning: the models are the schema
 
 ```sh
-./lua-objc scripts/appwrite/schema.lua demo/notes build/notes.appwrite.json
-appwrite push tables --config build/notes.appwrite.json
+./lua-objc scripts/appwrite/schema.lua demo/cloud-notes build/cloud-notes.appwrite.json
+appwrite push tables --config build/cloud-notes.appwrite.json
 ```
 
 `scripts/appwrite/schema.lua` reads the project, endpoint and database from
@@ -246,7 +255,7 @@ column is gone.
 | Manifest (done) | `lua/data/manifest.lua` | `<Backend>` → `manifest.backend` `{provider, endpoint, project, database, development}` |
 | Development project (done) | `lua/data/appwrite/development.lua` | LuaStudio on Appwrite Cloud Frankfurt, `6af0e3d0002aa438b655` |
 | Schema script (done) | `scripts/appwrite/schema.lua` | an app folder → its `appwrite.json` |
-| Sign-in | `lua/components/SignIn.etlua`, a bundled flow | the sheet and its actions |
+| Account page (done) | `lua/data/account.lua` | the route of an app's account page: register, sign in, sign out |
 
 ### Native HTTP
 
@@ -278,17 +287,23 @@ table (the pattern of orca's `apps/chat/api/mock_transport.lua`):
   second launch reuses it; a 401 drops it and opens a new one; sign-out clears
   the Keychain entry.
 
-`demo/notes/` is the first app built on it and exercises it end to end:
-headlessly against the mock transport, and by hand against our development
-project (its `<Backend>` names no `project`).
+`demo/cloud-notes/` is the first app built on it (`demo/notes/` is the
+local three-column notes demo, unrelated) and exercises it end to end:
+headlessly against the mock transport (`tests/cloud_notes.test.lua`), and by
+hand against our development project (its `<Backend>` names no `project`).
 
-It is a manifest app with no controller class: two remote models, `lists`
-(`"private"`) and `notes` (`"private"`, `belongsTo` a list); a sidebar page
-per list through one route reading `self.params`, whose `load` asks for that
-list's notes; actions to add, rename, complete and delete a note; and the
-bundled sign-in sheet in the toolbar. It covers every state the page has:
-loading, empty, loaded, a failed load, a refused write that is undone, and
-anonymous versus signed in. It is added to `tests/examples.test.lua`.
+It is a manifest app with no controller class: one remote model, `notes`
+(`"private"`, a `list` column); the lists are pages of `app.xml` (Inbox, Work,
+Home) through one route reading `self.params.list`, whose `load` asks for that
+list's notes; actions to add, complete and delete a note; and the Account
+page. It covers loading, empty, loaded, a failed load, a refused write that is
+undone, and anonymous, registered and signed in. It is in
+`tests/examples.test.lua`.
+
+Run by hand before its schema is pushed, it opens an anonymous session in
+LuaStudio, keeps the session in the Keychain and shows Appwrite's answer
+"Database with the requested ID 'cloud-notes' could not be found" under the
+list: the live path works up to the missing tables.
 
 ## Out of scope for now
 
@@ -308,4 +323,5 @@ anonymous versus signed in. It is added to `tests/examples.test.lua`.
   `state.error` (see "Reading").
 - A load replaces the store rows matching its `where`; it does not merge by
   `id`, so deletions made elsewhere show (see "Reading").
-- The first app is a new `demo/notes/` (see "Tests").
+- The first app is `demo/cloud-notes/` (see "Tests"); the account is a page,
+  not a sheet.

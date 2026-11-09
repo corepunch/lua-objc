@@ -1,0 +1,22 @@
+<VStack spacing="@pageSpacing" padding="@pagePadding" alignment="leading" maxWidth="infinity" maxHeight="infinity">
+	<HStack alignment="center" spacing="@pageSpacing">
+		<TextField placeholder="New note" value="<%= draft %>" width="@fieldWidth" onChange="setDraft" />
+		<Button title="Add" action="add" />
+		<Spacer />
+		<Label text="<%= summary %>" color="secondary" />
+	</HStack>
+	<List id="notes" style="fullWidth" header="false" rowHeight="@rowHeight" onSelect="selectNote" maxWidth="infinity" maxHeight="infinity">
+		<Column id="title" title="Note" minWidth="200" imageKey="icon" />
+	</List>
+	<HStack alignment="center" spacing="@pageSpacing">
+		<Button title="<%= selectedDone and 'Reopen' or 'Complete' %>" action="toggle" disabled="<%= not hasSelection %>" />
+		<Button title="Delete" action="remove" disabled="<%= not hasSelection %>" />
+		<Spacer />
+	</HStack>
+	<% if errors then %>
+	<Label id="refusal" text="<%= errors[1] %>" color="systemRed" />
+	<% end %>
+	<% if failure then %>
+	<Label id="failure" text="<%= failure %>" color="systemRed" />
+	<% end %>
+</VStack>

@@ -40,6 +40,7 @@ local examples = {
 	"demo/notes/init.lua",
 	"demo/ledger/init.lua",
 	"demo/storage/init.lua",
+	"demo/cloud-notes/init.lua",
 	"apps/translator/init.lua",
 	"apps/slicer/init.lua",
 }

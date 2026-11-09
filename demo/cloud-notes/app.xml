@@ -1,0 +1,11 @@
+<App name="Cloud Notes" startup="inbox">
+	<Backend provider="appwrite" />
+	<Section title="Lists">
+		<Page id="inbox" title="Inbox" icon="tray.fill" color="systemBlue" key="1" route="list" list="inbox" />
+		<Page id="work" title="Work" icon="briefcase.fill" color="systemOrange" key="2" route="list" list="work" />
+		<Page id="home" title="Home" icon="house.fill" color="systemGreen" key="3" route="list" list="home" />
+	</Section>
+	<Section title="You">
+		<Page id="account" title="Account" icon="person.crop.circle.fill" color="systemGray" key="0" />
+	</Section>
+</App>

@@ -1,0 +1,7 @@
+<Resources>
+	<Number id="pageSpacing" value="16" />
+	<Number id="pagePadding" value="20" />
+	<Number id="rowHeight" value="36" />
+	<Number id="fieldWidth" value="280" />
+	<Number id="symbolWidth" value="20" />
+</Resources>

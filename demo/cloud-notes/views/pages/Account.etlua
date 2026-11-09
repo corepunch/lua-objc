@@ -1,0 +1,25 @@
+<VStack spacing="@pageSpacing" padding="@pagePadding" alignment="leading" maxWidth="infinity">
+	<% if not signedIn then %>
+	<Label id="status" text="Not connected. Notes save once the app reaches the server." color="secondary" />
+	<% elseif anonymous then %>
+	<Label id="status" text="You are using Cloud Notes without an account. Register to keep your notes on every device." />
+	<% else %>
+	<Label id="status" text="Signed in as <%= email %>" />
+	<% end %>
+	<% if anonymous then %>
+	<TextField id="email" placeholder="Email" value="<%= draft %>" width="@fieldWidth" onChange="setEmail" />
+	<TextField id="password" placeholder="Password" secure="true" width="@fieldWidth" onChange="setPassword" />
+	<HStack alignment="center" spacing="@pageSpacing">
+		<Button title="Register" action="register" disabled="<%= busy or not signedIn %>" />
+		<Button title="Sign In" action="signIn" disabled="<%= busy %>" />
+	</HStack>
+	<% else %>
+	<Button title="Sign Out" action="signOut" disabled="<%= busy %>" />
+	<% end %>
+	<% if errors then %>
+	<Label id="refusal" text="<%= errors[1] %>" color="systemRed" />
+	<% end %>
+	<% if failure then %>
+	<Label id="failure" text="<%= failure %>" color="systemRed" />
+	<% end %>
+</VStack>
