@@ -11,19 +11,20 @@ import xml.etree.ElementTree as ElementTree
 
 
 def check_backend(app):
-    """A build that ships saves to the app's own Appwrite project.
+    """A build that ships names the app's own Appwrite project.
 
-    A `<Backend>` without `project` uses our development project, whose
-    accounts every app shares (docs/backend.md): fine on the simulator and
-    under `make run`, refused for a device or a release."""
+    A `<Backend>` without `project` saves to the project the person connected
+    on their device with their own API key (docs/backend.md): right while
+    developing on the simulator and under `make run`, wrong for a device or a
+    release, whose people have no key."""
     manifest = Path(app) / 'app.xml'
     if not manifest.is_file():
         return
     for backend in ElementTree.parse(manifest).getroot().iter('Backend'):
         if not backend.get('project'):
             raise ValueError(
-                f'{manifest}: <Backend> uses the development project, which is not for builds that ship. '
-                'Create an Appwrite project for the app and name it: '
+                f'{manifest}: <Backend> names no project, so it saves to the project connected on this device, '
+                'which is not for builds that ship. Name the app\'s Appwrite project: '
                 '<Backend provider="appwrite" endpoint="https://fra.cloud.appwrite.io/v1" project="<project ID>" />')
 
 

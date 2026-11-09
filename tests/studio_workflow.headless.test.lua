@@ -1,6 +1,10 @@
 local t = require("TestKit")
 local Root = require("apps.studio.Controller")
 local Export = require("apps.studio.services.Export")
+local Connection = require("data.appwrite.connection")
+local appwriteEntry
+local appwrite = Connection.new({read = function() return appwriteEntry end, write = function(v) appwriteEntry = v; return true end,
+	remove = function() appwriteEntry = nil; return true end, decode = require("AppKit").json_parse})
 local seed = { ["demo/playground/init.lua"] = "return {}", ["demo/playground/Model.lua"] = "return {}",
 	["demo/playground/Controller.lua"] = "return {}", ["demo/playground/views/pages/Main.etlua"] = '<Label text="Hello" />' }
 local saved, key, pending, cancelled, closed = {}, nil, nil, 0, 0
@@ -27,7 +31,8 @@ local root = Root.new({
 	catalog = catalog,
 	device = {json = {encode = function(v) return v end, decode = function(v) return v end},
 		transport = function(_, _, callback) pending = callback; return function() cancelled = cancelled + 1 end end,
-		credentials = {read = function() return key end, save = function(v) key = v; return true end, clear = function() key = nil; return true end}},
+		credentials = {read = function() return key end, save = function(v) key = v; return true end, clear = function() key = nil; return true end},
+		appwrite = appwrite},
 	sheets = {present = function(_, kind, data) sheet = {kind = kind, data = data} end, update = function() end, close = function() sheet = nil end},
 	previewFactory = function() return {render = function() return {} end, close = function() end} end,
 })
@@ -51,6 +56,24 @@ t.assertEqual(root.chat.draft, "Make a change", "a rejected send keeps its draft
 root.actions.editKey("fixture-key")
 root.actions.saveCredential()
 t.assertEqual(sheet.data.keyDraft, "", "saved credentials are cleared from the visible form")
+
+-- The person's own Appwrite project, kept like the OpenRouter key.
+t.assertEqual(sheet.data.hasAppwrite, false, "no Appwrite project is connected at first")
+t.assertEqual(sheet.data.appwriteEndpoint, Connection.endpoint, "the endpoint starts at Appwrite Cloud")
+root.actions.editAppwriteProject("proj1")
+root.actions.saveAppwrite()
+t.expect(appwriteEntry == nil and sheet.data.message:find("API key", 1, true), "a connection needs its key: " .. tostring(sheet.data.message))
+root.actions.editAppwriteKey("standard_abc")
+root.actions.saveAppwrite()
+t.expect(appwrite:load().project == "proj1" and appwrite:load().key == "standard_abc", "the connection is saved in the Keychain")
+t.expect(sheet.data.appwriteKeyDraft == "" and sheet.data.hasAppwrite, "and the key leaves the visible form")
+root.actions.editAppwriteProject("proj2")
+root.actions.saveAppwrite()
+t.expect(appwrite:load().project == "proj2" and appwrite:load().key == "standard_abc", "an empty key field keeps the saved key")
+root:showSettings()
+t.expect(sheet.data.appwriteProject == "proj2" and sheet.data.hasAppwrite, "Settings show the connected project")
+root.actions.clearAppwrite()
+t.expect(appwrite:load() == nil and not sheet.data.hasAppwrite, "removing forgets the connection")
 t.expect(root:sendMessage(), "the composer sends through the injected transport")
 t.expect(root.chat.agent.busy, "the working state reaches presentation")
 root.actions.stopAgent()

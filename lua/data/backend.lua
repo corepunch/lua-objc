@@ -35,6 +35,9 @@ function Backend.new(options)
 		client = options.client,
 		account = options.account,
 		rows = Rows.new(options.client, options.database),
+		-- `provision(done)` creates the tables the models lack, before the
+		-- account opens: only for the person's connected project.
+		provision = options.provision,
 		started = false,
 		writes = 0,     -- writes sent and not yet answered
 		-- The stores rows were loaded into or written in: another account's
@@ -46,15 +49,21 @@ function Backend.new(options)
 	}, Backend)
 end
 
--- Opens the account (the stored session, or a new anonymous one), then runs
--- the loads that waited for it. Offline, they run anyway and report it.
+-- Creates the missing tables when it provisions, opens the account (the
+-- stored session, or a new anonymous one), then runs the loads that waited.
+-- Offline, they run anyway and report it; a refused provisioning is reported
+-- and the account opens all the same.
 function Backend:start(done)
-	self.account:start(function(user, err)
-		self.started = true
-		self.startError = err
-		self:flush()
-		if done then done(user, err) end
-	end)
+	local function open(provisionError)
+		self.account:start(function(user, err)
+			self.started = true
+			self.startError = err or provisionError
+			self:flush()
+			if provisionError then self.changed(provisionError.message) end
+			if done then done(user, err or provisionError) end
+		end)
+	end
+	if self.provision then self.provision(open) else open(nil) end
 end
 
 function Backend:flush()

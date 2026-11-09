@@ -2,10 +2,12 @@
 
 Status: agreed design, being built. Done: the HTTP request, the Appwrite
 client (`lua/data/appwrite/`), remote model declarations with their
-schema, `<Backend>` with the development project, and the backend service
-that loads and writes remote rows, the account page, `demo/cloud-notes`
-and the check that refuses the development project in builds that ship.
-Left: a first push of the schema to LuaStudio.
+schema, `<Backend>`, the person's connected project with its tables created
+at launch, the backend service that loads and writes remote rows, the account
+page, `demo/cloud-notes`, Lua Studio's Settings for the connection, and the
+check that refuses a connected project in builds that ship. Left: Lua
+Studio's preview running apps that keep data online (it does not load the
+data layer yet).
 The "Pieces" table marks each step; the decisions taken are listed at the
 end.
 
@@ -38,7 +40,7 @@ the choices.
 
 ```xml
 <App name="Notes" startup="notes">
-	<!-- ours: the lua-objc project, a database per app -->
+	<!-- the person's own, connected on the device; a database per app -->
 	<Backend provider="appwrite" />
 
 	<!-- theirs: Appwrite Cloud or self-hosted -->
@@ -51,23 +53,45 @@ the choices.
 No `<Backend>` means the store stays local, as today. `database` defaults to
 the app's folder name.
 
-- **Our project** is for development only: prototypes, demos, Lua Studio. No
-  sign-up, nothing to configure; every app gets its own database in it. Its
-  end-user accounts are shared by every app that uses it, which is fine while
-  developing and wrong for anything people rely on.
-- **Their project** is required for anything that ships. Only the endpoint and
-  the project ID go in the manifest; both are public.
+- **The connected project** is for development: prototypes, demos, Lua
+  Studio. There is no project of ours. The person creates their own on
+  [Appwrite Cloud](https://cloud.appwrite.io) (or their own server), makes an
+  API key with read and write access to databases, tables, columns and
+  indexes, and enters the endpoint, the project ID and the key once, as they
+  enter the OpenRouter key: in Lua Studio's Settings, or on a Mac with
+  `./lua-objc scripts/appwrite/connect.lua <endpoint> <project ID>` (the key is
+  read from the input, not the command line). The three are one Keychain
+  entry, `appwrite` (`lua/data/appwrite/connection.lua`). Every app gets its
+  own database there, and at launch the app creates the database, tables,
+  columns and indexes its models need and the project lacks
+  (`lua/data/appwrite/provision.lua`): no CLI and no console step.
+- **The app's own project** is required for anything that ships, whose people
+  have no key. Only the endpoint and the project ID go in the manifest; both
+  are public. Its tables are pushed with the Appwrite CLI.
 
 The device and release builds (`make ipad`, `make ipad-deploy`,
 `make iphone-deploy` and `make release-build`/`make release`) refuse an app
-whose `<Backend>` names no `project`, with a message that says to create one
+whose `<Backend>` names no `project`, with a message that says to name one
 (`check_backend` in `scripts/ipad/bundle.py`, called for `SDK=iphoneos` and
 by `scripts/release/release.py` for every platform). The simulator,
 `make run` and the streaming iOS host accept it.
 
 An Appwrite API key (needed to create tables) never ships in an app and
-never enters the repository. It lives in the Mac's Keychain and is used only
-by the provisioning command, as the `asc` profile is.
+never enters the repository or the manifest. It lives in the device's
+Keychain and is sent only by provisioning, over a client of its own: the rows
+client carries the person's session and nothing else, so an app reads and
+writes only what its signed-in person may. A host that runs code it does not
+trust gives it `ns.appwriteConnection` instead of the Keychain, a function
+returning the endpoint, the project and a `provision` that holds the key.
+
+Provisioning only adds. A column whose type changed or that the models no
+longer name stays as it is: changing or dropping one loses data, which is the
+Appwrite CLI's job, asked for on purpose. Appwrite builds a new column in the
+background, so after adding columns provisioning asks again every half second
+(a one-shot timer, at most 60 times) until they are built, then creates the
+indexes; a launch with nothing missing costs one request for the database and
+two per table. A refused provisioning (a key without the scopes) is reported
+on the page and the account opens all the same.
 
 ### Whose rows these are
 
@@ -220,13 +244,16 @@ is a separate decision with its own cost.
 
 ## Provisioning: the models are the schema
 
+For the connected project the app provisions itself at launch (above). For
+an app's own project:
+
 ```sh
 ./lua-objc scripts/appwrite/schema.lua demo/cloud-notes build/cloud-notes.appwrite.json
 appwrite push tables --config build/cloud-notes.appwrite.json
 ```
 
 `scripts/appwrite/schema.lua` reads the project, endpoint and database from
-the app's `<Backend>`, loads every model in its `models/` folder headlessly
+the app's `<Backend>` (or the connected project when it names none), loads every model in its `models/` folder headlessly
 and writes the
 [`appwrite.json`](https://appwrite.io/docs/tooling/command-line/tables)
 that the official Appwrite CLI pushes: the database, one table per remote
@@ -235,7 +262,7 @@ lives in `build/` and is not committed; the models are the source.
 
 We do not write our own provisioning: Appwrite's CLI already creates,
 changes and removes tables, as `asc` does for App Store Connect. The CLI
-signs in with the developer's key from the Keychain.
+signs in with the developer's own credentials.
 
 Per the project rules there are no migrations. Removing or retyping a field
 and pushing again makes the table match the model; data in a removed
@@ -255,11 +282,13 @@ column is gone.
 | Backend service (done) | `lua/data/backend.lua` | runs a route's `load`, replaces rows, sends writes, undoes refused ones; built by the launcher (`App.backend`) and connected with `Model.connect` |
 | Page controller (done) | `lua/data/pagecontroller.lua` | runs `load()` on mount and after actions; `state.loading`, `state.error` |
 | Model (done) | `lua/data/model.lua` | `remote`, `fields`, `indexes` parsed into `columns` and `indexes`; `query()`; remote writes through the backend |
-| Manifest (done) | `lua/data/manifest.lua` | `<Backend>` → `manifest.backend` `{provider, endpoint, project, database, development}` |
-| Development project (done) | `lua/data/appwrite/development.lua` | LuaStudio on Appwrite Cloud Frankfurt, `6af0e3d0002aa438b655` |
+| Manifest (done) | `lua/data/manifest.lua` | `<Backend>` → `manifest.backend` `{provider, endpoint, project, database, connected}` |
+| Connection (done) | `lua/data/appwrite/connection.lua` | the person's endpoint, project ID and API key in the Keychain entry `appwrite`; `scripts/appwrite/connect.lua` on a Mac, Settings in Lua Studio |
+| Provisioning (done) | `lua/data/appwrite/provision.lua` | creates the missing database, tables, columns and indexes of the connected project at launch |
 | Schema script (done) | `scripts/appwrite/schema.lua` | an app folder → its `appwrite.json` |
 | Account page (done) | `lua/data/account.lua` | the route of an app's account page: register, sign in, sign out |
 | Release check (done) | `scripts/ipad/bundle.py` `check_backend` | device and release builds refuse `<Backend>` without `project` |
+| Studio preview (left) | `apps/studio/services/Preview.lua` | load the data layer and hand it `ns.appwriteConnection` and the session entries `appwrite.<project>` only |
 
 ### Native HTTP
 
@@ -294,7 +323,7 @@ table (the pattern of orca's `apps/chat/api/mock_transport.lua`):
 `demo/cloud-notes/` is the first app built on it (`demo/notes/` is the
 local three-column notes demo, unrelated) and exercises it end to end:
 headlessly against the mock transport (`tests/cloud_notes.test.lua`), and by
-hand against our development project (its `<Backend>` names no `project`).
+hand against the connected project (its `<Backend>` names no `project`).
 
 It is a manifest app with no controller class: one remote model, `notes`
 (`"private"`, a `list` column); the lists are pages of `app.xml` (Inbox, Work,
@@ -304,10 +333,11 @@ page. It covers loading, empty, loaded, a failed load, a refused write that is
 undone, and anonymous, registered and signed in. It is in
 `tests/examples.test.lua`.
 
-Run by hand before its schema is pushed, it opens an anonymous session in
-LuaStudio, keeps the session in the Keychain and shows Appwrite's answer
-"Database with the requested ID 'cloud-notes' could not be found" under the
-list: the live path works up to the missing tables.
+Run by hand with a connected project, it creates its database and its
+`notes` table there at launch, opens an anonymous session and keeps it in the
+Keychain. Without a connection it does not start and says how to connect.
+Enable anonymous sessions in the project's Auth settings (Appwrite Cloud has
+them on by default).
 
 ## Out of scope for now
 
@@ -320,8 +350,10 @@ list: the live path works up to the missing tables.
 
 ## Decisions
 
-- Our shared project is for development only; shipping builds require the
-  app's own project (above).
+- There is no shared project of ours. Development saves to the person's own
+  connected project, whose key creates the tables; shipping builds require
+  the app's own project (above). An earlier shared "LuaStudio" project was
+  removed for this.
 - Remote rows are loaded by a route's `load` field, not inside `before`:
   `data` stays synchronous, and the page controller owns `state.loading` and
   `state.error` (see "Reading").

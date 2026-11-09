@@ -1,3 +1,4 @@
+local Connection = require("data.appwrite.connection")
 local Device = {}
 local function providerError(status, detail)
 	local hints = {
@@ -38,6 +39,9 @@ function Device.new(ns)
 				end)
 			end,
 		},
+		-- The person's own Appwrite project for apps that keep data online:
+		-- the Keychain entry the framework reads (data.appwrite.connection).
+		appwrite = Connection.keychain(ns),
 		speech = ok and speech or nil,
 		importText = ns.importTextFiles,
 		credentials = {

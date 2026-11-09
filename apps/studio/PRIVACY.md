@@ -28,6 +28,18 @@ unlocked. It is not placed in project files, Git history, or project exports.
 Remove it in Settings to disable subsequent AI requests. New Conversation clears
 the current in-memory conversation. Conversations are not saved across launches.
 
+## Optional Appwrite project
+
+Apps that keep their data online save it to your own
+[Appwrite](https://appwrite.io) project, never to one operated by the developer.
+Settings asks for its endpoint, project ID and an API key you create in the
+Appwrite console. The three are stored in this device's Keychain; the key is not
+placed in project files, Git history, exports or AI requests. It is sent only to
+your Appwrite endpoint, to create the tables an app needs. Data those apps save
+goes to that project under your Appwrite account; see
+[Appwrite's privacy policy](https://appwrite.io/privacy). Remove the connection
+in Settings.
+
 ## Optional GitHub publishing
 
 GitHub is optional and uses your own GitHub personal access token. Connecting

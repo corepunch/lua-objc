@@ -37,14 +37,13 @@
 -- launcher; it still takes its pages, sidebar rows and Go menu from this file.
 --
 -- `<Backend provider="appwrite" />` keeps the remote models' rows online
--- (docs/backend.md). With no `project` it is our development project
--- (lua/data/appwrite/development.lua); an app's own project names both
--- `endpoint` and `project`. `database` is the app folder's name when omitted.
--- `manifest.backend` is then `{provider, endpoint, project, database,
--- development}`; an app without the element has none and stays local.
+-- (docs/backend.md). With no `project` it is the Appwrite project the person
+-- connected on the device (lua/data/appwrite/connection.lua), read at launch;
+-- an app that ships names its own, both `endpoint` and `project`. `database`
+-- is the app folder's name when omitted. `manifest.backend` is then
+-- `{provider, endpoint, project, database, connected}`; an app without the
+-- element has none and stays local.
 local Manifest = {}
-
-local Development = require("data.appwrite.development")
 
 local function fail(message) error("manifest: " .. message, 0) end
 
@@ -66,14 +65,12 @@ function Manifest.backend(attrs)
 		if not (attrs.endpoint or ""):match("^https?://") then
 			fail("<Backend project=\"" .. attrs.project .. "\"> names its endpoint, such as https://fra.cloud.appwrite.io/v1")
 		end
-		backend.project, backend.endpoint, backend.development = attrs.project, attrs.endpoint, false
+		backend.project, backend.endpoint, backend.connected = attrs.project, attrs.endpoint, false
 	else
-		if attrs.endpoint then fail("<Backend> without a project is the development project; it names no endpoint") end
-		if not Development.project then
-			fail("<Backend> without a project needs the development project, "
-				.. "which lua/data/appwrite/development.lua does not name yet; give the app's own project")
+		if attrs.endpoint then
+			fail("<Backend> without a project uses the project connected on the device; it names no endpoint")
 		end
-		backend.project, backend.endpoint, backend.development = Development.project, Development.endpoint, true
+		backend.connected = true
 	end
 	if backend.database ~= nil and not validId(backend.database) then
 		fail("<Backend> database " .. backend.database .. " is not an Appwrite database ID")

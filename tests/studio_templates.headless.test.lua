@@ -24,7 +24,7 @@ for _, state in ipairs(states) do
 	end
 end
 local sheets = {
-	Settings = {keyDraft="",hasKey=false,modelIdDraft="openrouter/free",message=""},
+	Settings = {keyDraft="",hasKey=false,modelIdDraft="openrouter/free",message="",appwriteEndpoint="https://fra.cloud.appwrite.io/v1",appwriteProject="",appwriteKeyDraft="",hasAppwrite=false},
 	Project = {projectName="",templateIndex=0,message=""},
 	Catalog = {title="Templates",items={{title="Blank",detail="Description",icon="app",button="Create",action="newBlank"}}},
 	Export = {projectTitle="Example"},

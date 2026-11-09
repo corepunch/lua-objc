@@ -28,7 +28,7 @@ app:createWindow()
 -- The model.
 t.assertEqual(Notes.remote, "private", "notes are each person's own")
 t.assertEqual(app.manifest.backend.database, "cloud-notes", "the database is the app's folder")
-t.assertEqual(app.manifest.backend.development, true, "the demo saves to our development project")
+t.assertEqual(app.manifest.backend.connected, true, "the demo saves to the project connected on the device")
 
 -- Launch: anonymous session, then the Inbox's notes.
 t.assertEqual(app.refs.notes.rowCount, 0, "nothing is shown before the rows arrive")

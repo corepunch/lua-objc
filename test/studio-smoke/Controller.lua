@@ -16,6 +16,7 @@ function Harness.new()
 			request = function(_, _, _, _, callback) callback({login="octocat",id=1,name="Example Author"}); return function() end end,
 		},
 		credentials = {read = function() return "smoke-test-only" end},
+		appwrite = { load = function() return nil end, save = function() return nil, "not in this test" end, clear = function() return true end },
 		transport = function(payload, _, callback)
 			state.responses = state.responses + 1
 			local response = {content = os.getenv("STUDIO_SMOKE_SCENARIO") == "preview-error" and "The saved source has a runtime error. Undo is available." or "Updated the counter to add two. Try it in the preview."}

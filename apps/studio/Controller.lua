@@ -1,6 +1,7 @@
 local xml = require("ui.xml")
 local Template = require("ui.template")
 local DataModel = require("data.model")
+local Connection = require("data.appwrite.connection")
 local Session = require("apps.studio.services.Session")
 local Catalog = require("apps.studio.services.Catalog")
 local Device = require("apps.studio.services.Device")
@@ -257,8 +258,31 @@ end
 
 function Controller:showSettings()
 	local key = self.device.credentials.read()
+	local appwrite = self.device.appwrite:load()
 	self:showSheet("Settings", {title = "Settings", keyDraft = "", hasKey = key ~= nil,
-		modelIdDraft = self.model.modelId, message = ""})
+		modelIdDraft = self.model.modelId, message = "",
+		appwriteEndpoint = appwrite and appwrite.endpoint or Connection.endpoint,
+		appwriteProject = appwrite and appwrite.project or "", appwriteKeyDraft = "", hasAppwrite = appwrite ~= nil})
+end
+
+-- Saves the Appwrite connection; an empty key field keeps the saved key, so
+-- the endpoint or project can change without typing it again.
+function Controller:saveAppwrite()
+	local data, saved = self.sheetData, self.device.appwrite:load()
+	local key = data.appwriteKeyDraft
+	if not key:match("%S") and saved then key = saved.key end
+	local connection, err = self.device.appwrite:save({endpoint = data.appwriteEndpoint, project = data.appwriteProject, key = key})
+	if connection then
+		data.appwriteEndpoint, data.appwriteProject, data.appwriteKeyDraft, data.hasAppwrite =
+			connection.endpoint, connection.project, "", true
+	end
+	self:updateSheet(connection and "Appwrite project saved in Keychain." or err)
+end
+
+function Controller:clearAppwrite()
+	local ok, err = self.device.appwrite:clear()
+	if ok then self.sheetData.appwriteKeyDraft, self.sheetData.hasAppwrite = "", false end
+	self:updateSheet(ok and "Appwrite connection removed." or err)
 end
 
 function Controller:showNewProject(template)
@@ -440,6 +464,11 @@ function Controller:workspaceActions()
 			if ok then self.sheetData.keyDraft, self.sheetData.hasKey = "", false end
 			self:updateSheet(ok and "Saved API key removed." or err)
 		end,
+		editAppwriteEndpoint = function(text) self.sheetData.appwriteEndpoint = text end,
+		editAppwriteProject = function(text) self.sheetData.appwriteProject = text end,
+		editAppwriteKey = function(text) self.sheetData.appwriteKeyDraft = text end,
+		saveAppwrite = function() self:saveAppwrite() end,
+		clearAppwrite = function() self:clearAppwrite() end,
 		saveModel = function()
 			local ok, err = self.session:setModel(self.sheetData.modelIdDraft)
 			self:updateSheet(ok and "Model saved." or err)

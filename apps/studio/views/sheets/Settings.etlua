@@ -14,6 +14,17 @@
 			<Label text="Model" weight="semibold" />
 			<TextField id="modelId" text="<%= modelIdDraft %>" placeholder="provider/model" accessibilityLabel="OpenRouter model" onChange="editModel" />
 			<Button title="Save Model" action="saveModel" />
+			<Divider />
+			<Label text="Appwrite project" weight="semibold" />
+			<Label text="Apps that keep their data online save it to your own Appwrite project. Create a project at Appwrite Cloud, then an API key with read and write access to databases, tables, columns and indexes. The key creates each app’s tables in your project; it stays in this device’s Keychain and is never sent to OpenRouter, GitHub or exports." lines="0" maxWidth="infinity" color="secondary" />
+			<Link title="Appwrite Cloud" url="https://cloud.appwrite.io" />
+			<TextField id="appwriteEndpoint" text="<%= appwriteEndpoint %>" placeholder="https://fra.cloud.appwrite.io/v1" accessibilityLabel="Appwrite endpoint" onChange="editAppwriteEndpoint" />
+			<TextField id="appwriteProject" text="<%= appwriteProject %>" placeholder="Project ID" accessibilityLabel="Appwrite project ID" onChange="editAppwriteProject" />
+			<TextField id="appwriteKey" text="<%= appwriteKeyDraft %>" secure="true" placeholder="<%= hasAppwrite and 'A key is saved in Keychain' or 'Enter an API key of the project' %>" accessibilityLabel="Appwrite API key" onChange="editAppwriteKey" />
+			<HStack alignment="center">
+				<Button title="Save Appwrite Project" action="saveAppwrite" />
+				<Button title="Remove Connection" action="clearAppwrite" disabled="<%= tostring(not hasAppwrite) %>" />
+			</HStack>
 			<Label text="<%= message %>" color="secondary" lines="0" maxWidth="infinity" />
 		</VStack>
 	</ScrollView>

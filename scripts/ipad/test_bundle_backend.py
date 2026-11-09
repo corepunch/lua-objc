@@ -1,4 +1,4 @@
-"""Offline checks that a build which ships refuses our development project."""
+"""Offline checks that a build which ships refuses the connected project, which needs a key."""
 import importlib.util
 import os
 from pathlib import Path
@@ -20,12 +20,12 @@ def app(directory, manifest=None):
 
 
 class BackendTest(unittest.TestCase):
-    def test_development_project_is_refused(self):
+    def test_connected_project_is_refused(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = app(directory, '<App name="X"><Backend provider="appwrite" /></App>')
             with self.assertRaises(ValueError) as refused:
                 bundle.check_backend(folder)
-            self.assertIn('development project', str(refused.exception))
+            self.assertIn('connected on this device', str(refused.exception))
             self.assertIn('project="<project ID>"', str(refused.exception))
 
     def test_own_project_is_accepted(self):
@@ -40,7 +40,7 @@ class BackendTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             bundle.check_backend(app(directory))
 
-    def test_cloud_notes_saves_to_the_development_project(self):
+    def test_cloud_notes_saves_to_the_connected_project(self):
         with self.assertRaises(ValueError):
             bundle.check_backend(ROOT / 'demo/cloud-notes')
 

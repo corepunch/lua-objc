@@ -4,7 +4,6 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Manifest = require("data.manifest")
-local Development = require("data.appwrite.development")
 
 local function parse(backend)
 	return Manifest.parse(xml.parse('<App name="A">' .. backend .. '<Page id="home" title="Home" /></App>'))
@@ -19,7 +18,7 @@ t.assertEqual(parse("").backend, nil, "an app without <Backend> stays local")
 
 local own = parse('<Backend provider="appwrite" endpoint="https://fra.cloud.appwrite.io/v1" project="69f1c06800389dc6a1a0" database="notes" />').backend
 t.expect(own.provider == "appwrite" and own.project == "69f1c06800389dc6a1a0" and own.database == "notes"
-	and own.endpoint == "https://fra.cloud.appwrite.io/v1" and own.development == false, "an app's own project")
+	and own.endpoint == "https://fra.cloud.appwrite.io/v1" and own.connected == false, "an app's own project")
 
 refuses('<Backend endpoint="https://x/v1" project="p" />', 'provider="appwrite"', "the provider is named")
 refuses('<Backend provider="firebase" />', 'provider="appwrite"', "Appwrite is the provider")
@@ -35,17 +34,12 @@ refuses('<Backend provider="appwrite" project="p" endpoint="https://x/v1" key="s
 refuses('<Backend provider="appwrite" project="p" endpoint="https://x/v1" /><Backend provider="appwrite" project="q" endpoint="https://x/v1" />',
 	"one <Backend>", "an app has one backend")
 refuses('<Backend provider="appwrite" endpoint="https://elsewhere/v1" />', "names no endpoint",
-	"the development project has its own endpoint")
+	"the connected project brings its own endpoint")
 
--- The development project: named in one file, used when no project is given.
-local saved = Development.project
-Development.project = nil
-refuses('<Backend provider="appwrite" />', "development.lua", "without the development project's ID the error says where it goes")
-Development.project = "dev-project"
-local dev = parse('<Backend provider="appwrite" />').backend
-t.expect(dev.project == "dev-project" and dev.endpoint == Development.endpoint and dev.development == true,
-	"no project is the development project")
-Development.project = saved
+-- No project: the person's project connected on the device, read at launch.
+local connected = parse('<Backend provider="appwrite" />').backend
+t.expect(connected.connected == true and connected.project == nil and connected.endpoint == nil,
+	"no project is the project connected on the device")
 
 -- The database defaults to the app's folder.
 local fixture = Manifest.load("tests/fixtures/backend/app.xml")

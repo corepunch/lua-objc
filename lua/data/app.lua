@@ -24,7 +24,9 @@
 -- whose session secret is in the Keychain (`ns.Credentials`, one entry per
 -- project), connected to the models. `options.backend` replaces it (tests
 -- pass one over a recording transport). The account starts when the window
--- is made; pages that load before then wait for it.
+-- is made; pages that load before then wait for it. A `<Backend>` without a
+-- project saves to the person's connected project (data.appwrite.connection)
+-- and, before the account starts, creates the tables its models lack there.
 local ns = require("ns")
 local xml = require("ui.xml")
 local Resources = require("ui.resources")
@@ -35,6 +37,8 @@ local PageController = require("data.pagecontroller")
 local Backend = require("data.backend")
 local Client = require("data.appwrite.client")
 local Account = require("data.appwrite.account")
+local Connection = require("data.appwrite.connection")
+local Schema = require("data.appwrite.schema")
 
 local SHELL = "lua/data/views/Shell.etlua"
 local SIDEBAR = "lua/data/views/Sidebar.etlua"
@@ -125,14 +129,26 @@ end
 -- The backend of a manifest's `<Backend>` over the platform's HTTP, JSON and
 -- Keychain.
 function App.backend(spec)
-	local client = Client.new({endpoint = spec.endpoint, project = spec.project, http = ns.http, decode = ns.json_parse})
-	local entry = "appwrite." .. spec.project
+	local endpoint, project, provision = spec.endpoint, spec.project, nil
+	if spec.connected then
+		local connection, message = Connection.current(ns)
+		if not connection then error(message, 0) end
+		endpoint, project = connection.endpoint, connection.project
+		-- The models of every route are loaded by the time the window is
+		-- made, so the schema is computed then, not here.
+		provision = function(done)
+			connection.provision(Schema.config({project = project, endpoint = endpoint,
+				database = spec.database, models = Model.models}), done)
+		end
+	end
+	local client = Client.new({endpoint = endpoint, project = project, http = ns.http, decode = ns.json_parse})
+	local entry = "appwrite." .. project
 	local account = Account.new(client, {
 		read = function() return ns.Credentials.get(entry) end,
 		write = function(secret) return ns.Credentials.set(entry, secret) end,
 		remove = function() return ns.Credentials.remove(entry) end,
 	})
-	return Backend.new({client = client, account = account, database = spec.database})
+	return Backend.new({client = client, account = account, database = spec.database, provision = provision})
 end
 
 -- The page `id` built from its route, the first time it is asked for.

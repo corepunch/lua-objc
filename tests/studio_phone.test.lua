@@ -120,7 +120,8 @@ local ns = { _documentExists = function() return false end, _documentPath = func
 local root = Root.new({ ns = ns, catalog = catalog,
 	device = { json = { encode = function(v) return v end, decode = function(v) return v end },
 		transport = function(_, _, callback) pending = callback; return function() end end,
-		credentials = { read = function() return key end, save = function(v) key = v; return true end, clear = function() key = nil; return true end } },
+		credentials = { read = function() return key end, save = function(v) key = v; return true end, clear = function() key = nil; return true end },
+		appwrite = { load = function() return nil end, save = function() return nil, "not in this test" end, clear = function() return true end } },
 	sheets = { present = function() end, update = function() end, close = function() end },
 	previewFactory = function() return { render = function() rendered = rendered + 1; return {} end, close = function() end } end })
 root.phone = PhoneController.new(root, ns)
