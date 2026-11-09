@@ -15,7 +15,7 @@ from sign import sign_bundle, sign_store
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts/ipad'))
-from bundle import copy_tree
+from bundle import check_backend, copy_tree
 
 
 def run(*args, **kwargs):
@@ -120,6 +120,7 @@ def compile_assets(record, bundle, sdk):
 
 
 def build(record, version, number):
+    check_backend(Path('apps') / record['app'])
     out = Path('build/release') / record['app']
     if out.exists():
         shutil.rmtree(out)

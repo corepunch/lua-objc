@@ -3,8 +3,9 @@
 Status: agreed design, being built. Done: the HTTP request, the Appwrite
 client (`lua/data/appwrite/`), remote model declarations with their
 schema, `<Backend>` with the development project, and the backend service
-that loads and writes remote rows, the account page and `demo/cloud-notes`.
-Left: the release-build check and a first push of the schema to LuaStudio.
+that loads and writes remote rows, the account page, `demo/cloud-notes`
+and the check that refuses the development project in builds that ship.
+Left: a first push of the schema to LuaStudio.
 The "Pieces" table marks each step; the decisions taken are listed at the
 end.
 
@@ -58,9 +59,11 @@ the app's folder name.
   the project ID go in the manifest; both are public.
 
 The device and release builds (`make ipad`, `make ipad-deploy`,
-`make iphone-deploy` and the App Store packaging) refuse an app whose
-`<Backend>` names no `project`, with a message that says to create one. The
-simulator, `make run` and the streaming iOS host accept it.
+`make iphone-deploy` and `make release-build`/`make release`) refuse an app
+whose `<Backend>` names no `project`, with a message that says to create one
+(`check_backend` in `scripts/ipad/bundle.py`, called for `SDK=iphoneos` and
+by `scripts/release/release.py` for every platform). The simulator,
+`make run` and the streaming iOS host accept it.
 
 An Appwrite API key (needed to create tables) never ships in an app and
 never enters the repository. It lives in the Mac's Keychain and is used only
@@ -256,6 +259,7 @@ column is gone.
 | Development project (done) | `lua/data/appwrite/development.lua` | LuaStudio on Appwrite Cloud Frankfurt, `6af0e3d0002aa438b655` |
 | Schema script (done) | `scripts/appwrite/schema.lua` | an app folder → its `appwrite.json` |
 | Account page (done) | `lua/data/account.lua` | the route of an app's account page: register, sign in, sign out |
+| Release check (done) | `scripts/ipad/bundle.py` `check_backend` | device and release builds refuse `<Backend>` without `project` |
 
 ### Native HTTP
 

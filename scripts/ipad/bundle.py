@@ -7,6 +7,24 @@ import re
 import shutil
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ElementTree
+
+
+def check_backend(app):
+    """A build that ships saves to the app's own Appwrite project.
+
+    A `<Backend>` without `project` uses our development project, whose
+    accounts every app shares (docs/backend.md): fine on the simulator and
+    under `make run`, refused for a device or a release."""
+    manifest = Path(app) / 'app.xml'
+    if not manifest.is_file():
+        return
+    for backend in ElementTree.parse(manifest).getroot().iter('Backend'):
+        if not backend.get('project'):
+            raise ValueError(
+                f'{manifest}: <Backend> uses the development project, which is not for builds that ship. '
+                'Create an Appwrite project for the app and name it: '
+                '<Backend provider="appwrite" endpoint="https://fra.cloud.appwrite.io/v1" project="<project ID>" />')
 
 
 def copy_tree(source, workspace, lua_only=False, runtime_only=False):
@@ -86,6 +104,8 @@ def main():
     args = parser.parse_args()
     try:
         args.app, args.entry = resolve_app_and_entry(args.app, args.entry)
+        if args.sdk == 'iphoneos':
+            check_backend(args.app)
     except ValueError as error:
         parser.error(str(error))
     bundle = Path(args.bundle)
