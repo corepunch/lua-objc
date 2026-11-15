@@ -189,7 +189,7 @@ if game then
 	end
 	t.expect(targets.gate and targets.north and targets.plaque, "the opening links the gate, the path north and the plaque")
 	t.expect(not table.concat(opening.paragraphs, "\n"):find("[[", 1, true), "no markup reaches the page")
-	t.assertEqual(commands(story:linkActions("plaque")), "examine brass plaque,take brass plaque,read brass plaque,pull brass plaque",
+	t.assertEqual(commands(story:linkActions("plaque")), "examine brass plaque,take brass plaque,read brass plaque,move brass plaque",
 		"the plaque offers the verbs the story accepts")
 	story:submit("north")
 	t.assertEqual(story.roomTitle, "Sanitarium Entrance Hall", "walking north enters the hall")
