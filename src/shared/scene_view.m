@@ -182,7 +182,7 @@ static float scene_ease_out_back(float t) {
 		_entries = [NSMutableDictionary dictionary];
 		_heldKeys = [NSMutableSet set];
 		self.scene = [SCNScene scene];
-		self.antialiasingMode = SCNAntialiasingModeMultisampling4X;
+		self.antialiasingMode = SCNAntialiasingModeNone;
 		self.allowsCameraControl = NO;
 		self.preferredFramesPerSecond = kSceneFramesPerSecond;
 	}
