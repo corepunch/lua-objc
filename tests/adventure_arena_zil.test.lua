@@ -26,7 +26,7 @@ if ok then
 	end)
 	t.expect(started, "ZIL runtime starts a game coroutine")
 	if started then
-		t.expect(tostring(opening):find("workshop", 1, true) ~= nil,
+		t.expect(tostring(opening):find("Find the missing key before dawn", 1, true) ~= nil,
 			"Wondertown opening text reaches the Lua UI")
 		local progress = engine:progress()
 		t.assertEqual(progress.score, 0, "runtime reports the game's starting score")

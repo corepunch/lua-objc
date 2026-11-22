@@ -76,6 +76,7 @@ t.assertEqual(opening:match('"actions":(.*)'), observed:match('"actions":(.*)'),
 
 local revealed = choose(function(value, target) return value:match("^examine ") and target == "workbench" end)
 t.expect(revealed:match('"take [^"]-can"'), "examining the hiding place makes its actual object actionable")
+choose(command("examine", "hook"))
 choose(command("take", "string"))
 local inventory = choose(function(value) return value == "inventory" end)
 t.expect(inventory:find('"drop ', 1, true), "a carried object offers drop")
