@@ -12,7 +12,7 @@ import zipfile
 from unittest.mock import patch
 
 from credentials import required_secrets
-from release import apps, build_number, bundle_macos, compile_command, publish, release_version, store_package, upload
+from release import apps, build_number, bundle_macos, compile_command, publish, release_version, store_package
 from bundle import copy_tree, main as bundle_app
 from sign import distribution_identity, profile_entitlements, sign_bundle
 from toolchain import select_xcode
@@ -107,7 +107,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn('DEVICE_FAMILY=2', command)
         self.assertIn('APP_BUNDLE=LuaStudio', command)
         self.assertIn('FILE_SHARING=0', command)
-        self.assertEqual(record['certificateSecret'], 'STUDIO_APPSTORE_CERTIFICATE_P12')
+        self.assertNotIn('certificateSecret', record)
+        self.assertNotIn('profileSecret', record)
         self.assertIn('vendor/libgit2', record['submodules'])
 
     def test_privacy_manifest_is_at_bundle_root_and_replaced_on_reuse(self):
@@ -264,7 +265,6 @@ class ReleaseTests(unittest.TestCase):
                 packaged = plistlib.loads(archive.read('Payload/Test.app/Info.plist'))
                 self.assertEqual(packaged, info)
             self.assertFalse((source / '_CodeSignature').exists())
-            self.assertEqual(plistlib.loads((Path(directory) / 'upload-info.plist').read_bytes()), info)
 
     def test_toolchain_prefers_latest_stable_and_rejects_betas(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -301,10 +301,9 @@ class ReleaseTests(unittest.TestCase):
 
     def test_invalid_or_missing_platform_never_falls_back(self):
         for change in ({'platform': 'watch'}, {'platform': ''}, {'channels': []}, {'profileSecret': ''},
-                       {'appStoreIdVariable': ''}, {'certificateSecret': ''},
-                       {'certificatePasswordSecret': ''}, {'app': '../test'}):
+                       {'certificateSecret': ''}, {'certificatePasswordSecret': ''}, {'app': '../test'}):
             records = apps()
-            records[0].update(change)
+            next(record for record in records if record['app'] == 'adventure-arena').update(change)
             with tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / 'apps.json'
                 path.write_text(json.dumps(records))
@@ -331,7 +330,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_packaging_uses_same_signed_bundle(self):
         with tempfile.TemporaryDirectory() as directory, patch('release.copy_bundle', side_effect=lambda s, d: d), \
-                patch('release.sign_store') as sign, patch('release.run') as run, patch('release.shutil.copy2'):
+                patch('release.sign_store') as sign, patch('release.run') as run:
             source = Path(directory) / 'unsigned/Test.app'
             record = {'platform': 'iphone', 'product': 'Test'}
             artifact = store_package(record, source, '1.2.3', Path('profile'))
@@ -345,35 +344,32 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(artifact.suffix, '.pkg')
             self.assertEqual(run.call_args_list[-2].args[0], 'productbuild')
 
-    def test_validate_precedes_upload_and_private_key_is_removed(self):
-        with tempfile.TemporaryDirectory() as directory:
-            key = Path(directory) / 'key.p8'
-            key.write_text('private-key-fixture')
-            environment = {'APPSTORE_KEY': str(key), 'APPSTORE_KEY_ID': 'KEYID', 'APPSTORE_ISSUER_ID': 'ISSUER',
-                           'APPSTORE_APP_ID': '1234567890'}
-            info = {'CFBundleIdentifier': 'org.luaobjc.test', 'CFBundleVersion': '7.2', 'CFBundleShortVersionString': '1.2.3'}
-            with patch.dict(os.environ, environment), patch('release.run') as run:
-                upload(Path('Test.ipa'), 'iphone', info)
-                validate, transfer = run.call_args_list
-                self.assertIn('--validate-app', validate.args)
-                self.assertIn('--upload-package', transfer.args)
-                self.assertIn('--wait', transfer.args)
-                self.assertIn('7.2', transfer.args)
-                self.assertIn('1234567890', transfer.args)
-                self.assertIn('ios', transfer.args)
-                self.assertIn('Test.ipa', transfer.args)
-                temporary = transfer.kwargs['env']['API_PRIVATE_KEYS_DIR']
-                self.assertFalse(Path(temporary).exists())
-            with patch.dict(os.environ, environment), patch('release.run', side_effect=ValueError('rejected')) as run:
-                with self.assertRaises(ValueError):
-                    upload(Path('Test.ipa'), 'iphone', info)
-                self.assertEqual(run.call_count, 1)
-
     def test_unsigned_artifacts_cannot_be_published(self):
         with patch('release.run') as run:
             with self.assertRaisesRegex(ValueError, 'Missing signed release artifact'):
                 publish([{'app': 'missing-app', 'product': 'Test', 'platform': 'macos', 'channels': ['github']}], '1.2.3')
             run.assert_not_called()
+
+    def test_publishing_uses_github_packages_without_store_only_artifacts(self):
+        version = '1.2.3'
+        with tempfile.TemporaryDirectory() as directory:
+            previous = Path.cwd()
+            try:
+                os.chdir(directory)
+                packages = [Path('build/release') / path for path in (
+                    'diskmap/Diskmap-1.2.3.dmg', 'diskmap/Diskmap-1.2.3.pkg',
+                    'dnb/DrumAndBass-1.2.3.dmg', 'adventure-arena/AdventureArena-1.2.3.ipa')]
+                for package in packages:
+                    package.parent.mkdir(parents=True, exist_ok=True)
+                    package.touch()
+                    package.with_suffix(package.suffix + '.signed').touch()
+                with patch('release.subprocess.run') as gh, patch('release.run') as run:
+                    gh.return_value.returncode = 0
+                    publish(apps(), version)
+                    run.assert_called_once_with('gh', 'release', 'upload', 'v' + version,
+                                                *map(str, packages), '--clobber')
+            finally:
+                os.chdir(previous)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build, package and upload platform-specific releases without Xcode projects."""
+"""Build and package platform-specific releases and publish them to GitHub."""
 import argparse
 import json
 import os
@@ -41,12 +41,9 @@ def apps(path=None):
             raise ValueError('Invalid release channels for ' + slug)
         if record['platform'] != 'macos' and 'appStore' not in channels:
             raise ValueError('iOS releases require App Store signing')
-        if 'appStore' in channels and not record.get('profileSecret'):
-            raise ValueError('Missing profile secret for ' + slug)
-        if 'appStore' in channels and not record.get('appStoreIdVariable'):
-            raise ValueError('Missing App Store ID variable for ' + slug)
-        if 'appStore' in channels and not all(record.get(key) for key in ('certificateSecret', 'certificatePasswordSecret')):
-            raise ValueError('Missing App Store certificate secret names for ' + slug)
+        if 'github' in channels and 'appStore' in channels:
+            if not all(record.get(key) for key in ('profileSecret', 'certificateSecret', 'certificatePasswordSecret')):
+                raise ValueError('Missing distribution signing secret names for ' + slug)
         for plugin in record.get('plugins', []):
             if plugin not in ('StorageScan', 'AudioStream'):
                 raise ValueError('Unsupported macOS release plugin: ' + plugin)
@@ -194,8 +191,6 @@ def store_package(record, source, version, profile):
     bundle = copy_bundle(source, out / 'store' / source.name)
     requested = plistlib.loads(Path(record['entitlements']).read_bytes()) if record.get('entitlements') else None
     sign_store(bundle, record['platform'], profile, requested)
-    plist = bundle / ('Contents/Info.plist' if record['platform'] == 'macos' else 'Info.plist')
-    shutil.copy2(plist, out / 'upload-info.plist')
     if record['platform'] == 'macos':
         identity = os.environ.get('APPSTORE_INSTALLER_IDENTITY', '3rd Party Mac Developer Installer')
         artifact = out / (record['product'] + '-' + version + '.pkg')
@@ -210,30 +205,6 @@ def store_package(record, source, version, profile):
     return artifact
 
 
-def upload_command(artifact, platform, info, validate=False):
-    command = ['xcrun', 'altool', '--validate-app' if validate else '--upload-package', str(artifact),
-               '--platform', 'macos' if platform == 'macos' else 'ios',
-               '--apple-id', os.environ['APPSTORE_APP_ID'], '--bundle-id', info['CFBundleIdentifier'],
-               '--bundle-version', info['CFBundleVersion'],
-               '--bundle-short-version-string', info['CFBundleShortVersionString'],
-               '--api-key', os.environ['APPSTORE_KEY_ID'], '--api-issuer', os.environ['APPSTORE_ISSUER_ID'],
-               '--output-format', 'json']
-    if not validate:
-        command.append('--wait')
-    return command
-
-
-def upload(artifact, platform, info):
-    # altool locates AuthKey_<id>.p8 here; use a disposable directory, never HOME.
-    with tempfile.TemporaryDirectory() as directory:
-        key = Path(directory) / ('AuthKey_' + os.environ['APPSTORE_KEY_ID'] + '.p8')
-        shutil.copyfile(os.environ['APPSTORE_KEY'], key)
-        key.chmod(0o600)
-        environment = dict(os.environ, API_PRIVATE_KEYS_DIR=directory)
-        run(*upload_command(artifact, platform, info, validate=True), env=environment)
-        run(*upload_command(artifact, platform, info), env=environment)
-
-
 def publish(records, version):
     artifacts = []
     for record in records:
@@ -244,7 +215,7 @@ def publish(records, version):
         if not path.is_file() or not path.with_suffix(path.suffix + '.signed').is_file():
             raise ValueError('Missing signed release artifact: ' + str(path))
         artifacts.append(str(path))
-        # Store packages are downloadable too, and are the exact upload input.
+        # Include the signed Store package when the app has one.
         package = path.with_suffix('.pkg')
         if package.is_file() and package.with_suffix('.pkg.signed').is_file():
             artifacts.append(str(package))
@@ -260,7 +231,7 @@ def publish(records, version):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('matrix', 'build', 'release', 'publish', 'upload'))
+    parser.add_argument('command', choices=('matrix', 'build', 'release', 'publish'))
     parser.add_argument('--app')
     parser.add_argument('--version')
     parser.add_argument('--build-number', default='1')
@@ -290,16 +261,6 @@ def main():
         if not args.store and not args.unsigned and any(record['platform'] != 'macos' for record in records):
             parser.error('iOS releases require --store and --profile; select --app to release a macOS app')
     for record in records:
-        out = Path('build/release') / record['app']
-        if args.command == 'upload':
-            extension = 'pkg' if record['platform'] == 'macos' else 'ipa'
-            artifact = out / (record['product'] + '-' + version + '.' + extension)
-            if 'appStore' not in record['channels']:
-                continue
-            if not artifact.is_file() or not artifact.with_suffix(artifact.suffix + '.signed').is_file():
-                raise ValueError('Missing signed App Store package: ' + str(artifact))
-            upload(artifact, record['platform'], plistlib.loads((out / 'upload-info.plist').read_bytes()))
-            continue
         source = build(record, version, number)
         if args.command == 'build':
             continue

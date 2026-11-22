@@ -1,6 +1,6 @@
 _G.__headless = true
 local t = require("TestKit")
 
-local result, reason, code = os.execute("python3 -m unittest discover -s scripts/xcode -p 'test_*.py'")
-t.expect(result == true and code == 0, "Xcode generation and native source contracts: " .. tostring(reason))
+local result, reason, code = os.execute("python3 scripts/ipad/test_xcode_project.py")
+t.expect(result == true and code == 0, "Checked-in Xcode project's native source contract: " .. tostring(reason))
 t.summary()

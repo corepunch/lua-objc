@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select a stable Apple toolchain for release builds and uploads."""
+"""Select a stable Apple toolchain for release builds."""
 import os
 from pathlib import Path
 import plistlib

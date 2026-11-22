@@ -367,7 +367,7 @@ diskmap-xcode-build:
 # Releases use the Apple toolchain directly, without Xcode projects.
 VERSION ?=
 BUILD_NUMBER ?= 1
-.PHONY: release release-build publish appstore-upload
+.PHONY: release release-build publish
 RELEASE_FLAGS = --version "$(VERSION)" --build-number "$(BUILD_NUMBER)" $(if $(APP),--app "$(APP)")
 release-build:
 	python3 scripts/release/release.py build $(RELEASE_FLAGS)
@@ -378,22 +378,16 @@ release:
 publish:
 	python3 scripts/release/release.py publish $(RELEASE_FLAGS)
 
-appstore-upload:
-	python3 scripts/release/release.py upload $(RELEASE_FLAGS)
-
 APP ?=
 TARGET ?=
-.PHONY: xcode xcode-generate
-xcode-generate:
-	python3 scripts/xcode/generate.py "$(APP)"
-
+.PHONY: xcode
 xcode:
 	@if [ "$(APP)" = diskmap ] && [ "$(TARGET)" = macos ]; then \
 		open $(DISKMAP_XCODE_PROJECT); \
 	elif [ "$(APP)" = dnb ] && [ "$(TARGET)" = macos ]; then \
 		open apps/dnb/DrumAndBass.xcodeproj; \
 	elif [ "$(APP)" = adventure-arena ] && [ "$(TARGET)" = ios ]; then \
-		$(MAKE) xcode-generate APP=adventure-arena && open apps/adventure-arena/AdventureArena.xcodeproj; \
+		open apps/adventure-arena/AdventureArena.xcodeproj; \
 	else \
 		echo "usage: make xcode APP=diskmap|dnb TARGET=macos, or APP=adventure-arena TARGET=ios" >&2; exit 2; \
 	fi

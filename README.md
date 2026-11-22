@@ -488,23 +488,19 @@ install flow and automatically selects the only available physical iPhone.
 ### Adventure Arena in Xcode
 
 Adventure Arena's native iPhone/iPad project lives beside its app sources:
-`apps/adventure-arena/AdventureArena.xcodeproj`. Generate it with Python, then
-open the shared `AdventureArena` scheme:
+`apps/adventure-arena/AdventureArena.xcodeproj`. Open it and select the shared
+`AdventureArena` scheme:
 
 ```sh
-make xcode-generate APP=adventure-arena
 make xcode APP=adventure-arena TARGET=ios
 ```
 
-The second command regenerates and opens the project. The generator
-(`scripts/xcode/generate.py`) uses stable IDs and preserves signing settings,
-version numbers, and existing shared scheme customizations. Commit the generated
-project, scheme, and shared workspace settings; regenerate when native host sources
-or build settings change. The generator disables automatic scheme creation in the
-shared workspace settings, so no manual sharing setup in Xcode is required.
+Edit the project in Xcode when native host sources or build settings change, and
+commit changes to the project and its shared settings. Set the marketing version
+and build number in Xcode before archiving there.
 Lua, etlua, and app assets are copied on every build. The UIKit API header and
-libgit2 build products live in Xcode's DerivedData. No XcodeGen installation is
-needed. The app's Info.plist and asset catalog also live in its app folder.
+libgit2 build products live in Xcode's DerivedData. The app's Info.plist and asset
+catalog also live in its app folder.
 
 ```sh
 xcodebuild -project apps/adventure-arena/AdventureArena.xcodeproj \
@@ -518,18 +514,16 @@ the Makefiles independently of this optional development project.
 
 ### Releases: GitHub and App Store Connect
 
-[Release apps](.github/workflows/release.yml) builds a tag `v1.2.3` with
-Makefiles and the Apple command-line toolchain. It does not invoke
-`xcodebuild`, read `.xcodeproj` files, or depend on Xcode Cloud.
-The existing Xcode projects are optional development tools. Their Cloud
-workflows can be disabled in App Store Connect after the first successful
-Actions upload; this repository change does not disable those remote workflows.
+[Release apps](.github/workflows/release.yml) builds a tag such as `v1.2.3` with
+Makefiles and the Apple command-line toolchain, then publishes packages to GitHub.
+Upload builds to App Store Connect manually.
 
 Each project declares its platform and channels in
 [`scripts/release/apps.json`](scripts/release/apps.json):
 
 | App | Platform | GitHub release | App Store Connect |
 |---|---|---|---|
+| Lua Studio | iPad, arm64 | — | Locally signed IPA |
 | Diskmap | macOS, arm64 | Notarized DMG and Store PKG | Signed PKG |
 | Drum & Bass | macOS, arm64 | Notarized DMG | Not configured |
 | Adventure Arena | iPhone and iPad, arm64 | Signed IPA | Same IPA |
@@ -545,7 +539,7 @@ Drum & Bass can add the `appStore` channel when its Store record, icon,
 sandbox entitlements and profile are ready.
 
 The runner selects a stable Xcode 26.5+ installation for `clang`, SDKs,
-`actool`, `codesign`, `productbuild`, `notarytool` and `altool`.
+`actool`, `codesign`, `productbuild` and `notarytool`.
 macOS releases embed vendored Lua in AppKit.dylib, with no Homebrew runtime
 dependency. Both delivery channels use copies of the same compiled app:
 Developer ID signing and notarization for a DMG; distribution signing with
@@ -567,29 +561,16 @@ Configure repository **Actions secrets** (binary files are base64 encoded):
 | `APPSTORE_CERTIFICATE_PASSWORD` | Its export password (omit for an empty password) |
 | `APPSTORE_INSTALLER_P12` | 3rd Party Mac Developer Installer certificate and private key, `.p12`, for Store PKGs |
 | `APPSTORE_INSTALLER_PASSWORD` | Its export password (omit for an empty password) |
-| `APPSTORE_KEY_P8` | App Store Connect team API key `.p8`, authorized to upload builds |
-| `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID` | That key's ID and issuer UUID |
 | `DISKMAP_APPSTORE_PROFILE` | Diskmap macOS App Store provisioning profile |
 | `ADVENTURE_ARENA_APPSTORE_PROFILE` | Adventure Arena iOS App Store provisioning profile |
 
-The notary and upload key may be the same team API key with suitable access;
-set both secret groups explicitly. A Developer ID certificate cannot sign
-an App Store app. GitHub secret values cannot be read back; only their names
-can be inspected. No `.p12`, `.p8` or private key goes into a release artifact.
-
-Configure **Actions variables**, containing each app's numeric Apple ID
-from App Store Connect → App Information:
-`DISKMAP_APPSTORE_ID` and `ADVENTURE_ARENA_APPSTORE_ID`.
-The manifest's `appStoreIdVariable` selects the appropriate variable.
-
 Push a `v1.2.3` tag after committing the release sources and submodule
-revisions. Actions builds each declared platform, attaches signed packages
-to the GitHub release and validates/uploads the Store packages. Missing
-credentials fail with their names; a release never silently omits a Store
-upload. For a credential-free check, dispatch **Release apps** with an
-existing tag and `buildOnly=true`; it retains builds only in Actions.
+revisions. Actions builds the apps with the `github` channel and attaches signed
+packages to the GitHub release. To check builds for all declared platforms
+without signing credentials, dispatch **Release apps** with an existing tag and
+`buildOnly=true`. The workflow keeps those builds as Actions artifacts.
 
-Local commands use the same pipeline:
+The same build and packaging commands work locally:
 
 ```sh
 make release-build APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1
@@ -599,19 +580,16 @@ make release APP=diskmap VERSION=1.2.3 BUILD_NUMBER=123.1
 # Also installed Apple Distribution and Mac Installer identities:
 make release APP=diskmap VERSION=1.2.3 BUILD_NUMBER=123.1 STORE=1 PROFILE=/path/to/diskmap.provisionprofile
 make release APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1 STORE=1 PROFILE=/path/to/arena.mobileprovision
-# APPSTORE_KEY is a .p8 path; APPSTORE_KEY_ID, APPSTORE_ISSUER_ID and APPSTORE_APP_ID are required:
-make appstore-upload APP=adventure-arena VERSION=1.2.3
 make publish VERSION=1.2.3
 ```
 
-Upload acceptance is followed by Apple's processing. Uploading does not
-submit an App Review request or enroll external testers automatically.
+For a manual upload, use `asc builds upload` with `--ipa` for iOS or `--pkg`
+for macOS and the app's App Store Connect ID.
 Adventure Arena's Store record is **Elsewhere: Text Adventures**; its
 **Public Beta** invitation remains https://testflight.apple.com/join/dvkhrmXh.
 External testing still requires the applicable Beta App Review.
 
-Apple documents [command-line build uploads](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
-and [Mac Store package signing](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
+Apple documents [Mac Store package signing](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
 
 ### Adventure Arena tour screenshots
 

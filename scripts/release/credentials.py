@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import only the signing/upload secrets needed by this app's platform."""
+"""Import signing and notarization credentials for GitHub release packages."""
 import base64
 import os
 from pathlib import Path

@@ -199,13 +199,7 @@ The current contact was reused from the owner's existing App Store app.
 The distribution private key and profile are preserved locally in
 `build/signing/studio/` and the signing identity is installed in the login
 Keychain. Keep an encrypted backup of this signing material before removing
-build outputs. For CI, use GitHub Actions secrets for signing assets and the API
-key. Never commit their contents. The release catalog names the Studio-specific
-secrets `STUDIO_APPSTORE_CERTIFICATE_P12`, `STUDIO_APPSTORE_CERTIFICATE_PASSWORD`,
-and `STUDIO_APPSTORE_PROFILE`, plus the variable `STUDIO_APPSTORE_ID`. The shared
-release workflow reads the certificate names per app so Studio's new identity
-does not replace another app's signing identity. These CI secrets are not
-configured by the local Fastlane preparation.
+build outputs. Studio's App Store packages are signed and uploaded locally.
 
 ### Release validation
 

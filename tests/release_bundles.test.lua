@@ -3,7 +3,7 @@ local t = require("TestKit")
 
 -- Offline signing and packaging contracts run through make test as well as CI.
 local result, reason, code = os.execute("python3 -m unittest discover -s scripts/release -p 'test_*.py'")
-t.expect(result == true and code == 0, "platform builds, Store signing, packaging and upload contracts: " .. tostring(reason))
+t.expect(result == true and code == 0, "platform builds, signing, packaging and GitHub publishing: " .. tostring(reason))
 
 local function read(path)
 	local file = assert(io.open(path, "r"))
