@@ -1,6 +1,0 @@
-<% for _, range in ipairs(ranges or {}) do %>
-<Bold location="<%= range.location %>" length="<%= range.length %>" />
-<% end %>
-<% for _, range in ipairs(quoteRanges(paragraph)) do %>
-<Italic location="<%= range.location %>" length="<%= range.length %>" />
-<% end %>

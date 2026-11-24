@@ -20,7 +20,7 @@ local function engine()
 		start = function()
 			return {
 				resume = function(_, command)
-					if command == "north" then return "Cellar\nA damp cellar. “[[door]]”" end
+					if command == "north" then return "Cellar\nA damp cellar. “[[door]]” swings open." end
 					if command == "look" then return longAnswer end
 					return "Response " .. command
 				end,
@@ -38,7 +38,7 @@ local function after(_, callback) table.insert(timers, callback) end
 local function finishTimers()
 	while #timers > 0 do table.remove(timers, 1)() end
 end
-Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
+Store.new { games = { { id = "zork", title = "Zork", author = "Infocom", description = "A story." } } }
 local controller = SessionController.new {
 	model = model,
 	push = function(_, data)
@@ -69,6 +69,20 @@ local function fromTop()
 	return scroll.documentView.frame.size.height - scroll.contentSize.height - scroll.contentView.bounds.origin.y
 end
 resizePage(220)
+local titlePage = controller.transcript.refs
+t.assertEqual(titlePage.gameAuthor.text, "Infocom", "the title page names the studio")
+t.assertEqual(titlePage.gameAuthor.frameInWindow.origin.x, titlePage.synopsis.frameInWindow.origin.x,
+	"the studio starts at the text column")
+t.assertEqual(titlePage.gameTitle.frameInWindow.origin.x, titlePage.synopsis.frameInWindow.origin.x,
+	"the book title starts at the text column")
+t.assertEqual(#titlePage.titlePage.subviews, 3, "the title page has only studio, title and synopsis")
+local authorFrame = titlePage.gameAuthor.frameInWindow
+local titleFrame = titlePage.gameTitle.frameInWindow
+local synopsisFrame = titlePage.synopsis.frameInWindow
+t.assertEqual(authorFrame.origin.y - titleFrame.origin.y - titleFrame.size.height, 10,
+	"the studio stays close to the book title")
+t.assertEqual(titleFrame.origin.y - synopsisFrame.origin.y - synopsisFrame.size.height, 18,
+	"the synopsis is separated from the title")
 t.expect(scroll.contentSize.height > 0 and scroll.documentView.frame.size.height > scroll.contentSize.height,
 	"the opening is taller than the page")
 t.assertEqual(fromTop(), 0, "a new story opens at its title page")
@@ -104,11 +118,23 @@ t.assertEqual(controller.transcript.refs.sceneTitle_1.text, "Zork", "a scene ope
 
 -- A room heading and a prose response use the same gap after a command.
 controller:submitCommand("north")
-finishTimers()
 local cellar = model:entryCount()
 t.assertEqual(controller.transcript.refs["sceneTitle_" .. cellar].text, "Cellar", "the move opens a scene")
-local quote = controller.transcript.refs["paragraph_" .. cellar .. "_1"]
-local attrs = require("AppKitNative")._paragraphAttributes(quote, 16)
+local prefix = "paragraph_" .. cellar .. "_1"
+local prose = controller.transcript.refs[prefix]
+local quote = controller.transcript.refs[prefix .. "_2"]
+local following = controller.transcript.refs[prefix .. "_3"]
+t.assertEqual(prose.text, "A damp cellar.", "prose stops before the quote")
+t.assertEqual(quote.text, "door", "the quotation gets its own paragraph without outer marks")
+t.assertEqual(following.text, "swings open.", "prose continues below the quote")
+t.assertEqual(quote.font.pointSize, prose.font.pointSize + 2, "quotes are two points larger")
+t.expect(quote.frameInWindow.origin.x > prose.frameInWindow.origin.x, "quotes are indented")
+t.assertEqual(quote.revealedCharacters, 0, "quotes wait for the prose before them to type")
+t.assertEqual(following.revealedCharacters, 0, "following prose waits for the quote to type")
+finishTimers()
+t.assertEqual(quote.revealedCharacters, -1, "the quote is fully revealed")
+t.assertEqual(following.revealedCharacters, -1, "the following prose is fully revealed")
+local attrs = require("AppKitNative")._paragraphAttributes(quote, 0)
 t.expect(attrs.italic and attrs.bold, "a quoted story link is rendered in bold italic")
 t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
 	controller.transcript.refs.entry_3.paddingTop, "the heading uses the same command gap as prose")

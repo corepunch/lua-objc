@@ -1,6 +1,7 @@
 _G.__headless = true
 
 local t = require("TestKit")
+local jsonParse = require("AppKit").json_parse
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Store = require("apps.adventure-arena.Store")
@@ -24,6 +25,11 @@ local reviews = 0
 for _, game in ipairs(catalog:all()) do
 	reviews = reviews + #game.reviews
 	t.expect(#game.description > 0, "source description for " .. game.id)
+	local storyFolder = game.id:gsub("%.", "/", 1)
+	local manifest <close> = assert(io.open("apps/adventure-arena/zilscript/" .. storyFolder .. "/game.json", "r"))
+	local story = jsonParse(manifest:read("*a"))
+	t.assertEqual(game.shortDescription, story.shortDescription, "card summary matches the story manifest for " .. game.id)
+	t.assertEqual(game.description, story.description, "synopsis matches the story manifest for " .. game.id)
 end
 t.assertEqual(reviews, 0, "bundled catalog contains no unsourced reader feedback")
 t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery")

@@ -1,0 +1,15 @@
+<%
+  local QUOTE = { inset = 20, sizeIncrease = 2 }
+  local synopsis = id == "synopsis"
+  for part, block in ipairs(blocks) do
+    local ref = blockKey(id, part)
+    local shown = reveal[ref] or -1
+    local alignment = (synopsis or block.quoted) and "leading" or reading.alignment
+    local size = reading.fontSize + (block.quoted and QUOTE.sizeIncrease or 0)
+%>
+<Paragraph id="<%= ref %>" text="<%= block.text %>" size="<%= size %>" design="<%= reading.font %>" italic="<%= tostring(block.quoted) %>" color="<%= reading.primary %>" lineSpacing="<%= reading.lineSpacing %>" alignment="<%= alignment %>" hyphenation="<%= tostring(alignment == "justified") %>" revealedCharacters="<%= shown %>" maxWidth="infinity"<% if block.quoted then %> paddingLeading="<%= QUOTE.inset %>"<% end %>>
+  <% for _, range in ipairs(block.ranges) do %>
+  <Bold location="<%= range.location %>" length="<%= range.length %>" />
+  <% end %>
+</Paragraph>
+<% end %>
