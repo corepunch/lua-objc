@@ -24,6 +24,8 @@ Store.new { games = games }
 local library = Adventures
 
 local shelves = library:shelves()
+t.assertEqual(#shelves, 3, "unused collections never produce empty shelves")
+t.assertEqual(#library:genreShelves(), 0, "an uncategorized catalog has no empty genre shelves")
 t.assertEqual(shelves[1].title, "Infocom Classics", "shelves follow the catalog's editorial order")
 local total = 0
 for _, shelf in ipairs(shelves) do
@@ -33,8 +35,8 @@ for _, shelf in ipairs(shelves) do
 end
 t.assertEqual(total, 30, "every game appears on exactly one shelf")
 t.assertEqual(shelves[1].count, 18, "shelf counts include games beyond the carousel")
-t.assertEqual(#library:collection("Infocom Classics"), 18, "See All lists the whole collection")
-t.assertEqual(#library:collection("Victorian Mystery"), 6, "genres are browsable collections too")
+t.assertEqual(#library:collection("Infocom Classics"), 18, "the heading opens the whole collection")
+t.assertEqual(#library:collection("Victorian Mystery"), 0, "a genre alone does not open a collection")
 t.assertEqual(#library:collection("Nothing"), 0, "unknown collections are empty")
 
 local top = library:topRated()
@@ -76,7 +78,22 @@ local realShelves = {}
 for _, shelf in ipairs(real:shelves()) do realShelves[shelf.title] = shelf.count end
 t.assertEqual(realShelves["The Zork Trilogy"], 3, "the Zork trilogy shares a shelf")
 t.assertEqual(realShelves["Infocom Classics"], 3, "classic Infocom titles share a shelf")
-t.assertEqual(realShelves["Arena Originals"], 6, "studio titles share a shelf")
+t.assertEqual(realShelves["Arena Originals"], 12, "studio titles share a shelf")
+local genresByTitle = {
+	["Children's"] = {"books.wondertown", "books.pocket-weather", "books.bell-grew-leaves", "books.borrowed-tomorrows"},
+	["Detective"] = {"books.limehouse-killings", "books.last-broadcast", "books.the-midnight-ledger"},
+	["Sci-Fi"] = {"infocom.planetfall", "books.silent-vector", "books.museum-unsent-signals", "books.station-minus-one"},
+}
+t.assertEqual(#real:genreShelves(), 3, "the current catalog fills all three genre shelves")
+for _, shelf in ipairs(real:genreShelves()) do
+	local expected = genresByTitle[shelf.title]
+	local filtered = real:collection(shelf.title)
+	t.assertEqual(#filtered, #expected, "the heading opens every book for " .. shelf.title)
+	for index, id in ipairs(expected) do
+		t.assertEqual(shelf.games[index].id, id, "the shelf displays the expected book")
+		t.assertEqual(filtered[index].id, id, "the filter matches the shelf")
+	end
+end
 t.assertEqual(real:related("infocom.zork1")[1].id, "infocom.zork2", "Zork I suggests the rest of the trilogy")
 t.assertEqual(#real:search("zork"), 3, "searching Zork finds the trilogy")
 

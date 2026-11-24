@@ -69,9 +69,8 @@ function Controller:show(id, fresh)
 		return false
 	end
 	self:cancelDictation()
-	self.hideTextInput = game.hideTextInput == true
 	self.speech = nil
-	local speechAvailable = self.speechModule ~= nil and not self.hideTextInput
+	local speechAvailable = self.speechModule ~= nil
 	if speechAvailable then
 		self.speech = self.speechModule.recognizer(function(state, text, message)
 			self:onSpeechEvent(state, text, message)
@@ -89,7 +88,6 @@ function Controller:show(id, fresh)
 		look = function() self:submitCommand("look") end,
 		inventory = function() self:submitCommand("inventory") end,
 		dictate = function() self:toggleDictation() end,
-		close = function() self:close() end,
 		readingSettings = function() self:showReadingSettings() end,
 	}
 	local presentation = self.model:presentation()
@@ -97,18 +95,19 @@ function Controller:show(id, fresh)
 	self.actions = actions
 	self.draft, self.dictationStatus, self.toast = "", "", nil
 	local pageRefs
-	self.page, pageRefs = self.push("pages/Session", { gameTitle = presentation.gameTitle, hideTextInput = self.hideTextInput, actions = actions })
+	self.page, pageRefs = self.push("pages/Session", {
+		roomTitle = presentation.roomTitle, phone = self.ns.idiom == "phone", actions = actions,
+	})
 	self.reader = self.mountTemplate(pageRefs.reader, "sections/Reader")
 	self.heading = self.mountTemplate(pageRefs.heading, "sections/SessionTitle")
-	if not self.hideTextInput then
-		self.suggestions = self.mountTemplate(pageRefs.suggestions, "sections/Suggestions")
+	if pageRefs.completions then
+		self.completions = self.mountTemplate(pageRefs.completions, "sections/Completions")
 	end
 	self:render()
 	self.transcript = self.mountTemplate(self.refs.transcript, "sections/Transcript")
 	-- A new story types its opening; a resumed one opens at its last line.
 	if not saved then self:beginTyping(1, TYPING.openingDelay) end
 	self:applyReadingSettings()
-	self:renderSuggestions(self.draft)
 	-- A new story is read from its title page; a resumed one from its last line.
 	self:scrollPage(saved and "bottom" or "top", false)
 	self.onProgress()
@@ -118,7 +117,7 @@ end
 -- The page, its running head and its composer, drawn from the session, the
 -- reading settings and the composer state. Every change to them draws again.
 function Controller:readerData()
-	local data = self.model:presentation()
+	local data = {}
 	local settings = ReadingSettings:current():presentation()
 	data.reading = {
 		page = settings.pageColor, primary = settings.primaryTextColor, secondary = settings.secondaryTextColor,
@@ -130,7 +129,7 @@ function Controller:readerData()
 	data.dictation = { status = self.dictationStatus }
 	-- With speech available the microphone stands where Send would, until
 	-- there is something typed to send.
-	data.composer = { hidden = self.hideTextInput == true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
+	data.composer = { verbatim = self.ns.idiom == "phone", dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
 	data.toast = self.toast
 	data.actions = self.actions
 	return data
@@ -140,7 +139,11 @@ function Controller:render()
 	if not self.reader or self.reader:isDisposed() then return end
 	local data = self:readerData()
 	self.refs = select(2, self.reader:update(data))
-	self.heading:update({ gameTitle = data.gameTitle, roomTitle = data.roomTitle, colorScheme = data.reading.colorScheme })
+	local story = self.model:presentation()
+	self.heading:update({
+		roomTitle = story.roomTitle, score = story.score, maxScore = story.maxScore,
+		colorScheme = data.reading.colorScheme,
+	})
 end
 
 function Controller:isOpen()
@@ -171,34 +174,22 @@ end
 function Controller:updateComposer(text)
 	if not self.refs then return end
 	self.draft = type(text) == "string" and text or ""
-	self:render()
-	self:renderSuggestions(self.draft)
-end
-
--- Suggestions follow every keystroke. A whole command ("north", "open
--- mailbox") runs on tap; a completion replaces the composer text so the
--- player can keep typing.
-function Controller:renderSuggestions(text)
-	if not self.suggestions or self.suggestions:isDisposed() then return end
-	local suggestions = self.model:suggestions(type(text) == "string" and text or "")
-	local actions = {}
-	for index, suggestion in ipairs(suggestions) do
-		actions["suggest_" .. index] = function() self:applySuggestion(suggestion) end
+	self.refs = select(2, self.reader:update(self:readerData()))
+	if self.completions then
+		local choices = self.model:suggestions(self.draft)
+		local actions = {}
+		for i, choice in ipairs(choices) do
+			actions["complete" .. i] = function() self:updateComposer(choice.text) end
+		end
+		self.completions:update({ choices = choices, actions = actions })
+		self.completions.host.hidden = #choices == 0
 	end
-	self.currentSuggestions = suggestions
-	self.suggestions:update({ suggestions = suggestions, actions = actions })
-end
-
-function Controller:applySuggestion(suggestion)
-	if not self.refs or type(suggestion) ~= "table" then return false end
-	if suggestion.submit then return self:submitCommand(suggestion.text) end
-	self:updateComposer(suggestion.text)
-	return true
 end
 
 function Controller:renderTranscript()
 	if not self.transcript or self.transcript:isDisposed() then return end
 	local data = self.model:presentation()
+	data.synopsis = self.model.currentGame.description or ""
 	local settings = ReadingSettings:current():presentation()
 	data.reading = {
 		font = settings.font, fontSize = settings.fontSize, lineSpacing = settings.lineSpacing,
@@ -206,42 +197,8 @@ function Controller:renderTranscript()
 		secondary = settings.secondaryTextColor, rule = settings.ruleColor,
 	}
 	data.reveal = self:revealState(data.earlierEntries)
-	data.linkMenus, data.actions = self:linkMenus(data.entries)
 	self.transcriptEarlier = data.earlierEntries
 	return self.transcript:update(data)
-end
-
--- Links are live in the scene the reader stands in: the words of earlier
--- rooms name things that are no longer at hand, so they are set as plain
--- prose. Returns the menus keyed "entry_paragraph", as the Transcript
--- template's paragraph ids are, and the action each menu item runs.
-function Controller:linkMenus(entries)
-	local menus, actions = {}, {}
-	local first = #entries + 1
-	for index = #entries, 1, -1 do
-		first = index
-		if entries[index].kind == "scene" then break end
-	end
-	for index = first, #entries do
-		for paragraph, links in pairs(entries[index].links or {}) do
-			local menu = {}
-			for linkIndex, link in ipairs(links) do
-				local items = {}
-				for itemIndex, action in ipairs(self.model:linkActions(link.target)) do
-					local name = table.concat({ "link", index, paragraph, linkIndex, itemIndex }, "_")
-					actions[name] = function() self:submitCommand(action.command) end
-					table.insert(items, { title = action.title, action = name })
-				end
-				if #items > 0 then
-					table.insert(menu, {
-						location = link.location, length = link.length, label = link.label, items = items,
-					})
-				end
-			end
-			if #menu > 0 then menus[index .. "_" .. paragraph] = menu end
-		end
-	end
-	return menus, actions
 end
 
 -- ── Typing ──────────────────────────────────────────────────────────────
@@ -396,13 +353,13 @@ end
 function Controller:onDisappear()
 	self:cancelDictation()
 	self:finishTyping()
-	for _, name in ipairs({ "transcript", "suggestions", "heading", "reader" }) do
+	for _, name in ipairs({ "transcript", "heading", "reader", "completions" }) do
 		if self[name] then self[name]:dispose() end
 	end
 	self.speech = nil
 	self.refs = nil
 	self.page = nil
-	self.transcript, self.suggestions, self.heading, self.reader, self.currentSuggestions = nil, nil, nil, nil, nil
+	self.transcript, self.heading, self.reader, self.completions = nil, nil, nil, nil
 	self.onProgress()
 end
 
@@ -417,6 +374,7 @@ function Controller:submitCommand(command)
 	self:beginTyping(firstNew)
 	self.dictationStatus = ""
 	self:updateComposer("")
+	self:render()
 	self:renderTranscript()
 	self:scrollToEntry(firstNew)
 	self:announceScore(self.model:presentation().scoreChange)

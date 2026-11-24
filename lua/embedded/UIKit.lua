@@ -778,6 +778,7 @@ function UIKit.TextField(props)
 	field.placeholder = props.placeholder or ""
 	field.borderStyle = (props.style == "plain" or props.bezeled == false) and 0 or 3
 	field.secureTextEntry = props.secure == true
+	if props.verbatim then field.verbatim = true end
 	field.enabled = props.disabled ~= true and props.editable ~= false
 	if props.size then field.font = bridge._font(props.size, props.weight, false, props.design) end
 	if props.color then field.textColor = bridge._systemColor(props.color) end
@@ -1047,8 +1048,7 @@ UIKit.Text = UIKit.Label
 local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified = 3 }
 
 --- Long-form prose set as a book sets it: selectable text with explicit
---- leading, optional hyphenation, and an optional dropped initial that the
---- following lines wrap around. Use `Label` for short text and UI copy.
+--- leading and optional hyphenation. Use `Label` for short text and UI copy.
 --- @tag Paragraph
 --- @prop text string required. The paragraph's text.
 --- @prop size number optional. Body point size; defaults to 17.
@@ -1058,13 +1058,12 @@ local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified =
 --- @prop lineSpacing number optional. Extra points between lines (SwiftUI `lineSpacing`).
 --- @prop alignment string optional. `leading`, `center`, `trailing` or `justified`.
 --- @prop hyphenation boolean optional. Hyphenates long words at line ends.
---- @prop figure string optional. Image beside the first lines, which wrap around it (as Zork Zero set a room's picture beside its description).
---- @prop figureLines number optional. Lines the square figure spans; defaults to 3.
 --- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text, which takes its whole height however little is revealed.
---- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is marked with a thicker dotted underline and opens its menu when tapped.
---- @prop linkColor string optional. Colour of the rule under links; defaults to the tint.
---- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" figure="assets/hall.png" />
---- @platform UIKit non-scrolling UITextView (TextKit 1 exclusion paths). AppKit non-editable NSTextView.
+--- @prop boldRanges table optional. Noninteractive bold spans: `{ location, length }`, counted in Unicode characters from zero. XML uses `<Bold location="0" length="4" />`.
+--- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is bold and opens its menu when tapped.
+--- @prop linkColor string optional. Colour of linked words; defaults to the tint.
+--- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" />
+--- @platform UIKit non-scrolling UITextView. AppKit non-editable NSTextView.
 function UIKit.Paragraph(props)
 	props = props or {}
 	local view = bridge._paragraph(props.text or props[1] or "")
@@ -1075,14 +1074,9 @@ function UIKit.Paragraph(props)
 	if props.hyphenation ~= nil then view.hyphenation = props.hyphenation end
 	if props.alignment then view.textAlignment = PARAGRAPH_ALIGNMENT[props.alignment] or 4 end
 	if props.selectable == false then view.selectable = false end
-	-- The figure is an image view the paragraph floats; it never joins the
-	-- layout tree, so the paragraph alone sizes and places it.
-	if props.figure and props.figure ~= "" then
-		if props.figureLines then view.figureLines = props.figureLines end
-		view.figureView = UIKit.Image { props.figure, contentMode = "fill" }
-	end
 	if props.linkColor then view.linkColor = bridge._systemColor(props.linkColor) end
 	if props.links then bridge._paragraphSetLinks(view, props.links) end
+	if props.boldRanges then view.boldRanges = props.boldRanges end
 	if props.revealedCharacters then view.revealedCharacters = props.revealedCharacters end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	-- Prose fills the column it is given and wraps to it.

@@ -9,6 +9,10 @@ t.expect(src:find("function UIKit.SearchField", 1, true) ~= nil,
 	"UIKit SearchField API exists")
 t.expect(constructors:find("UISearchTextField", 1, true) ~= nil,
 	"UIKit SearchField uses UISearchTextField")
+t.expect(constructors:find("[LuaSearchTextField alloc]", 1, true) ~= nil
+	and constructors:find("MAX(size.height, kSearchFieldMinimumHeight)", 1, true) ~= nil
+	and bridge:find("kSearchFieldMinimumHeight = 48.0;", 1, true) ~= nil,
+	"the native search field has a 48-point intrinsic height floor")
 t.expect(constructors:find("obj.placeholder", 1, true) ~= nil,
 	"UIKit SearchField applies placeholder")
 t.expect(bridge:find('{"_searchField", bridge_UIKitControls_searchField}', 1, true) ~= nil,

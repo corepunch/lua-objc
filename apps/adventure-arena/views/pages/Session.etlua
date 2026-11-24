@@ -1,22 +1,28 @@
 <%
   -- The reader. A page of the book fills the screen; the navigation bar is a
-  -- running head (the story, then the room). The page itself, the running
-  -- head and the completions above the keyboard are retained sections drawn
-  -- from the session state (sections/Reader, sections/SessionTitle,
-  -- sections/Suggestions): a command, a keystroke or a reading setting
+  -- running head (the room, then the score). The page itself, the running
+  -- head are retained sections drawn
+  -- from the session state (sections/Reader, sections/SessionTitle):
+  -- a command, a keystroke or a reading setting
   -- changes the state and they are drawn again.
 %>
-<Page title="<%= gameTitle %>" hidesTabBar="true" titleDisplayMode="inline" backButtonDisplayMode="minimal" onDisappear="disappear">
+<Page title="<%= roomTitle %>" titleDisplayMode="inline" backButtonDisplayMode="minimal" onDisappear="disappear">
 <Toolbar>
-  <ToolbarItem id="sessionHeading" placement="principal" label="<%= gameTitle %>">
+  <ToolbarItem id="sessionHeading" placement="principal" label="<%= roomTitle %>">
     <VStack id="heading" width="230" />
   </ToolbarItem>
-  <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
-  <% if not hideTextInput then %>
-  <ToolbarItem id="suggestionBar" placement="keyboard" label="Suggestions">
-    <VStack id="suggestions" maxWidth="infinity" />
+  <% if phone then %>
+  <ToolbarItem placement="keyboard" label="Command suggestions">
+    <VStack id="completions" maxWidth="infinity" hidden="true" />
   </ToolbarItem>
   <% end %>
+  <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
+  <ToolbarItem id="readingActions" placement="topBarTrailing" label="Book actions">
+    <Menu id="bookCommands" title="" systemImage="ellipsis" accessibilityLabel="Book actions" width="44" height="44">
+      <MenuItem title="Look Around" systemImage="eye" action="look" />
+      <MenuItem title="Inventory" systemImage="bag" action="inventory" />
+    </Menu>
+  </ToolbarItem>
 </Toolbar>
 <VStack id="reader" maxWidth="infinity" maxHeight="infinity" />
 </Page>

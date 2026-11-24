@@ -1,5 +1,6 @@
 <ScrollView id="settingsScroll">
   <VStack paddingHorizontal="20" paddingTop="4" paddingBottom="32" spacing="20" alignment="leading" maxWidth="infinity">
+    <%- partial("../sections/GamesInProgress.etlua", { entries = entries }) %>
     <Label text="How every story is set. You can also change these while reading with the text button at the top of the page." size="15" color="secondary" lines="0" />
     <VStack id="readingOptions" maxWidth="infinity" />
     <VStack spacing="10" alignment="leading" maxWidth="infinity">

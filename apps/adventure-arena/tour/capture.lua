@@ -21,7 +21,7 @@ local Plan = {}
 Plan.BOX = { width = 300, height = 252, scale = 3 }
 
 -- An all-ages Arena Original: its opening is short, and every scene has
--- words the reader can touch.
+-- bold vocabulary the reader can type.
 local STORY = "books.wondertown"
 
 -- One shot per guide page, named by its id. `commands` are played from the

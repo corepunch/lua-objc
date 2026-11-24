@@ -95,6 +95,7 @@ static const CGFloat kSceneSwipeDistance = 24.0;
 static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
 static const CGFloat kMenuArtworkPointSize = 20.0;
+static const CGFloat kSearchFieldMinimumHeight = 48.0;
 static const CGFloat kNavigationSymbolPointSize = 22.0;
 /* Widest proposal for a navigation bar title or custom bar-item view. */
 static const CGFloat kNavigationTitleMaxWidth = 240.0;
@@ -106,13 +107,8 @@ static const CGFloat kSeparatorThickness = 1.0;
 static const CGFloat kScrollTargetFlickVelocity = 0.2;
 /* Space between a paragraph's figure and the text wrapping beside it, and
  * the number of lines the figure spans when the template does not say. */
-static const CGFloat kParagraphFigureGap = 10.0;
-static const NSInteger kParagraphFigureLines = 3;
 static const NSUInteger kParagraphMenuPageActions = 3;
 static const CGFloat kParagraphTapHapticIntensity = 0.75;
-/* How far below the baseline a link's dotted rule sits past the font's own
- * underline position, so descenders do not run into the dots. */
-static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 /* A keyboard toolbar's margins around its items, and the space between
  * them; the horizontal margin matches the floating keyboard's inset. */
 static const CGFloat kKeyboardToolbarHorizontalInset = 12.0;
@@ -279,6 +275,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_paragraph", bridge_UIKitControls_paragraph},
 	{"_paragraphSetLinks", bridge_paragraph_set_links},
 	{"_paragraphLinks", bridge_paragraph_links},
+	{"_paragraphAttributes", bridge_paragraph_attributes},
 	{"_testParagraphEditMenu", bridge_test_paragraph_edit_menu},
 	{"_paragraphPerformLink", bridge_paragraph_perform_link},
 	{"_hasLayoutAxis", bridge_has_layout_axis},

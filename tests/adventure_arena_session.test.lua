@@ -142,10 +142,9 @@ t.expect(tracked:submit("solve"), "tracked session accepts a command")
 t.assertEqual(tracked:presentation().progress, "Score 5 of 20 · 3 moves", "commands refresh live engine progress")
 tracked:submit("take plaque")
 t.assertEqual(#tracked.items, 1, "objects that left the room are no longer visible")
-t.assertEqual(#tracked.knownItems, 2, "objects seen earlier stay suggestible")
 local chips = {}
 for _, chip in ipairs(tracked:suggestions("read ")) do table.insert(chips, chip.title) end
-t.assertEqual(table.concat(chips, ","), "plaque", "suggestions use the remembered objects")
+t.assertEqual(table.concat(chips, ","), "", "suggestions exclude objects that left the room")
 
 t.assertEqual(tracked.scoreChange, 0, "a command without points announces nothing")
 t.assertEqual(tracked:presentation().progressFraction, 5 / 20, "progress is the share of the maximum score")

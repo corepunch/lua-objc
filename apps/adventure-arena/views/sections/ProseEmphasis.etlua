@@ -1,0 +1,3 @@
+<% for _, range in ipairs(ranges or {}) do %>
+<Bold location="<%= range.location %>" length="<%= range.length %>" />
+<% end %>

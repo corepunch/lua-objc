@@ -5,7 +5,6 @@ local Routes = require("data.routes")
 
 return Routes.include(
 	"apps.adventure-arena.pages.Discover",
-	"apps.adventure-arena.pages.Bookshelf",
 	"apps.adventure-arena.pages.Search",
 	"apps.adventure-arena.pages.Settings",
 	"apps.adventure-arena.pages.Detail",

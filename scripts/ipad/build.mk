@@ -13,7 +13,7 @@ PROFILE ?=
 IPAD_DEVICE ?=
 DEVICE_TYPE ?= iPad
 APP_ENTRY ?= $(APP_DIR)/init.lua
-APP_DISPLAY_NAME ?= $(if $(filter studio,$(APP)),Lua Studio,$(if $(filter adventure-arena,$(APP)),Adventure Arena,$(APP)))
+APP_DISPLAY_NAME ?= $(if $(filter studio,$(APP)),Lua Studio,$(if $(filter adventure-arena,$(APP)),Elsewhere,$(APP)))
 APP_BUNDLE ?= $(if $(filter studio,$(APP)),LuaStudio,$(APP))
 # Studio runs on iPhone and iPad; the other bundled apps are iPad apps.
 ifeq ($(APP),studio)
@@ -22,7 +22,7 @@ else
 DEVICE_FAMILY ?= 2
 endif
 FILE_SHARING ?= 1
-DEPLOY_DEVICE := $(IPAD_DEVICE)
+DEPLOY_DEVICE := $(if $(filter iPhone,$(DEVICE_TYPE)),$(DEVICE),$(IPAD_DEVICE))
 SDK_PATH := $(shell xcrun --sdk $(SDK) --show-sdk-path)
 ROOT := build/ipad/$(SDK)-$(ARCH)
 BUNDLE := $(ROOT)/$(APP_BUNDLE).app

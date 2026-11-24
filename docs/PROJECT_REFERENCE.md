@@ -810,14 +810,11 @@ chapter labels. Faces without small capitals keep their lowercase.
 
 `Label` is for UI text. `Paragraph` sets prose as a book does: selectable (for
 Look Up and copy), with explicit leading, optional justification and
-hyphenation, and an optional **figure**: a square picture at the leading
-edge that the first lines wrap around, as Zork Zero set each room's picture
-beside its description.
+hyphenation.
 
 ```xml
 <Paragraph text="You are standing in an open field…" size="18" design="serif"
-  lineSpacing="6" alignment="justified" hyphenation="true"
-  figure="books/blackwood-horror/icons/gate.png" figureLines="3" />
+  lineSpacing="6" alignment="justified" hyphenation="true" />
 ```
 
 | Attribute | Meaning |
@@ -827,18 +824,12 @@ beside its description.
 | `lineSpacing` | extra points between lines (SwiftUI `lineSpacing`) |
 | `alignment` | `leading`, `center`, `trailing` or `justified` |
 | `hyphenation` | hyphenates at line ends (use with `justified`) |
-| `figure`, `figureLines` (default 3) | an image path set as a square N lines tall beside the first lines |
 | `revealedCharacters` | typewriter reveal: characters shown so far, counted as `utf8.len` counts them; `-1` (default) shows everything |
 | `linkColor` | colour of linked words and the thicker dotted rule under them; defaults to the tint |
 | `<Hyperlink location length label>` children | the words a reader can act on; see **Links** below |
 
-The figure runs from the first line's top to the `figureLines`th line's
-bottom and is as wide as it is tall, filled by its image; exactly those lines
-wrap beside it, keeping a gap, and a shorter paragraph still reserves them.
-The figure is an image view the paragraph places itself (`view.figureView`);
-it never joins the layout tree. It appears with the first revealed character.
 Empty text takes no space. Implementation: a non-scrolling `UITextView` / non-editable
-`NSTextView` on TextKit 1 with `NSTextContainer.exclusionPaths`
+`NSTextView` on TextKit 1
 (`src/uikit/paragraph.m`, `src/appkit/paragraph.m`).
 
 **Links.** `<Hyperlink>` children mark runs of the text the reader can act

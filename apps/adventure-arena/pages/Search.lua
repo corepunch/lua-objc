@@ -7,16 +7,12 @@ return {
 		view = "sections/SearchResults",
 		init = function(self) self.query = "" end,
 		data = function(self)
-			local origin = self.params.origin
-			local results, genres = Adventures:search(self.query), Adventures:genres()
+			local results = Adventures:search(self.query)
 			local handlers = {}
 			for index, game in ipairs(results) do
-				handlers["result_" .. index] = function() self:flow("Opening"):game(game.id, origin) end
+				handlers["result_" .. index] = function() self:flow("Opening"):game(game.id) end
 			end
-			for index, genre in ipairs(genres) do
-				handlers["genre_" .. index] = function() self:flow("Opening"):collection(genre.title, origin) end
-			end
-			return { query = self.query, results = results, genres = genres, handlers = handlers }
+			return { query = self.query, results = results, handlers = handlers }
 		end,
 		search = function(self, text) self.query = tostring(text or ""):match("^%s*(.-)%s*$") end,
 	},

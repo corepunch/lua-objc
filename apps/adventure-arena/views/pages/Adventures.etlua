@@ -1,8 +1,5 @@
 <%
-  -- Discover: an editorial storefront in the manner of the App Store and
-  -- Apple Books. A carousel of featured cards, the stories in progress, short
-  -- labelled shelves, a chart and genre tiles; every band stays short, so 30
-  -- titles remain browsable without an endless grid.
+  -- Featured stories, category shelves and the chart share the same side insets.
   local PAGE = { side = 16, band = 30, heading = 10 }
 %>
 <% if #games == 0 then %>
@@ -21,9 +18,8 @@
       </HStack>
     </ScrollView>
     <% end %>
-    <VStack id="continueShelf" maxWidth="infinity" />
     <% for index, shelf in ipairs(shelves) do %>
-    <%- partial("../sections/Shelf.etlua", { shelf = shelf, index = index }) %>
+    <%- partial("../sections/Shelf.etlua", { shelf = shelf, index = index, sideInset = PAGE.side }) %>
     <% end %>
     <% if #topRated > 0 then %>
     <VStack paddingTop="<%= PAGE.band %>" paddingHorizontal="<%= PAGE.side %>" spacing="2" alignment="leading" maxWidth="infinity">
@@ -34,12 +30,6 @@
         <%- partial("../components/GameRow.etlua", { game = entry.game, rank = entry.rank, action = "chart_" .. index, id = "chartRow_" .. index, divider = index < #topRated }) %>
         <% end %>
       </VStack>
-    </VStack>
-    <% end %>
-    <% if #genres > 0 then %>
-    <VStack paddingTop="<%= PAGE.band %>" paddingHorizontal="<%= PAGE.side %>" spacing="<%= PAGE.heading + 2 %>" alignment="leading" maxWidth="infinity">
-      <Label text="Browse by Genre" size="22" weight="bold" />
-      <%- partial("../sections/GenreGrid.etlua", { genres = genres }) %>
     </VStack>
     <% end %>
   </VStack>

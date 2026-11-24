@@ -83,8 +83,8 @@ t.expect(pages.interactive.title:find("play", 1, true) and pages.interactive.det
 	"the second page says how this differs from a printed book")
 t.expect(pages.interactive.detail:find("saved after every move", 1, true) ~= nil, "and that the reader's place is kept")
 t.assertEqual(#pages.read.rows, 3, "reading a page has three parts: the heading, the reader's moves, the links")
-t.assertEqual(#pages.play.rows, 4, "a touch reader has four ways to act")
-t.expect(pages.play.rows[2].title:find("suggestion", 1, true) ~= nil, "one of them is the suggestion bar")
+t.assertEqual(#pages.play.rows, 3, "play explains typing, completion and book actions")
+t.expect(pages.play.rows[2].title:find("suggestions", 1, true) ~= nil, "the phone guide explains tappable game suggestions")
 for _, row in ipairs(pages.play.rows) do
 	t.expect(#row.symbol > 0 and #row.title > 0 and #row.detail > 0, row.title .. " has a symbol and a line of help")
 end
@@ -97,11 +97,12 @@ end
 -- screenshot, and the pages speak of clicking.
 local mac = Onboarding.new(nil, { touch = false })
 mac.step = "read"
-t.expect(mac:page().rows[3].detail:find("Click", 1, true) ~= nil, "a Mac reader clicks an underlined word")
+t.expect(not mac:page().rows[3].detail:find("Click", 1, true), "bold prose is not presented as clickable")
+t.expect(mac:page().rows[3].title:find("Bold", 1, true) ~= nil, "the tour explains bold vocabulary")
 mac.step = "play"
 local macPlay = mac:page()
 t.expect(macPlay.image == nil, "a Mac does not show the phone keyboard")
-t.assertEqual(#macPlay.rows, 3, "and does not offer the keyboard's suggestion bar")
+t.assertEqual(#macPlay.rows, 2, "desktop teaches plain typing and book actions")
 for _, row in ipairs(macPlay.rows) do
 	t.expect(not (row.title .. row.detail):lower():find("tap", 1, true), "no Mac row speaks of tapping: " .. row.title)
 end
@@ -254,7 +255,7 @@ assertLegend(3, "how to read a page")
 tap("next")
 t.assertEqual(tour.model.step, "play", "Continue reaches how to play")
 t.expect(tour.refs.shot_play ~= nil, "a phone sees the keyboard and its suggestions")
-assertLegend(4, "how to play")
+assertLegend(3, "how to play")
 tap("back")
 t.assertEqual(tour.model.step, "read", "Back returns to the previous page")
 tap("next")
@@ -341,6 +342,7 @@ local function nativeButton(view)
 		if button then return button end
 	end
 end
+app.pages:data("discover").actions.openSettings()
 local howToPlay = app.pages:refs("settings").howToPlay and nativeButton(app.pages:refs("settings").howToPlay)
 t.expect(howToPlay ~= nil, "Settings offers How to Play")
 t.assertEqual(howToPlay.title, "How to Play", "by name")

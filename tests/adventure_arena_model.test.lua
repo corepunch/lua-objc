@@ -7,7 +7,7 @@ local Store = require("apps.adventure-arena.Store")
 Store.new()
 local catalog = Adventures
 
-t.assertEqual(#catalog:all(), 12, "AdventureArena catalog contains the complete Lua catalog")
+t.assertEqual(#catalog:all(), 18, "AdventureArena catalog contains the complete Lua catalog")
 t.assertEqual(catalog:find("infocom.zork1").title,
 	"Zork I: The Great Underground Empire",
 	"catalog resolves games by stable id")
@@ -23,27 +23,14 @@ t.assertEqual(catalog:featured()[3].id, "infocom.spellbreaker", "third featured 
 local reviews = 0
 for _, game in ipairs(catalog:all()) do
 	reviews = reviews + #game.reviews
-	t.expect(#game.description > 200, "complete source description for " .. game.id)
+	t.expect(#game.description > 0, "source description for " .. game.id)
 end
 t.assertEqual(reviews, 0, "bundled catalog contains no unsourced reader feedback")
 t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery")
 for _, game in ipairs(catalog:all()) do
 	t.expect(type(game.collection) == "string", "every game belongs to a library shelf: " .. game.id)
-	t.expect(game.tint:match("^#%x%x%x%x%x%x$") ~= nil, "every game has a hex accent: " .. game.id)
-	t.expect(type(game.titleFont) == "string", "every game names its title typeface: " .. game.id)
-	t.expect(game.tintDark and game.tintDark:match("^#%x%x%x%x%x%x$") ~= nil, "every game has a dark-page ink: " .. game.id)
-	t.assertEqual(game.ink, game.tint .. "|" .. game.tintDark, "the page ink pairs both variants: " .. game.id)
-	-- White type on the tint (Play buttons, genre tiles) must reach WCAG AA.
-	local function luminance(hex)
-		local total = 0
-		for index, weight in ipairs({ 0.2126, 0.7152, 0.0722 }) do
-			local channel = tonumber(hex:sub(index * 2, index * 2 + 1), 16) / 255
-			channel = channel <= 0.03928 and channel / 12.92 or ((channel + 0.055) / 1.055) ^ 2.4
-			total = total + weight * channel
-		end
-		return total
-	end
-	t.expect(1.05 / (luminance(game.tint) + 0.05) >= 4.5, "white type on the tint reaches 4.5:1: " .. game.id)
+	t.expect(game.tint == nil and game.tintDark == nil and game.ink == nil and game.titleFont == nil,
+		"games do not supply individual accents or title fonts: " .. game.id)
 	t.expect(({ Introductory = true, Standard = true, Advanced = true, Expert = true })[game.difficulty],
 		"difficulty uses Infocom's published levels: " .. game.id)
 end

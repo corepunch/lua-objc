@@ -65,7 +65,7 @@
       <FlowStack spacing="10" maxWidth="infinity">
         <% for index, world in ipairs(worlds) do %>
         <Button id="world_<%= index %>" action="world_<%= index %>" style="plain" accessibilityLabel="<%= world.title %>">
-          <HStack spacing="8" paddingHorizontal="14" paddingVertical="10" alignment="center" background="<%= world.selected and (world.tint or 'accent') or 'secondaryBackground' %>" cornerRadius="18">
+          <HStack spacing="8" paddingHorizontal="14" paddingVertical="10" alignment="center" background="<%= world.selected and 'accent' or 'secondaryBackground' %>" cornerRadius="18">
             <SystemImage id="worldSymbol_<%= index %>" name="<%= world.symbol or 'book.fill' %>" size="<%= PAGE.tile %>" width="<%= PAGE.symbol %>" color="<%= world.selected and 'white' or 'accent' %>" accessibilityLabel="<%= world.title %>" />
             <Label id="worldTitle_<%= index %>" text="<%= world.title %>" size="15" weight="semibold" color="<%= world.selected and 'white' or 'primary' %>" />
           </HStack>

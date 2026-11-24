@@ -1,0 +1,3 @@
+<Page title="<%= title %>" onDisappear="closeCatalogPage">
+  <VStack id="catalogContent" maxWidth="infinity" maxHeight="infinity" />
+</Page>

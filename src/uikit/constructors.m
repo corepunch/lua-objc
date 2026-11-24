@@ -473,6 +473,7 @@ static int bridge_UIKitControls_spacer(lua_State *L) {
 // UITextInputTraits are forwarded by UIKit and are not reliably KVC-settable.
 // Expose a semantic editing mode on the exported controls instead.
 static void set_verbatim_input(id<UITextInputTraits> input, BOOL verbatim) {
+	input.inlinePredictionType = verbatim ? UITextInlinePredictionTypeNo : UITextInlinePredictionTypeDefault;
 	input.autocorrectionType = verbatim ? UITextAutocorrectionTypeNo : UITextAutocorrectionTypeDefault;
 	input.autocapitalizationType = verbatim ? UITextAutocapitalizationTypeNone : UITextAutocapitalizationTypeSentences;
 	input.smartQuotesType = verbatim ? UITextSmartQuotesTypeNo : UITextSmartQuotesTypeDefault;
@@ -557,10 +558,22 @@ static int bridge_UIKitControls_textField(lua_State *L) {
 	return 1;
 }
 
+@interface LuaSearchTextField : UISearchTextField
+@end
+
+@implementation LuaSearchTextField
+- (CGSize)intrinsicContentSize {
+	// A standalone field's native fitting height is more compact than a search bar.
+	CGSize size = [super intrinsicContentSize];
+	size.height = MAX(size.height, kSearchFieldMinimumHeight);
+	return size;
+}
+@end
+
 static int bridge_UIKitControls_searchField(lua_State *L) {
 	const char *text = luaL_optstring(L, 1, "");
 	const char *placeholder = luaL_optstring(L, 2, "Search");
-	UISearchTextField *obj = [[UISearchTextField alloc] initWithFrame:CGRectZero];
+	UISearchTextField *obj = [[LuaSearchTextField alloc] initWithFrame:CGRectZero];
 	obj.text = [NSString stringWithUTF8String:text];
 	obj.placeholder = [NSString stringWithUTF8String:placeholder];
 	[obj sizeToFit];

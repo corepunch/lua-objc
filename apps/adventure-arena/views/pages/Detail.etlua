@@ -1,24 +1,27 @@
 <%
-  -- A book’s product page, arranged as the App Store arranges an app: the
-  -- cover runs under the navigation bar, a strip of facts, the blurb set as
-  -- prose, reader reviews, and more from the same shelf. The primary action
-  -- floats in Liquid Glass over the page instead of sitting on a slab.
+  -- The reading action sits below the cover and scrolls with the book details.
   local HEADER = { height = 440, side = 20, bottom = 26 }
   local REVIEW = { width = 300, radius = 22, padding = 16 }
 %>
 <Page title="<%= game.title %>" titleDisplayMode="inline">
-<SafeAreaInset id="detail" edge="bottom" ignoresSafeArea="top" horizontalInset="20" minimumBottomInset="12">
-  <ScrollView id="detailScrollView">
-    <VStack spacing="0" alignment="leading" paddingBottom="96">
-      <ZStack id="header" height="<%= HEADER.height %>" maxWidth="infinity" alignment="bottomLeading" clipsToBounds="true" background="<%= game.tint %>">
+  <ScrollView id="detailScrollView" ignoresSafeArea="top">
+    <VStack spacing="0" alignment="leading" paddingBottom="32">
+      <ZStack id="header" height="<%= HEADER.height %>" maxWidth="infinity" alignment="bottomLeading" clipsToBounds="true" background="accent">
         <Image id="cover" path="<%= game.cover %>" resizable="true" contentMode="fill" />
         <LinearGradient topAlpha="0.35" middleAlpha="0.05" middleLocation="0.45" bottomAlpha="0.9" />
         <VStack paddingHorizontal="<%= HEADER.side %>" paddingBottom="<%= HEADER.bottom %>" spacing="6" alignment="leading" maxWidth="infinity">
           <Label text="<%= (game.collection or game.genre):upper() %>" size="12" weight="semibold" color="white" />
-          <Label id="title" text="<%= game.title %>" size="34" weight="bold" design="serif" color="white" lines="3" />
+          <%- partial("../components/GameTitle.etlua", { id = "title", title = game.title, color = "white", alignment = "leading" }) %>
           <Label text="<%= game.author %> · <%= game.year %>" size="15" color="white" />
         </VStack>
       </ZStack>
+
+      <HStack spacing="12" paddingHorizontal="20" paddingVertical="16" alignment="center" maxWidth="infinity">
+        <% if saved then %>
+        <Button id="restart" title="" systemImage="arrow.counterclockwise" symbolSize="20" style="glass" action="restart" accessibilityLabel="Start over" width="52" height="52" />
+        <% end %>
+        <Button id="play" title="<%= saved and 'Continue' or 'Start Reading' %>" style="glassProminent" tint="accent" size="17" weight="semibold" truncation="tail" action="play" accessibilityLabel="<%= saved and ('Continue ' .. game.title) or ('Start reading ' .. game.title) %>" maxWidth="infinity" height="52" />
+      </HStack>
 
       <ScrollView id="facts" horizontal="true" vertical="false">
         <HStack spacing="0" paddingHorizontal="8" paddingVertical="14" alignment="center">
@@ -70,14 +73,4 @@
       <% end %>
     </VStack>
   </ScrollView>
-
-  <GlassEffectContainer spacing="12">
-    <HStack spacing="12" alignment="center" maxWidth="infinity">
-      <% if saved then %>
-      <Button id="restart" title="" systemImage="arrow.counterclockwise" symbolSize="20" style="glass" action="restart" accessibilityLabel="Start over" width="52" height="52" />
-      <% end %>
-      <Button id="play" title="<%= saved and ('Continue · ' .. saved.place) or 'Start Reading' %>" systemImage="<%= saved and 'book.fill' or 'book' %>" style="glassProminent" tint="<%= game.tint %>" size="17" weight="semibold" truncation="tail" action="play" accessibilityLabel="<%= saved and ('Continue ' .. game.title) or ('Start reading ' .. game.title) %>" maxWidth="infinity" height="52" />
-    </HStack>
-  </GlassEffectContainer>
-</SafeAreaInset>
 </Page>

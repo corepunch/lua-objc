@@ -1,0 +1,6 @@
+<HStack spacing="8" alignment="center" maxWidth="infinity">
+  <% for i, choice in ipairs(choices) do %>
+  <Button id="completion<%= i %>" title="<%= choice.title %>" accessibilityLabel="Complete <%= choice.title %>" action="complete<%= i %>" style="glass" minHeight="44" />
+  <% end %>
+  <Spacer />
+</HStack>

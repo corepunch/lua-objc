@@ -15,9 +15,9 @@ end
 
 function Harness.new()
 	return setmetatable({ app = App.new {
-		saveStore = memory(), readingStore = memory(),
-		-- The tour itself must not cover the pages being captured.
-		onboardingStore = memory({ completed = true }),
+		documents = { saves = memory(), reading = memory(),
+			-- The tour itself must not cover the pages being captured.
+			onboarding = memory({ completed = true }) },
 	} }, Harness)
 end
 

@@ -5,13 +5,15 @@ local Model = require("data.model")
 local Adventures = Model:extend("adventures")
 
 -- Shelves stay browsable at 20-30 titles: a carousel longer than this is a
--- list nobody finishes, so the rest lives behind the shelf's "See All".
+-- list nobody finishes, so the shelf heading opens the full collection.
 local LIBRARY = { featured = 3, shelf = 10, chart = 5, related = 6 }
 
--- Genre tiles carry an SF Symbol, as Apple Books' category tiles do.
+-- Symbols for the onboarding genre choices.
 local GENRE_SYMBOLS = {
 	["Children's Adventure"] = "cloud.sun.fill",
 	["Science Fiction Horror"] = "waveform",
+	["Science Fiction"] = "sparkles",
+	["Supernatural Suspense"] = "eye.fill",
 	["Historical Detective Mystery"] = "magnifyingglass",
 	["Sci-Fi Adventure"] = "sparkles",
 	["Psychological Horror"] = "eye.fill",
@@ -25,13 +27,6 @@ function Adventures.genreSymbol(genre)
 	return GENRE_SYMBOLS[genre] or "book.fill"
 end
 
--- Tinted type on a page: the catalog's dark variant keeps it legible when
--- the page is dark. The store calls this for each game it is seeded with.
-function Adventures.prepare(game)
-	game.ink = game.ink or (game.tint and game.tintDark and (game.tint .. "|" .. game.tintDark)) or game.tint
-	return game
-end
-
 function Adventures:featured()
 	return self:select(nil, {limit = LIBRARY.featured})
 end
@@ -40,37 +35,45 @@ local function collectionOf(game)
 	return game.collection or game.genre or "Adventures"
 end
 
--- Shelves follow the catalog's first mention of each collection, so catalog
--- order is the editorial order and needs no second ranking table.
-function Adventures:shelves()
+local function groupShelves(games, titleOf)
 	local shelves, byTitle = {}, {}
-	for _, game in ipairs(self:all()) do
-		local title = collectionOf(game)
-		local shelf = byTitle[title]
-		if not shelf then
-			shelf = { id = title, title = title, games = {}, count = 0 }
-			byTitle[title] = shelf
-			table.insert(shelves, shelf)
+	for _, game in ipairs(games) do
+		local title = titleOf(game)
+		if title then
+			local shelf = byTitle[title]
+			if not shelf then
+				shelf = { id = title, title = title, games = {}, count = 0 }
+				byTitle[title] = shelf
+				table.insert(shelves, shelf)
+			end
+			shelf.count = shelf.count + 1
+			if #shelf.games < LIBRARY.shelf then table.insert(shelf.games, game) end
 		end
-		shelf.count = shelf.count + 1
-		if #shelf.games < LIBRARY.shelf then table.insert(shelf.games, game) end
 	end
 	return shelves
 end
 
-function Adventures:collection(title)
-	return self:select(function(game) return collectionOf(game) == title or game.genre == title end)
+-- Shelves follow their first appearance in the catalog.
+function Adventures:shelves()
+	return groupShelves(self:all(), collectionOf)
 end
 
--- Genres become the "Browse by Genre" tiles; each tile borrows the tint of
--- its first game so the grid previews the worlds behind it.
+function Adventures:genreShelves()
+	return groupShelves(self:all(), function(game) return game.category end)
+end
+
+function Adventures:collection(title)
+	return self:select(function(game) return collectionOf(game) == title or game.category == title end)
+end
+
+-- Genres inform the onboarding recommendations.
 function Adventures:genres()
 	local genres, seen = {}, {}
 	for _, game in ipairs(self:all()) do
 		if game.genre and not seen[game.genre] then
 			seen[game.genre] = true
-			table.insert(genres, { id = game.genre, title = game.genre, tint = game.tint,
-				symbol = Adventures.genreSymbol(game.genre), count = #self:collection(game.genre) })
+			table.insert(genres, { id = game.genre, title = game.genre,
+				symbol = Adventures.genreSymbol(game.genre), count = self:count({ genre = game.genre }) })
 		end
 	end
 	return genres
@@ -113,7 +116,7 @@ end
 
 local function searchable(game)
 	return table.concat({
-		game.title or "", game.author or "", game.genre or "", collectionOf(game),
+		game.title or "", game.author or "", game.genre or "", collectionOf(game), game.category or "",
 		game.shortDescription or "", tostring(game.year or ""), game.difficulty or "",
 	}, " "):lower()
 end

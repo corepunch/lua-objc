@@ -1,62 +1,45 @@
 _G.__headless = true
 local t = require("TestKit")
+local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Suggestions = require("apps.adventure-arena.zilscript.zilscript.reader.Suggestions")
 
-local function titles(list)
+local model = Session.new()
+model.items = Suggestions.items({
+	{ "brass plaque", { "READ", "TAKE" }, {}, nil, "brass plaque", false, { "plaque" }, { takeable = false } },
+	{ "pebble", { "TAKE" } },
+	{ "brass key", { "TAKE" }, {}, nil, "brass key" },
+	{ "iron key", { "TAKE" }, {}, nil, "iron key" },
+	{ "brass lamp", { "LAMP-ON" }, {}, { { verb = "turn", prefix = "on" } }, "brass lamp" },
+})
+model.exitList = { "east" }
+local function titles(draft)
 	local result = {}
-	for _, chip in ipairs(list) do table.insert(result, chip.title) end
+	for _, choice in ipairs(model:suggestions(draft)) do table.insert(result, choice.title) end
 	return table.concat(result, ",")
 end
+t.assertEqual(titles(" "), "", "blank composer is quiet")
+t.assertEqual(model:suggestions("T")[1].text, "take ", "T completes the first verb with a space")
+t.assertEqual(titles("take p"), "pebble", "fixed plaque is excluded")
+t.assertEqual(titles("read P"), "plaque", "short unique noun matches a qualified parser phrase")
+t.assertEqual(model:suggestions("read p")[1].text, "read plaque ", "acceptance fills the draft")
+t.assertEqual(titles("read br"), "brass plaque", "qualifier prefix also completes")
+t.assertEqual(titles("take k"), "brass key,iron key", "ambiguous noun retains qualifiers")
+t.assertEqual(titles("take "), "pebble,brass key,iron key", "only eligible objects, up to three")
+t.assertEqual(titles("go "), "east", "only a current exit is offered")
+t.assertEqual(titles("go west "), "", "no invented exits")
+t.assertEqual(titles("xyz "), "", "unsupported verbs produce no suggestions")
+t.assertEqual(titles("turn o"), "turn on", "multiword parser verb completes as a phrase")
+t.assertEqual(titles("read plaque "), "", "complete command needs explicit submission")
+t.assertEqual(#model.history, 0, "requesting suggestions cannot play a turn")
+model.items = {}
+t.assertEqual(titles("take "), "", "no stale nouns after moving")
+model.running = false
+t.assertEqual(titles("l"), "", "finished session is quiet")
 
--- Engine room items as zilscript reports them: name, verbs, nested contents.
-local items = Suggestions.items({
-	{ "small mailbox", { "TAKE", "OPEN" }, { { "leaflet", { "TAKE", "READ" }, {} } } },
-	{ "wooden table", { "EXAMINE", "PUT" }, {} },
-	{ "door", { "OPEN", "LOOK-BEHIND" }, {} },
-	{ "chasm", { "PUT" }, {} },
-})
-t.assertEqual(#items, 5, "nested contents are flattened")
-t.assertEqual(items[1].noun, "mailbox", "multi-word names are typed by their final noun")
-t.assertEqual(items[2].noun, "leaflet", "open containers reveal their contents")
-t.assertEqual(items[4].verbs[2], "look behind", "engine action names become player words")
-t.assertEqual(Suggestions.noun("Patrol-issue scrub brush"), "brush", "the noun is the last word")
-t.assertEqual(#Suggestions.items(nil), 0, "missing engine data yields no items")
-
-local context = { items = items, exits = { "north", "east", "up" } }
-t.assertEqual(#Suggestions.forInput("", context), 0, "an empty composer offers no chips")
-t.assertEqual(#Suggestions.forInput("   ", context), 0, "blank input offers no chips")
-
-local l = Suggestions.forInput("l", context)
-t.assertEqual(l[1].title, "look", "L suggests look first")
-t.assertEqual(l[1].text, "look ", "a verb completion leaves room to keep typing")
-t.expect(not l[1].submit, "completions do not submit on their own")
-t.expect(titles(l):find("take leaflet", 1, true), "L also finds the leaflet")
-
-local tt = Suggestions.forInput("t", context)
-t.assertEqual(tt[1].title, "take", "T suggests take first")
-t.expect(titles(tt):find("examine table", 1, true), "T also offers the table")
-
-local open = Suggestions.forInput("open ", context)
-t.assertEqual(titles(open), "mailbox,door", "after a verb only objects that answer it are offered")
-t.assertEqual(open[1].text, "open mailbox ", "an object completion extends the command")
-t.assertEqual(titles(Suggestions.forInput("open d", context)), "door", "the partial word filters objects")
-t.assertEqual(titles(Suggestions.forInput("examine ", context)), "table",
-	"examine offers only what the story lists for it")
-t.assertEqual(titles(Suggestions.forInput("smell ", context)), "mailbox,leaflet,table,door,chasm",
-	"verbs the story does not list fall back to every object")
-t.assertEqual(titles(Suggestions.forInput("put leaflet ", context)), "in,on,under,table,chasm",
-	"a two-object verb offers its joining word")
-t.assertEqual(titles(Suggestions.forInput("go ", context)):sub(1, 14), "north,east,up,", "go offers open exits first")
-t.expect(Suggestions.forInput("go n", context)[1].submit, "a completed direction is a whole command")
-t.assertEqual(titles(Suggestions.forInput("turn o", context)), "on,off", "two-word verbs complete their particle")
-
-local none = Suggestions.forInput("xyzzy", context)
-t.assertEqual(#none, 0, "unknown words produce no chips")
-t.assertEqual(titles(Suggestions.forInput("inv", {})), "inventory", "no context still completes the basics")
-local many = { items = {} }
-for index = 1, 20 do table.insert(many.items, { noun = "thing" .. index, verbs = {} }) end
-t.assertEqual(#Suggestions.forInput("examine ", many), 6, "chips are capped at six")
-local known = Suggestions.forInput("read ", { items = {}, knownItems = { items[2] } })
-t.assertEqual(titles(known), "leaflet", "objects remembered from earlier rooms stay suggestible")
-
+local Runtime = require("apps.adventure-arena.services.ZILRuntime")
+require("apps.adventure-arena.Store").new()
+local blackwood = Session.new { engineFactory = function(game, seed) return Runtime.new(game, nil, seed) end }
+t.expect(blackwood:start(require("apps.adventure-arena.models.Adventures"):find("books.blackwood-horror")), "Blackwood opens")
+t.assertEqual(blackwood:suggestions("read p")[1].text, "read plaque ", "actual gate plaque is readable")
+t.assertEqual(#blackwood:suggestions("take p"), 0, "fixed gate plaque cannot be taken")
 os.exit(t.summary() and 0 or 1)

@@ -12,7 +12,15 @@ local ReadingSettingsController = require("apps.adventure-arena.controllers.Read
 local Template = require("ui.template")
 
 local button, slider, picker, page, toggle = ns.Button, ns.Slider, ns.Picker, ns.Page, ns.Toggle
+local paragraph = ns.Paragraph
 local buttonActions, pickerControls, sliderControls, toolbarActions, toggleControls = {}, {}, {}, {}, {}
+local proseColors
+ns.Paragraph = function(props)
+	if props[1] == "The rusted gate stands open." then
+		proseColors = { body = props.color, link = props.linkColor }
+	end
+	return paragraph(props)
+end
 -- Toolbar items belong to the Page, not the content tree; capture their actions.
 ns.Page = function(props)
 	for _, item in ipairs(props.toolbar or {}) do toolbarActions[item.id] = item.action end
@@ -45,7 +53,6 @@ end
 local game = {
 	id = "sanitarium", title = "Sanitarium", shortDescription = "A psychological horror adventure.",
 	description = "A complete synopsis for the reading session.",
-	tint = "#047857", tintDark = "#6EE7B7", ink = "#047857|#6EE7B7", statusLine = nil,
 }
 local engineState = { score = 2, moves = 3, maxScore = 10, room = "Sanitarium Gate" }
 local model = Session.new({ engineFactory = function()
@@ -96,13 +103,20 @@ controller = SessionController.new {
 }
 
 t.expect(controller:show(game.id), "session screen opens for the selected game")
-t.assertEqual(controller.heading.refs.sessionTitle.text, game.title, "the running head names the story")
-t.assertEqual(controller.heading.refs.sessionPlace.text, "Sanitarium Gate", "the running head names the room")
+t.assertEqual(controller.heading.refs.sessionTitle.text, "Sanitarium Gate", "the running head names the room")
 local function page() return controller.transcript.refs end
 t.assertEqual(page().gameTitle.text, game.title, "the page opens on the title")
-t.assertEqual(page().gameDescription.text, game.shortDescription, "the tagline is the title page's epigraph")
+local _, titleRefs = xml.renderFile("apps/adventure-arena/views/components/GameTitle.etlua", {
+	id = "detailTitle", title = game.title, color = "white", alignment = "leading",
+}, ns)
+t.assertEqual(page().gameTitle.font.fontName, titleRefs.detailTitle.font.fontName, "reader and detail share the title font")
+t.assertEqual(page().gameTitle.font.pointSize, 34, "the reader uses the detail title size")
+t.assertEqual(page().gameTitle.font.pointSize, titleRefs.detailTitle.font.pointSize, "reader and detail share the title size")
+t.expect(proseColors and proseColors.body == settings:presentation().primaryTextColor
+	and proseColors.link == nil, "ordinary prose uses the page ink")
+t.assertEqual(page().synopsis.text, game.description, "the reader opens with the full synopsis")
 t.assertEqual(page().sceneTitle_1.text, "Sanitarium Gate", "the first scene identifies the active room")
-t.assertEqual(controller.refs.progress.text, "Score 2 of 10 · 3 moves", "the folio shows score and moves")
+t.assertEqual(controller.heading.refs.sessionScore.text, "Score 2 of 10", "the running head shows only the score")
 t.assertEqual(page().paragraph_1_1.font.pointSize, 18, "the story is set at the default 18pt")
 
 local openSettings = toolbarActions.readingSettings
@@ -123,6 +137,7 @@ t.expect(optionRefs.previewBody == nil, "the sheet needs no sample page: the boo
 sliderControls[1].onChange(20.4)
 t.assertEqual(settings.fontSize, 20, "font-size control rounds to a whole point")
 t.assertEqual(page().paragraph_1_1.font.pointSize, 20, "the open book re-sets its type")
+t.assertEqual(page().gameTitle.font.pointSize, 34, "reading size changes leave the shared title size unchanged")
 t.assertEqual(saved.fontSize, 20, "the new size is persisted")
 t.assertEqual(#pickerControls, 2, "dragging the slider leaves the panel in place")
 
@@ -133,19 +148,20 @@ t.assertEqual(controller.readingSettingsOptions.refs.fontPicker.selectedSegment,
 
 buttonActions[controller.readingSettingsOptions.refs.theme_night]()
 t.assertEqual(settings.theme, "night", "the Night swatch selects the night page")
+t.expect(proseColors and proseColors.body == settings:presentation().primaryTextColor
+	and proseColors.link == nil, "ordinary prose follows the page ink after changing themes")
 t.expect(math.abs(controller.refs.session.backgroundColor.redComponent) < 0.01, "the page turns black")
 t.assertEqual(controller.refs.session.colorScheme, "dark", "a Night page is dark whatever the system says")
 t.assertEqual(controller.heading.refs.sessionTitle.superview.colorScheme, "dark", "and so is its running head")
 t.assertEqual(page().paragraph_1_1.text, "The rusted gate stands open.", "re-setting the page preserves the story")
-t.assertEqual(controller.refs.progress.text, "Score 2 of 10 · 3 moves", "re-setting the page preserves progress")
+t.assertEqual(controller.heading.refs.sessionScore.text, "Score 2 of 10", "re-setting the page preserves the score")
 toggleNamed("Justify Text").onChange(true)
 t.expect(settings.justified, "the justify toggle updates reading preferences")
 t.assertEqual(page().paragraph_1_1.textAlignment, 3, "the open book is justified")
 
--- A scene's place beside its first lines belongs to the room's picture;
--- there is no drop cap to choose.
+-- Reading preferences preserve the complete prose and its full column.
 t.expect(controller.readingSettingsOptions.refs.dropCapToggle == nil, "the sheet offers no drop cap toggle")
-t.expect(page().paragraph_1_1.figureView == nil, "a room without an icon floats nothing")
+t.assertEqual(#page().paragraph_1_1.textContainer.exclusionPaths, 0, "reading preferences leave prose at the margin")
 t.assertEqual(page().paragraph_1_1.text, "The rusted gate stands open.", "the paragraph keeps its first letter")
 
 local done = buttonActions[sheetRefs.done]
@@ -162,5 +178,11 @@ t.expect(tab.refs.previewBody ~= nil, "the Settings tab shows a sample page")
 t.expect(tab.refs.chapter == nil, "the sample page has no chapter line")
 t.assertEqual(tab.refs.previewBody.textAlignment, 3, "the sample page follows the preferences")
 
+engineState.score, engineState.moves, engineState.room = 3, 4, "Courtyard"
+controller:submitCommand("look")
+t.assertEqual(controller.heading.refs.sessionTitle.text, "Courtyard", "a command refreshes the room title")
+t.assertEqual(controller.heading.refs.sessionScore.text, "Score 3 of 10", "a command refreshes the toolbar score")
+
 ns.Button, ns.Slider, ns.Picker, ns.Page, ns.Toggle = button, slider, picker, page, toggle
+ns.Paragraph = paragraph
 os.exit(t.summary() and 0 or 1)

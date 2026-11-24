@@ -2,26 +2,22 @@ local Flow = require("data.flow")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 
 -- What a tap on a cover, a shelf or a story in progress does, shared by
--- every page that lists stories. `origin` names the navigation stack the
--- tap came from, so the page opens in the tab the reader is using.
+-- every page that lists stories.
 local Opening = Flow:extend()
 
-function Opening:game(id, origin)
+function Opening:game(id)
 	if not Adventures:find(id) then return false end
-	self.app.focus(origin)
-	self.app.push("detail", { id = id, origin = origin })
+	self.app.push("detail", { id = id })
 	return true
 end
 
-function Opening:collection(title, origin)
+function Opening:collection(title)
 	if #Adventures:collection(title) == 0 then return false end
-	self.app.focus(origin)
-	self.app.push("collection", { title = title, origin = origin })
+	self.app.push("collection", { title = title })
 	return true
 end
 
-function Opening:story(id, origin, fresh)
-	self.app.focus(origin)
+function Opening:story(id, fresh)
 	return self.app.openSession(id, fresh)
 end
 

@@ -1,5 +1,4 @@
 local Model = require("data.model")
-local Adventures = require("apps.adventure-arena.models.Adventures")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 
@@ -21,7 +20,7 @@ function Store.new(options)
 	local function load(document) return document and document.load and document.load() end
 	local games = {}
 	for _, game in ipairs(options.games or require("apps.adventure-arena.catalog.Adventures")) do
-		table.insert(games, Adventures.prepare(game))
+		table.insert(games, game)
 	end
 	return Model.bind({
 		adventures = games,

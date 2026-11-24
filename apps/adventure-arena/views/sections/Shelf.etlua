@@ -1,13 +1,12 @@
 <VStack paddingTop="28" spacing="10" alignment="leading" maxWidth="infinity">
-  <HStack paddingHorizontal="16" spacing="8" alignment="bottom" maxWidth="infinity">
-    <VStack spacing="2" alignment="leading" flexGrow="1">
-      <Label text="<%= shelf.title %>" size="22" weight="bold" lines="1" truncation="tail" />
-      <Label text="<%= shelf.count == 1 and '1 adventure' or (shelf.count .. ' adventures') %>" size="13" color="secondary" />
-    </VStack>
-    <Button id="seeAll_<%= index %>" title="See All" action="shelf_<%= index %>" size="15" accessibilityLabel="See all <%= shelf.title %>" />
-  </HStack>
-  <ScrollView horizontal="true" vertical="false">
-    <HStack spacing="14" paddingHorizontal="16" alignment="top">
+  <Button id="shelfHeading_<%= index %>" style="plain" action="shelf_<%= index %>" paddingHorizontal="<%= sideInset %>" accessibilityLabel="See all <%= shelf.title %>">
+    <HStack spacing="6" alignment="center">
+      <Label text="<%= shelf.title %>" size="22" weight="bold" design="serif" lines="1" truncation="tail" />
+      <SystemImage name="chevron.right" size="12" weight="semibold" color="secondary" label="" />
+    </HStack>
+  </Button>
+  <ScrollView id="shelfScroll_<%= index %>" horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
+    <HStack id="shelfBooks_<%= index %>" spacing="14" paddingHorizontal="<%= sideInset %>" alignment="top">
       <% for gameIndex, game in ipairs(shelf.games) do %>
       <%- partial("../components/CoverCard.etlua", { game = game, action = game.id, id = "cover_" .. index .. "_" .. gameIndex }) %>
       <% end %>

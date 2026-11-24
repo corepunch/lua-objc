@@ -645,6 +645,19 @@ end
 --   collect:     optional child aggregation hook: fn(targetTable, children)
 --   transform:   optional hook for platform quirks: fn(props, attrs, children, ns) -> optional view
 
+local function collectParagraphRecords(props, children)
+	props.links, props.boldRanges = {}, {}
+	for _, child in ipairs(children) do
+		if type(child) == "table" and child.__hyperlink then
+			table.insert(props.links, child)
+		elseif type(child) == "table" and child.__bold then
+			table.insert(props.boldRanges, { location = child.location, length = child.length })
+		else
+			error("xml: <Paragraph> accepts only <Hyperlink> or <Bold> children")
+		end
+	end
+end
+
 local TAG_SCHEMA = {
     -- Layout containers
     VStack = {
@@ -937,25 +950,18 @@ local TAG_SCHEMA = {
             size = "num", weight = "str", design = "str", fontName = "str", italic = "bool",
             smallCaps = "bool", color = "str", lineSpacing = "num", alignment = "str",
             hyphenation = "bool", selectable = "bool", accessibilityLabel = "str",
-            figure = "str", figureLines = "num",
             revealedCharacters = "num", linkColor = "str",
         },
         -- <Hyperlink> children mark the words a reader can act on.
-        collect = function(props, children)
-            if #children == 0 then return end
-            props.links = {}
-            for _, child in ipairs(children) do
-                if type(child) ~= "table" or not child.__hyperlink then
-                    error("xml: <Paragraph> accepts only <Hyperlink> children")
-                end
-                table.insert(props.links, child)
-            end
-        end,
+        collect = collectParagraphRecords,
         updateRecords = function(view, records)
+            local props = {}
+            collectParagraphRecords(props, records)
             for _, name in ipairs({ "UIKitNative", "AppKitNative" }) do
                 local ok, native = pcall(require, name)
                 if ok and type(native) == "table" and type(native._paragraphSetLinks) == "function" then
-                    native._paragraphSetLinks(view, records)
+                    native._paragraphSetLinks(view, props.links)
+                    view.boldRanges = props.boldRanges
                     return true
                 end
             end
@@ -972,6 +978,12 @@ local TAG_SCHEMA = {
         collect = function(rec, children)
             rec.items = children
         end,
+    },
+    -- WPF-style bold inline range, counted in Unicode characters from zero.
+    Bold = {
+        kind = "record",
+        flag = "__bold",
+        props = { location = "num", length = "num" },
     },
     Title = {
         constructor = "Title",
@@ -1050,6 +1062,7 @@ local TAG_SCHEMA = {
         props = {
             value       = { aliases = { "text" }, default = "", type = "str" },
             placeholder = { default = "", type = "str" },
+			verbatim    = "bool",
 			style       = "str",
 					editable    = "bool",
 					secure     = "bool",
