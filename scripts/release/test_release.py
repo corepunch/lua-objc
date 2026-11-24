@@ -6,13 +6,14 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import subprocess
 import tempfile
 import unittest
 import zipfile
 from unittest.mock import patch
 
 from credentials import required_secrets
-from release import apps, build_number, bundle_macos, compile_command, publish, release_version, store_package
+from release import apps, build_number, bundle_macos, compile_command, main, publish, release_version, store_package
 from bundle import copy_tree, main as bundle_app
 from sign import distribution_identity, profile_entitlements, sign_bundle
 from toolchain import select_xcode
@@ -99,6 +100,35 @@ class SigningTests(unittest.TestCase):
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_diskmap_launcher_loads_coreservices_at_startup(self):
+        record = next(record for record in apps() if record['app'] == 'diskmap')
+        command = compile_command(record, Path('build/local/diskmap/unsigned/Diskmap.app'))
+        plan = subprocess.check_output([*command, '-Bn'], text=True)
+        self.assertIn('-Wl,-needed_framework,CoreServices', plan)
+        self.assertIn('StorageScan.dylib', plan)
+
+    def test_diskmap_local_build_uses_its_own_output_root(self):
+        argv = ['release.py', 'build', '--local', '--app', 'diskmap', '--version', '1.2.3']
+        with patch('sys.argv', argv), patch('release.build') as build:
+            main()
+        record = next(record for record in apps() if record['app'] == 'diskmap')
+        build.assert_called_once_with(record, '1.2.3', '1', Path('build/local'))
+
+    def test_store_package_skips_github_distribution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile_path = Path(directory) / 'store.provisionprofile'
+            profile_path.touch()
+            argv = ['release.py', 'store-package', '--app', 'diskmap', '--version', '1.2.3',
+                    '--build-number', '7', '--profile', str(profile_path)]
+            bundle = Path('build/store/diskmap/unsigned/Diskmap.app')
+            with patch('sys.argv', argv), patch('release.build', return_value=bundle) as build, \
+                    patch('release.store_package') as package, patch('release.dmg') as dmg, patch('builtins.print'):
+                main()
+            record = next(record for record in apps() if record['app'] == 'diskmap')
+            build.assert_called_once_with(record, '1.2.3', '7', Path('build/store'))
+            package.assert_called_once_with(record, bundle, '1.2.3', profile_path)
+            dmg.assert_not_called()
+
     def test_studio_is_an_ipad_only_app_store_release(self):
         record = next(record for record in apps() if record['app'] == 'studio')
         command = compile_command(record, Path('/tmp/LuaStudio.app'))

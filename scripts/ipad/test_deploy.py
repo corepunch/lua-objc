@@ -1,12 +1,15 @@
 """Fast, offline regression checks for iOS app packaging and deployment."""
 import os
+from pathlib import Path
+import plistlib
 import subprocess
+from tempfile import TemporaryDirectory
 import unittest
-from bundle import copy_tree, resolve_app_and_entry
+from unittest.mock import patch
+from bundle import main as bundle_app, resolve_app_and_entry
 from deploy import device_list_command, select_device
 from sign import matches, signing_entitlements
 from simulator_entitlements import entitlements
-from xcode_bundle import populate
 
 
 def device(identifier, kind='iPad', reality='physical'):
@@ -37,34 +40,36 @@ class DiscoveryTests(unittest.TestCase):
                 else:
                     self.assertNotIn('--device "', deploy)
 
-    def test_xcode_app_declares_exempt_encryption(self):
-        from pathlib import Path
-        import plistlib
-
-        info = plistlib.loads(Path('apps/adventure-arena/Info.plist').read_bytes())
-        self.assertIs(info['ITSAppUsesNonExemptEncryption'], False)
-
-    def test_xcode_app_home_screen_name_is_elsewhere(self):
-        from pathlib import Path
-        import plistlib
-
-        info = plistlib.loads(Path('apps/adventure-arena/Info.plist').read_bytes())
-        self.assertEqual(info['CFBundleDisplayName'], 'Elsewhere')
-
-    def test_xcode_bundle_has_runtime_and_app(self):
-        from tempfile import TemporaryDirectory
-        from pathlib import Path
-
+    def test_adventure_arena_simulator_bundle_has_valid_metadata_and_assets(self):
+        plan = subprocess.check_output(
+            ['make', '-n', 'ipad-simulator', 'APP=adventure-arena'], text=True)
+        self.assertIn('--device-family 1,2', plan)
         with TemporaryDirectory() as directory:
-            bundle = Path(directory) / 'AdventureArena.app'
-            bundle.mkdir()
-            populate(bundle)
-            self.assertTrue((bundle / 'Workspace/lua/embedded/UIKit.lua').is_file())
-            self.assertTrue((bundle / 'Workspace/apps/adventure-arena/init.lua').is_file())
-            self.assertTrue((bundle / 'Workspace/apps/adventure-arena/zilscript/zilscript/bootstrap.lua').is_file())
-            self.assertFalse((bundle / 'Workspace/apps/adventure-arena/Info.plist').exists())
-            self.assertFalse((bundle / 'Workspace/apps/adventure-arena/AdventureArena.xcodeproj').exists())
-            self.assertFalse((bundle / 'Workspace/apps/adventure-arena/Assets.xcassets').exists())
+            root = Path(directory)
+            bundle = root / 'AdventureArena.app'
+            binary = root / 'binary'
+            binary.touch()
+            app = 'apps/adventure-arena'
+            arguments = ['bundle.py', '--bundle', str(bundle), '--binary', str(binary),
+                         '--sdk', 'iphonesimulator', '--identifier', 'org.luaobjc.adventure-arena',
+                         '--minimum', '26.5', '--app', app, '--entry', f'{app}/init.lua',
+                         '--display-name', 'Elsewhere', '--device-family', '1,2']
+            with patch('sys.argv', arguments), patch('bundle.bundle_icon', return_value={}):
+                bundle_app()
+            info = plistlib.loads((bundle / 'Info.plist').read_bytes())
+            self.assertEqual(info['CFBundleDisplayName'], 'Elsewhere')
+            self.assertEqual(info['CFBundleShortVersionString'], '1.0')
+            self.assertEqual(info['CFBundleVersion'], '1')
+            self.assertEqual(info['UIDeviceFamily'], [1, 2])
+            self.assertIs(info['ITSAppUsesNonExemptEncryption'], False)
+            self.assertTrue((bundle / info['CFBundleExecutable']).is_file())
+            workspace = bundle / 'Workspace'
+            self.assertTrue((workspace / 'lua/embedded/UIKit.lua').is_file())
+            self.assertTrue((workspace / info['LRTLocalEntry']).is_file())
+            self.assertTrue((workspace / app / 'assets/zork1.jpg').is_file())
+            self.assertTrue((workspace / app / 'zilscript/zilscript/bootstrap.lua').is_file())
+            self.assertFalse((workspace / app / 'Info.plist').exists())
+            self.assertFalse((workspace / app / 'Assets.xcassets').exists())
 
     def test_simulator_keychain(self):
         result = entitlements('org.luaobjc.test')
@@ -113,18 +118,6 @@ class DiscoveryTests(unittest.TestCase):
             select_device([device('a', 'iPhone')], 'iPad', 'a')
         with self.assertRaises(ValueError):
             select_device([device('a', reality='simulated')], 'iPad', 'a')
-
-    def test_bundle_copies_project_assets_and_framework_lua(self):
-        from tempfile import TemporaryDirectory
-        from pathlib import Path
-
-        with TemporaryDirectory() as directory:
-            workspace = Path(directory)
-            copy_tree('lua', workspace, lua_only=True)
-            copy_tree('apps/adventure-arena', workspace)
-            self.assertTrue((workspace / 'lua/embedded/UIKit.lua').is_file())
-            self.assertTrue((workspace / 'apps/adventure-arena/init.lua').is_file())
-            self.assertTrue((workspace / 'apps/adventure-arena/assets/zork1.jpg').is_file())
 
     def test_app_slug_resolves_to_apps_directory_and_entry(self):
         app, entry = resolve_app_and_entry('adventure-arena', 'adventure-arena/init.lua')

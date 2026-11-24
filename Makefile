@@ -348,27 +348,15 @@ list-devices:
 	xcrun devicectl list devices
 
 .PHONY: diskmap-app diskmap-showcase
-diskmap-app: diskmap-xcode-build
-
-DISKMAP_XCODE_PROJECT = apps/diskmap/Diskmap.xcodeproj
-DISKMAP_XCODE_DERIVED_DATA ?= build/xcode-derived
-DISKMAP_XCODE_ROOT = $(abspath $(DISKMAP_XCODE_DERIVED_DATA))
-DISKMAP_XCODE_CONFIGURATION ?= Release
-.PHONY: diskmap-xcode-build
-diskmap-xcode-build:
-	xcodebuild -project $(DISKMAP_XCODE_PROJECT) \
-		-scheme Diskmap -configuration $(DISKMAP_XCODE_CONFIGURATION) \
-		-destination 'generic/platform=macOS' \
-		-derivedDataPath $(DISKMAP_XCODE_ROOT) \
-		SYMROOT="$(DISKMAP_XCODE_ROOT)/Products" \
-		OBJROOT="$(DISKMAP_XCODE_ROOT)/Intermediates" \
-		build
+diskmap-app:
+	python3 scripts/release/release.py build --local --app diskmap \
+		--version "$(or $(VERSION),1.0.0)" --build-number "$(BUILD_NUMBER)"
 
 # Each app's platform and release channels live in scripts/release/apps.json.
 # Releases use the Apple toolchain directly, without Xcode projects.
 VERSION ?=
 BUILD_NUMBER ?= 1
-.PHONY: release release-build publish
+.PHONY: release release-build store-package publish
 RELEASE_FLAGS = --version "$(VERSION)" --build-number "$(BUILD_NUMBER)" $(if $(APP),--app "$(APP)")
 release-build:
 	python3 scripts/release/release.py build $(RELEASE_FLAGS)
@@ -376,22 +364,11 @@ release:
 	python3 scripts/release/release.py release $(RELEASE_FLAGS) $(if $(filter 1,$(UNSIGNED)),--unsigned) \
 		$(if $(filter 1,$(STORE)),--store --profile "$(PROFILE)")
 
+store-package:
+	python3 scripts/release/release.py store-package $(RELEASE_FLAGS) --profile "$(PROFILE)"
+
 publish:
 	python3 scripts/release/release.py publish $(RELEASE_FLAGS)
-
-APP ?=
-TARGET ?=
-.PHONY: xcode
-xcode:
-	@if [ "$(APP)" = diskmap ] && [ "$(TARGET)" = macos ]; then \
-		open $(DISKMAP_XCODE_PROJECT); \
-	elif [ "$(APP)" = dnb ] && [ "$(TARGET)" = macos ]; then \
-		open apps/dnb/DrumAndBass.xcodeproj; \
-	elif [ "$(APP)" = adventure-arena ] && [ "$(TARGET)" = ios ]; then \
-		open apps/adventure-arena/AdventureArena.xcodeproj; \
-	else \
-		echo "usage: make xcode APP=diskmap|dnb TARGET=macos, or APP=adventure-arena TARGET=ios" >&2; exit 2; \
-	fi
 
 # The lua-objc promo (reels/promo): `make promo-reel` renders
 # build/videos/lua-objc-Promo.mov, first capturing the apps when

@@ -116,9 +116,9 @@ def compile_assets(record, bundle, sdk):
     return plistlib.loads(partial.read_bytes())
 
 
-def build(record, version, number):
+def build(record, version, number, output_root):
     check_backend(Path('apps') / record['app'])
-    out = Path('build/release') / record['app']
+    out = output_root / record['app']
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -231,14 +231,17 @@ def publish(records, version):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('matrix', 'build', 'release', 'publish'))
+    parser.add_argument('command', choices=('matrix', 'build', 'release', 'store-package', 'publish'))
     parser.add_argument('--app')
     parser.add_argument('--version')
     parser.add_argument('--build-number', default='1')
+    parser.add_argument('--local', action='store_true', help='write an unsigned build under build/local')
     parser.add_argument('--unsigned', action='store_true')
     parser.add_argument('--store', action='store_true')
     parser.add_argument('--profile', type=Path)
     args = parser.parse_args()
+    if args.local and args.command != 'build':
+        parser.error('--local requires the build command')
     os.chdir(ROOT)
     records = apps()
     if args.app:
@@ -253,6 +256,16 @@ def main():
         publish(records, version)
         return
     number = build_number(args.build_number)
+    if args.command == 'store-package':
+        if not args.app or args.profile is None or not args.profile.is_file():
+            parser.error('store-package requires --app and an existing --profile file')
+        record = records[0]
+        if 'appStore' not in record['channels']:
+            parser.error('App Store distribution is not configured for ' + record['app'])
+        source = build(record, version, number, Path('build/store'))
+        artifact = store_package(record, source, version, args.profile)
+        print(artifact)
+        return
     if args.unsigned and args.store:
         parser.error('App Store builds cannot be unsigned')
     if args.command == 'release':
@@ -260,8 +273,9 @@ def main():
             parser.error('--store requires --app and --profile for that app')
         if not args.store and not args.unsigned and any(record['platform'] != 'macos' for record in records):
             parser.error('iOS releases require --store and --profile; select --app to release a macOS app')
+    output_root = Path('build/local' if args.local else 'build/release')
     for record in records:
-        source = build(record, version, number)
+        source = build(record, version, number, output_root)
         if args.command == 'build':
             continue
         artifacts = []

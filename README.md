@@ -486,32 +486,23 @@ on a physical iPhone. The target uses `IPHONE_DEVICE` when set and otherwise
 selects the only available physical iPhone. Pass `DEVICE=<name-or-identifier>`
 to select a different phone for one run. Use `make list-devices` to see devices.
 
-### Adventure Arena in Xcode
+### Standalone Adventure Arena builds
 
-Adventure Arena's native iPhone/iPad project lives beside its app sources:
-`apps/adventure-arena/AdventureArena.xcodeproj`. Open it and select the shared
-`AdventureArena` scheme:
-
-```sh
-make xcode APP=adventure-arena TARGET=ios
-```
-
-Edit the project in Xcode when native host sources or build settings change, and
-commit changes to the project and its shared settings. Set the marketing version
-and build number in Xcode before archiving there.
-Lua, etlua, and app assets are copied on every build. The UIKit API header and
-libgit2 build products live in Xcode's DerivedData. The app's Info.plist and asset
-catalog also live in its app folder.
+The standalone bundle includes the UIKit runtime, Lua, etlua, and app assets.
+Use the streaming host for hot reload, or build and install a standalone app
+with the Makefile.
 
 ```sh
-xcodebuild -project apps/adventure-arena/AdventureArena.xcodeproj \
-  -scheme AdventureArena -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath build/xcode-adventure-arena CODE_SIGNING_ALLOWED=NO build
+make ios-run PROJECT=apps/adventure-arena
+make ipad-simulator APP=adventure-arena
+make ipad-run APP=adventure-arena
+make iphone APP=adventure-arena
 ```
 
-Device builds use the existing development team with automatic signing; adjust
-Signing & Capabilities for a different team. Release automation continues to use
-the Makefiles independently of this optional development project.
+The standalone simulator bundle supports iPhone and iPad. To launch it on an
+iPhone simulator, run `make ipad-run APP=adventure-arena DEVICE_TYPE=iPhone`.
+Physical devices require a matching Apple Development identity and provisioning
+profile. Use `PROFILE` and `TEAM` to select them explicitly.
 
 ### Releases: GitHub and App Store Connect
 
@@ -539,8 +530,9 @@ App Store distribution profile and an exportable distribution private key.
 Drum & Bass can add the `appStore` channel when its Store record, icon,
 sandbox entitlements and profile are ready.
 
-The runner selects a stable Xcode 26.5+ installation for `clang`, SDKs,
-`actool`, `codesign`, `productbuild` and `notarytool`.
+The Makefiles call Clang and Apple's command-line tools directly. A full Xcode
+installation provides the Apple SDKs, asset compiler, and simulator and device
+tools. CI selects a stable Xcode 26.5+ installation.
 macOS releases embed vendored Lua in AppKit.dylib, with no Homebrew runtime
 dependency. Both delivery channels use copies of the same compiled app:
 Developer ID signing and notarization for a DMG; distribution signing with
@@ -560,8 +552,23 @@ make release APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1 STORE=1 PROFIL
 make publish VERSION=1.2.3
 ```
 
-For a manual upload, use `asc builds upload` with `--ipa` for iOS or `--pkg`
-for macOS and the app's App Store Connect ID.
+For App Store Connect alone, `make store-package` builds and signs with the
+specified Store profile and writes the package in `build/store/<app>/`.
+macOS also requires a Mac App Store installer signing identity.
+Upload the resulting IPA or PKG with `asc`.
+
+```sh
+make store-package APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1 PROFILE=/path/to/arena.mobileprovision
+asc ipa-info --path build/store/adventure-arena/AdventureArena-1.2.3.ipa --verify-signature
+asc --profile corepunch builds upload --app "$APP_STORE_ID" \
+  --ipa build/store/adventure-arena/AdventureArena-1.2.3.ipa --wait
+```
+
+For macOS, use `asc builds upload --pkg` with the app's numeric App Store
+Connect ID, marketing version, and build number. For signing assets, build
+selection, and review submission, see the direct-Clang route in
+`~/Developer/PUBLISHING.md`.
+
 Adventure Arena's Store record is **Elsewhere: Text Adventures**; its
 **Public Beta** invitation remains https://testflight.apple.com/join/dvkhrmXh.
 External testing still requires the applicable Beta App Review.

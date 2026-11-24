@@ -8,14 +8,14 @@
 #include <unistd.h>
 
 /*
- * The executable of every bundled lua-objc app (apps/<name>/<Name>.xcodeproj).
+ * The executable of every bundled macOS lua-objc app.
  * It runs the Lua entry point the bundle's Info.plist names under
- * `LuaObjCEntry` ("apps/diskmap/init.lua"), so an app's project needs no
- * launcher of its own. Bundled code resolves from Contents/Resources,
+ * `LuaObjCEntry` ("apps/diskmap/init.lua"), so each app can share the
+ * same launcher. Bundled code resolves from Contents/Resources,
  * independently of the directory Finder launches from.
  *
- * An app target links this launcher against CoreServices on purpose
- * (OTHER_LDFLAGS = -Wl,-needed_framework,CoreServices). Inside the App
+ * scripts/release/macos.mk links against CoreServices on purpose
+ * (-Wl,-needed_framework,CoreServices). Inside the App
  * Sandbox, LaunchServices only receives its launchservicesd mach-lookup
  * extension when it is loaded as part of process startup; if AppKit and
  * LaunchServices first arrive through the dlopen below, _RegisterApplication

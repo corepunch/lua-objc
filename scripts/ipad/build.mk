@@ -15,8 +15,8 @@ DEVICE_TYPE ?= iPad
 APP_ENTRY ?= $(APP_DIR)/init.lua
 APP_DISPLAY_NAME ?= $(if $(filter studio,$(APP)),Lua Studio,$(if $(filter adventure-arena,$(APP)),Elsewhere,$(APP)))
 APP_BUNDLE ?= $(if $(filter studio,$(APP)),LuaStudio,$(APP))
-# Studio runs on iPhone and iPad; the other bundled apps are iPad apps.
-ifeq ($(APP),studio)
+# Studio and Adventure Arena support iPhone and iPad development builds.
+ifneq ($(filter studio adventure-arena,$(APP)),)
 DEVICE_FAMILY ?= 1,2
 else
 DEVICE_FAMILY ?= 2

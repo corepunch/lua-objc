@@ -80,6 +80,10 @@ make
 make diskmap-app
 ```
 
+`make diskmap-app` builds the local bundle at
+`build/local/diskmap/unsigned/Diskmap.app`. For App Store signing and
+upload commands, see [Mac App Store build and upload](APP_STORE.md).
+
 `--showcase` runs over `services/Fixture.lua`, a synthetic developer's Mac
 described in `services/FixtureDisk.lua`: nothing is read from a real disk,
 and every test runs against it. `--page=<location>` opens a page

@@ -23,7 +23,7 @@ for _, app in ipairs(records) do
 			app.app .. ": launcher uses the app entry point")
 	end
 end
-for _, path in ipairs({"scripts/release/release.py", "scripts/release/macos.mk"}) do
+for _, path in ipairs({"Makefile", "scripts/release/release.py", "scripts/release/macos.mk", "scripts/ipad/build.mk"}) do
 	t.expect(not read(path):find("xcodebuild", 1, true), path .. ": no Xcode build dependency")
 end
 t.summary()

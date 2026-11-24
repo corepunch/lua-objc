@@ -10,6 +10,10 @@
 
 This document is both an implementation spec and an operator how-to. An engineer should be able to land PR1 without inventing host boot, Lua loading, or the `ns.Window` mapping.
 
+The implemented build entry points are `make ios-host` for the streaming
+simulator host and [the standalone app and release targets](../README.md#standalone-adventure-arena-builds)
+for bundled apps. Both use the Apple toolchain directly from Make.
+
 ---
 
 ## Overview
@@ -136,7 +140,7 @@ flowchart TB
   subgraph mac [Mac]
     srcLua["apps/* lua/** views/*.etlua\nassets png/svg/json/zil"]
     packager["build/lua-objc-packager\nFSEvents + HTTP :8081 + WS /hot"]
-    xcode["xcodebuild / Makefile ios-host\niphonesimulator, arm64"]
+    xcode["Clang / Makefile ios-host\niphonesimulator, arm64"]
     srcLua --> packager
     srcNative["src/uikit/*.m src/shared/*.m\nios/host/*.m vendor/lua-5.4.8"] --> xcode
   end
@@ -161,7 +165,6 @@ Native UIKit is compiled into the host once. App Lua is either:
 
 ```text
 ios/
-  LuaRuntime.xcodeproj          ← scheme LuaRuntime, iphonesimulator
   LuaRuntime/
     Info.plist
     LuaRuntime.h                ← shared host declarations; one header for this folder
@@ -779,7 +782,6 @@ Honest split: **UIKit constructors cannot run on macOS.** `UIView` is not availa
 Makefile targets (not part of default `make test` — they boot a simulator):
 
 ```sh
-make ios-test              # xcodebuild test -scheme LuaRuntime
 make ios-dump-layout ARGS=demo/hello OUT=/tmp/ios-layout.xml
 make ios-screenshot ARGS=demo/hello OUT=/tmp/ios-hello.png
 ```
@@ -811,18 +813,7 @@ DEVICE        ?= iPhone 17
 HOST_BUNDLE   := build/ios/LuaRuntime.app
 PACKAGER      := build/lua-objc-packager
 
-ios-host: $(HOST_BUNDLE)
-
-$(HOST_BUNDLE):
-	DEVELOPER_DIR=$(DEVELOPER_DIR) xcodebuild \
-		-project ios/LuaRuntime.xcodeproj \
-		-scheme LuaRuntime \
-		-sdk iphonesimulator \
-		-destination 'platform=iOS Simulator,name=$(DEVICE)' \
-		-derivedDataPath build/ios/DerivedData \
-		CODE_SIGNING_ALLOWED=NO \
-		build
-	# copy .app to $(HOST_BUNDLE)
+# ios-host is built by the repository Makefile using Clang and ad hoc signing.
 
 ios-packager: $(PACKAGER)
 $(PACKAGER): src/packager/packager.m
@@ -957,9 +948,10 @@ Changing the native bridge (`.m`, Lua 5.4.8 C sources) is a framework change, no
 
 Reconciliation is a follow-up PR that applies `viewdesc.apply` inside `LuaHostingController` and, separately, diffs tab/nav children. Do not block the host on it.
 
-### 6. Makefile-only `.app` without an Xcode project
+### 6. Building the host with Make
 
-Viable for clang + `codesign -s -`, and consistent with AppKit’s Makefile. **Rejected as the only path:** `xcodebuild test`, lldb, and Instruments expect a scheme. Commit `ios/LuaRuntime.xcodeproj` and wrap it with Makefile targets.
+The host uses Clang with the iPhone Simulator SDK and ad hoc signing.
+The Makefile builds and installs `LuaRuntime.app` using the simulator CLI.
 
 ### 7. Long-poll instead of WebSocket
 
@@ -1063,7 +1055,7 @@ Each PR is independently reviewable and mergeable. Native `.m` / `.lua` use tabs
 ### PR 1 — iOS Simulator host + packager streams hello (Lua and assets)
 
 - **Title:** Add iPhone Simulator host that streams Lua and assets from a Mac packager
-- **Files:** `vendor/lua-5.4.8/**`, `vendor/README`, `ios/LuaRuntime.xcodeproj`, `ios/LuaRuntime/{main,LRTApplicationDelegate,LRTSceneDelegate,LRTApplicationController,LRTResourceLoader,LRTReloadConnection,LRTErrorViewController,LuaHostingController}.*`, `ios/LuaRuntime/Info.plist`, `src/packager/packager.m`, `lua/packager/paths.lua`, `Makefile` (`ios-host`, `ios-packager`, `ios-run`, `DEVELOPER_DIR`, `SIMCTL_CHILD_*`), `src/uikit/views.m` (`bridge_install_scene`), `src/uikit/runtime.m` (`uiviewcontroller` metatable + layout accessors hello needs: `flexGrow`, `spacing`, `fillWidth`), `src/uikit/constructors.m` (`systemName` image, `_systemColor`; `_image` via `NSData`), `src/uikit/bridge.m` (`_readFile`), `lua/embedded/UIKit.lua` (start from `UIKitNative`; rewrite `Window`; add `HostingController`, `Toggle`, `SystemImage`; Label typography), `lua/ui/xml.lua` (`require("ns")` default, `bridge._readFile`), `src/main.m` (register AppKit as `ns` = same table), `tests/uikit_api.test.lua`, `tests/packager.test.lua`
+- **Files:** `vendor/lua-5.4.8/**`, `vendor/README`, `ios/LuaRuntime/{main,LRTApplicationDelegate,LRTSceneDelegate,LRTApplicationController,LRTResourceLoader,LRTReloadConnection,LRTErrorViewController,LuaHostingController}.*`, `ios/LuaRuntime/Info.plist`, `src/packager/packager.m`, `lua/packager/paths.lua`, `Makefile` (`ios-host`, `ios-packager`, `ios-run`, `DEVELOPER_DIR`, `SIMCTL_CHILD_*`), `src/uikit/views.m` (`bridge_install_scene`), `src/uikit/runtime.m` (`uiviewcontroller` metatable + layout accessors hello needs: `flexGrow`, `spacing`, `fillWidth`), `src/uikit/constructors.m` (`systemName` image, `_systemColor`; `_image` via `NSData`), `src/uikit/bridge.m` (`_readFile`), `lua/embedded/UIKit.lua` (start from `UIKitNative`; rewrite `Window`; add `HostingController`, `Toggle`, `SystemImage`; Label typography), `lua/ui/xml.lua` (`require("ns")` default, `bridge._readFile`), `src/main.m` (register AppKit as `ns` = same table), `tests/uikit_api.test.lua`, `tests/packager.test.lua`
 - **Depends on:** none
 - **Description:** Vendor Lua 5.4.8; build an empty `LuaRuntime.app` (runtime only — no rsync of `lua/` or `apps/`). Compile Sources = host `.m` + `src/uikit_module.m` + `liblua.a` only. Packager on `:8081` serves `/health` `/file` `/module` `/entry` and `/hot`. Host calls `luaopen_UIKitNative`, loads streamed `UIKit.lua`, `package.loaded.ns`, `GET /entry`, `new():createWindow()`. Delete the 480×360 UIKit window. `SystemImage` via `UIImage systemName:`; file images via packager bytes. Operator: `make ios-run ARGS=demo/hello`. Packager-down is a redbox. Do **not** rewrite every example to `require("ns")` in this PR. Do **not** ship a bundled-Lua fallback.
 

@@ -1,18 +1,18 @@
 # Mac App Store build and upload
 
-Diskmap is a macOS-only app. The checked-in `Diskmap.xcodeproj` has native targets for the app launcher, AppKit runtime, and StorageScan plugin. Native sources come from synchronized folders (`src`, `vendor/lua-5.4.8/src`), with exception sets naming the unity roots each target compiles. A single "Copy Lua" Run Script phase rsyncs the `.lua`, `.etlua`, and `.bin` files of `lua/` and `apps/diskmap/` into `Contents/Resources`, so new files need no project edit.
+Diskmap is an Apple Silicon macOS app. The release Makefile builds its launcher, AppKit runtime, and StorageScan plugin with Clang. Packaging copies Lua and app resources into the bundle and compiles the app icon with `actool`.
 
-The launcher target sets `OTHER_LDFLAGS = -Wl,-needed_framework,CoreServices`. Keep it when recreating the project: the launcher is plain C and only dlopens `AppKit.dylib`, and inside the App Sandbox LaunchServices gets its `launchservicesd` lookup extension only when it is loaded at process start. Without the flag every Finder or `open` launch of the sandboxed bundle aborts in `+[NSApplication sharedApplication]` (`_RegisterApplication` cannot get an ASN), while `make run-diskmap` and Xcode debugger launches still work, which hides the bug. `tests/diskmap_xcode.test.lua` checks for the flag.
+The launcher links CoreServices at startup with `-Wl,-needed_framework,CoreServices` so App Sandbox grants the LaunchServices lookup before the launcher loads `AppKit.dylib`. The release tests check this linker flag.
 
 ## Build
 
 From the repository root:
 
 ```sh
-make diskmap-xcode-build
+make diskmap-app
 ```
 
-The app bundle is `build/xcode-derived/Products/Release/Diskmap.app`. Open `apps/diskmap/Diskmap.xcodeproj` directly in Xcode to archive for generic macOS with the developer's Apple Distribution team, then use Xcode Organizer's **Distribute App → App Store Connect → Upload**. Current bundled runtime dylibs are arm64, so this build supports Apple Silicon Macs only; add x86_64 runtime slices before promising Intel compatibility.
+The local bundle is `build/local/diskmap/unsigned/Diskmap.app`.
 
 ## App Store Connect materials
 
@@ -49,8 +49,19 @@ Completed listing settings include the public privacy-policy URL, $4.99 USD base
 
 ## Upload flow
 
-1. Build the Release target using the command above.
-2. Archive `Diskmap` for generic macOS using the seller's Apple Distribution team.
-3. In Xcode Organizer, choose **Distribute App → App Store Connect → Upload** and wait for processing.
-4. In the version's App Store Connect page, select the processed build.
-5. Keep release on manual and stop at **Prepare for Submission**.
+Choose the marketing version and next build number in App Store Connect. Set
+`VERSION`, `BUILD_NUMBER`, and the numeric `APP_STORE_ID` in your shell. Build
+with the matching Mac App Store profile, an installed distribution signing
+identity, and an installed Mac App Store installer signing identity.
+
+```sh
+make store-package APP=diskmap VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" \
+  PROFILE=/path/to/diskmap.provisionprofile
+asc --profile corepunch builds upload --app "$APP_STORE_ID" \
+  --pkg "build/store/diskmap/Diskmap-$VERSION.pkg" \
+  --version "$VERSION" --build-number "$BUILD_NUMBER" --wait
+```
+
+Attach the processed build with `asc versions attach-build` using the macOS
+version ID and the returned build ID. Keep release set to manual and leave
+the version in **Prepare for Submission**.

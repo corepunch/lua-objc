@@ -10,7 +10,9 @@ OBJECTS := $(patsubst $(LUA)/%.c,$(ROOT)/lua/%.o,$(LUA_SOURCES))
 FLAGS := -arch $(ARCH) -isysroot $(SDK) -mmacosx-version-min=26.0 -O2 -g -Wall -DLUA_USE_MACOSX -I$(LUA)
 FRAGMENTS := $(shell find src/appkit src/shared -name '*.m')
 FRAMEWORKS := -framework Cocoa -framework WebKit -framework QuartzCore -framework Metal \
-	-framework MetalKit -framework SceneKit -framework Symbols -framework UserNotifications -framework QuickLookUI
+	-framework MetalKit -framework SceneKit -framework GameController -framework Symbols \
+	-framework UserNotifications -framework QuickLookUI -framework AVFAudio \
+	-framework UniformTypeIdentifiers -framework Security
 .PHONY: all
 all: $(ROOT)/Launcher $(ROOT)/AppKit.dylib $(addprefix $(ROOT)/,$(addsuffix .dylib,$(PLUGINS)))
 $(ROOT)/lua/%.o: $(LUA)/%.c scripts/release/macos.mk
