@@ -385,11 +385,11 @@ make run ARGS="demo/hello/init.lua"
 ### Run an app in iPhone Simulator
 
 The streaming UIKit host runs an app entry point from the Mac packager. Use
-`PROJECT` (not `ARGS`) to select the app:
+`APP` with a name from `apps/` or a repository-relative entry path:
 
 ```sh
-make ios-run PROJECT=demo/hello
-make ios-run PROJECT=apps/adventure-arena
+make ios-run APP=demo/hello
+make ios-run APP=adventure-arena
 ```
 
 The command builds `build/ios/LuaRuntime.app` if needed, starts the packager on
@@ -407,37 +407,10 @@ running while the app is open for file loading and hot reload.
   invalid` or `Connection refused`, retry `simctl` with elevated sandbox
   permissions. A restricted shell may not be allowed to connect to the host's
   CoreSimulator XPC service. That error does not mean the runtime is absent.
-- `make ios-run` also expects
-  `$DEVELOPER_DIR/Applications/Simulator.app`. If that GUI app path is missing
-  but `simctl` can list devices, boot and launch by explicit device UDID instead
-  of treating the simulator runtime as unavailable:
-
-  ```sh
-  xcrun simctl list devices available
-  SIMULATOR_UDID="paste-the-selected-device-udid-here"
-  xcrun simctl boot "$SIMULATOR_UDID" || true
-  xcrun simctl bootstatus "$SIMULATOR_UDID" -b
-  make ios-host ios-packager
-  ```
-
-  Start the packager in a separate terminal, using the same app entry point:
-
-  ```sh
-  build/lua-objc-packager --root "$PWD" --port 8081 \
-    --entry apps/adventure-arena
-  ```
-
-  The packager ignores `SIGPIPE` and drops hot-reload clients whose socket
-  has closed. Then install and launch the host explicitly:
-
-  ```sh
-  xcrun simctl install "$SIMULATOR_UDID" build/ios/LuaRuntime.app
-  SIMCTL_CHILD_LUA_OBJC_APP=apps/adventure-arena \
-  SIMCTL_CHILD_LUA_OBJC_PACKAGER=http://127.0.0.1:8081 \
-    xcrun simctl launch --terminate-running-process \
-      "$SIMULATOR_UDID" org.luaobjc.host
-  xcrun simctl io "$SIMULATOR_UDID" screenshot /tmp/ios-simulator.png
-  ```
+- `make ios-run` prefers an available iPhone 17 and can use the sole
+  available iPhone simulator when that model is absent. Pass `DEVICE` with
+  the name or UDID to choose a device explicitly. The command uses `simctl`
+  to boot and launch even when Simulator.app is unavailable.
 
 - If the screen says it is waiting for the packager, confirm the packager
   process is still alive and serving port 8081, then relaunch the host after

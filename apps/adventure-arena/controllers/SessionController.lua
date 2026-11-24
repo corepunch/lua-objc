@@ -13,7 +13,7 @@ local TOAST = { seconds = 2.2 }
 -- the same spacing regardless of word length or the character reveal rate.
 local TYPING = {
 	tick = 1 / 30, charactersPerTick = 3,
-	hapticInterval = (4 / 30) / 1.75, hapticStyle = "soft", hapticIntensity = 0.5, openingDelay = 0.45,
+	hapticInterval = (4 / 30) / 1.75, hapticStyle = "soft", hapticIntensity = 0.5,
 }
 
 local function characterCount(text)
@@ -104,8 +104,6 @@ function Controller:show(id, fresh)
 	end
 	self:render()
 	self.transcript = self.mountTemplate(self.refs.transcript, "sections/Transcript")
-	-- A new story types its opening; a resumed one opens at its last line.
-	if not saved then self:beginTyping(1, TYPING.openingDelay) end
 	self:applyReadingSettings()
 	-- A new story is read from its title page; a resumed one from its last line.
 	self:scrollPage(saved and "bottom" or "top", false)
@@ -219,7 +217,7 @@ end
 -- settings change); between renders each tick writes the one paragraph
 -- being typed.
 
-function Controller:beginTyping(firstEntry, delay)
+function Controller:beginTyping(firstEntry)
 	local queue = {}
 	for _, item in ipairs(self.model:paragraphsSince(firstEntry)) do
 		item.length = characterCount(item.text)
@@ -229,7 +227,7 @@ function Controller:beginTyping(firstEntry, delay)
 	self.typingGeneration = (self.typingGeneration or 0) + 1
 	local generation = self.typingGeneration
 	self.typing = { queue = queue, position = 1, revealed = 0, hapticGeneration = 0, generation = generation }
-	self.after(delay or TYPING.tick, function() self:typeNext(generation) end)
+	self.after(TYPING.tick, function() self:typeNext(generation) end)
 end
 
 -- Everything typed so far stays; what is left appears at the next render.

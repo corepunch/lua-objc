@@ -80,7 +80,7 @@ AdventureArena is a shipping SwiftUI iPhone app (deployment target **iOS 26.5**,
 - Cross-platform XML: the same `views/*.etlua` compiles through `lua/ui/xml.lua` with `ns` injected. New tags (`TabView`, `NavigationStack`, `ZStack`, `Section`, `Sheet` presentation is controller-side) land in `TAG_SCHEMA`.
 - Coverage of the AdventureArena primitive set (table below). App-level widgets (message bubbles, compass, star rating, cover image) are **composed in Lua**, not new native classes.
 - Headless tests for XML/API/packager on macOS; simulator tests for native construction, layout dump, and screenshots.
-- Operator workflow: `make ios-run ARGS=demo/hello`. That starts the packager, boots the already-built host if needed, and streams the app.
+- Operator workflow: `make ios-run APP=demo/hello`. That starts the packager, boots the already-built host if needed, and streams the app.
 
 ### Non-Goals
 
@@ -123,7 +123,7 @@ AdventureArena is a shipping SwiftUI iPhone app (deployment target **iOS 26.5**,
 
 9. **Deployment target is iOS 26.5.** Match AdventureArena (`IPHONEOS_DEPLOYMENT_TARGET = 26.5`) and lua-objc’s macOS 26 rule. Makefile `IOS_MIN` / Info.plist `MinimumOSVersion` are **26.5**, not 26.0. Use current UIKit (`UIView.keyboardLayoutGuide`, `UISheetPresentationController` detents, `UIButton.Configuration`). Map `style="borderedProminent"` to `+[UIButtonConfiguration borderedProminentButtonConfiguration]` (public since iOS 15). Do not invent `prominentFilledButtonConfiguration`. No appearance shims, no old-material fallbacks.
 
-10. **Default simulator device is `iPhone 17`.** Current Xcode 26.6 / iOS 26.5 runtimes on this machine: iPhone 17, 17 Pro, 17 Pro Max, 17e, iPhone Air. Override with `DEVICE`. Detect via `xcrun simctl list devices available`.
+10. **The default simulator is `iPhone 17` when available.** If it is absent, use the sole available iPhone simulator. Override with `DEVICE` by name or UDID. List devices with `xcrun simctl list devices available`.
 
 11. **AdventureArena widgets that are not system controls are Lua compositions.** Compass = buttons + `SystemImage`; stars = five SF Symbols; message bubbles = `Label` + semantic colors + layout; cover image = `Image` from file. No `CGPath` fake chrome.
 
@@ -204,7 +204,7 @@ Xcode **Compile Sources** (do not glob `src/uikit/*.m` or `src/shared/*.m` — `
 
 The `.app` contains **no** `lua/`, `apps/`, `views/`, or asset trees. `LRTResourceLoader` talks only to the packager (`GET /module`, `GET /file`). `package.path` is unused for app code; a packager searcher is installed first and is the only searcher that can load `apps.*`, `ui.*`, `etlua`, `App`, and `lua/embedded/UIKit.lua`. `io.open` of a process-relative path will miss (Simulator cwd is not the git root) and is not a fallback.
 
-If the packager is unreachable at boot, show the redbox: “Packager not running. `make ios-run ARGS=…`”. Do not ship a bundled copy of hello “just in case.”
+If the packager is unreachable at boot, show the redbox: “Packager not running. `make ios-run APP=…`”. Do not ship a bundled copy of hello “just in case.”
 
 ### iOS host boot sequence
 
@@ -277,7 +277,7 @@ the Mac with:
 
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-make ios-internal-screenshot PROJECT=demo/hello OUT=/tmp/ios-hello.png
+make ios-internal-screenshot APP=demo/hello OUT=/tmp/ios-hello.png
 ```
 
 This is a content-window capture, not a device-frame screenshot. It requires a
@@ -783,7 +783,7 @@ Makefile targets (not part of default `make test` — they boot a simulator):
 
 ```sh
 make ios-dump-layout ARGS=demo/hello OUT=/tmp/ios-layout.xml
-make ios-screenshot ARGS=demo/hello OUT=/tmp/ios-hello.png
+make ios-screenshot OUT=/tmp/ios-hello.png
 ```
 
 Host XCTest (or a Lua script launched with `LUA_OBJC_DUMP_LAYOUT`) constructs `VStack`+`Label`+`Button`+`TabView` and asserts class names via the dump:
@@ -812,6 +812,8 @@ IOS_MIN       := 26.5
 DEVICE        ?= iPhone 17
 HOST_BUNDLE   := build/ios/LuaRuntime.app
 PACKAGER      := build/lua-objc-packager
+IOS_APP       = $(or $(APP),demo/hello)
+IOS_APP_ENTRY = $(if $(findstring /,$(IOS_APP)),$(IOS_APP),apps/$(IOS_APP))
 
 # ios-host is built by the repository Makefile using Clang and ad hoc signing.
 
@@ -824,7 +826,7 @@ ios-sim: ios-host
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl boot "$(DEVICE)" || true
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl bootstatus "$(DEVICE)" -b
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl install booted $(HOST_BUNDLE)
-	SIMCTL_CHILD_LUA_OBJC_APP="$(or $(ARGS),demo/hello)" \
+	SIMCTL_CHILD_LUA_OBJC_APP="$(IOS_APP_ENTRY)" \
 	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$(PACKAGER_URL)" \
 	SIMCTL_CHILD_LUA_OBJC_APPEARANCE="$(APPEARANCE)" \
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl launch \
@@ -865,29 +867,30 @@ Requires Xcode 26 with the iOS 26.5 simulator runtime. If `xcode-select -p` is C
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
-make ios-run ARGS=demo/hello
+make ios-run APP=demo/hello
 ```
 
-`simctl boot` only starts the runtime. `ios-run` opens **Xcode’s** Simulator at `$DEVELOPER_DIR/Applications/Simulator.app` (do not `open -a Simulator` — on this machine that name is a different app). Logs in the terminal (`boot ok`) mean the process is running; the UI is the iPhone window, not the terminal.
+`APP=adventure-arena` selects `apps/adventure-arena`. Pass a repository-relative
+path for a demo, test app, or specific Lua entry file. The default is `demo/hello`.
 
-That is the whole loop. It starts the packager (`http://127.0.0.1:8081`, `ws://127.0.0.1:8081/hot`), boots the Simulator if needed, opens Simulator.app, installs the **already-built** host if it is missing, and launches with `SIMCTL_CHILD_LUA_OBJC_PACKAGER` / `LUA_OBJC_APP`. Lua, templates, and assets stream from the packager. Edit `demo/hello/views/Window.etlua`, `Controller.lua`, or an image and save: the Simulator updates **without quitting**; `Model` state remains. **No `make`, no `xcodebuild`, no reinstall, no `simctl launch`.**
+`ios-run` uses `simctl` to boot the device, install the host, and launch the app. It opens Xcode’s Simulator window when `$DEVELOPER_DIR/Applications/Simulator.app` is available. You can capture the running app with `make ios-screenshot` when the window is unavailable.
+
+The packager serves `http://127.0.0.1:8081` and `ws://127.0.0.1:8081/hot`. The host reads `SIMCTL_CHILD_LUA_OBJC_PACKAGER` and `SIMCTL_CHILD_LUA_OBJC_APP` at launch. Lua, templates, and assets stream from the packager. Save a change to `demo/hello/views/Window.etlua`, `Controller.lua`, or an image and the running app updates in place, preserving `Model` state.
 
 The host binary is built once (CI or the first `make ios-host` on a clean machine). After that, `ios-run` does not rebuild it.
 
 Manual equivalent (no `--env`; simctl reads `SIMCTL_CHILD_*` from this process):
 
 ```sh
-make ios-packager ARGS=demo/hello          # terminal 1
+make ios-packager-run APP=demo/hello      # terminal 1
 # terminal 2:
-xcrun simctl boot "iPhone 17" || true
-xcrun simctl bootstatus "iPhone 17" -b
-open -a "$DEVELOPER_DIR/Applications/Simulator.app" \
-  --args -CurrentDeviceUDID "$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; d=json.load(sys.stdin);
-[print(x["udid"]) for devs in d["devices"].values() for x in devs if x.get("state")=="Booted"]')"
-xcrun simctl install booted build/ios/LuaRuntime.app   # only if not already installed
+xcrun simctl list devices available
+SIMULATOR_UDID="paste-the-selected-device-udid-here"
+xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+xcrun simctl install "$SIMULATOR_UDID" build/ios/LuaRuntime.app
 SIMCTL_CHILD_LUA_OBJC_PACKAGER=http://127.0.0.1:8081 \
 SIMCTL_CHILD_LUA_OBJC_APP=demo/hello \
-xcrun simctl launch --console --terminate-running-process booted org.luaobjc.host
+xcrun simctl launch --console --terminate-running-process "$SIMULATOR_UDID" org.luaobjc.host
 ```
 
 Appearance:
@@ -903,7 +906,7 @@ xcrun simctl launch --terminate-running-process booted org.luaobjc.host
 Screenshot / layout dump:
 
 ```sh
-make ios-screenshot ARGS=demo/hello OUT=/tmp/ios-hello.png
+make ios-screenshot OUT=/tmp/ios-hello.png
 make ios-dump-layout ARGS=demo/hello OUT=/tmp/ios-layout.xml
 rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/ios-layout.xml
 ```
@@ -911,7 +914,7 @@ rg -n 'cropped="true"|outsideParent="true"|contentClipped="true"' /tmp/ios-layou
 Device override:
 
 ```sh
-make ios-run DEVICE="iPhone 17 Pro" ARGS=demo/hello
+make ios-run DEVICE="iPhone 17 Pro" APP=demo/hello
 ```
 
 Changing the native bridge (`.m`, Lua 5.4.8 C sources) is a framework change, not this loop: `make ios-host` then launch again. The packager will not tell you to do that. `lua/embedded/UIKit.lua` is streamed and does **not** need a host rebuild.
@@ -1057,7 +1060,7 @@ Each PR is independently reviewable and mergeable. Native `.m` / `.lua` use tabs
 - **Title:** Add iPhone Simulator host that streams Lua and assets from a Mac packager
 - **Files:** `vendor/lua-5.4.8/**`, `vendor/README`, `ios/LuaRuntime/{main,LRTApplicationDelegate,LRTSceneDelegate,LRTApplicationController,LRTResourceLoader,LRTReloadConnection,LRTErrorViewController,LuaHostingController}.*`, `ios/LuaRuntime/Info.plist`, `src/packager/packager.m`, `lua/packager/paths.lua`, `Makefile` (`ios-host`, `ios-packager`, `ios-run`, `DEVELOPER_DIR`, `SIMCTL_CHILD_*`), `src/uikit/views.m` (`bridge_install_scene`), `src/uikit/runtime.m` (`uiviewcontroller` metatable + layout accessors hello needs: `flexGrow`, `spacing`, `fillWidth`), `src/uikit/constructors.m` (`systemName` image, `_systemColor`; `_image` via `NSData`), `src/uikit/bridge.m` (`_readFile`), `lua/embedded/UIKit.lua` (start from `UIKitNative`; rewrite `Window`; add `HostingController`, `Toggle`, `SystemImage`; Label typography), `lua/ui/xml.lua` (`require("ns")` default, `bridge._readFile`), `src/main.m` (register AppKit as `ns` = same table), `tests/uikit_api.test.lua`, `tests/packager.test.lua`
 - **Depends on:** none
-- **Description:** Vendor Lua 5.4.8; build an empty `LuaRuntime.app` (runtime only — no rsync of `lua/` or `apps/`). Compile Sources = host `.m` + `src/uikit_module.m` + `liblua.a` only. Packager on `:8081` serves `/health` `/file` `/module` `/entry` and `/hot`. Host calls `luaopen_UIKitNative`, loads streamed `UIKit.lua`, `package.loaded.ns`, `GET /entry`, `new():createWindow()`. Delete the 480×360 UIKit window. `SystemImage` via `UIImage systemName:`; file images via packager bytes. Operator: `make ios-run ARGS=demo/hello`. Packager-down is a redbox. Do **not** rewrite every example to `require("ns")` in this PR. Do **not** ship a bundled-Lua fallback.
+- **Description:** Vendor Lua 5.4.8; build an empty `LuaRuntime.app` (runtime only — no rsync of `lua/` or `apps/`). Compile Sources = host `.m` + `src/uikit_module.m` + `liblua.a` only. Packager on `:8081` serves `/health` `/file` `/module` `/entry` and `/hot`. Host calls `luaopen_UIKitNative`, loads streamed `UIKit.lua`, `package.loaded.ns`, `GET /entry`, `new():createWindow()`. Delete the 480×360 UIKit window. `SystemImage` via `UIImage systemName:`; file images via packager bytes. Operator: `make ios-run APP=demo/hello`. Packager-down is a redbox. Do **not** rewrite every example to `require("ns")` in this PR. Do **not** ship a bundled-Lua fallback.
 
 PR 2 in the previous draft (packager as a follow-up) is absorbed here: without the packager the host has nothing to run.
 

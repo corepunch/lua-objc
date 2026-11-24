@@ -1,10 +1,10 @@
 #!/bin/sh
-# Open Apple's Simulator, install LuaRuntime, stream Lua/assets from the packager.
+# Boot the selected simulator, install LuaRuntime, and stream Lua/assets.
 set -e
 DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 export DEVELOPER_DIR
-DEVICE="${DEVICE:-iPhone 17}"
-ENTRY="${PROJECT:-demo/hello}"
+DEVICE="${DEVICE:?Select a simulator device}"
+ENTRY="${1:?Pass a repository-relative app entry path}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SIMAPP="$DEVELOPER_DIR/Applications/Simulator.app"
 PACKAGER="$ROOT/build/lua-objc-packager"
@@ -14,10 +14,6 @@ LOGDIR="$ROOT/build/ios"
 PIDFILE="$LOGDIR/packager.pid"
 mkdir -p "$LOGDIR"
 
-if [ ! -d "$SIMAPP" ]; then
-	echo "ios-run: Apple Simulator not at $SIMAPP" >&2
-	exit 1
-fi
 if [ ! -x "$PACKAGER" ]; then
 	echo "ios-run: missing $PACKAGER (run make ios-packager)" >&2
 	exit 1
@@ -86,52 +82,25 @@ ensure_packager
 echo "ios-run: packager stays up after this command (make ios-packager-stop to kill it)"
 
 echo "ios-run: boot $DEVICE"
-xcrun simctl boot "$DEVICE" 2>/dev/null || true
+xcrun simctl bootstatus "$DEVICE" -b
 
-# bootstatus -b blocks until boot completes.  First boot after an Xcode
-# upgrade or `simctl erase` runs data migration that can take minutes.
-BOOT_TIMEOUT=90
-xcrun simctl bootstatus "$DEVICE" -b &
-BOOT_PID=$!
-i=0
-while kill -0 "$BOOT_PID" 2>/dev/null; do
-  sleep 1
-  i=$((i + 1))
-  if [ "$i" -ge "$BOOT_TIMEOUT" ]; then
-    echo "" >&2
-    echo "ios-run: simulator boot is slow (first boot after upgrade/erase takes minutes)." >&2
-    echo "ios-run: the simulator IS booting — you should see the Apple logo in Simulator.app." >&2
-    echo "ios-run: if stuck, try:  make ios-reset  then retry." >&2
-    echo "" >&2
-    kill "$BOOT_PID" 2>/dev/null || true
-    wait "$BOOT_PID" 2>/dev/null || true
-    break
-  fi
-done
-wait "$BOOT_PID" 2>/dev/null || true
-
-UDID="$(xcrun simctl list devices booted -j | python3 -c '
-import json,sys
-d=json.load(sys.stdin)
-for devs in d.get("devices",{}).values():
-    for x in devs:
-        if x.get("state")=="Booted" and "iPhone" in x.get("name",""):
-            print(x["udid"]); raise SystemExit
-')"
-echo "ios-run: open $SIMAPP udid=$UDID"
-open -a "$SIMAPP" --args -CurrentDeviceUDID "$UDID"
-sleep 1
+if [ -d "$SIMAPP" ]; then
+	open -a "$SIMAPP" --args -CurrentDeviceUDID "$DEVICE" || \
+		echo "ios-run: continuing through simctl after Simulator.app failed to open" >&2
+else
+	echo "ios-run: Simulator.app unavailable at $SIMAPP; continuing through simctl"
+fi
 
 echo "ios-run: install $HOST_BUNDLE"
-xcrun simctl install booted "$HOST_BUNDLE"
+xcrun simctl install "$DEVICE" "$HOST_BUNDLE"
 
-echo "ios-run: launch Impulse  (UI is in Simulator.app, not this terminal)"
+echo "ios-run: launch $ENTRY on $DEVICE"
 if [ "${LUA_OBJC_RUN_NONBLOCKING:-0}" = "1" ]; then
 	SIMCTL_CHILD_LUA_OBJC_APP="$ENTRY" \
 	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$PACKAGER_URL" \
-		xcrun simctl launch --terminate-running-process booted org.luaobjc.host
+		xcrun simctl launch --terminate-running-process "$DEVICE" org.luaobjc.host
 else
 	SIMCTL_CHILD_LUA_OBJC_APP="$ENTRY" \
 	SIMCTL_CHILD_LUA_OBJC_PACKAGER="$PACKAGER_URL" \
-		xcrun simctl launch --console --terminate-running-process booted org.luaobjc.host
+		xcrun simctl launch --console --terminate-running-process "$DEVICE" org.luaobjc.host
 fi

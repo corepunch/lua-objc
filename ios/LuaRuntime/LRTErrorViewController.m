@@ -40,7 +40,7 @@
 	UIContentUnavailableConfiguration *config = [UIContentUnavailableConfiguration loadingConfiguration];
 	config.text = @"Waiting for Packager";
 	config.secondaryText = [NSString stringWithFormat:
-		@"Start the packager on your Mac with make ios-run PROJECT=<app>. "
+		@"Start the packager on your Mac with make ios-run APP=<app>. "
 		@"This screen continues on its own when %@ responds.", url];
 	_configuration = config;
 	return self;

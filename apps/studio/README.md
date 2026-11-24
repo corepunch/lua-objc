@@ -19,7 +19,7 @@ Share, GitHub, New Project, Delete Project and Settings. Run it in the iPhone
 Simulator with the streaming host:
 
 ```sh
-make ios-run PROJECT=apps/studio
+make ios-run APP=studio
 ```
 
 ## Install

@@ -37,7 +37,7 @@ and Y on the right. A swipe on the scene also runs and a tap jumps, so the
 Mac's mouse can try the touch controls. Try it in the iPhone Simulator:
 
 ```sh
-make ios-run PROJECT=apps/coin-quest
+make ios-run APP=coin-quest
 ```
 
 ## The worlds

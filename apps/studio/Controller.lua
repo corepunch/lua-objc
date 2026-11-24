@@ -212,7 +212,7 @@ end
 function Controller:createWindow()
 	self.ns = self.ns or require("ns")
 	local ns = self.ns
-	assert(ns.Preview, "Lua Studio requires the iOS runtime. Use make ipad-run, or make ios-run PROJECT=apps/studio for an iPhone.")
+	assert(ns.Preview, "Lua Studio requires the iOS runtime. Use make ipad-run, or make ios-run APP=studio for the iPhone Simulator.")
 	DataModel.bind(self.store)
 	-- A phone runs the project full screen under the Studio capsule; the
 	-- iPad lays the workspace out in columns.

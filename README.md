@@ -85,8 +85,8 @@ iPhone Simulator (host is a runtime; Lua and assets stream from a Mac packager).
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-make ios-run ARGS=demo/hello
-# watch Xcode’s Simulator window (not the terminal)
+make ios-run APP=demo/hello
+# watch Xcode’s Simulator window if available
 # edit demo/hello/views/Window.etlua, save — UI updates without quitting
 ```
 
@@ -493,7 +493,7 @@ Use the streaming host for hot reload, or build and install a standalone app
 with the Makefile.
 
 ```sh
-make ios-run PROJECT=apps/adventure-arena
+make ios APP=adventure-arena
 make ipad-simulator APP=adventure-arena
 make ipad-run APP=adventure-arena
 make iphone APP=adventure-arena

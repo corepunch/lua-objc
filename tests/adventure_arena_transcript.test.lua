@@ -55,9 +55,7 @@ local controller = SessionController.new {
 	reduceMotion = function() return false end,
 }
 t.expect(controller:show("zork"), "new session opens")
-t.expect(controller:isTyping(), "a new story types its opening")
-finishTimers()
-t.expect(not controller:isTyping(), "the opening finishes typing")
+t.assertEqual(controller.transcript.refs.paragraph_1_1.revealedCharacters, -1, "the opening is visible on the first render")
 local scroll = controller.refs.transcriptScroll
 -- The page owns the transcript's frame, as the window does in the app.
 local function resizePage(height)

@@ -16,7 +16,7 @@ function Export.items(project, files)
 	end
 	table.insert(result, { name = "README.md", text = "# " .. project .. "\n\n"
 		.. "Copy this folder to apps/" .. project .. " in a lua-objc checkout.\n"
-		.. "Run make ios-run PROJECT=apps/" .. project .. " for the iPhone host, or\n"
+		.. "Run make ios-run APP=" .. project .. " for the iPhone Simulator, or\n"
 		.. "make iphone-deploy APP=" .. project .. " for a paired iPhone with development signing.\n"
 		.. "App Store distribution requires a separate release/signing configuration.\n\n"
 		.. "Export rewrites Studio's demo.playground namespace to apps." .. project .. ".\n"

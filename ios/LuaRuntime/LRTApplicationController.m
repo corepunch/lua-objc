@@ -146,7 +146,7 @@ static NSDictionary *LRTLayoutRecord(UIView *view, UIWindow *window) {
 	if ([error.domain isEqualToString:@"LRTResourceLoader"] && error.code == 404) {
 		title = @"File Not Found";
 		message = [NSString stringWithFormat:
-			@"The packager at %@ has no %@. It may be serving a project that was moved or deleted; restart it with make ios-run PROJECT=<app>.",
+			@"The packager at %@ has no %@. It may be serving a project that was moved or deleted; restart it with make ios-run APP=<app>.",
 			self.packagerURL, error.userInfo[LRTResourceLoaderPathKey] ?: @"such file"];
 	} else if ([error.domain isEqualToString:@"LRTApplicationController"]) {
 		title = @"Lua Error";

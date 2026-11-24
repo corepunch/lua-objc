@@ -27,7 +27,7 @@ AppKit/UIKit controls, and no compile cycle for every UI change.
 ## The core loop
 
 1. Describe the view in Lua or an etlua template.
-2. Run it: `./lua-objc apps/<app>` on macOS, or `make ios-run ARGS=apps/<app>` on the iPhone Simulator. Framework demos live under `demo/`; test harness apps live under `test/`.
+2. Run it: `./lua-objc apps/<app>` on macOS, or `make ios-run APP=<app>` on the iPhone Simulator. Framework demos live under `demo/`; test harness apps live under `test/`.
 3. On iOS, save a Lua/etlua/asset file; the running host reloads in place (no quit, no rebuild).
 4. Exercise the behavior with a headless Lua test.
 5. Inspect a screenshot or native layout dump when the change is visual.

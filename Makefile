@@ -189,7 +189,8 @@ test: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
 IOS_MIN := 26.5
-SIMULATOR_DEVICE = $(or $(DEVICE),iPhone 17)
+IOS_APP = $(or $(APP),demo/hello)
+IOS_APP_ENTRY = $(if $(findstring /,$(IOS_APP)),$(IOS_APP),apps/$(IOS_APP))
 IOS_SDK := $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 IOS_CC := $(shell xcrun --sdk iphonesimulator --find clang)
 LUA_SRC_DIR := vendor/lua-5.4.8/src
@@ -252,20 +253,19 @@ ios-host: $(HOST_BINARY)
 ios-packager: $(PACKAGER)
 
 ios-packager-run: ios-packager
-	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$(or $(PROJECT),demo/hello)"
+	./$(PACKAGER) --root "$(CURDIR)" --port 8081 --entry "$(IOS_APP_ENTRY)"
 
 ios-packager-stop:
 	@if [ -f build/ios/packager.pid ]; then kill $$(cat build/ios/packager.pid) 2>/dev/null || true; rm -f build/ios/packager.pid; fi
 
 ios-run: ios-host ios-packager
-	chmod +x scripts/ios-run.sh
-	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(SIMULATOR_DEVICE)" PROJECT="$(or $(PROJECT),demo/hello)" \
-		scripts/ios-run.sh
+	device="$$(python3 scripts/ios-simulator-device.py "$(DEVICE)")" && \
+		DEVICE="$$device" scripts/ios-run.sh "$(IOS_APP_ENTRY)"
 
 ios-internal-screenshot: ios-host ios-packager
-	DEVELOPER_DIR=$(DEVELOPER_DIR) OUT="$(or $(OUT),/tmp/ios-internal-screenshot.png)" \
-		PROJECT="$(or $(PROJECT),demo/hello)" DEVICE="$(SIMULATOR_DEVICE)" \
-		scripts/ios-internal-screenshot.sh
+	device="$$(python3 scripts/ios-simulator-device.py "$(DEVICE)")" && \
+		DEVICE="$$device" OUT="$(or $(OUT),/tmp/ios-internal-screenshot.png)" \
+		scripts/ios-internal-screenshot.sh "$(IOS_APP_ENTRY)"
 
 ios-screenshot:
 	DEVELOPER_DIR=$(DEVELOPER_DIR) xcrun simctl io booted screenshot \

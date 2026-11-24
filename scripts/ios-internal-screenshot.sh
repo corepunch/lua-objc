@@ -2,6 +2,8 @@
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEVICE="${DEVICE:?Select a simulator device}"
+ENTRY="${1:?Pass a repository-relative app entry path}"
 OUT_PATH=${OUT:-/tmp/ios-internal-screenshot.png}
 CAPTURE_PATH="parity/internal-screenshot-$$.png"
 
@@ -10,12 +12,10 @@ rm -f "$OUT_PATH"
 
 SIMCTL_CHILD_LUA_OBJC_INTERNAL_SCREENSHOT="$CAPTURE_PATH" \
 	LUA_OBJC_RUN_NONBLOCKING=1 \
-	PROJECT="${PROJECT:-demo/hello}" \
-	DEVICE="${DEVICE:-iPhone 17}" \
-	"$ROOT/scripts/ios-run.sh"
+	"$ROOT/scripts/ios-run.sh" "$ENTRY"
 
 data_container="$(DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
-	xcrun simctl get_app_container booted org.luaobjc.host data)"
+	xcrun simctl get_app_container "$DEVICE" org.luaobjc.host data)"
 source_path="$data_container/tmp/$CAPTURE_PATH"
 
 i=0

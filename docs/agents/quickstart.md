@@ -99,7 +99,7 @@ Lua, templates, and assets stream from a Mac packager. After `make ios-run`,
 a save reloads the running app **without quitting**:
 
 ```sh
-make ios-run ARGS=demo/hello
+make ios-run APP=demo/hello
 ```
 
 Do not copy Lua into the `.app`. Do not rebuild the host because a view or
