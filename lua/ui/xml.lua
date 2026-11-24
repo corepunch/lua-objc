@@ -401,7 +401,7 @@ local function layoutProps(attrs)
         "padding", "paddingHorizontal", "paddingVertical", "paddingLeading", "paddingTrailing", "paddingTop", "paddingBottom",
         "spacing", "alignment", "maxRows", "fixedSize",
         "flexGrow", "flexShrink", "flexBasis",
-        "containerRelativeWidth", "trailingMaxWidthFraction", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe", "onScroll",
+        "containerRelativeWidth", "trailingMaxWidthFraction", "hidden", "allowsHitTesting", "background", "tint", "cornerRadius", "clipsToBounds", "ignoresSafeArea", "safeAreaPadding", "contentMode", "onClick", "onTap", "onDrag", "onEdgeSwipe", "onScroll",
         "opacity", "offsetX", "offsetY", "colorScheme",
         "help", "dropExternalOnly",
     }
@@ -910,7 +910,7 @@ local TAG_SCHEMA = {
         constructor = "SafeAreaInset",
         children = "array",
         props = { edge = "str", minimumBottomInset = "num", keyboardBottomInset = "num",
-            horizontalInset = "num", matchBottomHorizontalInset = "bool" },
+            horizontalInset = "num", matchBottomHorizontalInset = "bool", overlay = "bool" },
     },
 
     -- Text & Typography

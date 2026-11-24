@@ -4,7 +4,7 @@
   local fieldSize = math.max(BAR.minSize, math.min(reading.fontSize, BAR.maxSize))
 %>
 <ZStack id="session" maxWidth="infinity" maxHeight="infinity" alignment="top" tint="accent" background="<%= reading.page %>" colorScheme="<%= reading.colorScheme %>">
-  <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
+  <SafeAreaInset id="sessionContent" edge="bottom" overlay="true" minimumBottomInset="24" keyboardBottomInset="4" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
     <ScrollView id="transcriptScroll" topEdgeEffectStyle="soft" flexGrow="1" maxWidth="infinity" scrollOnKeyboard="true" scrollDismissesKeyboard="interactively">
       <VStack id="transcript" maxWidth="infinity" />
     </ScrollView>
@@ -23,7 +23,7 @@
     </VStack>
   </SafeAreaInset>
 
-  <VStack id="toastLayer" paddingTop="8" allowsHitTesting="false" maxWidth="infinity" alignment="center">
+  <VStack id="toastLayer" safeAreaPadding="top" paddingTop="8" allowsHitTesting="false" maxWidth="infinity" alignment="center">
     <GlassEffect id="scoreToast" style="regular" hidden="<%= tostring(toast == nil) %>" accessibilityLabel="Score">
       <HStack paddingHorizontal="16" paddingVertical="10" spacing="8" alignment="center">
         <SystemImage name="sparkles" size="15" color="accent" label="Points" />

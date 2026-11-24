@@ -188,7 +188,9 @@ function Controller:renderCompletions()
 				else self:updateComposer(choice.text) end
 			end
 		end
-		self.completions:update({ choices = choices, actions = actions })
+		local reading = ReadingSettings:current():presentation()
+		self.completions:update({ choices = choices, actions = actions,
+			colorScheme = COLOR_SCHEMES[reading.appearance] or "system" })
 	end
 end
 
@@ -421,12 +423,15 @@ end
 
 -- Page colour, ink, face, size and leading belong to the page's
 -- description, so a change draws the page again rather than restyling views.
--- The page's view controller is not a view: it takes a Night page's
--- appearance itself, so the status bar turns light.
+-- The UIKit host carries the reading theme behind system UI.
 function Controller:applyReadingSettings()
 	if not self.refs then return end
 	if self.ns.platform == "UIKit" and self.page then
-		self.page.overrideUserInterfaceStyle = ReadingSettings:current():presentation().appearance
+		local settings = ReadingSettings:current():presentation()
+		self.page.overrideUserInterfaceStyle = settings.appearance
+		-- The hosted reader stops at the keyboard guide, but the page
+		-- continues behind the keyboard's rounded corners.
+		self.page.view.backgroundColor = self.ns.Color(settings.pageColor)
 	end
 	self:render()
 	self:renderTranscript()

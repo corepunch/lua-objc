@@ -51,6 +51,7 @@ local layout_properties = {
 	"offsetY",
 	"colorScheme",
 	"ignoresSafeArea",
+	"safeAreaPadding",
 	"contentModeName",
 	"background",
 	"tint",
@@ -741,6 +742,7 @@ end
 --- The bottom edge includes the hosting controller's safe-area inset. Use a flexible
 --- scroll view as the first child and the persistent control as the second child.
 --- @prop edge string optional. Currently `bottom`.
+--- @prop overlay boolean optional. Scroll content beneath the accessory and reserve clearance at its edge.
 --- @prop minimumBottomInset number optional. Minimum resting clearance on devices without a bottom safe-area inset.
 --- @prop keyboardBottomInset number optional. Clearance above the software keyboard.
 --- @prop horizontalInset number optional. Horizontal clearance while the keyboard is visible.
@@ -759,6 +761,12 @@ function UIKit.SafeAreaInset(props)
 	accessory.keyboardBottomInset = props.keyboardBottomInset or 0
 	accessory.horizontalInset = props.horizontalInset or 0
 	accessory.matchBottomHorizontalInset = props.matchBottomHorizontalInset == true
+	if props.overlay then
+		props[1].scrollOverlayAccessory = accessory
+		return applyLayout(UIKit.ZStack {
+			alignment = "bottom", fillWidth = true, fillHeight = true, props[1], accessory,
+		}, props)
+	end
 	return applyLayout(UIKit.VStack {
 		spacing = 0, fillWidth = true, fillHeight = true, props[1], accessory,
 	}, props)

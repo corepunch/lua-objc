@@ -12,7 +12,13 @@ local Controller = require("apps.adventure-arena.controllers.SessionController")
 -- callbacks bound to their buttons. This covers accepting successive words,
 -- rather than only querying the suggestion model.
 local commands = {}
-local phone = setmetatable({ idiom = "phone" }, { __index = ns })
+local phone = setmetatable({ idiom = "phone", platform = "UIKit" }, { __index = ns })
+local resolvedColors = {}
+function phone.Color(name)
+	local color = ns.Color(name)
+	resolvedColors[color] = name
+	return color
+end
 local items = { { "old broom", { "TAKE" }, {}, nil, "old broom" }, { "brass key", { "TAKE" }, {}, nil, "brass key" } }
 Store.new { games = { { id = "story", title = "Story", description = "A workshop." } } }
 local model = Session.new { engineFactory = function()
@@ -30,7 +36,8 @@ end }
 local controller = Controller.new {
 	model = model, ns = phone,
 	push = function(_, data)
-		return xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, phone)
+		local _, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, phone)
+		return { view = {} }, refs
 	end,
 	back = function() end, renderTemplate = function() end,
 	presentSheet = function() end, dismissSheet = function() end,
@@ -126,6 +133,21 @@ t.assertEqual(commands[3], "inventory", "the default Inventory button plays inve
 t.assertEqual(controller.refs.input.text, "", "Inventory leaves the composer empty")
 t.assertEqual(#commands, 3, "each default command plays exactly one turn")
 layoutBar()
+
+local settings = require("apps.adventure-arena.models.ReadingSettings"):current()
+for _, theme in ipairs({ { 0, "paper" }, { 3, "night" } }) do
+	settings:setThemeIndex(theme[1])
+	controller:applyReadingSettings()
+	local row = controller.completions.refs.completionRow
+	t.assertEqual(resolvedColors[controller.page.view.backgroundColor], settings:presentation().pageColor,
+		theme[2] .. " canvas extends beyond the keyboard guide")
+	t.expect(row.backgroundColor == nil or row.backgroundColor.alphaComponent == 0,
+		theme[2] .. " suggestions let the page and composer shadow show through")
+	t.assertEqual(row.colorScheme, theme[2] == "night" and "dark" or "system",
+		theme[2] .. " suggestions follow the page appearance")
+end
+settings:setThemeIndex(0)
+controller:applyReadingSettings()
 
 controller.actions.inputChanged("ta")
 local lateButton = nativeButton(controller.completions.refs.completion1)

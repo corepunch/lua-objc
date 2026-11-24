@@ -50,6 +50,7 @@ local layout_properties = {
 	"fitDiameter",
 	"fixedSize",
 	"ignoresSafeArea",
+	"safeAreaPadding",
 	"hidden",
 	"allowsHitTesting",
 	"background",
@@ -843,6 +844,7 @@ end
 ---
 --- The bottom edge is laid out above the containing window's content boundary.
 --- @prop edge string optional. Currently `bottom`.
+--- @prop overlay boolean optional. Scroll content beneath the accessory and reserve clearance at its edge.
 --- @prop minimumBottomInset number optional. Minimum clearance below the accessory.
 --- @prop horizontalInset number optional. Horizontal clearance around the accessory.
 --- @platform AppKit.
@@ -854,6 +856,13 @@ function AppKit.SafeAreaInset(props)
 	local accessory = AppKit.VStack {
 		spacing = 0, fillWidth = true, paddingHorizontal = props.horizontalInset or 0, props[2],
 	}
+	if props.overlay then
+		accessory.paddingBottom = props.minimumBottomInset or 0
+		props[1].scrollOverlayAccessory = accessory
+		return applyLayout(AppKit.ZStack {
+			alignment = "bottom", fillWidth = true, fillHeight = true, props[1], accessory,
+		}, props)
+	end
 	local children = { spacing = 0, fillWidth = true, fillHeight = true,
 		paddingBottom = props.minimumBottomInset or 0, props[1], accessory }
 	return applyLayout(AppKit.VStack(children), props)

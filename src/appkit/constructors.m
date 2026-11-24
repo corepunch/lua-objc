@@ -207,8 +207,11 @@ static int bridge_AppKitControls_zstack(lua_State *L) {
 
 @interface NSScrollView (LuaKeyboardScroll)
 @property(nonatomic) BOOL scrollOnKeyboard;
+@property(nonatomic, strong) NSView *scrollOverlayAccessory;
 @end
 @implementation NSScrollView (LuaKeyboardScroll)
+- (NSView *)scrollOverlayAccessory { return objc_getAssociatedObject(self, &kKeys[kScrollOverlayAccessoryKey]); }
+- (void)setScrollOverlayAccessory:(NSView *)value { objc_setAssociatedObject(self, &kKeys[kScrollOverlayAccessoryKey], value, OBJC_ASSOCIATION_RETAIN); }
 - (BOOL)scrollOnKeyboard {
 	return [objc_getAssociatedObject(self, &kKeys[kScrollOnKeyboardKey]) boolValue];
 }

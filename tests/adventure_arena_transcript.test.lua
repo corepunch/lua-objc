@@ -75,7 +75,7 @@ t.assertEqual(fromTop(), 0, "a new story opens at its title page")
 t.expect(scroll.scrollOnKeyboard == true, "the transcript follows the keyboard")
 
 ns._textFieldTestFocus(controller.refs.input)
-t.assertEqual(scroll.contentView.bounds.origin.y, 0, "showing the keyboard goes to the latest line")
+t.assertEqual(scroll.contentView.bounds.origin.y, -scroll.scrollOverlayAccessory.frame.size.height, "showing the keyboard clears the composer")
 scroll:scrollTo("top", false)
 t.expect(scroll.contentView.bounds.origin.y > 0, "the reader can leave the latest line")
 
@@ -92,7 +92,7 @@ t.assertEqual(scroll.contentView.bounds.origin.y, offset, "laying the page out k
 resizePage(900)
 scroll:scrollTo("top", false)
 controller:submitCommand("wait")
-t.assertEqual(scroll.contentView.bounds.origin.y, 0, "an answer that fits the screen is shown to the foot of the page")
+t.assertEqual(scroll.contentView.bounds.origin.y, -scroll.scrollOverlayAccessory.frame.size.height, "the latest answer clears the composer")
 t.assertEqual(controller.transcript.refs.entry_5.frame.origin.y, 36, "the last entry clears the bottom by 36 points")
 t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted command is in the transcript")
 local serif = ns.Text { "look", size = 17, design = "serif", weight = "medium" }

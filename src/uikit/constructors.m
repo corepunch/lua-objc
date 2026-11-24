@@ -319,6 +319,7 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 	CGSize viewport = self.bounds.size;
 	if (self.alwaysBounceHorizontal) apply_scroll_container_widths(self.luaContent, viewport.width);
 	CGFloat topInset = view_padding_top(self);
+	if (self.scrollOverlayAccessory) topInset += MAX(0, self.safeAreaInsets.top);
 	CGFloat bottomInset = self.alwaysBounceVertical ? uikit_scroll_bottom_inset(self) : 0;
 	self.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
 	CGSize measured = measure_size(self.luaContent, CGSizeMake(
@@ -391,7 +392,9 @@ static int bridge_uikit_scroll_to(lua_State *L) {
 		UIView *match = uikit_view_with_identifier(content, target);
 		if (!match) return 0;
 		CGRect rect = [match convertRect:match.bounds toView:scroll];
-		y = top ? CGRectGetMinY(rect) : CGRectGetMaxY(rect) - scroll.bounds.size.height;
+		y = top ? CGRectGetMinY(rect) - (scroll.scrollOverlayAccessory ? scroll.safeAreaInsets.top : 0)
+			: CGRectGetMaxY(rect) - scroll.bounds.size.height
+				+ (scroll.scrollOverlayAccessory ? uikit_scroll_bottom_inset(scroll) : 0);
 		y = MIN(MAX(0, y), limit);
 	} else {
 		return 0;

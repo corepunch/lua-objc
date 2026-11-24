@@ -152,6 +152,7 @@ t.assertEqual(heading().sessionScore.text, "Score 0", "the clock never appears a
 -- The score capsule is part of the page's state: shown with its text, then
 -- drawn away again.
 controller.sessionController:announceScore(5)
+t.assertEqual(reader().toastLayer.safeAreaPadding, "top", "score feedback stays clear of the navigation bar")
 t.expect(not reader().scoreToast.hidden and reader().scoreToastText.text == "+5 points", "a score change shows its capsule")
 controller.sessionController.toast = nil
 controller.sessionController:render()
