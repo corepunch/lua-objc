@@ -49,6 +49,7 @@ local function engine()
 					state.room = "Hall"
 					return "Hall\nA [[grand staircase->staircase]] climbs away. The gate lies [[south]]."
 				end
+				if command == "read plaque" then return "The [[plaque]] is faded." end
 				return "You " .. command .. "."
 			end,
 			roomName = function() return state.room end,
@@ -132,7 +133,9 @@ t.expect(controller:show("links"), "the session opens")
 local function page() return controller.transcript.refs end
 local prose = page().paragraph_1_1
 t.assertEqual(#bridge._paragraphLinks(prose), 0, "marked prose has no hotlinks")
-t.expect(bridge._paragraphAttributes(prose, scene.links[1][1].location).bold, "marked objects are bold")
+for _, link in ipairs(scene.links[1]) do
+	t.expect(not bridge._paragraphAttributes(prose, link.location).bold, link.label .. " is regular prose")
+end
 t.assertEqual(prose.text, scene.paragraphs[1], "the page shows prose without markup")
 t.expect(controller.refs.input ~= nil, "typing is available beside the story")
 controller:updateComposer("read ")
@@ -140,19 +143,22 @@ controller:updateComposer("read plaque")
 controller.actions.submit()
 t.assertEqual(model.history[#model.history], "read plaque", "Send executes the completed draft")
 t.assertEqual(page().command_2.text, "read plaque", "the command appears on the page")
+local response = page().paragraph_3_1
+t.assertEqual(response.text, "The plaque is faded.", "answers print the story's words without markup")
+t.expect(not bridge._paragraphAttributes(response, 4).bold, "marked words in answers are regular prose")
 controller:submitCommand("north")
 t.assertEqual(model:presentation().roomTitle, "Hall", "typing a direction changes rooms")
 t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 0, "past prose has no hotlinks either")
-t.expect(bridge._paragraphAttributes(page().paragraph_1_1, scene.links[1][1].location).bold,
-	"old descriptions preserve their printed emphasis")
+t.expect(not bridge._paragraphAttributes(page().paragraph_1_1, scene.links[1][1].location).bold,
+	"earlier descriptions remain in regular type")
 local entries = model:presentation().entries
 local hall = page()["paragraph_" .. #entries .. "_1"]
 t.assertEqual(#bridge._paragraphLinks(hall), 0, "new scenes also use ordinary prose")
 ReadingSettings:current():setJustified(true)
 controller:applyReadingSettings()
 hall = page()["paragraph_" .. #entries .. "_1"]
-t.expect(bridge._paragraphAttributes(hall, entries[#entries].links[1][1].location).bold,
-	"bold survives reading-settings changes")
+t.expect(not bridge._paragraphAttributes(hall, entries[#entries].links[1][1].location).bold,
+	"marked words remain in regular type after reading-settings changes")
 
 -- A resumed story rebuilds its links from the replayed commands.
 state.room = "Gate"

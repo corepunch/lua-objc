@@ -82,7 +82,7 @@ t.expect(pages.welcome.detail:find("interactive stories", 1, true) ~= nil, "the 
 t.expect(pages.interactive.title:find("play", 1, true) and pages.interactive.detail:find("waits for you", 1, true),
 	"the second page says how this differs from a printed book")
 t.expect(pages.interactive.detail:find("saved after every move", 1, true) ~= nil, "and that the reader's place is kept")
-t.assertEqual(#pages.read.rows, 3, "reading a page has three parts: the heading, the reader's moves, the links")
+t.assertEqual(#pages.read.rows, 2, "the reading guide explains the heading and the reader's moves")
 t.assertEqual(#pages.play.rows, 3, "play explains typing, completion and book actions")
 t.expect(pages.play.rows[2].title:find("suggestions", 1, true) ~= nil, "the phone guide explains tappable game suggestions")
 for _, row in ipairs(pages.play.rows) do
@@ -96,9 +96,6 @@ end
 -- A Mac has no on-screen keyboard: no suggestion bar, no keyboard
 -- screenshot, and the pages speak of clicking.
 local mac = Onboarding.new(nil, { touch = false })
-mac.step = "read"
-t.expect(not mac:page().rows[3].detail:find("Click", 1, true), "bold prose is not presented as clickable")
-t.expect(mac:page().rows[3].title:find("Bold", 1, true) ~= nil, "the tour explains bold vocabulary")
 mac.step = "play"
 local macPlay = mac:page()
 t.expect(macPlay.image == nil, "a Mac does not show the phone keyboard")
@@ -251,7 +248,7 @@ local function assertLegend(count, tag)
 	end
 	t.expect(tour.refs["rowSymbol_" .. (count + 1)] == nil, tag .. " has exactly " .. count .. " rows")
 end
-assertLegend(3, "how to read a page")
+assertLegend(2, "how to read a page")
 tap("next")
 t.assertEqual(tour.model.step, "play", "Continue reaches how to play")
 t.expect(tour.refs.shot_play ~= nil, "a phone sees the keyboard and its suggestions")

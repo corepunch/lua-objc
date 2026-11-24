@@ -225,8 +225,6 @@ function Onboarding:page(recommendation)
 				detail = "Each new place opens with its name and what you find there." },
 			{ symbol = "figure.walk", title = "The chevron marks your moves",
 				detail = "What you did, set apart from the story's answer." },
-			{ symbol = "bold", title = "Bold words help you choose",
-				detail = "They name things and directions you can mention in a command." },
 		}
 	elseif step == "play" then
 		page.symbol = "text.bubble.fill"

@@ -198,7 +198,6 @@ function Controller:renderTranscript()
 	if not self.transcript or self.transcript:isDisposed() then return end
 	local data = self.model:presentation()
 	data.quoteRanges = Quotes.ranges
-	data.synopsis = self.model.currentGame.description or ""
 	local settings = ReadingSettings:current():presentation()
 	data.reading = {
 		font = settings.font, fontSize = settings.fontSize, lineSpacing = settings.lineSpacing,

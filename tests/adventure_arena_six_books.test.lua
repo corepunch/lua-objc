@@ -31,6 +31,10 @@ for id, title in pairs(titles) do
 		local started = session:start(book)
 		t.expect(started, title .. " starts through the app runtime")
 		if started then
+			local banner = session.entries[1]
+			t.assertEqual(banner.kind, "banner", "the story opens with a printed banner")
+			t.assertEqual(banner.title, book.title, "the printed title matches the catalog")
+			t.assertEqual(banner.lines[1], book.author .. ", " .. book.year, "the story prints its own credits")
 			t.expect(session.scene ~= nil, title .. " has an opening scene")
 			t.assertEqual(session.engine.roomIcon, nil, title .. " has no room artwork API")
 			local command

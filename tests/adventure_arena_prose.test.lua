@@ -32,6 +32,15 @@ for _, book in ipairs(catalog) do
 			local started, err = session:start(book)
 			t.expect(started, book.id .. " starts locally and streamed without room art: " .. tostring(err))
 			if not started then os.exit(1) end
+			local banner = session.entries[1]
+			t.assertEqual(banner.kind, "banner", "the story prints its own opening credits")
+			t.assertEqual(banner.title, book.title, "the story's printed title matches the catalog")
+			t.assertEqual(banner.lines[1], book.author .. ", " .. book.year, "credits include the story's studio and year")
+			t.assertEqual(banner.lines[2], "Release 1", "release appears after the credit")
+			if book.id == "books.silent-vector" then
+				t.assertEqual(session.entries[2].kind, "narration", "the game's own opening line precedes the room")
+				t.assertEqual(session.entries[3].title, "Restraint Cradle", "the first room follows the game's opening line")
+			end
 			t.assertEqual(session.engine.roomIcon, nil, "the engine has no room artwork API")
 			t.expect(session.scene and #session.scene.paragraphs > 0, "the opening scene retains its prose")
 			t.assertEqual(session.scene.icon, nil, "scene records contain no artwork")

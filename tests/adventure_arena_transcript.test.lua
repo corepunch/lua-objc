@@ -4,7 +4,6 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
-local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
@@ -38,7 +37,7 @@ local function after(_, callback) table.insert(timers, callback) end
 local function finishTimers()
 	while #timers > 0 do table.remove(timers, 1)() end
 end
-Store.new { games = { { id = "zork", title = "Zork", author = "Infocom", description = "A story." } } }
+Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
 local controller = SessionController.new {
 	model = model,
 	push = function(_, data)
@@ -69,20 +68,6 @@ local function fromTop()
 	return scroll.documentView.frame.size.height - scroll.contentSize.height - scroll.contentView.bounds.origin.y
 end
 resizePage(220)
-local titlePage = controller.transcript.refs
-t.assertEqual(titlePage.gameAuthor.text, "Infocom", "the title page names the studio")
-t.assertEqual(titlePage.gameAuthor.frameInWindow.origin.x, titlePage.synopsis.frameInWindow.origin.x,
-	"the studio starts at the text column")
-t.assertEqual(titlePage.gameTitle.frameInWindow.origin.x, titlePage.synopsis.frameInWindow.origin.x,
-	"the book title starts at the text column")
-t.assertEqual(#titlePage.titlePage.subviews, 3, "the title page has only studio, title and synopsis")
-local authorFrame = titlePage.gameAuthor.frameInWindow
-local titleFrame = titlePage.gameTitle.frameInWindow
-local synopsisFrame = titlePage.synopsis.frameInWindow
-t.assertEqual(authorFrame.origin.y - titleFrame.origin.y - titleFrame.size.height, 10,
-	"the studio stays close to the book title")
-t.assertEqual(titleFrame.origin.y - synopsisFrame.origin.y - synopsisFrame.size.height, 18,
-	"the synopsis is separated from the title")
 t.expect(scroll.contentSize.height > 0 and scroll.documentView.frame.size.height > scroll.contentSize.height,
 	"the opening is taller than the page")
 t.assertEqual(fromTop(), 0, "a new story opens at its title page")
@@ -127,13 +112,11 @@ finishTimers()
 t.assertEqual(paragraph.revealedCharacters, -1, "the whole paragraph finishes typing")
 local attributes = require("AppKitNative")._paragraphAttributes
 local attrs = attributes(paragraph, 16)
-t.expect(attrs.italic and attrs.bold, "a quoted story link is rendered in bold italic")
+t.expect(attrs.italic and not attrs.bold, "a marked word inside a quotation is italic only")
 t.expect(attributes(paragraph, 15).italic and attributes(paragraph, 20).italic, "the quote marks are italic too")
 t.expect(not attributes(paragraph, 22).italic, "prose resumes in regular type after the quote")
 t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
 	controller.transcript.refs.entry_3.paddingTop, "the heading uses the same command gap as prose")
-t.assertEqual(controller.transcript.refs.titlePage.paddingBottom,
-	math.floor(ReadingSettings:current():presentation().fontSize * 1.3), "the full synopsis has a section break below it")
 
 -- The command field spans the inset without any adjacent controls.
 local bar = controller.refs.commandBar
@@ -182,7 +165,7 @@ local page = loaded.transcript.refs
 t.assertEqual(page.paragraph_1_1.text:sub(1, 20), "A long opening parag", "a loaded session keeps its opening, first letter included")
 t.assertEqual(#page.paragraph_1_1.textContainer.exclusionPaths, 0, "restored prose uses the full column")
 t.expect(page.paragraph_1_2.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")
-t.expect(page.titlePage ~= nil and page.gameTitle.text == "Zork", "the story opens on a title page")
+t.expect(page.bannerTitle_1 == nil and page.synopsis == nil, "a game without a banner opens directly on the scene")
 
 -- Keep the command prompt plain and preserve the accessible speaker label.
 local command = controller.transcript.refs.command_2

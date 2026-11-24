@@ -121,8 +121,7 @@ t.assertEqual(heading().sessionTitle.text, catalog:all()[1].title, "the opening 
 t.expect(rendered.refs.bookCommands == nil and rendered.refs.readingActions == nil, "the reader has no ellipsis menu")
 t.expect(rendered.refs.back == nil and rendered.refs.sessionHeader == nil,
 	"the system navigation owns the back button; the screen draws no header")
-t.assertEqual(page().gameTitle.text, catalog:all()[1].title, "the title page names the game")
-t.assertEqual(page().synopsis.text, bookInfoSynopsis, "the reader uses the full synopsis from book info")
+t.expect(page().bannerTitle_1 == nil and page().synopsis == nil, "the reader only uses what the game prints")
 t.assertEqual(page().sceneTitle_1.text, catalog:all()[1].title, "the opening scene is named")
 t.assertEqual(page().paragraph_1_1.text, "Opening <&>", "transcript escapes XML characters")
 t.assertEqual(#page().paragraph_1_1.textContainer.exclusionPaths, 0, "the opening prose uses the full column")
