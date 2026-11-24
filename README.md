@@ -514,9 +514,9 @@ the Makefiles independently of this optional development project.
 
 ### Releases: GitHub and App Store Connect
 
-[Release apps](.github/workflows/release.yml) builds a tag such as `v1.2.3` with
-Makefiles and the Apple command-line toolchain, then publishes packages to GitHub.
-Upload builds to App Store Connect manually.
+[App build checks](.github/workflows/app-build-checks.yml) runs packaging tests
+and builds unsigned apps on version tags such as `v1.2.3` or by manual dispatch.
+Sign release packages and upload them to GitHub or App Store Connect locally.
 
 Each project declares its platform and channels in
 [`scripts/release/apps.json`](scripts/release/apps.json):
@@ -545,32 +545,8 @@ dependency. Both delivery channels use copies of the same compiled app:
 Developer ID signing and notarization for a DMG; distribution signing with
 an embedded provisioning profile for Store PKG/IPA. Development, ad hoc,
 enterprise, expired and mismatched Store profiles are rejected.
-The generated bundle gets version `1.2.3` and build number
-`<Actions run number>.<attempt>`; source plists stay unchanged.
-Debug symbols are retained as Actions artifacts.
-
-Configure repository **Actions secrets** (binary files are base64 encoded):
-
-| Secret | Purpose |
-|---|---|
-| `MACOS_CERTIFICATE_P12` | Developer ID Application certificate **and private key**, `.p12`, for DMGs |
-| `MACOS_CERTIFICATE_PASSWORD` | Its export password (omit for an empty password) |
-| `NOTARY_KEY_P8` | App Store Connect team API key `.p8`, for notarization |
-| `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | That key's ID and issuer UUID |
-| `APPSTORE_CERTIFICATE_P12` | Apple Distribution certificate(s) and private key(s), `.p12`, matching both Store profiles |
-| `APPSTORE_CERTIFICATE_PASSWORD` | Its export password (omit for an empty password) |
-| `APPSTORE_INSTALLER_P12` | 3rd Party Mac Developer Installer certificate and private key, `.p12`, for Store PKGs |
-| `APPSTORE_INSTALLER_PASSWORD` | Its export password (omit for an empty password) |
-| `DISKMAP_APPSTORE_PROFILE` | Diskmap macOS App Store provisioning profile |
-| `ADVENTURE_ARENA_APPSTORE_PROFILE` | Adventure Arena iOS App Store provisioning profile |
-
-Push a `v1.2.3` tag after committing the release sources and submodule
-revisions. Actions builds the apps with the `github` channel and attaches signed
-packages to the GitHub release. To check builds for all declared platforms
-without signing credentials, dispatch **Release apps** with an existing tag and
-`buildOnly=true`. The workflow keeps those builds as Actions artifacts.
-
-The same build and packaging commands work locally:
+For a local release, set the version and build number and use the signing
+identities and provisioning profiles installed on your Mac.
 
 ```sh
 make release-build APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1
