@@ -107,7 +107,7 @@ t.assertEqual(controller.heading.refs.sessionTitle.text, "Sanitarium Gate", "the
 local function page() return controller.transcript.refs end
 t.assertEqual(page().gameTitle.text, game.title, "the page opens on the title")
 local _, titleRefs = xml.renderFile("apps/adventure-arena/views/components/GameTitle.etlua", {
-	id = "detailTitle", title = game.title, color = "white", alignment = "leading",
+	id = "detailTitle", title = game.title, color = "white", alignment = "leading", font = "serif",
 }, ns)
 t.assertEqual(page().gameTitle.font.fontName, titleRefs.detailTitle.font.fontName, "reader and detail share the title font")
 t.assertEqual(page().gameTitle.font.pointSize, 34, "the reader uses the detail title size")
@@ -141,6 +141,20 @@ t.assertEqual(page().gameTitle.font.pointSize, 34, "reading size changes leave t
 t.assertEqual(saved.fontSize, 20, "the new size is persisted")
 t.assertEqual(#pickerControls, 2, "dragging the slider leaves the panel in place")
 
+controller:submitCommand("look")
+for _, choice in ipairs({ { 0, "serif" }, { 1, "default" }, { 2, "rounded" }, { 3, "monospaced" } }) do
+	pickerControls[1].action(choice[1])
+	local font = choice[2]
+	local title = ns.Text { "title", size = 34, design = font, weight = "bold" }
+	local scene = ns.Text { "scene", size = 29, design = font, weight = "semibold" }
+	local command = ns.Text { "look", size = 19, design = font, weight = "medium" }
+	local body = ns.Text { "body", size = 20, design = font }
+	t.assertEqual(page().gameTitle.font.fontName, title.font.fontName, font .. " book title follows the choice")
+	t.assertEqual(page().sceneTitle_1.font.fontName, scene.font.fontName, font .. " scene title follows the choice")
+	t.assertEqual(page().command_2.font.fontName, command.font.fontName, font .. " command follows the choice")
+	t.assertEqual(page().paragraph_1_1.font.fontName, body.font.fontName, font .. " body follows the choice")
+	t.assertEqual(controller.refs.input.font.fontName, body.font.fontName, font .. " command field follows the choice")
+end
 pickerControls[1].action(1)
 t.assertEqual(settings.font, "default", "font control updates reading preferences")
 t.assertEqual(#pickerControls, 2, "a discrete choice updates the panel's pickers in place")

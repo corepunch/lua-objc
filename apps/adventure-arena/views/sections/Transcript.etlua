@@ -4,7 +4,7 @@
   --    and the full synopsis before the first scene.
   --  · The Infocom banner becomes the colophon, small and centred.
   --  · Each new room opens a scene with its name as the title.
-  --  · Reader commands use a chevron and secondary sans serif. The story answers in prose.
+  --  · Reader commands use a chevron and secondary ink. The story answers in prose.
   --  · Marked objects and directions stay bold, ordinary selectable prose.
   -- `reading` carries the reader’s face, size, leading, alignment and inks.
   -- `reveal` holds the characters shown of paragraphs still typing, keyed
@@ -34,10 +34,10 @@
   <% if earlierEntries == 0 then %>
   <VStack id="titlePage" spacing="10" alignment="center" maxWidth="infinity" paddingTop="12" paddingBottom="<%= hasSynopsis and PAGE.scene or PAGE.scene - PAGE.paragraph %>">
     <% if gameAuthor ~= "" then %>
-    <Label id="gameAuthor" text="<%= gameAuthor %>" size="<%= size - 3 %>" design="serif" smallCaps="true" color="<%= reading.secondary %>" alignment="center" />
+    <Label id="gameAuthor" text="<%= gameAuthor %>" size="<%= size - 3 %>" design="<%= reading.font %>" smallCaps="true" color="<%= reading.secondary %>" alignment="center" />
     <% end %>
-    <%- partial("../components/GameTitle.etlua", { id = "gameTitle", title = gameTitle, color = reading.primary, alignment = "center" }) %>
-    <Label id="fleuron" text="❦" size="<%= size + 2 %>" design="serif" color="<%= reading.primary %>" alignment="center" accessibilityLabel="" />
+    <%- partial("../components/GameTitle.etlua", { id = "gameTitle", title = gameTitle, color = reading.primary, alignment = "center", font = reading.font }) %>
+    <Label id="fleuron" text="❦" size="<%= size + 2 %>" design="<%= reading.font %>" color="<%= reading.primary %>" alignment="center" accessibilityLabel="" />
     <% if hasSynopsis then %>
     <Paragraph id="synopsis" text="<%= synopsis %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" alignment="leading" lineSpacing="<%= lead %>" maxWidth="infinity" />
     <% end %>
@@ -50,22 +50,22 @@
   <% if entry.kind == "banner" then %>
   <VStack id="entry_<%= index %>" spacing="2" alignment="center" maxWidth="infinity" paddingTop="<%= PAGE.paragraph %>" paddingBottom="<%= PAGE.paragraph %>">
     <% if entry.title:lower() ~= gameTitle:lower() then %>
-    <Label text="<%= entry.title %>" size="<%= size - 3 %>" design="serif" smallCaps="true" color="<%= reading.secondary %>" alignment="center" lines="0" />
+    <Label text="<%= entry.title %>" size="<%= size - 3 %>" design="<%= reading.font %>" smallCaps="true" color="<%= reading.secondary %>" alignment="center" lines="0" />
     <% end %>
     <% for _, line in ipairs(entry.lines) do %>
-    <Label text="<%= line %>" size="<%= size - 6 %>" design="serif" color="<%= reading.secondary %>" alignment="center" lines="0" />
+    <Label text="<%= line %>" size="<%= size - 6 %>" design="<%= reading.font %>" color="<%= reading.secondary %>" alignment="center" lines="0" />
     <% end %>
   </VStack>
   <% elseif entry.kind == "scene" then %>
   <% local sceneTop = followsCommand and PAGE.afterCommand or ((index == 1 and earlierEntries == 0) and 0 or PAGE.scene) %>
   <VStack id="entry_<%= index %>" spacing="0" alignment="leading" maxWidth="infinity" paddingTop="<%= sceneTop %>">
     <VStack paddingBottom="<%= PAGE.paragraph + 2 %>" alignment="leading" maxWidth="infinity">
-      <Label id="sceneTitle_<%= index %>" text="<%= entry.title %>" size="<%= size + 9 %>" design="serif" weight="semibold" color="<%= reading.primary %>" lines="0" <%- waiting(index) %> />
+      <Label id="sceneTitle_<%= index %>" text="<%= entry.title %>" size="<%= size + 9 %>" design="<%= reading.font %>" weight="semibold" color="<%= reading.primary %>" lines="0" <%- waiting(index) %> />
     </VStack>
     <VStack spacing="<%= PAGE.proseGap %>" alignment="leading" maxWidth="infinity">
       <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
       <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" <%- revealed(index, paragraphIndex) %>>
-        <%- partial("ProseEmphasis.etlua", { ranges = (entry.links or {})[paragraphIndex] }) %>
+        <%- partial("ProseEmphasis.etlua", { ranges = (entry.links or {})[paragraphIndex], paragraph = paragraph, quoteRanges = quoteRanges }) %>
       </Paragraph>
       <% end %>
     </VStack>
@@ -74,14 +74,14 @@
   <VStack id="entry_<%= index %>" paddingTop="<%= PAGE.command %>" alignment="leading" maxWidth="infinity">
     <HStack spacing="6" alignment="center">
       <SystemImage name="chevron.right" size="<%= PAGE.commandMarker %>" weight="semibold" color="<%= reading.secondary %>" label="" />
-      <Label id="command_<%= index %>" text="<%= entry.text %>" size="<%= size - 1 %>" design="default" weight="medium" color="<%= reading.secondary %>" lines="0" accessibilityLabel="You: <%= entry.text %>" />
+      <Label id="command_<%= index %>" text="<%= entry.text %>" size="<%= size - 1 %>" design="<%= reading.font %>" weight="medium" color="<%= reading.secondary %>" lines="0" accessibilityLabel="You: <%= entry.text %>" />
     </HStack>
   </VStack>
   <% else %>
   <VStack id="entry_<%= index %>" spacing="<%= PAGE.proseGap %>" alignment="leading" maxWidth="infinity" paddingTop="<%= followsCommand and PAGE.afterCommand or PAGE.paragraph %>">
     <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
     <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" <%- revealed(index, paragraphIndex) %>>
-      <%- partial("ProseEmphasis.etlua", { ranges = (entry.links or {})[paragraphIndex] }) %>
+      <%- partial("ProseEmphasis.etlua", { ranges = (entry.links or {})[paragraphIndex], paragraph = paragraph, quoteRanges = quoteRanges }) %>
     </Paragraph>
     <% end %>
   </VStack>

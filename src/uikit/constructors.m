@@ -412,6 +412,12 @@ static int bridge_UIKitControls_scrollView(lua_State *L) {
 	BOOL horizontal = lua_toboolean(L, 4);
 	BOOL vertical = lua_toboolean(L, 5);
 	LuaUIKitScrollView *scroll = [[LuaUIKitScrollView alloc] initWithFrame:CGRectZero];
+	if (!lua_isnoneornil(L, 6)) {
+		static const char *const styles[] = { "automatic", "soft", "hard", NULL };
+		int style = luaL_checkoption(L, 6, NULL, styles);
+		scroll.topEdgeEffect.style = @[ UIScrollEdgeEffectStyle.automaticStyle,
+			UIScrollEdgeEffectStyle.softStyle, UIScrollEdgeEffectStyle.hardStyle ][style];
+	}
 	/* Safe-area placement is owned by LuaHostingController. Automatic UIKit
 	 * adjustment would add the same inset again to the root scroll content. */
 	scroll.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -781,9 +787,7 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		configuration.contentInsets = NSDirectionalEdgeInsetsZero;
 		configuration.baseForegroundColor = strcmp(style, "default") == 0
 			? UIColor.tintColor : UIColor.labelColor;
-		obj.contentHorizontalAlignment = buttonTitle.length == 0 && systemImage[0]
-			? UIControlContentHorizontalAlignmentCenter
-			: UIControlContentHorizontalAlignmentLeft;
+		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 	} else if (systemImage[0] || role[0]) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];
 	}

@@ -20,7 +20,7 @@ local function engine()
 		start = function()
 			return {
 				resume = function(_, command)
-					if command == "north" then return "Cellar\nA damp cellar." end
+					if command == "north" then return "Cellar\nA damp cellar. “[[door]]”" end
 					if command == "look" then return longAnswer end
 					return "Response " .. command
 				end,
@@ -95,8 +95,8 @@ controller:submitCommand("wait")
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "an answer that fits the screen is shown to the foot of the page")
 t.assertEqual(controller.transcript.refs.entry_5.frame.origin.y, 36, "the last entry clears the bottom by 36 points")
 t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted command is in the transcript")
-local sans = ns.Text { "look", size = 17, design = "default", weight = "medium" }
-t.assertEqual(controller.transcript.refs.command_2.font.fontName, sans.font.fontName, "commands use the system sans serif")
+local serif = ns.Text { "look", size = 17, design = "serif", weight = "medium" }
+t.assertEqual(controller.transcript.refs.command_2.font.fontName, serif.font.fontName, "commands use the selected serif")
 t.assertEqual(controller.transcript.refs.paragraph_3_1.text, longAnswer, "the response follows the command")
 t.expect(model:hasExit("north") and not model:hasExit("south"), "the session still knows its exits")
 t.expect(controller.transcript.refs.chapter_1 == nil, "a scene carries no chapter line above its title")
@@ -107,6 +107,9 @@ controller:submitCommand("north")
 finishTimers()
 local cellar = model:entryCount()
 t.assertEqual(controller.transcript.refs["sceneTitle_" .. cellar].text, "Cellar", "the move opens a scene")
+local quote = controller.transcript.refs["paragraph_" .. cellar .. "_1"]
+local attrs = require("AppKitNative")._paragraphAttributes(quote, 16)
+t.expect(attrs.italic and attrs.bold, "a quoted story link is rendered in bold italic")
 t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
 	controller.transcript.refs.entry_3.paddingTop, "the heading uses the same command gap as prose")
 t.assertEqual(controller.transcript.refs.titlePage.paddingBottom,

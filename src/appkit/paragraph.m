@@ -10,6 +10,7 @@
 @property(nonatomic) BOOL hyphenation;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
 @property(nonatomic, copy) NSArray<NSDictionary *> *boldRanges;
+@property(nonatomic, copy) NSArray<NSDictionary *> *italicRanges;
 /* The colour of a link's words. */
 @property(nonatomic, strong) NSColor *linkColor;
 @property(nonatomic) NSInteger revealedCharacters;
@@ -62,6 +63,7 @@
 - (void)setHyphenation:(BOOL)value { _hyphenation = value; [self rebuild]; }
 - (void)setLinks:(NSArray<LuaParagraphLink *> *)links { _links = [links copy] ?: @[]; [self rebuild]; }
 - (void)setBoldRanges:(NSArray<NSDictionary *> *)ranges { _boldRanges = [ranges copy] ?: @[]; [self rebuild]; }
+- (void)setItalicRanges:(NSArray<NSDictionary *> *)ranges { _italicRanges = [ranges copy] ?: @[]; [self rebuild]; }
 - (void)setLinkColor:(NSColor *)color { _linkColor = color; [self applyReveal]; }
 - (id)paragraphLinkColor { return _linkColor ?: NSColor.controlAccentColor; }
 

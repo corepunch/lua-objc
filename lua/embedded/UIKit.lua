@@ -207,6 +207,15 @@ function UIKit.HostingController(view, onDisappear, props)
 	return controller
 end
 
+-- UINavigationItemLargeTitleDisplayMode applies to the item on each page.
+local TITLE_DISPLAY_MODES = { automatic = 0, large = 1, inline = 2, inlineLarge = 3 }
+local function setTitleDisplayMode(controller, mode)
+	if mode then
+		controller.navigationItem.largeTitleDisplayMode = assert(TITLE_DISPLAY_MODES[mode],
+			"titleDisplayMode must be 'automatic', 'inline', 'inlineLarge', or 'large'")
+	end
+end
+
 --- A navigation destination: one content view plus its title, toolbar items
 --- and presentation, as SwiftUI's `.navigationTitle` and `.toolbar` modifiers.
 --- Push the returned controller onto a NavigationStack.
@@ -214,7 +223,7 @@ end
 --- @prop title string optional. Navigation title.
 --- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction, confirmationAction or keyboard (one view child, shown above the keyboard while a text input edits; AppKit leaves it out).
 --- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible.
---- @prop titleDisplayMode string optional. automatic, inline or large.
+--- @prop titleDisplayMode string optional. automatic, inline, inlineLarge or large.
 --- @prop backButtonDisplayMode string optional. default, generic or minimal.
 --- @prop onDisappear function optional. Called once when the page leaves the stack.
 --- @platform AppKit puts toolbar items and a back item in the window toolbar. UIKit uses the navigation bar.
@@ -225,8 +234,8 @@ function UIKit.Page(props)
 		hidesNavigationBar = props.hidesNavigationBar,
 	})
 	controller.title = props.title or ""
+	setTitleDisplayMode(controller, props.titleDisplayMode)
 	bridge._pageToolbar(controller, props.toolbar or {}, {
-		titleDisplayMode = props.titleDisplayMode,
 		backButtonDisplayMode = props.backButtonDisplayMode,
 	})
 	return controller
@@ -257,6 +266,7 @@ local sheetScopes = {}
 --- @prop hidesNavigationBar boolean optional. Hides the navigation bar when true.
 --- @prop hidesTabBar boolean optional. Hides the tab bar when true.
 --- @prop largeTitle boolean optional. Uses the large navigation title style when true.
+--- @prop titleDisplayMode string optional. Root title placement, as on Page. inlineLarge puts the large title alongside trailing actions.
 --- @prop toolbar table optional. ToolbarItem records for the root view, placed as on a `Page`.
 --- @prop subtitle string optional. Second line under the root's title (SwiftUI `.navigationSubtitle`).
 --- @prop background string optional. Color behind the root view where it does not reach, such as behind the keyboard.
@@ -270,6 +280,7 @@ function UIKit.NavigationStack(props)
 	if props.title then root.title = props.title end
 	-- SwiftUI `.navigationSubtitle`: a second line under the title (iOS 26).
 	if props.subtitle and props.subtitle ~= "" then root.navigationItem.subtitle = props.subtitle end
+	setTitleDisplayMode(root, props.titleDisplayMode)
 	if props.toolbar then bridge._pageToolbar(root, props.toolbar) end
 	-- What shows where the root does not reach: the root ends at the
 	-- keyboard's top, so this color fills behind the keyboard's corners.
@@ -648,6 +659,7 @@ local KEYBOARD_DISMISS_MODES = { automatic = 0, never = 0, immediately = 1, inte
 --- @prop contentWidth number optional. Scroll content width; zero lets the content size itself.
 --- @prop horizontal boolean optional. Component-specific setting passed to the native control.
 --- @prop scrollDismissesKeyboard string optional. `automatic`, `immediately`, `interactively` or `never`, as SwiftUI's modifier.
+--- @prop topEdgeEffectStyle string optional. UIKit scroll edge under the top bar: automatic, soft or hard.
 --- @prop vertical boolean optional. Component-specific setting passed to the native control.
 --- @example <ScrollView />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
@@ -656,7 +668,8 @@ function UIKit.ScrollView(props)
 	local content = props.content or props[1]
 	assert(type(content) == "userdata", "ScrollView requires one content view")
 	local view = bridge._scrollView(content, props.contentWidth or 0,
-		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false)
+		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false,
+		props.topEdgeEffectStyle)
 	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
 	-- SwiftUI scrollDismissesKeyboard. `interactively` lets the keyboard
 	-- follow a downward drag as Messages does; `immediately` dismisses it when
@@ -1077,6 +1090,7 @@ function UIKit.Paragraph(props)
 	if props.linkColor then view.linkColor = bridge._systemColor(props.linkColor) end
 	if props.links then bridge._paragraphSetLinks(view, props.links) end
 	if props.boldRanges then view.boldRanges = props.boldRanges end
+	if props.italicRanges then view.italicRanges = props.italicRanges end
 	if props.revealedCharacters then view.revealedCharacters = props.revealedCharacters end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	-- Prose fills the column it is given and wraps to it.

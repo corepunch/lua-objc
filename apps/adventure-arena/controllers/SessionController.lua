@@ -1,3 +1,4 @@
+local Quotes = require("apps.adventure-arena.helpers.Quotes")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
@@ -85,8 +86,6 @@ function Controller:show(id, fresh)
 			return true
 		end,
 		inputFocused = function() self:scrollTranscript(true) end,
-		look = function() self:submitCommand("look") end,
-		inventory = function() self:submitCommand("inventory") end,
 		dictate = function() self:toggleDictation() end,
 		readingSettings = function() self:showReadingSettings() end,
 	}
@@ -142,8 +141,9 @@ function Controller:render()
 	local story = self.model:presentation()
 	self.heading:update({
 		roomTitle = story.roomTitle, score = story.score, maxScore = story.maxScore,
-		colorScheme = data.reading.colorScheme,
+		colorScheme = data.reading.colorScheme, font = data.reading.font,
 	})
+	self:renderCompletions()
 end
 
 function Controller:isOpen()
@@ -175,20 +175,27 @@ function Controller:updateComposer(text)
 	if not self.refs then return end
 	self.draft = type(text) == "string" and text or ""
 	self.refs = select(2, self.reader:update(self:readerData()))
+	self:renderCompletions()
+end
+
+function Controller:renderCompletions()
 	if self.completions then
 		local choices = self.model:suggestions(self.draft)
 		local actions = {}
 		for i, choice in ipairs(choices) do
-			actions["complete" .. i] = function() self:updateComposer(choice.text) end
+			actions["complete" .. i] = function()
+				if choice.command then self:submitCommand(choice.command)
+				else self:updateComposer(choice.text) end
+			end
 		end
 		self.completions:update({ choices = choices, actions = actions })
-		self.completions.host.hidden = #choices == 0
 	end
 end
 
 function Controller:renderTranscript()
 	if not self.transcript or self.transcript:isDisposed() then return end
 	local data = self.model:presentation()
+	data.quoteRanges = Quotes.ranges
 	data.synopsis = self.model.currentGame.description or ""
 	local settings = ReadingSettings:current():presentation()
 	data.reading = {

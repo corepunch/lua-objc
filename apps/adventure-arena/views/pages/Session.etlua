@@ -13,16 +13,10 @@
   </ToolbarItem>
   <% if phone then %>
   <ToolbarItem placement="keyboard" label="Command suggestions">
-    <VStack id="completions" maxWidth="infinity" hidden="true" />
+    <VStack id="completions" maxWidth="infinity" />
   </ToolbarItem>
   <% end %>
   <ToolbarItem id="readingSettings" placement="primaryAction" icon="textformat.size" label="Themes and settings" action="readingSettings" />
-  <ToolbarItem id="readingActions" placement="topBarTrailing" label="Book actions">
-    <Menu id="bookCommands" title="" systemImage="ellipsis" accessibilityLabel="Book actions" width="44" height="44">
-      <MenuItem title="Look Around" systemImage="eye" action="look" />
-      <MenuItem title="Inventory" systemImage="bag" action="inventory" />
-    </Menu>
-  </ToolbarItem>
 </Toolbar>
-<VStack id="reader" maxWidth="infinity" maxHeight="infinity" />
+<VStack id="reader" ignoresSafeArea="top" maxWidth="infinity" maxHeight="infinity" />
 </Page>

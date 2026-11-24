@@ -4,14 +4,14 @@
   local REVIEW = { width = 300, radius = 22, padding = 16 }
 %>
 <Page title="<%= game.title %>" titleDisplayMode="inline">
-  <ScrollView id="detailScrollView" ignoresSafeArea="top">
+  <ScrollView id="detailScrollView" ignoresSafeArea="top" topEdgeEffectStyle="soft">
     <VStack spacing="0" alignment="leading" paddingBottom="32">
       <ZStack id="header" height="<%= HEADER.height %>" maxWidth="infinity" alignment="bottomLeading" clipsToBounds="true" background="accent">
         <Image id="cover" path="<%= game.cover %>" resizable="true" contentMode="fill" />
         <LinearGradient topAlpha="0.35" middleAlpha="0.05" middleLocation="0.45" bottomAlpha="0.9" />
         <VStack paddingHorizontal="<%= HEADER.side %>" paddingBottom="<%= HEADER.bottom %>" spacing="6" alignment="leading" maxWidth="infinity">
           <Label text="<%= (game.collection or game.genre):upper() %>" size="12" weight="semibold" color="white" />
-          <%- partial("../components/GameTitle.etlua", { id = "title", title = game.title, color = "white", alignment = "leading" }) %>
+          <%- partial("../components/GameTitle.etlua", { id = "title", title = game.title, color = "white", alignment = "leading", font = "serif" }) %>
           <Label text="<%= game.author %> · <%= game.year %>" size="15" color="white" />
         </VStack>
       </ZStack>

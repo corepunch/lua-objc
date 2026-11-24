@@ -54,7 +54,7 @@
 
   <% if preview then %>
   <VStack id="preview" padding="20" spacing="0" alignment="leading" background="<%= pageColor %>" cornerRadius="22" clipsToBounds="true" maxWidth="infinity">
-    <Label text="West of House" size="<%= fontSize + 6 %>" weight="semibold" design="serif" color="<%= primaryTextColor %>" paddingBottom="<%= math.floor(fontSize * 0.7) %>" />
+    <Label text="West of House" size="<%= fontSize + 6 %>" weight="semibold" design="<%= font %>" color="<%= primaryTextColor %>" paddingBottom="<%= math.floor(fontSize * 0.7) %>" />
     <Paragraph id="previewBody" text="You are standing in an open field west of a white house, with a boarded front door. There is a small mailbox here." size="<%= fontSize %>" design="<%= font %>" color="<%= primaryTextColor %>" lineSpacing="<%= lineSpacing %>" alignment="<%= alignment %>" hyphenation="<%= justified and 'true' or 'false' %>" selectable="false" />
   </VStack>
   <% end %>

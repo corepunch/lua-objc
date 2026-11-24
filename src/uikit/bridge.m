@@ -96,7 +96,6 @@ static const CGFloat kImageMaxWidth = 400.0;
 static const CGFloat kMenuSymbolPointSize = 17.0;
 static const CGFloat kMenuArtworkPointSize = 20.0;
 static const CGFloat kSearchFieldMinimumHeight = 48.0;
-static const CGFloat kNavigationSymbolPointSize = 22.0;
 /* Widest proposal for a navigation bar title or custom bar-item view. */
 static const CGFloat kNavigationTitleMaxWidth = 240.0;
 static const CGFloat kStackSpacing = 8.0;
@@ -109,10 +108,7 @@ static const CGFloat kScrollTargetFlickVelocity = 0.2;
  * the number of lines the figure spans when the template does not say. */
 static const NSUInteger kParagraphMenuPageActions = 3;
 static const CGFloat kParagraphTapHapticIntensity = 0.75;
-/* A keyboard toolbar's margins around its items, and the space between
- * them; the horizontal margin matches the floating keyboard's inset. */
-static const CGFloat kKeyboardToolbarHorizontalInset = 12.0;
-static const CGFloat kKeyboardToolbarVerticalInset = 8.0;
+/* Space between independent items in a page's keyboard toolbar. */
 static const CGFloat kKeyboardToolbarSpacing = 8.0;
 /* The preview screen is an iPhone 16 display in points, so apps are laid
  * out at the size and corner curve they will have on the phone. */

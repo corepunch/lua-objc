@@ -1103,6 +1103,7 @@ function AppKit.Paragraph(props)
 	if props.linkColor then view.linkColor = bridge._systemColor(props.linkColor) end
 	if props.links then bridge._paragraphSetLinks(view, props.links) end
 	if props.boldRanges then view.boldRanges = props.boldRanges end
+	if props.italicRanges then view.italicRanges = props.italicRanges end
 	if props.revealedCharacters then view.revealedCharacters = props.revealedCharacters end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	-- Prose fills the column it is given and wraps to it.
@@ -2512,7 +2513,7 @@ end
 --- @prop title string optional. Navigation title.
 --- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction, confirmationAction or keyboard (one view child, shown above the keyboard while a text input edits; AppKit leaves it out).
 --- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible (UIKit).
---- @prop titleDisplayMode string optional. automatic, inline or large (UIKit).
+--- @prop titleDisplayMode string optional. automatic, inline, inlineLarge or large (UIKit).
 --- @prop backButtonDisplayMode string optional. default, generic or minimal (UIKit).
 --- @prop onDisappear function optional. Called once when the page leaves the stack.
 --- @platform AppKit puts toolbar items and a navigational back item in the window toolbar. UIKit uses the navigation bar.

@@ -1,0 +1,32 @@
+_G.__headless = true
+local t = require("TestKit")
+local quotes = require("apps.adventure-arena.helpers.Quotes")
+local xml = require("ui.xml")
+local ns = require("AppKit")
+local bridge = require("AppKitNative")
+
+local ranges = quotes.ranges('Café “the door” and "yes". Don\'t')
+t.assertEqual(#ranges, 2, "both double quotation styles are found")
+t.assertEqual(ranges[1].location, 5, "ranges count Unicode characters")
+t.assertEqual(ranges[1].length, 10, "the quotation marks share the italic style")
+t.assertEqual(#quotes.ranges('An unmatched " and an apostrophe in don\'t'), 0, "unpaired quotes and apostrophes are ignored")
+local view = xml.render([[<Paragraph text="A &quot;bold door&quot; opens."><Bold location="3" length="9" /><Italic location="2" length="11" /></Paragraph>]], {}, ns)
+local at = function(index) return bridge._paragraphAttributes(view, index) end
+t.expect(at(3).italic and at(3).bold, "italic preserves overlapping bold emphasis")
+t.expect(at(2).italic and not at(2).bold, "quotation marks are italic")
+t.expect(not at(1).italic and not at(13).italic, "surrounding prose remains upright")
+view.revealedCharacters = 2
+t.expect(at(3).italic and not at(3).visible, "reveal keeps italic formatting")
+local Template = require("ui.template")
+local path = os.tmpname()
+local file = assert(io.open(path, "w"))
+file:write([[<Paragraph id="text" text="Example"><% if italic then %><Italic location="0" length="4" /><% end %></Paragraph>]])
+file:close()
+local template = Template.new(xml.render('<VStack />', {}, ns), path, ns)
+template:update({ italic = true })
+local retained = template.refs.text
+t.expect(bridge._paragraphAttributes(retained, 0).italic, "template adds italic")
+template:update({ italic = false })
+t.expect(template.refs.text == retained and not bridge._paragraphAttributes(retained, 0).italic, "template removes italic on the retained paragraph")
+os.remove(path)
+os.exit(t.summary() and 0 or 1)

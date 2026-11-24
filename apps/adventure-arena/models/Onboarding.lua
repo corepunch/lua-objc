@@ -234,14 +234,14 @@ function Onboarding:page(recommendation)
 		page.rows = {
 			{ symbol = "keyboard", title = "Type what you do",
 				detail = "A word or two is enough: LOOK, TAKE BROOM, NORTH." },
-			{ symbol = "plus.circle.fill", title = "Stuck? Open Book actions",
-				detail = "Look Around and Inventory say where you are and what you carry." },
+			{ symbol = "eye", title = "Look around and check your inventory",
+				detail = "LOOK describes where you are. INVENTORY lists what you carry." },
 		}
 
 		if self.touch then
 			page.image, page.darkImage = screenshot(step)
 			table.insert(page.rows, 2, { symbol = "keyboard", title = "Tap command suggestions",
-				detail = "On iPhone, type a letter and tap a verb or object above the keyboard. Send when ready." })
+				detail = "Look around and Inventory stay above the keyboard. Type a letter to choose a verb, then an object. Send when ready." })
 		end
 	elseif step == "audience" then
 		page.symbol = "person.2.fill"

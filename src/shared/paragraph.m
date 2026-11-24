@@ -27,6 +27,7 @@
 @property(nonatomic, readonly) NSInteger revealedCharacters;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
 @property(nonatomic, copy) NSArray<NSDictionary *> *boldRanges;
+@property(nonatomic, copy) NSArray<NSDictionary *> *italicRanges;
 @property(nonatomic, readonly) NSTextStorage *textStorage;
 @property(nonatomic, readonly) id paragraphLinkColor;
 @end
@@ -105,6 +106,20 @@ static NSRange paragraph_bold_range_for(id<LuaParagraphText> view, NSDictionary 
 	return start < end ? NSMakeRange(start, end - start) : NSMakeRange(NSNotFound, 0);
 }
 
+static void paragraph_italic_range(NSTextStorage *storage, NSRange range) {
+	if (range.location == NSNotFound || !range.length) return;
+	[storage enumerateAttribute:NSFontAttributeName inRange:range options:0 usingBlock:^(id font, NSRange run, __unused BOOL *stop) {
+#if TARGET_OS_IPHONE
+		UIFontDescriptor *descriptor = [((UIFont *)font).fontDescriptor fontDescriptorWithSymbolicTraits:
+			(((UIFont *)font).fontDescriptor.symbolicTraits | UIFontDescriptorTraitItalic)];
+		id italic = descriptor ? [UIFont fontWithDescriptor:descriptor size:((UIFont *)font).pointSize] : font;
+#else
+		id italic = [[NSFontManager sharedFontManager] convertFont:font toHaveTrait:NSItalicFontMask];
+#endif
+		if (italic) [storage addAttribute:NSFontAttributeName value:italic range:run];
+	}];
+}
+
 static void paragraph_apply_links(id<LuaParagraphText> view, BOOL clickable) {
 	NSTextStorage *storage = view.textStorage;
 	[storage beginEditing];
@@ -116,6 +131,8 @@ static void paragraph_apply_links(id<LuaParagraphText> view, BOOL clickable) {
 		if (clickable) [storage addAttribute:NSLinkAttributeName value:@(index).stringValue range:range];
 		paragraph_bold_range(storage, range);
 	}];
+	for (NSDictionary *record in view.italicRanges)
+		paragraph_italic_range(storage, paragraph_bold_range_for(view, record));
 	[storage endEditing];
 }
 
@@ -268,6 +285,12 @@ static int bridge_paragraph_attributes(lua_State *L) {
 	BOOL bold = font && ([[NSFontManager sharedFontManager] traitsOfFont:font] & NSBoldFontMask) != 0;
 #endif
 	lua_pushboolean(L, bold); lua_setfield(L, -2, "bold");
+#if TARGET_OS_IPHONE
+	BOOL italic = (font.fontDescriptor.symbolicTraits & UIFontDescriptorTraitItalic) != 0;
+#else
+	BOOL italic = font && ([[NSFontManager sharedFontManager] traitsOfFont:font] & NSItalicFontMask) != 0;
+#endif
+	lua_pushboolean(L, italic); lua_setfield(L, -2, "italic");
 	lua_pushboolean(L, attributes[NSLinkAttributeName] != nil); lua_setfield(L, -2, "linked");
 #if TARGET_OS_IPHONE
 	UIColor *color = attributes[NSForegroundColorAttributeName];

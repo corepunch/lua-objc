@@ -7,7 +7,7 @@
   <Button id="openCreate" title="Write an Adventure" action="openCreate" style="borderedProminent" />
 </ContentUnavailable>
 <% else %>
-<ScrollView id="libraryScroll">
+<ScrollView id="libraryScroll" topEdgeEffectStyle="soft">
   <VStack spacing="0" paddingBottom="32">
     <% if #featured > 0 then %>
     <ScrollView id="featuredCarousel" horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">

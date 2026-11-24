@@ -9,9 +9,15 @@ local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local catalog = Adventures
 local Controller = require("apps.adventure-arena.Controller")
-local renderFile, button, menu = xml.renderFile, ns.Button, ns.Menu
+local renderFile, button = xml.renderFile, ns.Button
+local scrollView, topEdgeStyles = ns.ScrollView, {}
+ns.ScrollView = function(props)
+	local view = scrollView(props)
+	topEdgeStyles[view] = props.topEdgeEffectStyle
+	return view
+end
 local addDrag = ns._addDrag
-local rendered, callbacks, menus, drags = {}, {}, {}, {}
+local rendered, callbacks, drags = {}, {}, {}
 local controller
 -- The open book's page and running head are retained sections.
 local function reader() return controller.sessionController.refs end
@@ -21,11 +27,6 @@ local function heading() return controller.sessionController.heading.refs end
 ns.Button = function(props)
 	local view = button(props)
 	callbacks[view] = props.action
-	return view
-end
-ns.Menu = function(props)
-	local view = menu(props)
-	menus[view] = props.items
 	return view
 end
 ns._addDrag = function(view, callback) drags[view] = callback end
@@ -39,17 +40,6 @@ local function click(ref)
 	local callback = callbacks[view]
 	t.expect(type(callback) == "function", ref .. " has a bound action")
 	if callback then callback() end
-end
-local function chooseMenu(title)
-	local items = menus[rendered.refs.bookCommands] or {}
-	for _, item in ipairs(items) do
-		if item.title == title then
-			t.expect(type(item.action) == "function", title .. " has a bound menu action")
-			if item.action then item.action() end
-			return
-		end
-	end
-	t.expect(false, title .. " appears in the toolbar menu")
 end
 
 local sessionModel = Session.new({ engineFactory = function()
@@ -71,6 +61,8 @@ controller = Controller.new {
 }
 local config, refs = xml.renderFile("apps/adventure-arena/views/layouts/Window.etlua", controller:libraryData(), ns)
 controller.navigation = refs.navigation
+t.assertEqual(topEdgeStyles[refs.libraryScroll], "soft", "the catalog scrolls beneath a soft top edge")
+t.assertEqual(topEdgeStyles[refs.featuredCarousel], nil, "the horizontal shelf leaves the page edge to its parent")
 t.expect(refs.tabs == nil and refs.nowReading == nil, "the window has no tabs or floating reading accessory")
 t.expect(refs.continueShelf == nil, "Home dedicates its content to the catalog")
 -- The transcript is retained while the command is edited.
@@ -103,6 +95,8 @@ controller.navigation:pop()
 rendered = homeRendering
 click("featured_1")
 t.assertEqual(controller.navigation.depth, 2, "featured cover opens detail")
+t.assertEqual(topEdgeStyles[rendered.refs.detailScrollView], "soft", "the story cover meets a soft navigation edge")
+t.assertEqual(rendered.refs.detailScrollView.ignoresSafeArea, "top", "the artwork extends behind the native bar")
 t.assertEqual(rendered.refs.title.text, catalog:all()[1].title, "detail renders selected game")
 t.assertEqual(rendered.refs.cover.clipsToBounds, true, "detail cover clips aspect-fill overflow before title")
 t.assertEqual(rendered.refs.play.title, "Start Reading", "an unplayed story offers Start Reading")
@@ -124,6 +118,7 @@ t.expect(ancestor == rendered.refs.detailScrollView, "Start Reading scrolls with
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
 t.assertEqual(heading().sessionTitle.text, catalog:all()[1].title, "the opening location heads the reader")
+t.expect(rendered.refs.bookCommands == nil and rendered.refs.readingActions == nil, "the reader has no ellipsis menu")
 t.expect(rendered.refs.back == nil and rendered.refs.sessionHeader == nil,
 	"the system navigation owns the back button; the screen draws no header")
 t.assertEqual(page().gameTitle.text, catalog:all()[1].title, "the title page names the game")
@@ -162,9 +157,10 @@ controller.sessionController.toast = nil
 controller.sessionController:render()
 t.expect(reader().scoreToast.hidden, "and the capsule goes once the page is drawn without it")
 t.assertEqual(SavedGames:latest().gameId, catalog:all()[1].id, "a played story is saved")
-chooseMenu("Look Around")
+ns._textFieldTestInput(reader().input, "look")
+click("send")
 local lookIndex = lastEntry()
-t.assertEqual(page()["paragraph_" .. lookIndex .. "_1"].text, 'Response <&> "look"', "quick command reaches session")
+t.assertEqual(page()["paragraph_" .. lookIndex .. "_1"].text, 'Response <&> "look"', "typed look reaches session")
 local transcript = lastEntry()
 click("send")
 t.assertEqual(lastEntry(), transcript, "empty submission leaves transcript unchanged")
@@ -225,6 +221,7 @@ local _, titleRefs = renderFile("apps/adventure-arena/views/sections/SessionTitl
 }, ns)
 t.assertEqual(titleRefs.sessionTitle.text, "Kitchen", "the running head names the room")
 t.assertEqual(titleRefs.sessionScore.text, "Score 0", "the running head shows score on its second line")
-ns.Button, ns.Menu, ns._addDrag, xml.renderFile = button, menu, addDrag, renderFile
+ns.Button, ns._addDrag, xml.renderFile = button, addDrag, renderFile
+ns.ScrollView = scrollView
 
 os.exit(t.summary() and 0 or 1)

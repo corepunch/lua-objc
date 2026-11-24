@@ -20,7 +20,7 @@ return {
 		startFile = "planetfall.zil",
 		reviews = {},
 		genre = "Sci-Fi Adventure",
-		category = "Sci-Fi",
+		categories = { "Sci-Fi" },
 		cover = "apps/adventure-arena/assets/planetfall.jpg",
 	},
 	{
@@ -38,6 +38,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Psychological Horror",
+		categories = { "Horror" },
 		cover = "apps/adventure-arena/assets/sanitarium.jpg",
 	},
 	{
@@ -71,7 +72,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Whimsical Adventure",
-		category = "Children's",
+		categories = { "Children's" },
 		cover = "apps/adventure-arena/assets/wondertown.jpg",
 	},
 	{
@@ -89,7 +90,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Victorian Mystery",
-		category = "Detective",
+		categories = { "Detective" },
 		cover = "apps/adventure-arena/assets/limehouse.jpg",
 	},
 	{
@@ -106,6 +107,7 @@ return {
 		startFile = "h1.zil",
 		reviews = {},
 		genre = "Psychological Horror",
+		categories = { "Horror" },
 		cover = "apps/adventure-arena/assets/lurkinghorror.jpg",
 	},
 	{
@@ -172,7 +174,7 @@ return {
 		base = "infocom/zork1",
 		startFile = "pocket-weather.zil",
 		genre = "Children's Adventure",
-		category = "Children's",
+		categories = { "Children's" },
 		cover = "apps/adventure-arena/assets/pocket-weather.png",
 		reviews = {},
 	},
@@ -191,7 +193,7 @@ return {
 		base = "infocom/zork1",
 		startFile = "silent-vector.zil",
 		genre = "Science Fiction Horror",
-		category = "Sci-Fi",
+		categories = { "Sci-Fi", "Horror" },
 		cover = "apps/adventure-arena/assets/silent-vector.png",
 		reviews = {},
 	},
@@ -210,7 +212,7 @@ return {
 		base = "infocom/zork1",
 		startFile = "last-broadcast.zil",
 		genre = "Historical Detective Mystery",
-		category = "Detective",
+		categories = { "Detective" },
 		cover = "apps/adventure-arena/assets/last-broadcast.png",
 		reviews = {},
 	},
@@ -231,7 +233,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Children's Adventure",
-		category = "Children's",
+		categories = { "Children's" },
 		cover = "apps/adventure-arena/zilscript/books/bell-grew-leaves/cover.jpg",
 	},
 	{
@@ -250,7 +252,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Children's Adventure",
-		category = "Children's",
+		categories = { "Children's" },
 		cover = "apps/adventure-arena/zilscript/books/borrowed-tomorrows/cover.jpg",
 	},
 	{
@@ -287,7 +289,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Science Fiction",
-		category = "Sci-Fi",
+		categories = { "Sci-Fi" },
 		cover = "apps/adventure-arena/zilscript/books/museum-unsent-signals/cover.jpg",
 	},
 	{
@@ -306,7 +308,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Science Fiction",
-		category = "Sci-Fi",
+		categories = { "Sci-Fi" },
 		cover = "apps/adventure-arena/zilscript/books/station-minus-one/cover.jpg",
 	},
 	{
@@ -325,7 +327,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Historical Detective Mystery",
-		category = "Detective",
+		categories = { "Detective" },
 		cover = "apps/adventure-arena/zilscript/books/the-midnight-ledger/cover.jpg",
 	},
 }

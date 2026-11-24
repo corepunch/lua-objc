@@ -12,6 +12,7 @@ local navigationStack, searchField = ns.NavigationStack, ns.SearchField
 local rendered, callbacks, toolbarActions = {}, {}, {}
 local searchChanged
 ns.NavigationStack = function(props)
+	t.assertEqual(props.titleDisplayMode, "inlineLarge", "Discover shares one navigation row with its actions")
 	for _, item in ipairs(props.toolbar or {}) do toolbarActions[item.id] = item.action end
 	return navigationStack(props)
 end

@@ -82,12 +82,14 @@ t.assertEqual(realShelves["Arena Originals"], 12, "studio titles share a shelf")
 local genresByTitle = {
 	["Children's"] = {"books.wondertown", "books.pocket-weather", "books.bell-grew-leaves", "books.borrowed-tomorrows"},
 	["Detective"] = {"books.limehouse-killings", "books.last-broadcast", "books.the-midnight-ledger"},
+	["Horror"] = {"books.blackwood-horror", "infocom.lurkinghorror", "books.silent-vector"},
 	["Sci-Fi"] = {"infocom.planetfall", "books.silent-vector", "books.museum-unsent-signals", "books.station-minus-one"},
 }
-t.assertEqual(#real:genreShelves(), 3, "the current catalog fills all three genre shelves")
+t.assertEqual(#real:genreShelves(), 4, "the current catalog fills all four genre shelves")
 for _, shelf in ipairs(real:genreShelves()) do
 	local expected = genresByTitle[shelf.title]
 	local filtered = real:collection(shelf.title)
+	t.assertEqual(shelf.count, #expected, "the shelf counts every book for " .. shelf.title)
 	t.assertEqual(#filtered, #expected, "the heading opens every book for " .. shelf.title)
 	for index, id in ipairs(expected) do
 		t.assertEqual(shelf.games[index].id, id, "the shelf displays the expected book")

@@ -35,11 +35,10 @@ local function collectionOf(game)
 	return game.collection or game.genre or "Adventures"
 end
 
-local function groupShelves(games, titleOf)
+local function groupShelves(games, titlesOf)
 	local shelves, byTitle = {}, {}
 	for _, game in ipairs(games) do
-		local title = titleOf(game)
-		if title then
+		for _, title in ipairs(titlesOf(game)) do
 			local shelf = byTitle[title]
 			if not shelf then
 				shelf = { id = title, title = title, games = {}, count = 0 }
@@ -55,15 +54,21 @@ end
 
 -- Shelves follow their first appearance in the catalog.
 function Adventures:shelves()
-	return groupShelves(self:all(), collectionOf)
+	return groupShelves(self:all(), function(game) return { collectionOf(game) } end)
 end
 
 function Adventures:genreShelves()
-	return groupShelves(self:all(), function(game) return game.category end)
+	return groupShelves(self:all(), function(game) return game.categories or {} end)
 end
 
 function Adventures:collection(title)
-	return self:select(function(game) return collectionOf(game) == title or game.category == title end)
+	return self:select(function(game)
+		if collectionOf(game) == title then return true end
+		for _, category in ipairs(game.categories or {}) do
+			if category == title then return true end
+		end
+		return false
+	end)
 end
 
 -- Genres inform the onboarding recommendations.
@@ -116,7 +121,7 @@ end
 
 local function searchable(game)
 	return table.concat({
-		game.title or "", game.author or "", game.genre or "", collectionOf(game), game.category or "",
+		game.title or "", game.author or "", game.genre or "", collectionOf(game), table.concat(game.categories or {}, " "),
 		game.shortDescription or "", tostring(game.year or ""), game.difficulty or "",
 	}, " "):lower()
 end

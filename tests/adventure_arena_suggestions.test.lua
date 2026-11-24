@@ -17,7 +17,9 @@ local function titles(draft)
 	for _, choice in ipairs(model:suggestions(draft)) do table.insert(result, choice.title) end
 	return table.concat(result, ",")
 end
-t.assertEqual(titles(" "), "", "blank composer is quiet")
+t.assertEqual(titles(" "), "Look around,Inventory", "blank composer offers the default commands")
+t.assertEqual(model:suggestions("")[1].command, "look", "Look around is a complete command")
+t.assertEqual(model:suggestions(nil)[2].command, "inventory", "Inventory is a complete command")
 t.assertEqual(model:suggestions("T")[1].text, "take ", "T completes the first verb with a space")
 t.assertEqual(titles("take p"), "pebble", "fixed plaque is excluded")
 t.assertEqual(titles("read P"), "plaque", "short unique noun matches a qualified parser phrase")

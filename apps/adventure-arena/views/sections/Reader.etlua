@@ -5,7 +5,7 @@
 %>
 <ZStack id="session" maxWidth="infinity" maxHeight="infinity" alignment="top" tint="accent" background="<%= reading.page %>" colorScheme="<%= reading.colorScheme %>">
   <SafeAreaInset id="sessionContent" edge="bottom" minimumBottomInset="24" keyboardBottomInset="12" horizontalInset="12" matchBottomHorizontalInset="true" maxWidth="infinity" maxHeight="infinity">
-    <ScrollView id="transcriptScroll" flexGrow="1" maxWidth="infinity" scrollOnKeyboard="true" scrollDismissesKeyboard="interactively">
+    <ScrollView id="transcriptScroll" topEdgeEffectStyle="soft" flexGrow="1" maxWidth="infinity" scrollOnKeyboard="true" scrollDismissesKeyboard="interactively">
       <VStack id="transcript" maxWidth="infinity" />
     </ScrollView>
     <VStack spacing="8" maxWidth="infinity">

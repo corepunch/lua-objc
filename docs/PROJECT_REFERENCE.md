@@ -827,6 +827,7 @@ hyphenation.
 | `revealedCharacters` | typewriter reveal: characters shown so far, counted as `utf8.len` counts them; `-1` (default) shows everything |
 | `linkColor` | colour of linked words and the thicker dotted rule under them; defaults to the tint |
 | `<Hyperlink location length label>` children | the words a reader can act on; see **Links** below |
+| `<Bold location length>` / `<Italic location length>` children | noninteractive Unicode character ranges; ranges may overlap |
 
 Empty text takes no space. Implementation: a non-scrolling `UITextView` / non-editable
 `NSTextView` on TextKit 1
@@ -2511,11 +2512,12 @@ controller pops it or the user presses the system back button.
 
 `placement="keyboard"` (SwiftUI `ToolbarItemPlacement.keyboard`) puts the
 item's one view child in a bar above the keyboard while a text input on the
-page is editing: UIKit sets it as the input's `inputAccessoryView`. Items
+page is editing: UIKit sets a keyboard-style `UIInputView` as the input's `inputAccessoryView`. Items
 share one row; an item with `maxWidth="infinity"` takes the width the others
-leave. A hidden item leaves the row, and a row with nothing visible collapses,
-so hiding the view (as Adventure Arena hides its completions while the
-command field is empty) hides the bar. AppKit, whose keyboards have no such
+leave. A hidden item leaves the row, and a row with nothing visible collapses.
+Keep the item visible with a fixed-height child when its contents change
+during typing, so the keyboard accessory and input keep their positions.
+AppKit, whose keyboards have no such
 bar, leaves keyboard items out, as SwiftUI does on a Mac without a Touch Bar.
 
 List and TabView events bind controller actions from XML like any other

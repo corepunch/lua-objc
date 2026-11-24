@@ -646,14 +646,16 @@ end
 --   transform:   optional hook for platform quirks: fn(props, attrs, children, ns) -> optional view
 
 local function collectParagraphRecords(props, children)
-	props.links, props.boldRanges = {}, {}
+	props.links, props.boldRanges, props.italicRanges = {}, {}, {}
 	for _, child in ipairs(children) do
 		if type(child) == "table" and child.__hyperlink then
 			table.insert(props.links, child)
 		elseif type(child) == "table" and child.__bold then
 			table.insert(props.boldRanges, { location = child.location, length = child.length })
+		elseif type(child) == "table" and child.__italic then
+			table.insert(props.italicRanges, { location = child.location, length = child.length })
 		else
-			error("xml: <Paragraph> accepts only <Hyperlink> or <Bold> children")
+			error("xml: <Paragraph> accepts only <Hyperlink>, <Bold>, or <Italic> children")
 		end
 	end
 end
@@ -807,6 +809,7 @@ local TAG_SCHEMA = {
             scrollOnKeyboard = "bool",
             scrollDismissesKeyboard = "str",
             scrollTargetBehavior = "str",
+            topEdgeEffectStyle = "str",
         },
     },
     -- SwiftUI Charts SectorMark: a pie or donut built from native arcs.
@@ -962,6 +965,7 @@ local TAG_SCHEMA = {
                 if ok and type(native) == "table" and type(native._paragraphSetLinks) == "function" then
                     native._paragraphSetLinks(view, props.links)
                     view.boldRanges = props.boldRanges
+                    view.italicRanges = props.italicRanges
                     return true
                 end
             end
@@ -983,6 +987,11 @@ local TAG_SCHEMA = {
     Bold = {
         kind = "record",
         flag = "__bold",
+        props = { location = "num", length = "num" },
+    },
+    Italic = {
+        kind = "record",
+        flag = "__italic",
         props = { location = "num", length = "num" },
     },
     Title = {
@@ -1788,6 +1797,7 @@ local TAG_SCHEMA = {
             subtitle = "str",
             background = "str",
             largeTitle = "bool",
+            titleDisplayMode = "str",
             hidesTabBar = "bool",
             hidesNavigationBar = "bool",
             path = "str",
