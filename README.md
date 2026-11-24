@@ -518,12 +518,9 @@ the Makefiles independently of this optional development project.
 
 ### Releases: GitHub and App Store Connect
 
-[Release apps](.github/workflows/release.yml) builds a tag `v1.2.3` with
-Makefiles and the Apple command-line toolchain. It does not invoke
-`xcodebuild`, read `.xcodeproj` files, or depend on Xcode Cloud.
-The existing Xcode projects are optional development tools. Their Cloud
-workflows can be disabled in App Store Connect after the first successful
-Actions upload; this repository change does not disable those remote workflows.
+[App build checks](.github/workflows/app-build-checks.yml) runs packaging tests
+and builds unsigned apps on version tags such as `v1.2.3` or by manual dispatch.
+Sign release packages and upload them to GitHub or App Store Connect locally.
 
 Each project declares its platform and channels in
 [`scripts/release/apps.json`](scripts/release/apps.json):
@@ -551,45 +548,8 @@ dependency. Both delivery channels use copies of the same compiled app:
 Developer ID signing and notarization for a DMG; distribution signing with
 an embedded provisioning profile for Store PKG/IPA. Development, ad hoc,
 enterprise, expired and mismatched Store profiles are rejected.
-The generated bundle gets version `1.2.3` and build number
-`<Actions run number>.<attempt>`; source plists stay unchanged.
-Debug symbols are retained as Actions artifacts.
-
-Configure repository **Actions secrets** (binary files are base64 encoded):
-
-| Secret | Purpose |
-|---|---|
-| `MACOS_CERTIFICATE_P12` | Developer ID Application certificate **and private key**, `.p12`, for DMGs |
-| `MACOS_CERTIFICATE_PASSWORD` | Its export password (omit for an empty password) |
-| `NOTARY_KEY_P8` | App Store Connect team API key `.p8`, for notarization |
-| `NOTARY_KEY_ID`, `NOTARY_ISSUER_ID` | That key's ID and issuer UUID |
-| `APPSTORE_CERTIFICATE_P12` | Apple Distribution certificate(s) and private key(s), `.p12`, matching both Store profiles |
-| `APPSTORE_CERTIFICATE_PASSWORD` | Its export password (omit for an empty password) |
-| `APPSTORE_INSTALLER_P12` | 3rd Party Mac Developer Installer certificate and private key, `.p12`, for Store PKGs |
-| `APPSTORE_INSTALLER_PASSWORD` | Its export password (omit for an empty password) |
-| `APPSTORE_KEY_P8` | App Store Connect team API key `.p8`, authorized to upload builds |
-| `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID` | That key's ID and issuer UUID |
-| `DISKMAP_APPSTORE_PROFILE` | Diskmap macOS App Store provisioning profile |
-| `ADVENTURE_ARENA_APPSTORE_PROFILE` | Adventure Arena iOS App Store provisioning profile |
-
-The notary and upload key may be the same team API key with suitable access;
-set both secret groups explicitly. A Developer ID certificate cannot sign
-an App Store app. GitHub secret values cannot be read back; only their names
-can be inspected. No `.p12`, `.p8` or private key goes into a release artifact.
-
-Configure **Actions variables**, containing each app's numeric Apple ID
-from App Store Connect → App Information:
-`DISKMAP_APPSTORE_ID` and `ADVENTURE_ARENA_APPSTORE_ID`.
-The manifest's `appStoreIdVariable` selects the appropriate variable.
-
-Push a `v1.2.3` tag after committing the release sources and submodule
-revisions. Actions builds each declared platform, attaches signed packages
-to the GitHub release and validates/uploads the Store packages. Missing
-credentials fail with their names; a release never silently omits a Store
-upload. For a credential-free check, dispatch **Release apps** with an
-existing tag and `buildOnly=true`; it retains builds only in Actions.
-
-Local commands use the same pipeline:
+For a local release, set the version and build number and use the signing
+identities and provisioning profiles installed on your Mac.
 
 ```sh
 make release-build APP=adventure-arena VERSION=1.2.3 BUILD_NUMBER=123.1
