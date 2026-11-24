@@ -8,11 +8,11 @@
   --  · Marked objects and directions stay bold, ordinary selectable prose.
   -- `reading` carries the reader’s face, size, leading, alignment and inks.
   -- `reveal` holds the characters shown of paragraphs still typing, keyed
-  -- by their native ids. A paragraph that has not started is set in full and
+  -- "entry_paragraph". A paragraph that has not started is set in full and
   -- drawn clear, and the title of a scene in `reveal.waiting` is transparent:
   -- the page is as tall as the whole answer from the moment it arrives, so
   -- it scrolls to the answer once and typing moves nothing.
-  local size = reading.fontSize
+  local size, lead = reading.fontSize, reading.lineSpacing
   local PAGE = {
     side = 24, top = 28, bottom = 36,
     titleSpacing = 10, synopsisTop = 8,
@@ -20,13 +20,12 @@
     command = math.floor(size * 1.3), commandMarker = math.floor(size * 0.65),
     afterCommand = math.floor(size * 0.45),
   }
+  local hyphenate = reading.alignment == "justified" and "true" or "false"
   local hasSynopsis = synopsis and synopsis ~= ""
   reveal = reveal or { waiting = {} }
-  local function prose(paragraph, ranges, id)
-    return {
-      blocks = quoteBlocks(paragraph, ranges), id = id,
-      reading = reading, reveal = reveal, blockKey = blockKey,
-    }
+  local function revealed(index, paragraphIndex)
+    local shown = reveal[index .. "_" .. paragraphIndex]
+    return string.format('revealedCharacters="%d"', shown or -1)
   end
   local function waiting(index)
     return string.format('opacity="%d"', reveal.waiting[tostring(index)] and 0 or 1)
@@ -41,7 +40,9 @@
     <%- partial("../components/GameTitle.etlua", { id = "gameTitle", title = gameTitle, color = reading.primary, alignment = "leading", font = reading.font }) %>
     <% if hasSynopsis then %>
     <VStack spacing="<%= PAGE.titleSpacing %>" alignment="leading" paddingTop="<%= PAGE.synopsisTop %>" maxWidth="infinity">
-      <%- partial("Prose.etlua", prose(synopsis, nil, "synopsis")) %>
+      <Paragraph id="synopsis" text="<%= synopsis %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" alignment="leading" lineSpacing="<%= lead %>" maxWidth="infinity">
+        <%- partial("ProseEmphasis.etlua", { paragraph = synopsis, quoteRanges = quoteRanges }) %>
+      </Paragraph>
     </VStack>
     <% end %>
   </VStack>
@@ -67,7 +68,9 @@
     </VStack>
     <VStack spacing="<%= PAGE.proseGap %>" alignment="leading" maxWidth="infinity">
       <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
-      <%- partial("Prose.etlua", prose(paragraph, (entry.links or {})[paragraphIndex], "paragraph_" .. index .. "_" .. paragraphIndex)) %>
+      <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" <%- revealed(index, paragraphIndex) %>>
+        <%- partial("ProseEmphasis.etlua", { ranges = (entry.links or {})[paragraphIndex], paragraph = paragraph, quoteRanges = quoteRanges }) %>
+      </Paragraph>
       <% end %>
     </VStack>
   </VStack>
@@ -81,7 +84,9 @@
   <% else %>
   <VStack id="entry_<%= index %>" spacing="<%= PAGE.proseGap %>" alignment="leading" maxWidth="infinity" paddingTop="<%= followsCommand and PAGE.afterCommand or PAGE.paragraph %>">
     <% for paragraphIndex, paragraph in ipairs(entry.paragraphs) do %>
-    <%- partial("Prose.etlua", prose(paragraph, (entry.links or {})[paragraphIndex], "paragraph_" .. index .. "_" .. paragraphIndex)) %>
+    <Paragraph id="paragraph_<%= index %>_<%= paragraphIndex %>" text="<%= paragraph %>" size="<%= size %>" design="<%= reading.font %>" color="<%= reading.primary %>" lineSpacing="<%= lead %>" alignment="<%= reading.alignment %>" hyphenation="<%= hyphenate %>" <%- revealed(index, paragraphIndex) %>>
+      <%- partial("ProseEmphasis.etlua", { ranges = (entry.links or {})[paragraphIndex], paragraph = paragraph, quoteRanges = quoteRanges }) %>
+    </Paragraph>
     <% end %>
   </VStack>
   <% end %>

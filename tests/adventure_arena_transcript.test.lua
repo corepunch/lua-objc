@@ -120,22 +120,16 @@ t.assertEqual(controller.transcript.refs.sceneTitle_1.text, "Zork", "a scene ope
 controller:submitCommand("north")
 local cellar = model:entryCount()
 t.assertEqual(controller.transcript.refs["sceneTitle_" .. cellar].text, "Cellar", "the move opens a scene")
-local prefix = "paragraph_" .. cellar .. "_1"
-local prose = controller.transcript.refs[prefix]
-local quote = controller.transcript.refs[prefix .. "_2"]
-local following = controller.transcript.refs[prefix .. "_3"]
-t.assertEqual(prose.text, "A damp cellar.", "prose stops before the quote")
-t.assertEqual(quote.text, "door", "the quotation gets its own paragraph without outer marks")
-t.assertEqual(following.text, "swings open.", "prose continues below the quote")
-t.assertEqual(quote.font.pointSize, prose.font.pointSize + 2, "quotes are two points larger")
-t.expect(quote.frameInWindow.origin.x > prose.frameInWindow.origin.x, "quotes are indented")
-t.assertEqual(quote.revealedCharacters, 0, "quotes wait for the prose before them to type")
-t.assertEqual(following.revealedCharacters, 0, "following prose waits for the quote to type")
+local paragraph = controller.transcript.refs["paragraph_" .. cellar .. "_1"]
+t.assertEqual(paragraph.text, "A damp cellar. “door” swings open.", "the quote stays inline with its visible marks")
+t.assertEqual(paragraph.revealedCharacters, 0, "the whole paragraph waits to type")
 finishTimers()
-t.assertEqual(quote.revealedCharacters, -1, "the quote is fully revealed")
-t.assertEqual(following.revealedCharacters, -1, "the following prose is fully revealed")
-local attrs = require("AppKitNative")._paragraphAttributes(quote, 0)
+t.assertEqual(paragraph.revealedCharacters, -1, "the whole paragraph finishes typing")
+local attributes = require("AppKitNative")._paragraphAttributes
+local attrs = attributes(paragraph, 16)
 t.expect(attrs.italic and attrs.bold, "a quoted story link is rendered in bold italic")
+t.expect(attributes(paragraph, 15).italic and attributes(paragraph, 20).italic, "the quote marks are italic too")
+t.expect(not attributes(paragraph, 22).italic, "prose resumes in regular type after the quote")
 t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
 	controller.transcript.refs.entry_3.paddingTop, "the heading uses the same command gap as prose")
 t.assertEqual(controller.transcript.refs.titlePage.paddingBottom,

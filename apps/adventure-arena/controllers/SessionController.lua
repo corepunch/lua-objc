@@ -197,7 +197,7 @@ end
 function Controller:renderTranscript()
 	if not self.transcript or self.transcript:isDisposed() then return end
 	local data = self.model:presentation()
-	data.quoteBlocks, data.blockKey = Quotes.blocks, Quotes.blockKey
+	data.quoteRanges = Quotes.ranges
 	data.synopsis = self.model.currentGame.description or ""
 	local settings = ReadingSettings:current():presentation()
 	data.reading = {
@@ -223,10 +223,8 @@ end
 function Controller:beginTyping(firstEntry, delay)
 	local queue = {}
 	for _, item in ipairs(self.model:paragraphsSince(firstEntry)) do
-		for part, block in ipairs(Quotes.blocks(item.text)) do
-			table.insert(queue, { entry = item.entry, paragraph = item.paragraph, part = part,
-				key = Quotes.blockKey(item.paragraph, part), length = characterCount(block.text) })
-		end
+		item.length = characterCount(item.text)
+		table.insert(queue, item)
 	end
 	if #queue == 0 or self.reduceMotion() then return end
 	self.typingGeneration = (self.typingGeneration or 0) + 1
@@ -246,7 +244,7 @@ function Controller:isTyping()
 end
 
 -- Revealed characters for each paragraph still typing, keyed as the
--- Transcript template's paragraph ids are ("paragraph_3_1"), and each entry typing has
+-- Transcript template's paragraph ids are ("3_1"), and each entry typing has
 -- not reached yet (`waiting["3"]`, whose scene title stays transparent);
 -- absent paragraphs show whole.
 function Controller:revealState(earlier)
@@ -256,8 +254,8 @@ function Controller:revealState(earlier)
 	local current = typing.queue[typing.position]
 	for position = typing.position, #typing.queue do
 		local item = typing.queue[position]
-		reveal["paragraph_" .. (item.entry - earlier) .. "_" .. item.key] = position == typing.position and typing.revealed or 0
-		if item.entry ~= current.entry or (item.paragraph == 1 and item.part == 1 and typing.revealed == 0) then
+		reveal[(item.entry - earlier) .. "_" .. item.paragraph] = position == typing.position and typing.revealed or 0
+		if item.entry ~= current.entry or (item.paragraph == 1 and typing.revealed == 0) then
 			reveal.waiting[tostring(item.entry - earlier)] = true
 		end
 	end
@@ -280,7 +278,7 @@ function Controller:typeNext(generation)
 	if not typing or typing.generation ~= generation or not self.transcript or self.transcript:isDisposed() then return end
 	local item = typing.queue[typing.position]
 	local refs, index = self.transcript.refs, item.entry - (self.transcriptEarlier or 0)
-	local view = refs["paragraph_" .. index .. "_" .. item.key]
+	local view = refs["paragraph_" .. index .. "_" .. item.paragraph]
 	local from = typing.revealed
 	if from == 0 and refs["sceneTitle_" .. index] then refs["sceneTitle_" .. index].opacity = 1 end
 	typing.revealed = math.min(item.length, from + TYPING.charactersPerTick)
