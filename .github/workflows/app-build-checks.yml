@@ -1,0 +1,43 @@
+name: App build checks
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.apps.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: apps
+        name: Read app platforms
+        run: |
+          matrix=$(python3 scripts/release/release.py matrix)
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch app dependencies
+        env:
+          SUBMODULES: ${{ join(matrix.submodules, ' ') }}
+        run: git submodule update --init --depth 1 lua/vendor/etlua $SUBMODULES
+      - name: Select a stable Apple toolchain
+        run: python3 scripts/release/toolchain.py
+      - name: Check packaging and signing regressions
+        run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
+      - name: Check unsigned app build and packaging
+        env:
+          APP: ${{ matrix.app }}
+        run: make release APP="$APP" VERSION=1.0.0 BUILD_NUMBER=1 UNSIGNED=1
