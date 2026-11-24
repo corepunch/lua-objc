@@ -1,0 +1,19 @@
+name: App build checks
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the template engine
+        run: git submodule update --init --depth 1 lua/vendor/etlua
+      - name: Check ad hoc DMG builds
+        run: make release VERSION=1.0.0 UNSIGNED=1

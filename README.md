@@ -539,15 +539,9 @@ make publish VERSION=1.0.0   # create the release v1.0.0 with every DMG
 ```
 
 Xcode signs with its cloud-managed Developer ID certificate and notarizes
-through the account, so no key or password is needed. That certificate's
-key stays with Apple and cannot be exported, so a tag `v1.0.0` pushed to
-GitHub only checks the build
-([`.github/workflows/release.yml`](.github/workflows/release.yml)) unless the
-repository holds an exportable Developer ID certificate and an App Store
-Connect API key as secrets (listed in the workflow); then the runner signs,
-notarizes and publishes on its own. `make release VERSION=1.0.0 UNSIGNED=1`
-builds ad hoc DMGs for the Mac that built them. Diskmap's App Store builds
-stay in Xcode Cloud, started by `diskmap/` tags.
+through the account, so no key or password is needed. [App build checks](.github/workflows/app-build-checks.yml)
+runs `make release VERSION=1.0.0 UNSIGNED=1` on version tags or by manual
+dispatch to check the ad hoc DMGs. Sign, notarize and publish releases locally.
 
 ### Adventure Arena tour screenshots
 
