@@ -109,7 +109,7 @@ t.expect(page().synopsis == nil, "no synopsis precedes the opening scene")
 
 local firstFrame, secondFrame = page().paragraph_1_1.frame, page().paragraph_1_2.frame
 local gap = math.abs(secondFrame.origin.y - firstFrame.origin.y) - (secondFrame.origin.y < firstFrame.origin.y and secondFrame.size.height or firstFrame.size.height)
-t.expect(math.abs(gap - 20) < 0.01, "paragraphs have a 50% larger gap at the default type size")
+t.expect(math.abs(gap - 12) < 0.01, "opening paragraphs use the single 12-point gap")
 
 -- A command types its answer; the command itself is set at once.
 controller:submitCommand("open mailbox")

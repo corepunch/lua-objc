@@ -19,8 +19,9 @@ local function engine()
 		start = function()
 			return {
 				resume = function(_, command)
-					if command == "north" then return "Cellar\nA damp cellar. “[[door]]” swings open." end
+				if command == "north" then return "Cellar\nA damp cellar. “[[door]]” swings open.\n\nThe stairs creak." end
 					if command == "look" then return longAnswer end
+				if command == "wait" then return "Response wait.\n\nNothing happens." end
 					return "Response " .. command
 				end,
 				exits = function() return { "north", "east" } end,
@@ -56,6 +57,7 @@ local controller = SessionController.new {
 }
 t.expect(controller:show("zork"), "new session opens")
 t.assertEqual(controller.transcript.refs.paragraph_1_1.revealedCharacters, -1, "the opening is visible on the first render")
+t.assertEqual(controller.transcript.refs.entry_1.paddingTop, 0, "the opening starts at the page margin")
 local scroll = controller.refs.transcriptScroll
 -- The page owns the transcript's frame, as the window does in the app.
 local function resizePage(height)
@@ -95,6 +97,13 @@ t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted 
 local serif = ns.Text { "look", size = 17, design = "serif", weight = "medium" }
 t.assertEqual(controller.transcript.refs.command_2.font.fontName, serif.font.fontName, "commands use the selected serif")
 t.assertEqual(controller.transcript.refs.paragraph_3_1.text, longAnswer, "the response follows the command")
+local function verticalGap(upper, lower)
+	return upper.frame.origin.y - (lower.frame.origin.y + lower.frame.size.height)
+end
+local reply = controller.transcript.refs
+t.assertEqual(reply.entry_2.paddingTop, 24, "a new command starts after a double gap")
+t.assertEqual(reply.entry_3.paddingTop, 12, "a prose reply starts after a single gap")
+t.assertEqual(verticalGap(reply.paragraph_5_1, reply.paragraph_5_2), 12, "paragraphs in a reply use a single gap")
 t.expect(model:hasExit("north") and not model:hasExit("south"), "the session still knows its exits")
 t.expect(controller.transcript.refs.chapter_1 == nil, "a scene carries no chapter line above its title")
 t.assertEqual(controller.transcript.refs.sceneTitle_1.text, "Zork", "a scene opens with its title")
@@ -113,8 +122,11 @@ local attrs = attributes(paragraph, 16)
 t.expect(attrs.italic and not attrs.bold, "a marked word inside a quotation is italic only")
 t.expect(attributes(paragraph, 15).italic and attributes(paragraph, 20).italic, "the quote marks are italic too")
 t.expect(not attributes(paragraph, 22).italic, "prose resumes in regular type after the quote")
-t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
-	controller.transcript.refs.entry_3.paddingTop, "the heading uses the same command gap as prose")
+local move = controller.transcript.refs
+t.assertEqual(move["entry_" .. (cellar - 1)].paddingTop, 24, "a movement command starts after a double gap")
+t.assertEqual(move["entry_" .. cellar].paddingTop, 12, "a room heading starts after a single gap")
+t.assertEqual(verticalGap(move["sceneTitle_" .. cellar], paragraph), 12, "a room heading sits a single gap above its prose")
+t.assertEqual(verticalGap(paragraph, move["paragraph_" .. cellar .. "_2"]), 12, "scene paragraphs use a single gap")
 
 -- The command field spans the inset without any adjacent controls.
 local bar = controller.refs.commandBar
