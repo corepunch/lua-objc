@@ -18,7 +18,7 @@ local function actions()
 end
 local SOURCE = [[
 <VStack spacing="0" alignment="leading">
-	<Paragraph id="linked" text="]] .. PROSE .. [[" size="17" design="serif" figure="<%= figure %>" revealedCharacters="<%= revealed %>">
+	<Paragraph id="linked" text="]] .. PROSE .. [[" size="17" design="serif" revealedCharacters="<%= revealed %>">
 		<% for _, link in ipairs(links) do %>
 		<Hyperlink location="<%= link.location %>" length="<%= link.length %>" label="<%= link.label %>">
 			<% for _, item in ipairs(link.items) do %>
@@ -43,7 +43,7 @@ file:write(SOURCE)
 file:close()
 local host = ns.VStack {}
 local template = Template.new(host, path, ns)
-local _, refs = template:update({ links = LINKS, figure = "", revealed = -1, actions = actions() })
+local _, refs = template:update({ links = LINKS, revealed = -1, actions = actions() })
 host.size = ns.Size(320, 2000); host:layout(320)
 
 local links = bridge._paragraphLinks(refs.linked)
@@ -54,7 +54,9 @@ t.assertEqual(links[1].label, "plaque", "a link keeps its label")
 t.assertEqual(#links[1].titles, 3, "a link lists its menu items")
 t.assertEqual(links[1].titles[2], "Read plaque", "menu items keep their order")
 t.expect(links[1].revealed, "a link in fully shown text can be tapped")
-t.expect(links[1].inked and links[2].inked, "linked words take their rule's colour")
+t.expect(links[1].inked and links[2].inked, "linked words take their link colour")
+t.expect(links[1].bold and links[2].bold, "linked words use bold font")
+t.expect(not links[1].underlined and not links[2].underlined, "linked words have no underline")
 t.assertEqual(refs.linked.text, PROSE, "links leave the paragraph's text alone")
 t.assertEqual(refs.linked.size.height, refs.plain.size.height, "links do not change how the text is set")
 t.assertEqual(#bridge._paragraphLinks(refs.plain), 0, "a paragraph without children has no links")
@@ -76,33 +78,34 @@ t.expect(not links[1].inked, "an untyped link waits uninked")
 view.revealedCharacters = 12
 links = bridge._paragraphLinks(view)
 t.expect(links[1].revealed and not links[2].revealed, "a link is live from its first typed character")
+t.expect(links[1].bold and not links[1].underlined, "revealed characters keep their bold link styling")
 view.revealedCharacters = -1
 
 -- New links reach the same native view in place.
-local _, updated = template:update({ links = { LINKS[2] }, figure = "", revealed = -1, actions = actions() })
+local _, updated = template:update({ links = { LINKS[2] }, revealed = -1, actions = actions() })
 t.expect(updated.linked == view, "changing links keeps the paragraph's native view")
 links = bridge._paragraphLinks(view)
 t.assertEqual(#links, 1, "removed links are gone")
 t.assertEqual(links[1].text, "north", "the remaining link keeps its range")
+t.expect(links[1].bold and not links[1].underlined, "replacing links keeps the new link bold")
 bridge._paragraphPerformLink(view, 1, 1)
 t.assertEqual(chosen[#chosen], "north", "the remaining link still runs its action")
-_, updated = template:update({ links = {}, figure = "", revealed = -1, actions = actions() })
+_, updated = template:update({ links = {}, revealed = -1, actions = actions() })
 t.assertEqual(#bridge._paragraphLinks(updated.linked), 0, "a paragraph can lose every link")
 
--- A figure moves the lines, never the words: links keep their ranges.
-_, updated = template:update({ links = LINKS, figure = "apps/adventure-arena/assets/zork1.jpg", revealed = -1, actions = actions() })
+-- Replacing links preserves ranges at the start of the text too.
+_, updated = template:update({ links = LINKS, revealed = -1, actions = actions() })
 host:layout(320)
-t.expect(updated.linked.figureView ~= nil, "the paragraph floats its figure")
 links = bridge._paragraphLinks(updated.linked)
-t.assertEqual(links[1].text, "brass plaque", "a link beside the figure covers its words")
+t.assertEqual(links[1].text, "brass plaque", "a restored link covers its words")
 local first = { { location = 0, length = 10, label = "corroded", items = { { title = "Examine", action = "examine" } } } }
-_, updated = template:update({ links = first, figure = "apps/adventure-arena/assets/zork1.jpg", revealed = -1, actions = actions() })
+_, updated = template:update({ links = first, revealed = -1, actions = actions() })
 t.assertEqual(bridge._paragraphLinks(updated.linked)[1].text, "A corroded", "a link at the first character starts there")
 
 -- Edge cases: ranges beyond the text, empty ranges, other children.
 local edge = { { location = 62, length = 500, label = "tail", items = {} }, { location = 900, length = 4, label = "gone", items = {} },
 	{ location = 3, length = 0, label = "empty", items = {} } }
-_, updated = template:update({ links = edge, figure = "", revealed = -1, actions = actions() })
+_, updated = template:update({ links = edge, revealed = -1, actions = actions() })
 links = bridge._paragraphLinks(updated.linked)
 t.assertEqual(links[1].text, "north.", "a link running past the end stops at the end")
 t.assertEqual(links[2].text, "", "a link beyond the text covers nothing")

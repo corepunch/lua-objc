@@ -4,7 +4,6 @@ local t = require("TestKit")
 local ns = require("AppKit")
 local xml = require("ui.xml")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
-local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
@@ -14,12 +13,14 @@ local function mountTemplate(host, template)
 end
 
 local opening = string.rep("A long opening paragraph. ", 40)
+local longAnswer = string.rep("Response look. ", 30):sub(1, -2)
 local function engine()
 	return {
 		start = function()
 			return {
 				resume = function(_, command)
-					if command == "north" then return "Cellar\nA damp cellar." end
+					if command == "north" then return "Cellar\nA damp cellar. “[[door]]” swings open." end
+					if command == "look" then return longAnswer end
 					return "Response " .. command
 				end,
 				exits = function() return { "north", "east" } end,
@@ -73,7 +74,7 @@ t.assertEqual(fromTop(), 0, "a new story opens at its title page")
 t.expect(scroll.scrollOnKeyboard == true, "the transcript follows the keyboard")
 
 ns._textFieldTestFocus(controller.refs.input)
-t.assertEqual(scroll.contentView.bounds.origin.y, 0, "showing the keyboard goes to the latest line")
+t.assertEqual(scroll.contentView.bounds.origin.y, -scroll.scrollOverlayAccessory.frame.size.height, "showing the keyboard clears the composer")
 scroll:scrollTo("top", false)
 t.expect(scroll.contentView.bounds.origin.y > 0, "the reader can leave the latest line")
 
@@ -90,35 +91,40 @@ t.assertEqual(scroll.contentView.bounds.origin.y, offset, "laying the page out k
 resizePage(900)
 scroll:scrollTo("top", false)
 controller:submitCommand("wait")
-t.assertEqual(scroll.contentView.bounds.origin.y, 0, "an answer that fits the screen is shown to the foot of the page")
-t.expect(controller.transcript.refs.entry_5.frame.origin.y >= 80,
-	"the last line keeps clear of the command field")
+t.assertEqual(scroll.contentView.bounds.origin.y, -scroll.scrollOverlayAccessory.frame.size.height, "the latest answer clears the composer")
+t.assertEqual(controller.transcript.refs.entry_5.frame.origin.y, 36, "the last entry clears the bottom by 36 points")
 t.assertEqual(controller.transcript.refs.command_2.text, "look", "the submitted command is in the transcript")
-t.assertEqual(controller.transcript.refs.paragraph_3_1.text, "Response look", "the response follows the command")
+local serif = ns.Text { "look", size = 17, design = "serif", weight = "medium" }
+t.assertEqual(controller.transcript.refs.command_2.font.fontName, serif.font.fontName, "commands use the selected serif")
+t.assertEqual(controller.transcript.refs.paragraph_3_1.text, longAnswer, "the response follows the command")
 t.expect(model:hasExit("north") and not model:hasExit("south"), "the session still knows its exits")
 t.expect(controller.transcript.refs.chapter_1 == nil, "a scene carries no chapter line above its title")
 t.assertEqual(controller.transcript.refs.sceneTitle_1.text, "Zork", "a scene opens with its title")
 
--- A new room follows the command that led there closely: the gap above its
--- title is half what it once was, 1.3 lines of type.
+-- A room heading and a prose response use the same gap after a command.
 controller:submitCommand("north")
-finishTimers()
 local cellar = model:entryCount()
 t.assertEqual(controller.transcript.refs["sceneTitle_" .. cellar].text, "Cellar", "the move opens a scene")
+local paragraph = controller.transcript.refs["paragraph_" .. cellar .. "_1"]
+t.assertEqual(paragraph.text, "A damp cellar. “door” swings open.", "the quote stays inline with its visible marks")
+t.assertEqual(paragraph.revealedCharacters, 0, "the whole paragraph waits to type")
+finishTimers()
+t.assertEqual(paragraph.revealedCharacters, -1, "the whole paragraph finishes typing")
+local attributes = require("AppKitNative")._paragraphAttributes
+local attrs = attributes(paragraph, 16)
+t.expect(attrs.italic and not attrs.bold, "a marked word inside a quotation is italic only")
+t.expect(attributes(paragraph, 15).italic and attributes(paragraph, 20).italic, "the quote marks are italic too")
+t.expect(not attributes(paragraph, 22).italic, "prose resumes in regular type after the quote")
 t.assertEqual(controller.transcript.refs["entry_" .. cellar].paddingTop,
-	math.floor(ReadingSettings:current():presentation().fontSize * 1.3), "a scene sits 1.3 lines below its command")
+	controller.transcript.refs.entry_3.paddingTop, "the heading uses the same command gap as prose")
 
--- The command field takes the width the compass left: it ends at the bar's
--- trailing edge, and the bar holds only the menu and the field.
-local bar = controller.refs.quickActions.superview
+-- The command field spans the inset without any adjacent controls.
+local bar = controller.refs.commandBar
 rendered.refs.reader.size = ns.Size(390, 700)
 rendered.refs.reader:layout(390)
-local field = controller.refs.input
-local glass = field.superview
-while glass.superview ~= bar do glass = glass.superview end
-t.assertEqual(#bar.subviews, 2, "the command bar holds the menu and the field")
-t.assertEqual(glass.frame.origin.x + glass.frame.size.width, bar.bounds.size.width,
-	"the command field fills the bar to its trailing edge")
+t.assertEqual(bar.frame.origin.x + bar.frame.size.width, bar.superview.bounds.size.width,
+	"the command bar fills the inset to its trailing edge")
+t.expect(controller.refs.quickActions == nil, "the reader reserves no space for a quick actions button")
 
 local savedOpening = opening .. "\n\n> inventory\n\nYou are empty handed."
 local saved = Session.new { engineFactory = function()
@@ -157,17 +163,15 @@ scroll:layout(320)
 t.assertEqual(scroll.contentView.bounds.origin.y, 0, "loading a session shows the latest line")
 local page = loaded.transcript.refs
 t.assertEqual(page.paragraph_1_1.text:sub(1, 20), "A long opening parag", "a loaded session keeps its opening, first letter included")
-t.expect(page.paragraph_1_1.figureView == nil, "a room without an icon sets its prose to the margin")
+t.assertEqual(#page.paragraph_1_1.textContainer.exclusionPaths, 0, "restored prose uses the full column")
 t.expect(page.paragraph_1_2.text:find("> inventory", 1, true) ~= nil, "a loaded session keeps its commands")
-t.expect(page.titlePage ~= nil and page.gameTitle.text == "Zork", "the story opens on a title page")
+t.expect(page.bannerTitle_1 == nil and page.synopsis == nil, "a game without a banner opens directly on the scene")
 
--- Commands read as stage directions, not chat bubbles.
+-- Keep the command prompt plain and preserve the accessible speaker label.
 local command = controller.transcript.refs.command_2
-t.assertEqual(command.text, "look", "the command keeps the reader's words")
+t.assertEqual(command.text, "look", "the command text contains only the reader’s words")
 t.assertEqual(command.accessibilityLabel, "You: look", "VoiceOver says who spoke")
 t.expect(command.superview.backgroundColor == nil or command.superview.backgroundColor.alphaComponent == 0,
 	"a command has no bubble behind it")
-t.expect(command.font.fontDescriptor.fontAttributes.NSCTFontFeatureSettingsAttribute ~= nil,
-	"a command is set in small capitals")
 
 os.exit(t.summary() and 0 or 1)

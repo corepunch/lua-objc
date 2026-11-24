@@ -18,6 +18,7 @@ enum {
 	kNavigationControllerKey,
 	kScrollViewportSizeKey,
 	kScrollContentKey,
+	kScrollOverlayAccessoryKey,
 	kButtonContentKey,
 	kFlexibleKey,
 	kTableSourceKey,
@@ -53,6 +54,7 @@ enum {
 	kUnitScaleKey,
 	kFixedSizeKey,
 	kIgnoresSafeAreaKey,
+	kSafeAreaPaddingKey,
 	kBackgroundColorKey,
 	kCornerRadiusKey,
 	kClipsToBoundsKey,
@@ -124,11 +126,6 @@ static const CGFloat kSceneSwipeDistance = 24.0;
 static const NSTimeInterval kScrollToAnimationDuration = 0.2;
 /* Space between a paragraph's figure and the text wrapping beside it, and
  * the number of lines the figure spans when the template does not say. */
-static const CGFloat kParagraphFigureGap = 10.0;
-static const NSInteger kParagraphFigureLines = 3;
-/* How far below the baseline a link's dotted rule sits past the font's own
- * underline position, so descenders do not run into the dots. */
-static const CGFloat kParagraphLinkUnderlineOffset = 3.0;
 
 /* Every value that controls visual appearance or layout has a named constant
  * so that tuning across the codebase is a single-section edit. Add new constants
@@ -435,6 +432,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_paragraph", bridge_AppKitControls_paragraph},
 	{"_paragraphSetLinks", bridge_paragraph_set_links},
 	{"_paragraphLinks", bridge_paragraph_links},
+	{"_paragraphAttributes", bridge_paragraph_attributes},
 	{"_paragraphPerformLink", bridge_paragraph_perform_link},
 	{"_hasLayoutAxis", bridge_has_layout_axis},
 	{"_textField", bridge_AppKitControls_textField},

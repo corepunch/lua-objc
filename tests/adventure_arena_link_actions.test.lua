@@ -66,7 +66,10 @@ end
 t.expect(contains(scoped:linkActions("report"), "steam report over kettle"), "authored partner remains available")
 t.expect(not contains(scoped:linkActions("report"), "steam report over cloud"), "unrelated local objects do not become authored instruments")
 t.assertEqual(#scoped:linkActions("report"), 2, "partner aliases produce one action")
-scoped.knownItems = { scoped.items[1], scoped.items[2] }
+t.assertEqual(scoped:suggestions("steam r")[1].text, "steam report ", "story-specific verb completes its direct object")
+t.assertEqual(scoped:suggestions("steam report ")[1].title, "over", "the parser supplies the joining word")
+t.assertEqual(scoped:suggestions("steam report over k")[1].text, "steam report over kettle ", "authored indirect object completes")
+t.assertEqual(#scoped:suggestions("steam report over c"), 0, "irrelevant instruments are excluded")
 table.remove(scoped.items, 1)
 table.remove(scoped.items, 1)
 t.assertEqual(#scoped:linkActions("cloud"), 0, "an actor who has moved away has no stale local actions")

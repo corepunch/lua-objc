@@ -144,7 +144,6 @@ function Onboarding:worlds(adventures)
 				id = genre.id,
 				title = genre.title,
 				symbol = genre.symbol,
-				tint = genre.tint,
 				count = genre.count,
 				selected = self:hasInterest(genre.title),
 			})
@@ -224,10 +223,8 @@ function Onboarding:page(recommendation)
 		page.rows = {
 			{ symbol = "mappin.and.ellipse", title = "The heading is where you are",
 				detail = "Each new place opens with its name and what you find there." },
-			{ symbol = "figure.walk", title = "Capitals are your moves",
+			{ symbol = "figure.walk", title = "The chevron marks your moves",
 				detail = "What you did, set apart from the story's answer." },
-			{ symbol = "hand.tap.fill", title = "Underlined words are things you can use",
-				detail = tap .. " one to see what you can do with it." },
 		}
 	elseif step == "play" then
 		page.symbol = "text.bubble.fill"
@@ -235,16 +232,14 @@ function Onboarding:page(recommendation)
 		page.rows = {
 			{ symbol = "keyboard", title = "Type what you do",
 				detail = "A word or two is enough: LOOK, TAKE BROOM, NORTH." },
-			{ symbol = "hand.tap.fill", title = "Or " .. tap:lower() .. " an underlined word",
-				detail = "Its menu lists what you can do with it. No typing needed." },
-			{ symbol = "plus.circle.fill", title = "Stuck? " .. tap .. " +",
-				detail = "Look Around and Inventory say where you are and what you carry." },
+			{ symbol = "eye", title = "Look around and check your inventory",
+				detail = "LOOK describes where you are. INVENTORY lists what you carry." },
 		}
-		-- The keyboard and its suggestion bar belong to the phone.
+
 		if self.touch then
 			page.image, page.darkImage = screenshot(step)
-			table.insert(page.rows, 2, { symbol = "ellipsis.bubble.fill", title = "Or tap a suggestion",
-				detail = "As you type, the bar above the keyboard offers ways to finish." })
+			table.insert(page.rows, 2, { symbol = "keyboard", title = "Tap command suggestions",
+				detail = "Look around and Inventory stay above the keyboard. Type a letter to choose a verb, then an object. Send when ready." })
 		end
 	elseif step == "audience" then
 		page.symbol = "person.2.fill"

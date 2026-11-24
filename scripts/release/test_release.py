@@ -288,6 +288,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(records['adventure-arena']['platform'], 'ios')
         universal = compile_command(records['adventure-arena'], Path('/tmp/app.app'))
         self.assertIn('DEVICE_FAMILY=1,2', universal)
+        self.assertIn('APP_DISPLAY_NAME=Elsewhere', universal)
         phone = compile_command(dict(records['adventure-arena'], platform='iphone'), Path('/tmp/app.app'))
         self.assertIn('SDK=iphoneos', phone)
         self.assertIn('DEVICE_FAMILY=1', phone)

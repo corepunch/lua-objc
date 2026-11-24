@@ -12,6 +12,10 @@ if not bridge then
 		return text
 	end
 	local navigation = source("src/uikit/navigation.m")
+	local item = navigation:match("UIImage %*image = icon%.length (.-)barItem%.accessibilityLabel")
+	t.expect(item and item:find("[UIImage systemImageNamed:icon]", 1, true)
+		and item:find("initWithImage:image", 1, true) and not item:find("SymbolConfiguration", 1, true),
+		"navigation buttons use the bar's standard SF Symbol configuration")
 	local host = navigation:match("@implementation LuaToolbarItemHost(.-)\n@end")
 	t.expect(host and host:find("intrinsicContentSize", 1, true)
 		and host:find("measure_size(self.luaContent", 1, true),

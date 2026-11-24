@@ -36,7 +36,8 @@ def select_device(devices, device_type, requested=None):
             candidates.append(identity)
     if len(candidates) != 1:
         if device_type == 'iPhone':
-            guidance = 'Connect exactly one available physical iPhone; run make list-devices to inspect devices.'
+            guidance = ('Connect exactly one available physical iPhone, or run make list-devices '
+                        'and set IPHONE_DEVICE or DEVICE to its name or identifier.')
         else:
             guidance = 'Run make list-devices and set IPAD_DEVICE=<identifier>.'
         raise ValueError(f'Expected exactly one available physical {device_type}; found {len(candidates)}. {guidance}')

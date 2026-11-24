@@ -1,12 +1,6 @@
 #pragma mark - Paragraph (long-form text)
 
-/* Long-form prose, set as a book sets it: selectable text with explicit
- * leading, optional hyphenation, and a figure the first lines wrap around, as
- * Zork Zero set each room's picture beside its description. NSTextField cannot
- * flow text around a shape, so this is a non-editable NSTextView on TextKit 1,
- * whose NSTextContainer.exclusionPaths carve the figure's square out of the
- * first lines — the mechanism Pages uses for floating objects. The figure is
- * an ordinary view (an image view from Lua) that the paragraph places. */
+/* Native selectable prose with explicit leading and optional hyphenation. */
 @interface LuaParagraphView : NSTextView <NSTextViewDelegate, LuaParagraphText>
 @property(nonatomic, copy) NSString *text;
 @property(nonatomic, strong) NSFont *bodyFont;
@@ -14,11 +8,10 @@
 @property(nonatomic) NSInteger textAlignment;
 @property(nonatomic) CGFloat lineSpacing;
 @property(nonatomic) BOOL hyphenation;
-/* A view floated at the leading edge, a square `figureLines` lines tall. */
-@property(nonatomic, strong) NSView *figureView;
-@property(nonatomic) NSInteger figureLines;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
-/* The colour of a link's words and the thicker dotted rule under them. */
+@property(nonatomic, copy) NSArray<NSDictionary *> *boldRanges;
+@property(nonatomic, copy) NSArray<NSDictionary *> *italicRanges;
+/* The colour of a link's words. */
 @property(nonatomic, strong) NSColor *linkColor;
 @property(nonatomic) NSInteger revealedCharacters;
 /* Set once the view is initialized; see -rebuild. */
@@ -30,7 +23,7 @@
 
 - (instancetype)init {
 	NSTextStorage *storage = [[NSTextStorage alloc] init];
-	NSLayoutManager *manager = [[LuaParagraphLayoutManager alloc] init];
+	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:NSMakeSize(0, CGFLOAT_MAX)];
 	container.widthTracksTextView = YES;
 	container.lineFragmentPadding = 0;
@@ -50,11 +43,10 @@
 	_bodyFont = [NSFont systemFontOfSize:NSFont.systemFontSize];
 	_bodyColor = NSColor.labelColor;
 	_textAlignment = NSTextAlignmentNatural;
-	_figureLines = kParagraphFigureLines;
 	_links = @[];
 	_revealedCharacters = -1;
 	/* The text view reports clicks on links to its delegate; the paragraph
-	 * rules them itself, so a link changes only the pointer. */
+	 * styles them itself, so a link changes only the pointer. */
 	self.delegate = self;
 	self.linkTextAttributes = @{NSCursorAttributeName: NSCursor.pointingHandCursor};
 	_ready = YES;
@@ -69,20 +61,11 @@
 - (void)setTextAlignment:(NSInteger)alignment { _textAlignment = alignment; [self rebuild]; }
 - (void)setLineSpacing:(CGFloat)value { _lineSpacing = MAX(0, value); [self rebuild]; }
 - (void)setHyphenation:(BOOL)value { _hyphenation = value; [self rebuild]; }
-- (void)setFigureView:(NSView *)view {
-	if (view == _figureView) return;
-	[_figureView removeFromSuperview];
-	_figureView = view;
-	if (view) {
-		view.wantsLayer = YES;
-		view.layer.masksToBounds = YES;
-		[self addSubview:view];
-	}
-	[self rebuild];
-}
-- (void)setFigureLines:(NSInteger)value { _figureLines = MAX(1, value); [self rebuild]; }
 - (void)setLinks:(NSArray<LuaParagraphLink *> *)links { _links = [links copy] ?: @[]; [self rebuild]; }
+- (void)setBoldRanges:(NSArray<NSDictionary *> *)ranges { _boldRanges = [ranges copy] ?: @[]; [self rebuild]; }
+- (void)setItalicRanges:(NSArray<NSDictionary *> *)ranges { _italicRanges = [ranges copy] ?: @[]; [self rebuild]; }
 - (void)setLinkColor:(NSColor *)color { _linkColor = color; [self applyReveal]; }
+- (id)paragraphLinkColor { return _linkColor ?: NSColor.controlAccentColor; }
 
 /* A typewriter reveal. The whole paragraph is always laid out, so words never
  * jump between lines as they appear — the approach of SwiftUI typewriter
@@ -134,8 +117,7 @@
 }
 
 - (void)applyReveal {
-	paragraph_apply_reveal(self, _bodyColor, _linkColor ?: NSColor.controlAccentColor, NSColor.clearColor);
-	_figureView.hidden = _revealedCharacters == 0;
+	paragraph_apply_reveal(self, _bodyColor, self.paragraphLinkColor, NSColor.clearColor);
 	self.needsDisplay = YES;
 }
 
@@ -148,21 +130,10 @@
 		_hyphenation, [self bodyLineHeight]);
 }
 
-- (CGFloat)figureSide {
-	return paragraph_figure_side(_figureLines, [self bodyLineHeight], _lineSpacing);
-}
-
 - (void)rebuild {
 	/* NSTextView's initializer applies its own font and colour first. */
 	if (!_ready || !_bodyFont) return;
 	[self.textStorage setAttributedString:[self bodyString]];
-	if (_figureView) {
-		CGFloat side = [self figureSide];
-		_figureView.frame = NSMakeRect(0, 0, side, side);
-		self.textContainer.exclusionPaths = @[[NSBezierPath bezierPathWithRect:paragraph_figure_exclusion(side, _lineSpacing)]];
-	} else {
-		self.textContainer.exclusionPaths = @[];
-	}
 	paragraph_apply_links(self, YES);
 	[self applyReveal];
 	[self setAccessibilityValue:_text];
@@ -176,19 +147,15 @@
 	/* Empty text takes no space, as SwiftUI Text(""). */
 	if (_text.length == 0) return NSZeroSize;
 	BOOL unbounded = width <= 0 || width >= CGFLOAT_MAX / 2;
-	NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:[self bodyString]];
+	NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:self.textStorage];
 	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:NSMakeSize(unbounded ? CGFLOAT_MAX : width, CGFLOAT_MAX)];
 	container.lineFragmentPadding = 0;
-	if (_figureView) container.exclusionPaths = @[[NSBezierPath bezierPathWithRect:
-		paragraph_figure_exclusion([self figureSide], _lineSpacing)]];
 	[storage addLayoutManager:manager];
 	[manager addTextContainer:container];
 	[manager ensureLayoutForTextContainer:container];
 	NSRect used = [manager usedRectForTextContainer:container];
-	/* A short paragraph still reserves the lines of its figure. */
 	CGFloat height = NSMaxY(used);
-	if (_figureView) height = MAX(height, [self figureSide]);
 	CGFloat scale = self.window.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor ?: 1;
 	return NSMakeSize(ceil((unbounded ? NSMaxX(used) : width) * scale) / scale, ceil(height * scale) / scale);
 }

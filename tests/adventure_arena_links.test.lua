@@ -49,6 +49,7 @@ local function engine()
 					state.room = "Hall"
 					return "Hall\nA [[grand staircase->staircase]] climbs away. The gate lies [[south]]."
 				end
+				if command == "read plaque" then return "The [[plaque]] is faded." end
 				return "You " .. command .. "."
 			end,
 			roomName = function() return state.room end,
@@ -130,35 +131,34 @@ local controller = SessionController.new {
 }
 t.expect(controller:show("links"), "the session opens")
 local function page() return controller.transcript.refs end
-local live = bridge._paragraphLinks(page().paragraph_1_1)
-t.assertEqual(#live, 2, "the page marks the scene's links")
-t.assertEqual(live[1].text, "iron gates", "a link underlines the words of the prose")
-local plaque = bridge._paragraphLinks(page().paragraph_1_2)[1]
-t.assertEqual(plaque.text, "brass plaque", "links in later lines keep their place")
-t.assertEqual(table.concat(plaque.titles, ","), "Examine,Take,Read", "a link's menu lists its actions")
-t.assertEqual(page().paragraph_1_1.text, scene.paragraphs[1], "the page shows the prose without markup")
-
-bridge._paragraphPerformLink(page().paragraph_1_2, 1, 3)
-t.assertEqual(model.history[#model.history], "read plaque", "choosing an action sends its command")
+local prose = page().paragraph_1_1
+t.assertEqual(#bridge._paragraphLinks(prose), 0, "marked prose has no hotlinks")
+for _, link in ipairs(scene.links[1]) do
+	t.expect(not bridge._paragraphAttributes(prose, link.location).bold, link.label .. " is regular prose")
+end
+t.assertEqual(prose.text, scene.paragraphs[1], "the page shows prose without markup")
+t.expect(controller.refs.input ~= nil, "typing is available beside the story")
+controller:updateComposer("read ")
+controller:updateComposer("read plaque")
+controller.actions.submit()
+t.assertEqual(model.history[#model.history], "read plaque", "Send executes the completed draft")
 t.assertEqual(page().command_2.text, "read plaque", "the command appears on the page")
-t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 2, "links stay live while the reader stays in the room")
-
-bridge._paragraphPerformLink(page().paragraph_1_1, 2, 1)
-t.assertEqual(model.history[#model.history], "north", "a direction link walks")
-t.assertEqual(model:presentation().roomTitle, "Hall", "the reader arrives in the next room")
-t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 0, "the words of a room left behind are plain prose")
+local response = page().paragraph_3_1
+t.assertEqual(response.text, "The plaque is faded.", "answers print the story's words without markup")
+t.expect(not bridge._paragraphAttributes(response, 4).bold, "marked words in answers are regular prose")
+controller:submitCommand("north")
+t.assertEqual(model:presentation().roomTitle, "Hall", "typing a direction changes rooms")
+t.assertEqual(#bridge._paragraphLinks(page().paragraph_1_1), 0, "past prose has no hotlinks either")
+t.expect(not bridge._paragraphAttributes(page().paragraph_1_1, scene.links[1][1].location).bold,
+	"earlier descriptions remain in regular type")
 local entries = model:presentation().entries
-local hall = bridge._paragraphLinks(page()["paragraph_" .. #entries .. "_1"])
-t.assertEqual(#hall, 2, "the new scene's links are live")
-t.assertEqual(table.concat(hall[1].titles, ","), "Examine,Climb", "they offer the new room's verbs")
-t.assertEqual(table.concat(hall[2].titles, ","), "Go south", "and the way back")
-
--- Reading settings re-set the page and keep its links.
+local hall = page()["paragraph_" .. #entries .. "_1"]
+t.assertEqual(#bridge._paragraphLinks(hall), 0, "new scenes also use ordinary prose")
 ReadingSettings:current():setJustified(true)
 controller:applyReadingSettings()
-hall = bridge._paragraphLinks(page()["paragraph_" .. #entries .. "_1"])
-t.assertEqual(#hall, 2, "links survive a change of reading settings")
-t.assertEqual(hall[1].text, "grand staircase", "re-set links stay on their words")
+hall = page()["paragraph_" .. #entries .. "_1"]
+t.expect(not bridge._paragraphAttributes(hall, entries[#entries].links[1][1].location).bold,
+	"marked words remain in regular type after reading-settings changes")
 
 -- A resumed story rebuilds its links from the replayed commands.
 state.room = "Gate"

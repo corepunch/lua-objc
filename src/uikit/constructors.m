@@ -319,6 +319,7 @@ static int bridge_UIKitControls_zstack(lua_State *L) {
 	CGSize viewport = self.bounds.size;
 	if (self.alwaysBounceHorizontal) apply_scroll_container_widths(self.luaContent, viewport.width);
 	CGFloat topInset = view_padding_top(self);
+	if (self.scrollOverlayAccessory) topInset += MAX(0, self.safeAreaInsets.top);
 	CGFloat bottomInset = self.alwaysBounceVertical ? uikit_scroll_bottom_inset(self) : 0;
 	self.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, bottomInset, 0);
 	CGSize measured = measure_size(self.luaContent, CGSizeMake(
@@ -391,7 +392,9 @@ static int bridge_uikit_scroll_to(lua_State *L) {
 		UIView *match = uikit_view_with_identifier(content, target);
 		if (!match) return 0;
 		CGRect rect = [match convertRect:match.bounds toView:scroll];
-		y = top ? CGRectGetMinY(rect) : CGRectGetMaxY(rect) - scroll.bounds.size.height;
+		y = top ? CGRectGetMinY(rect) - (scroll.scrollOverlayAccessory ? scroll.safeAreaInsets.top : 0)
+			: CGRectGetMaxY(rect) - scroll.bounds.size.height
+				+ (scroll.scrollOverlayAccessory ? uikit_scroll_bottom_inset(scroll) : 0);
 		y = MIN(MAX(0, y), limit);
 	} else {
 		return 0;
@@ -412,6 +415,12 @@ static int bridge_UIKitControls_scrollView(lua_State *L) {
 	BOOL horizontal = lua_toboolean(L, 4);
 	BOOL vertical = lua_toboolean(L, 5);
 	LuaUIKitScrollView *scroll = [[LuaUIKitScrollView alloc] initWithFrame:CGRectZero];
+	if (!lua_isnoneornil(L, 6)) {
+		static const char *const styles[] = { "automatic", "soft", "hard", NULL };
+		int style = luaL_checkoption(L, 6, NULL, styles);
+		scroll.topEdgeEffect.style = @[ UIScrollEdgeEffectStyle.automaticStyle,
+			UIScrollEdgeEffectStyle.softStyle, UIScrollEdgeEffectStyle.hardStyle ][style];
+	}
 	/* Safe-area placement is owned by LuaHostingController. Automatic UIKit
 	 * adjustment would add the same inset again to the root scroll content. */
 	scroll.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -473,6 +482,7 @@ static int bridge_UIKitControls_spacer(lua_State *L) {
 // UITextInputTraits are forwarded by UIKit and are not reliably KVC-settable.
 // Expose a semantic editing mode on the exported controls instead.
 static void set_verbatim_input(id<UITextInputTraits> input, BOOL verbatim) {
+	input.inlinePredictionType = verbatim ? UITextInlinePredictionTypeNo : UITextInlinePredictionTypeDefault;
 	input.autocorrectionType = verbatim ? UITextAutocorrectionTypeNo : UITextAutocorrectionTypeDefault;
 	input.autocapitalizationType = verbatim ? UITextAutocapitalizationTypeNone : UITextAutocapitalizationTypeSentences;
 	input.smartQuotesType = verbatim ? UITextSmartQuotesTypeNo : UITextSmartQuotesTypeDefault;
@@ -557,10 +567,22 @@ static int bridge_UIKitControls_textField(lua_State *L) {
 	return 1;
 }
 
+@interface LuaSearchTextField : UISearchTextField
+@end
+
+@implementation LuaSearchTextField
+- (CGSize)intrinsicContentSize {
+	// A standalone field's native fitting height is more compact than a search bar.
+	CGSize size = [super intrinsicContentSize];
+	size.height = MAX(size.height, kSearchFieldMinimumHeight);
+	return size;
+}
+@end
+
 static int bridge_UIKitControls_searchField(lua_State *L) {
 	const char *text = luaL_optstring(L, 1, "");
 	const char *placeholder = luaL_optstring(L, 2, "Search");
-	UISearchTextField *obj = [[UISearchTextField alloc] initWithFrame:CGRectZero];
+	UISearchTextField *obj = [[LuaSearchTextField alloc] initWithFrame:CGRectZero];
 	obj.text = [NSString stringWithUTF8String:text];
 	obj.placeholder = [NSString stringWithUTF8String:placeholder];
 	[obj sizeToFit];
@@ -768,9 +790,7 @@ static int bridge_UIKitControls_button(lua_State *L) {
 		configuration.contentInsets = NSDirectionalEdgeInsetsZero;
 		configuration.baseForegroundColor = strcmp(style, "default") == 0
 			? UIColor.tintColor : UIColor.labelColor;
-		obj.contentHorizontalAlignment = buttonTitle.length == 0 && systemImage[0]
-			? UIControlContentHorizontalAlignmentCenter
-			: UIControlContentHorizontalAlignmentLeft;
+		obj.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 	} else if (systemImage[0] || role[0]) {
 		configuration = [UIButtonConfiguration plainButtonConfiguration];
 	}

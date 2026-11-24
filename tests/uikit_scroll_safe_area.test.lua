@@ -31,6 +31,13 @@ t.expect(scrollImpl:find("self.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, bo
 t.expect(scrollImpl:find("safeAreaInsetsDidChange", 1, true) ~= nil,
 	"the scroll view re-lays out when the accessory appears, hides, or goes inline")
 
+t.expect(helper:find("scroll.scrollOverlayAccessory", 1, true) ~= nil,
+	"an overlay reserves only the region covered by its accessory")
+t.expect(scrollImpl:find("self.safeAreaInsets.top", 1, true) ~= nil,
+	"overlaid content starts below the navigation bar while its viewport extends underneath")
+t.expect(layout:find("if (!sv.scrollOverlayAccessory) layout_recursive(sv, childW)", 1, true) ~= nil,
+	"the accessory is measured before a keyboard-driven scroll anchor is applied")
+
 local lazyImpl = lazy:match("@implementation LuaLazyCollectionView(.-)@end")
 t.expect(lazyImpl ~= nil, "LuaLazyCollectionView implementation found")
 t.expect(lazyImpl:find("uikit_scroll_bottom_inset(self)", 1, true) ~= nil

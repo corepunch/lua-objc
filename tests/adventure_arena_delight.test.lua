@@ -8,7 +8,18 @@ local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session
 local Controller = require("apps.adventure-arena.Controller")
 
 local renderFile, button = xml.renderFile, ns.Button
-local rendered, callbacks = {}, {}
+local navigationStack, searchField = ns.NavigationStack, ns.SearchField
+local rendered, callbacks, toolbarActions = {}, {}, {}
+local searchChanged
+ns.NavigationStack = function(props)
+	t.assertEqual(props.titleDisplayMode, "inlineLarge", "Discover shares one navigation row with its actions")
+	for _, item in ipairs(props.toolbar or {}) do toolbarActions[item.id] = item.action end
+	return navigationStack(props)
+end
+ns.SearchField = function(props)
+	searchChanged = props.onChange
+	return searchField(props)
+end
 ns.Button = function(props)
 	local view = button(props)
 	callbacks[view] = props.action
@@ -43,33 +54,28 @@ local empty = make()
 empty:home()
 t.expect(rendered.refs.emptyCatalog ~= nil, "an empty catalog still has a named empty state")
 t.expect(rendered.refs.openCreate ~= nil, "the empty catalog names the next tap")
-t.expect(empty:selectTab("missing") == false, "unknown tabs are rejected")
-t.expect(empty:selectTab("create") == true, "selectTab accepts a tab name without a window")
-t.assertEqual(empty.selectedTab, 2, "Create is the third tab")
-
 local windowed = make()
 windowed:createWindow()
-t.expect(windowed.tabs ~= nil, "createWindow keeps the native tab view")
-t.expect(rendered.refs.emptyCatalog ~= nil, "the windowed empty catalog is still composed")
+t.expect(rendered.refs.tabs == nil and rendered.refs.nowReading == nil, "the window has no bottom bar")
 t.expect(rendered.refs.openCreate ~= nil, "the windowed empty catalog still has a CTA")
 click("openCreate")
-t.assertEqual(windowed.selectedTab, 2, "Write an Adventure selects the Create tab")
-t.assertEqual(windowed.navigation, windowed.navigations.create, "Create owns navigation after the empty-catalog CTA")
+t.assertEqual(windowed.navigation.depth, 2, "Write an Adventure opens a page on the catalog stack")
+windowed.navigation:pop()
 
-windowed:selectTab("bookshelf")
-t.expect(rendered.refs.emptyBookshelf ~= nil or windowed.pages:refs("bookshelf") ~= nil,
-	"the Library tab mounts even when nothing is saved")
-if windowed.pages:refs("bookshelf") then
-	local shelfRefs = windowed.pages:refs("bookshelf")
-	rendered.refs = shelfRefs
-	t.expect(shelfRefs.emptyBookshelf ~= nil, "an empty library names its empty state")
-	t.expect(shelfRefs.browseDiscover ~= nil, "an empty library names Browse Discover")
-	local browse = callbacks[shelfRefs.browseDiscover]
-	t.expect(type(browse) == "function", "Browse Discover is bound")
-	if browse then browse() end
-	t.assertEqual(windowed.selectedTab, 0, "Browse Discover returns to Discover")
-	t.assertEqual(windowed.navigation, windowed.navigations.library, "Discover owns navigation after Browse Discover")
-end
+t.expect(type(toolbarActions.catalogSettings) == "function", "Home has a Settings button")
+toolbarActions.catalogSettings()
+t.expect(windowed.pages:refs("settings").noGamesInProgress ~= nil, "Settings includes Games in Progress")
+windowed.navigation:pop()
+t.expect(windowed.pages:refs("settings") == nil, "popping Settings unmounts its content")
+t.expect(type(toolbarActions.findStories) == "function", "Home has a Search button")
+toolbarActions.findStories()
+t.expect(rendered.refs.searchField ~= nil, "Search opens with its field")
+t.expect(type(searchChanged) == "function", "the search field is bound")
+searchChanged("unmatched story")
+t.expect(windowed.pages:refs("search").noResults ~= nil, "the search field updates results on the page")
+windowed.navigation:pop()
+t.assertEqual(windowed.navigation.depth, 1, "Search returns to the same catalog")
+ns.NavigationStack, ns.SearchField = navigationStack, searchField
 
 ns.Button, xml.renderFile = button, renderFile
 os.exit(t.summary() and 0 or 1)

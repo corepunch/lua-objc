@@ -7,11 +7,11 @@ local xml = require("ui.xml")
 -- asked for its data and the view is rendered with it, and an action of the
 -- view is a method of the route, followed by the same request again for
 -- every page that is on screen. A page is mounted in a view the root
--- controller owns (a tab, a shelf, the tab accessory) or pushed on a
+-- controller owns (a shelf or another page’s content area) or pushed on a
 -- navigation stack; the host owns neither.
 --
 -- `services` is every page's `self.app`: what only the window can do (push a
--- page, open a story, select a tab).
+-- page, open a story).
 local PageHost = {}
 PageHost.__index = PageHost
 

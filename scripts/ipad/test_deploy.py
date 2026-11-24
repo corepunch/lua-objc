@@ -1,4 +1,6 @@
 """Fast, offline regression checks for iOS app packaging and deployment."""
+import os
+import subprocess
 import unittest
 from bundle import copy_tree, resolve_app_and_entry
 from deploy import device_list_command, select_device
@@ -15,12 +17,39 @@ def device(identifier, kind='iPad', reality='physical'):
 
 
 class DiscoveryTests(unittest.TestCase):
+    def test_iphone_make_target_uses_device_override_or_iphone_default(self):
+        environment = dict(os.environ, IPHONE_DEVICE='default-phone')
+        environment.pop('DEVICE', None)
+        for arguments, expected in (([], 'default-phone'), (['DEVICE=other-phone'], 'other-phone'),
+                                    (['IPHONE_DEVICE='], None)):
+            with self.subTest(arguments=arguments):
+                plan = subprocess.check_output(
+                    ['make', '-n', 'iphone', 'APP=adventure-arena', *arguments],
+                    env=environment, text=True)
+                self.assertIn('--sdk iphoneos', plan)
+                self.assertIn('--device-family 1', plan)
+                self.assertIn('--app "apps/adventure-arena"', plan)
+                self.assertIn('--display-name "Elsewhere"', plan)
+                deploy = next(line for line in plan.splitlines() if 'python3 scripts/ipad/deploy.py' in line)
+                self.assertIn('--device-type "iPhone"', deploy)
+                if expected:
+                    self.assertIn(f'--device "{expected}"', deploy)
+                else:
+                    self.assertNotIn('--device "', deploy)
+
     def test_xcode_app_declares_exempt_encryption(self):
         from pathlib import Path
         import plistlib
 
         info = plistlib.loads(Path('apps/adventure-arena/Info.plist').read_bytes())
         self.assertIs(info['ITSAppUsesNonExemptEncryption'], False)
+
+    def test_xcode_app_home_screen_name_is_elsewhere(self):
+        from pathlib import Path
+        import plistlib
+
+        info = plistlib.loads(Path('apps/adventure-arena/Info.plist').read_bytes())
+        self.assertEqual(info['CFBundleDisplayName'], 'Elsewhere')
 
     def test_xcode_bundle_has_runtime_and_app(self):
         from tempfile import TemporaryDirectory

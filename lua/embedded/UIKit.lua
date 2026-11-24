@@ -51,6 +51,7 @@ local layout_properties = {
 	"offsetY",
 	"colorScheme",
 	"ignoresSafeArea",
+	"safeAreaPadding",
 	"contentModeName",
 	"background",
 	"tint",
@@ -207,6 +208,15 @@ function UIKit.HostingController(view, onDisappear, props)
 	return controller
 end
 
+-- UINavigationItemLargeTitleDisplayMode applies to the item on each page.
+local TITLE_DISPLAY_MODES = { automatic = 0, large = 1, inline = 2, inlineLarge = 3 }
+local function setTitleDisplayMode(controller, mode)
+	if mode then
+		controller.navigationItem.largeTitleDisplayMode = assert(TITLE_DISPLAY_MODES[mode],
+			"titleDisplayMode must be 'automatic', 'inline', 'inlineLarge', or 'large'")
+	end
+end
+
 --- A navigation destination: one content view plus its title, toolbar items
 --- and presentation, as SwiftUI's `.navigationTitle` and `.toolbar` modifiers.
 --- Push the returned controller onto a NavigationStack.
@@ -214,7 +224,7 @@ end
 --- @prop title string optional. Navigation title.
 --- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction, confirmationAction or keyboard (one view child, shown above the keyboard while a text input edits; AppKit leaves it out).
 --- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible.
---- @prop titleDisplayMode string optional. automatic, inline or large.
+--- @prop titleDisplayMode string optional. automatic, inline, inlineLarge or large.
 --- @prop backButtonDisplayMode string optional. default, generic or minimal.
 --- @prop onDisappear function optional. Called once when the page leaves the stack.
 --- @platform AppKit puts toolbar items and a back item in the window toolbar. UIKit uses the navigation bar.
@@ -225,8 +235,8 @@ function UIKit.Page(props)
 		hidesNavigationBar = props.hidesNavigationBar,
 	})
 	controller.title = props.title or ""
+	setTitleDisplayMode(controller, props.titleDisplayMode)
 	bridge._pageToolbar(controller, props.toolbar or {}, {
-		titleDisplayMode = props.titleDisplayMode,
 		backButtonDisplayMode = props.backButtonDisplayMode,
 	})
 	return controller
@@ -257,6 +267,7 @@ local sheetScopes = {}
 --- @prop hidesNavigationBar boolean optional. Hides the navigation bar when true.
 --- @prop hidesTabBar boolean optional. Hides the tab bar when true.
 --- @prop largeTitle boolean optional. Uses the large navigation title style when true.
+--- @prop titleDisplayMode string optional. Root title placement, as on Page. inlineLarge puts the large title alongside trailing actions.
 --- @prop toolbar table optional. ToolbarItem records for the root view, placed as on a `Page`.
 --- @prop subtitle string optional. Second line under the root's title (SwiftUI `.navigationSubtitle`).
 --- @prop background string optional. Color behind the root view where it does not reach, such as behind the keyboard.
@@ -270,6 +281,7 @@ function UIKit.NavigationStack(props)
 	if props.title then root.title = props.title end
 	-- SwiftUI `.navigationSubtitle`: a second line under the title (iOS 26).
 	if props.subtitle and props.subtitle ~= "" then root.navigationItem.subtitle = props.subtitle end
+	setTitleDisplayMode(root, props.titleDisplayMode)
 	if props.toolbar then bridge._pageToolbar(root, props.toolbar) end
 	-- What shows where the root does not reach: the root ends at the
 	-- keyboard's top, so this color fills behind the keyboard's corners.
@@ -648,6 +660,7 @@ local KEYBOARD_DISMISS_MODES = { automatic = 0, never = 0, immediately = 1, inte
 --- @prop contentWidth number optional. Scroll content width; zero lets the content size itself.
 --- @prop horizontal boolean optional. Component-specific setting passed to the native control.
 --- @prop scrollDismissesKeyboard string optional. `automatic`, `immediately`, `interactively` or `never`, as SwiftUI's modifier.
+--- @prop topEdgeEffectStyle string optional. UIKit scroll edge under the top bar: automatic, soft or hard.
 --- @prop vertical boolean optional. Component-specific setting passed to the native control.
 --- @example <ScrollView />
 --- @platform AppKit uses the AppKit implementation. UIKit uses the UIKit implementation.
@@ -656,7 +669,8 @@ function UIKit.ScrollView(props)
 	local content = props.content or props[1]
 	assert(type(content) == "userdata", "ScrollView requires one content view")
 	local view = bridge._scrollView(content, props.contentWidth or 0,
-		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false)
+		props.contentHeight or 0, props.horizontal == true, props.vertical ~= false,
+		props.topEdgeEffectStyle)
 	if props.scrollOnKeyboard then view.scrollOnKeyboard = true end
 	-- SwiftUI scrollDismissesKeyboard. `interactively` lets the keyboard
 	-- follow a downward drag as Messages does; `immediately` dismisses it when
@@ -728,6 +742,7 @@ end
 --- The bottom edge includes the hosting controller's safe-area inset. Use a flexible
 --- scroll view as the first child and the persistent control as the second child.
 --- @prop edge string optional. Currently `bottom`.
+--- @prop overlay boolean optional. Scroll content beneath the accessory and reserve clearance at its edge.
 --- @prop minimumBottomInset number optional. Minimum resting clearance on devices without a bottom safe-area inset.
 --- @prop keyboardBottomInset number optional. Clearance above the software keyboard.
 --- @prop horizontalInset number optional. Horizontal clearance while the keyboard is visible.
@@ -746,6 +761,12 @@ function UIKit.SafeAreaInset(props)
 	accessory.keyboardBottomInset = props.keyboardBottomInset or 0
 	accessory.horizontalInset = props.horizontalInset or 0
 	accessory.matchBottomHorizontalInset = props.matchBottomHorizontalInset == true
+	if props.overlay then
+		props[1].scrollOverlayAccessory = accessory
+		return applyLayout(UIKit.ZStack {
+			alignment = "bottom", fillWidth = true, fillHeight = true, props[1], accessory,
+		}, props)
+	end
 	return applyLayout(UIKit.VStack {
 		spacing = 0, fillWidth = true, fillHeight = true, props[1], accessory,
 	}, props)
@@ -778,6 +799,7 @@ function UIKit.TextField(props)
 	field.placeholder = props.placeholder or ""
 	field.borderStyle = (props.style == "plain" or props.bezeled == false) and 0 or 3
 	field.secureTextEntry = props.secure == true
+	if props.verbatim then field.verbatim = true end
 	field.enabled = props.disabled ~= true and props.editable ~= false
 	if props.size then field.font = bridge._font(props.size, props.weight, false, props.design) end
 	if props.color then field.textColor = bridge._systemColor(props.color) end
@@ -1047,8 +1069,7 @@ UIKit.Text = UIKit.Label
 local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified = 3 }
 
 --- Long-form prose set as a book sets it: selectable text with explicit
---- leading, optional hyphenation, and an optional dropped initial that the
---- following lines wrap around. Use `Label` for short text and UI copy.
+--- leading and optional hyphenation. Use `Label` for short text and UI copy.
 --- @tag Paragraph
 --- @prop text string required. The paragraph's text.
 --- @prop size number optional. Body point size; defaults to 17.
@@ -1058,13 +1079,12 @@ local PARAGRAPH_ALIGNMENT = { leading = 4, center = 1, trailing = 2, justified =
 --- @prop lineSpacing number optional. Extra points between lines (SwiftUI `lineSpacing`).
 --- @prop alignment string optional. `leading`, `center`, `trailing` or `justified`.
 --- @prop hyphenation boolean optional. Hyphenates long words at line ends.
---- @prop figure string optional. Image beside the first lines, which wrap around it (as Zork Zero set a room's picture beside its description).
---- @prop figureLines number optional. Lines the square figure spans; defaults to 3.
 --- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text, which takes its whole height however little is revealed.
---- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is marked with a thicker dotted underline and opens its menu when tapped.
---- @prop linkColor string optional. Colour of the rule under links; defaults to the tint.
---- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" figure="assets/hall.png" />
---- @platform UIKit non-scrolling UITextView (TextKit 1 exclusion paths). AppKit non-editable NSTextView.
+--- @prop boldRanges table optional. Noninteractive bold spans: `{ location, length }`, counted in Unicode characters from zero. XML uses `<Bold location="0" length="4" />`.
+--- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is bold and opens its menu when tapped.
+--- @prop linkColor string optional. Colour of linked words; defaults to the tint.
+--- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" />
+--- @platform UIKit non-scrolling UITextView. AppKit non-editable NSTextView.
 function UIKit.Paragraph(props)
 	props = props or {}
 	local view = bridge._paragraph(props.text or props[1] or "")
@@ -1075,14 +1095,10 @@ function UIKit.Paragraph(props)
 	if props.hyphenation ~= nil then view.hyphenation = props.hyphenation end
 	if props.alignment then view.textAlignment = PARAGRAPH_ALIGNMENT[props.alignment] or 4 end
 	if props.selectable == false then view.selectable = false end
-	-- The figure is an image view the paragraph floats; it never joins the
-	-- layout tree, so the paragraph alone sizes and places it.
-	if props.figure and props.figure ~= "" then
-		if props.figureLines then view.figureLines = props.figureLines end
-		view.figureView = UIKit.Image { props.figure, contentMode = "fill" }
-	end
 	if props.linkColor then view.linkColor = bridge._systemColor(props.linkColor) end
 	if props.links then bridge._paragraphSetLinks(view, props.links) end
+	if props.boldRanges then view.boldRanges = props.boldRanges end
+	if props.italicRanges then view.italicRanges = props.italicRanges end
 	if props.revealedCharacters then view.revealedCharacters = props.revealedCharacters end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	-- Prose fills the column it is given and wraps to it.

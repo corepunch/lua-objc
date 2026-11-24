@@ -184,6 +184,8 @@ LUA_NUMBER_ACCESSORS(fitDiameter, setFitDiameter, kFitDiameterKey, 0, MAX(0, val
 /* SwiftUI `.ignoresSafeArea(edges:)`: "top", "bottom" or "all". A view that
  * touches its window's safe area on those edges extends to the window edge,
  * under a full-size-content title bar and toolbar. */
+- (NSString *)safeAreaPadding { return objc_getAssociatedObject(self, &kKeys[kSafeAreaPaddingKey]); }
+- (void)setSafeAreaPadding:(NSString *)value { objc_setAssociatedObject(self, &kKeys[kSafeAreaPaddingKey], value, OBJC_ASSOCIATION_COPY); }
 - (NSString *)ignoresSafeArea {
 	return objc_getAssociatedObject(self, &kKeys[kIgnoresSafeAreaKey]);
 }

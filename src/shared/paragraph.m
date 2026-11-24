@@ -3,8 +3,7 @@
 /* Long-form prose set as a book sets it, on TextKit 1 on both platforms (see
  * appkit/paragraph.m and uikit/paragraph.m for the views). What does not
  * depend on the view class lives here: the revealed prefix, link ranges and
- * styling, the body's attributes, the figure's size and the bridge for
- * links. */
+ * styling, the body's attributes and the bridge for links. */
 
 /* A run of the paragraph the reader can act on: tapping it opens a menu of
  * what can be done with the thing the words name. `location` and `length`
@@ -27,7 +26,10 @@
  * the whole paragraph. */
 @property(nonatomic, readonly) NSInteger revealedCharacters;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
+@property(nonatomic, copy) NSArray<NSDictionary *> *boldRanges;
+@property(nonatomic, copy) NSArray<NSDictionary *> *italicRanges;
 @property(nonatomic, readonly) NSTextStorage *textStorage;
+@property(nonatomic, readonly) id paragraphLinkColor;
 @end
 
 @implementation LuaParagraphLink
@@ -41,21 +43,6 @@
 - (void)dealloc {
 	for (id callback in _callbacks)
 		if ([callback isKindOfClass:LuaReg.class]) [callback dispose];
-}
-@end
-
-/* Links are ruled with a thicker dotted line, dropped a little below the
- * baseline so it clears descenders. */
-@interface LuaParagraphLayoutManager : NSLayoutManager
-@end
-
-@implementation LuaParagraphLayoutManager
-- (void)drawUnderlineForGlyphRange:(NSRange)glyphRange underlineType:(NSUnderlineStyle)underlineVal
-		baselineOffset:(CGFloat)baselineOffset lineFragmentRect:(CGRect)lineRect
-		lineFragmentGlyphRange:(NSRange)lineGlyphRange containerOrigin:(CGPoint)containerOrigin {
-	[super drawUnderlineForGlyphRange:glyphRange underlineType:underlineVal
-		baselineOffset:baselineOffset + kParagraphLinkUnderlineOffset lineFragmentRect:lineRect
-		lineFragmentGlyphRange:lineGlyphRange containerOrigin:containerOrigin];
 }
 @end
 
@@ -93,23 +80,64 @@ static LuaParagraphLink *paragraph_link_at(id<LuaParagraphText> view, NSUInteger
 	return nil;
 }
 
-/* Rules every link. `clickable` also marks it as a text link, numbered by
+/* Bold every link in the body's font family. `clickable` also marks it as a text link, numbered by
  * its place, for a view that reports link clicks (NSTextView). */
+static void paragraph_bold_range(NSTextStorage *storage, NSRange range) {
+	if (range.location == NSNotFound || !range.length) return;
+#if TARGET_OS_IPHONE
+	UIFont *font = [storage attribute:NSFontAttributeName atIndex:range.location effectiveRange:NULL];
+	UIFontDescriptor *descriptor = [font.fontDescriptor fontDescriptorWithSymbolicTraits:
+		(font.fontDescriptor.symbolicTraits | UIFontDescriptorTraitBold)];
+	id bold = descriptor ? [UIFont fontWithDescriptor:descriptor size:font.pointSize] : font;
+#else
+	NSFont *font = [storage attribute:NSFontAttributeName atIndex:range.location effectiveRange:NULL];
+	id bold = [[NSFontManager sharedFontManager] convertFont:font toHaveTrait:NSBoldFontMask];
+#endif
+	if (bold) [storage addAttribute:NSFontAttributeName value:bold range:range];
+}
+
+/* Formatting ranges use ordinary KVC data; they carry no link or action. */
+static NSRange paragraph_bold_range_for(id<LuaParagraphText> view, NSDictionary *record) {
+	NSInteger location = [record[@"location"] integerValue], length = [record[@"length"] integerValue];
+	if (location < 0 || length <= 0) return NSMakeRange(NSNotFound, 0);
+	NSUInteger start = paragraph_revealed_length(view.paragraphText, location);
+	NSUInteger end = paragraph_revealed_length(view.paragraphText, location + length);
+	end = MIN(end, view.textStorage.length);
+	return start < end ? NSMakeRange(start, end - start) : NSMakeRange(NSNotFound, 0);
+}
+
+static void paragraph_italic_range(NSTextStorage *storage, NSRange range) {
+	if (range.location == NSNotFound || !range.length) return;
+	[storage enumerateAttribute:NSFontAttributeName inRange:range options:0 usingBlock:^(id font, NSRange run, __unused BOOL *stop) {
+#if TARGET_OS_IPHONE
+		UIFontDescriptor *descriptor = [((UIFont *)font).fontDescriptor fontDescriptorWithSymbolicTraits:
+			(((UIFont *)font).fontDescriptor.symbolicTraits | UIFontDescriptorTraitItalic)];
+		id italic = descriptor ? [UIFont fontWithDescriptor:descriptor size:((UIFont *)font).pointSize] : font;
+#else
+		id italic = [[NSFontManager sharedFontManager] convertFont:font toHaveTrait:NSItalicFontMask];
+#endif
+		if (italic) [storage addAttribute:NSFontAttributeName value:italic range:run];
+	}];
+}
+
 static void paragraph_apply_links(id<LuaParagraphText> view, BOOL clickable) {
 	NSTextStorage *storage = view.textStorage;
 	[storage beginEditing];
+	for (NSDictionary *record in view.boldRanges)
+		paragraph_bold_range(storage, paragraph_bold_range_for(view, record));
 	[view.links enumerateObjectsUsingBlock:^(LuaParagraphLink *link, NSUInteger index, __unused BOOL *stop) {
 		NSRange range = paragraph_link_range(view, link);
 		if (range.location == NSNotFound) return;
 		if (clickable) [storage addAttribute:NSLinkAttributeName value:@(index).stringValue range:range];
-		[storage addAttribute:NSUnderlineStyleAttributeName
-			value:@(NSUnderlineStyleThick | NSUnderlineStylePatternDot) range:range];
+		paragraph_bold_range(storage, range);
 	}];
+	for (NSDictionary *record in view.italicRanges)
+		paragraph_italic_range(storage, paragraph_bold_range_for(view, record));
 	[storage endEditing];
 }
 
-/* Inks the revealed prefix in `body` and hides the rest in `clear`; a link
- * is set in `ink` and ruled only under the words typed so far. */
+/* Inks the revealed prefix in `body` and hides the rest in `clear`; visible
+ * linked words use `ink`. */
 static void paragraph_apply_reveal(id<LuaParagraphText> view, id body, id ink, id clear) {
 	NSTextStorage *storage = view.textStorage;
 	NSUInteger shown = paragraph_shown_length(view);
@@ -120,16 +148,13 @@ static void paragraph_apply_reveal(id<LuaParagraphText> view, id body, id ink, i
 		NSRange range = paragraph_link_range(view, link);
 		if (range.location == NSNotFound) continue;
 		NSRange visible = NSIntersectionRange(range, NSMakeRange(0, shown));
-		[storage addAttribute:NSUnderlineColorAttributeName value:clear range:range];
 		if (!visible.length) continue;
 		[storage addAttribute:NSForegroundColorAttributeName value:ink range:visible];
-		[storage addAttribute:NSUnderlineColorAttributeName value:ink range:visible];
 	}
 	[storage endEditing];
 }
 
-/* The body's attributes. A positive `lineHeight` fixes every line to it, so
- * the lines beside the figure keep the pitch the figure was sized for. */
+/* The body's attributes. A positive `lineHeight` keeps a consistent baseline pitch. */
 static NSAttributedString *paragraph_body_string(NSString *text, id font, id color, CGFloat lineSpacing,
 	NSTextAlignment alignment, BOOL hyphenation, CGFloat lineHeight) {
 	NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
@@ -142,17 +167,6 @@ static NSAttributedString *paragraph_body_string(NSString *text, id font, id col
 		NSForegroundColorAttributeName: color,
 		NSParagraphStyleAttributeName: style,
 	}];
-}
-
-/* The figure spans exactly `lines` lines, from the first line's top to the
- * last line's bottom, and is as wide as it is tall. Lines beside it keep a
- * gap from it; the next line returns to the margin. */
-static CGFloat paragraph_figure_side(NSInteger lines, CGFloat lineHeight, CGFloat lineSpacing) {
-	return lines * (lineHeight + lineSpacing) - lineSpacing;
-}
-
-static CGRect paragraph_figure_exclusion(CGFloat side, CGFloat lineSpacing) {
-	return CGRectMake(0, 0, side + kParagraphFigureGap, side + lineSpacing / 2);
 }
 
 static id<LuaParagraphText> paragraph_check(lua_State *L, int index) {
@@ -214,7 +228,7 @@ static int bridge_paragraph_set_links(lua_State *L) {
 
 /* _paragraphLinks(view) → { { location, length, label, text, revealed,
  * inked, titles }, … }, where `text` is the linked words as the text storage
- * holds them and `inked` says revealed words are set in their rule's colour. */
+ * holds them and `inked` says revealed words use the link colour. */
 static int bridge_paragraph_links(lua_State *L) {
 	id<LuaParagraphText> view = paragraph_check(L, 1);
 	lua_newtable(L);
@@ -232,9 +246,18 @@ static int bridge_paragraph_links(lua_State *L) {
 		lua_setfield(L, -2, "revealed");
 		NSDictionary *attributes = revealed
 			? [view.textStorage attributesAtIndex:range.location effectiveRange:NULL] : nil;
-		id rule = attributes[NSUnderlineColorAttributeName];
-		lua_pushboolean(L, rule && [attributes[NSForegroundColorAttributeName] isEqual:rule]);
+		lua_pushboolean(L, revealed && [attributes[NSForegroundColorAttributeName] isEqual:view.paragraphLinkColor]);
 		lua_setfield(L, -2, "inked");
+#if TARGET_OS_IPHONE
+		UIFont *font = attributes[NSFontAttributeName];
+		BOOL bold = (font.fontDescriptor.symbolicTraits & UIFontDescriptorTraitBold) != 0;
+#else
+		NSFont *font = attributes[NSFontAttributeName];
+		BOOL bold = font && ([[NSFontManager sharedFontManager] traitsOfFont:font] & NSBoldFontMask) != 0;
+#endif
+		lua_pushboolean(L, bold); lua_setfield(L, -2, "bold");
+		lua_pushboolean(L, [attributes[NSUnderlineStyleAttributeName] integerValue] != 0);
+		lua_setfield(L, -2, "underlined");
 		lua_newtable(L);
 		[link.titles enumerateObjectsUsingBlock:^(NSString *title, NSUInteger item, __unused BOOL *inner) {
 			lua_pushstring(L, title.UTF8String);
@@ -243,6 +266,39 @@ static int bridge_paragraph_links(lua_State *L) {
 		lua_setfield(L, -2, "titles");
 		lua_rawseti(L, -2, (lua_Integer)index + 1);
 	}];
+	return 1;
+}
+
+/* Test-only inspection of the actual TextKit attributes at a scalar offset. */
+static int bridge_paragraph_attributes(lua_State *L) {
+	id<LuaParagraphText> view = paragraph_check(L, 1);
+	NSInteger offset = luaL_checkinteger(L, 2);
+	NSUInteger index = paragraph_revealed_length(view.paragraphText, MAX(0, offset));
+	NSDictionary *attributes = offset >= 0 && index < view.textStorage.length
+		? [view.textStorage attributesAtIndex:index effectiveRange:NULL] : nil;
+	lua_newtable(L);
+#if TARGET_OS_IPHONE
+	UIFont *font = attributes[NSFontAttributeName];
+	BOOL bold = (font.fontDescriptor.symbolicTraits & UIFontDescriptorTraitBold) != 0;
+#else
+	NSFont *font = attributes[NSFontAttributeName];
+	BOOL bold = font && ([[NSFontManager sharedFontManager] traitsOfFont:font] & NSBoldFontMask) != 0;
+#endif
+	lua_pushboolean(L, bold); lua_setfield(L, -2, "bold");
+#if TARGET_OS_IPHONE
+	BOOL italic = (font.fontDescriptor.symbolicTraits & UIFontDescriptorTraitItalic) != 0;
+#else
+	BOOL italic = font && ([[NSFontManager sharedFontManager] traitsOfFont:font] & NSItalicFontMask) != 0;
+#endif
+	lua_pushboolean(L, italic); lua_setfield(L, -2, "italic");
+	lua_pushboolean(L, attributes[NSLinkAttributeName] != nil); lua_setfield(L, -2, "linked");
+#if TARGET_OS_IPHONE
+	UIColor *color = attributes[NSForegroundColorAttributeName];
+	lua_pushboolean(L, color && CGColorGetAlpha(color.CGColor) > 0);
+#else
+	lua_pushboolean(L, [attributes[NSForegroundColorAttributeName] alphaComponent] > 0);
+#endif
+	lua_setfield(L, -2, "visible");
 	return 1;
 }
 

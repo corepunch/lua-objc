@@ -24,7 +24,7 @@ local function source(path)
 	file:close()
 	return text
 end
-for _, path in ipairs({ "pages/Discover", "pages/Bookshelf", "pages/Search", "pages/Settings", "pages/Detail",
+for _, path in ipairs({ "pages/Discover", "pages/Search", "pages/Settings", "pages/Detail",
 	"pages/Collection", "flows/Opening" }) do
 	local text = source("apps/adventure-arena/" .. path .. ".lua")
 	t.expect(not text:find('require%("ns"%)') and not text:find("ns%.%u"), path .. " does not touch ns")

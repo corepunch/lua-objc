@@ -48,8 +48,10 @@ static void layout_recursive(UIView *view, CGFloat width);
 @property(nonatomic) BOOL fillHeight;
 @property(nonatomic) CGFloat cornerRadius;
 @property(nonatomic, copy) NSString *ignoresSafeArea;
+@property(nonatomic, copy) NSString *safeAreaPadding;
 @property(nonatomic, copy) NSString *contentModeName;
 @property(nonatomic) BOOL safeAreaInsetBottom;
+@property(nonatomic, strong) UIView *scrollOverlayAccessory;
 @property(nonatomic) CGFloat minimumBottomInset;
 @property(nonatomic) CGFloat keyboardBottomInset;
 @property(nonatomic) BOOL matchBottomHorizontalInset;
@@ -86,6 +88,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 - (void)setPaddingTop:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingTopKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)paddingBottom { return [objc_getAssociatedObject(self, &kPaddingBottomKey) doubleValue]; }
 - (void)setPaddingBottom:(CGFloat)value { objc_setAssociatedObject(self, &kPaddingBottomKey, @(MAX(0, value)), OBJC_ASSOCIATION_RETAIN); }
+- (UIView *)scrollOverlayAccessory { return objc_getAssociatedObject(self, &kScrollOverlayAccessoryKey); }
+- (void)setScrollOverlayAccessory:(UIView *)value { objc_setAssociatedObject(self, &kScrollOverlayAccessoryKey, value, OBJC_ASSOCIATION_RETAIN); }
 - (BOOL)safeAreaInsetBottom { return [objc_getAssociatedObject(self, &kSafeAreaInsetBottomKey) boolValue]; }
 - (void)setSafeAreaInsetBottom:(BOOL)value { objc_setAssociatedObject(self, &kSafeAreaInsetBottomKey, @(value), OBJC_ASSOCIATION_RETAIN); }
 - (CGFloat)minimumBottomInset { return [objc_getAssociatedObject(self, &kMinimumBottomInsetKey) doubleValue]; }
@@ -166,6 +170,8 @@ static void layout_recursive(UIView *view, CGFloat width);
 	self.layer.cornerRadius = radius;
 	self.clipsToBounds = radius > 0;
 }
+- (NSString *)safeAreaPadding { return objc_getAssociatedObject(self, &kSafeAreaPaddingKey); }
+- (void)setSafeAreaPadding:(NSString *)value { objc_setAssociatedObject(self, &kSafeAreaPaddingKey, value, OBJC_ASSOCIATION_COPY); }
 - (NSString *)ignoresSafeArea { return objc_getAssociatedObject(self, &kIgnoresSafeAreaKey); }
 - (void)setIgnoresSafeArea:(NSString *)value {
 	objc_setAssociatedObject(self, &kIgnoresSafeAreaKey, value, OBJC_ASSOCIATION_COPY);

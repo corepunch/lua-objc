@@ -50,6 +50,7 @@ local layout_properties = {
 	"fitDiameter",
 	"fixedSize",
 	"ignoresSafeArea",
+	"safeAreaPadding",
 	"hidden",
 	"allowsHitTesting",
 	"background",
@@ -843,6 +844,7 @@ end
 ---
 --- The bottom edge is laid out above the containing window's content boundary.
 --- @prop edge string optional. Currently `bottom`.
+--- @prop overlay boolean optional. Scroll content beneath the accessory and reserve clearance at its edge.
 --- @prop minimumBottomInset number optional. Minimum clearance below the accessory.
 --- @prop horizontalInset number optional. Horizontal clearance around the accessory.
 --- @platform AppKit.
@@ -854,6 +856,13 @@ function AppKit.SafeAreaInset(props)
 	local accessory = AppKit.VStack {
 		spacing = 0, fillWidth = true, paddingHorizontal = props.horizontalInset or 0, props[2],
 	}
+	if props.overlay then
+		accessory.paddingBottom = props.minimumBottomInset or 0
+		props[1].scrollOverlayAccessory = accessory
+		return applyLayout(AppKit.ZStack {
+			alignment = "bottom", fillWidth = true, fillHeight = true, props[1], accessory,
+		}, props)
+	end
 	local children = { spacing = 0, fillWidth = true, fillHeight = true,
 		paddingBottom = props.minimumBottomInset or 0, props[1], accessory }
 	return applyLayout(AppKit.VStack(children), props)
@@ -1074,8 +1083,7 @@ end
 
 
 --- Long-form prose set as a book sets it: selectable text with explicit
---- leading, optional hyphenation, and an optional dropped initial that the
---- following lines wrap around. Use `Label` for short text and UI copy.
+--- leading and optional hyphenation. Use `Label` for short text and UI copy.
 --- @tag Paragraph
 --- @prop text string required. The paragraph's text.
 --- @prop size number optional. Body point size; defaults to 13.
@@ -1085,13 +1093,12 @@ end
 --- @prop lineSpacing number optional. Extra points between lines (SwiftUI `lineSpacing`).
 --- @prop alignment string optional. `leading`, `center`, `trailing` or `justified`.
 --- @prop hyphenation boolean optional. Hyphenates long words at line ends.
---- @prop figure string optional. Image beside the first lines, which wrap around it (as Zork Zero set a room's picture beside its description).
---- @prop figureLines number optional. Lines the square figure spans; defaults to 3.
 --- @prop revealedCharacters number optional. Typewriter reveal: characters shown so far (as `utf8.len` counts them); -1, the default, shows all. Lines are those of the whole text, which takes its whole height however little is revealed.
---- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is marked with a thicker dotted underline and opens its menu when tapped.
---- @prop linkColor string optional. Colour of the rule under links; defaults to the tint.
---- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" figure="assets/hall.png" />
---- @platform AppKit non-editable NSTextView (TextKit 1 exclusion paths). UIKit non-scrolling UITextView.
+--- @prop boldRanges table optional. Noninteractive bold spans: `{ location, length }`, counted in Unicode characters from zero. XML uses `<Bold location="0" length="4" />`.
+--- @prop links table optional. Runs the reader can act on, from `<Hyperlink>` children: `{ location, length, label, items }`, where `location` (from 0) and `length` count characters as `utf8.len` does and `items` are `<MenuItem>` records. A link is bold and opens its menu when tapped.
+--- @prop linkColor string optional. Colour of linked words; defaults to the tint.
+--- @example <Paragraph text="Once upon a time…" design="serif" lineSpacing="5" />
+--- @platform AppKit non-editable NSTextView. UIKit non-scrolling UITextView.
 function AppKit.Paragraph(props)
 	props = props or {}
 	local view = bridge._paragraph(props.text or props[1] or "")
@@ -1102,14 +1109,10 @@ function AppKit.Paragraph(props)
 	if props.hyphenation ~= nil then view.hyphenation = props.hyphenation end
 	if props.alignment then view.textAlignment = bridge._textAlignment(props.alignment) end
 	if props.selectable == false then view.selectable = false end
-	-- The figure is an image view the paragraph floats; it never joins the
-	-- layout tree, so the paragraph alone sizes and places it.
-	if props.figure and props.figure ~= "" then
-		if props.figureLines then view.figureLines = props.figureLines end
-		view.figureView = AppKit.Image { props.figure, contentMode = "fill" }
-	end
 	if props.linkColor then view.linkColor = bridge._systemColor(props.linkColor) end
 	if props.links then bridge._paragraphSetLinks(view, props.links) end
+	if props.boldRanges then view.boldRanges = props.boldRanges end
+	if props.italicRanges then view.italicRanges = props.italicRanges end
 	if props.revealedCharacters then view.revealedCharacters = props.revealedCharacters end
 	if props.accessibilityLabel then view.accessibilityLabel = props.accessibilityLabel end
 	-- Prose fills the column it is given and wraps to it.
@@ -2519,7 +2522,7 @@ end
 --- @prop title string optional. Navigation title.
 --- @prop toolbar table optional. ToolbarItem records; `placement` is principal, primaryAction, topBarLeading, topBarTrailing, cancellationAction, confirmationAction or keyboard (one view child, shown above the keyboard while a text input edits; AppKit leaves it out).
 --- @prop hidesTabBar boolean optional. Hides the tab bar while the page is visible (UIKit).
---- @prop titleDisplayMode string optional. automatic, inline or large (UIKit).
+--- @prop titleDisplayMode string optional. automatic, inline, inlineLarge or large (UIKit).
 --- @prop backButtonDisplayMode string optional. default, generic or minimal (UIKit).
 --- @prop onDisappear function optional. Called once when the page leaves the stack.
 --- @platform AppKit puts toolbar items and a navigational back item in the window toolbar. UIKit uses the navigation bar.

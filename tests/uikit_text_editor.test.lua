@@ -23,6 +23,7 @@ t.expect(constructors:find("@interface LuaTextView : UITextView", 1, true)
 	"native text controls expose semantic verbatim editing through KVC")
 t.expect(constructors:find("UITextSmartQuotesTypeNo", 1, true)
 	and constructors:find("UITextSmartDashesTypeNo", 1, true)
+	and constructors:find("UITextInlinePredictionTypeNo", 1, true)
 	and constructors:find("UITextAutocorrectionTypeNo", 1, true),
 	"verbatim editing configures forwarded UIKit traits through their native API")
 

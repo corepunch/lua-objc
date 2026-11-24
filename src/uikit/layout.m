@@ -87,7 +87,8 @@ static CGFloat view_padding_vertical(UIView *view) {
 static CGFloat view_padding_top(UIView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kPaddingTopKey);
 	CGFloat declared = value ? value.doubleValue : view_padding_vertical(view);
-	return declared + [objc_getAssociatedObject(view, &kHostSafeAreaTopKey) doubleValue];
+	return declared + [objc_getAssociatedObject(view, &kHostSafeAreaTopKey) doubleValue]
+		+ ([view.safeAreaPadding isEqualToString:@"top"] ? view.safeAreaInsets.top : 0);
 }
 
 static CGFloat view_padding_bottom(UIView *view) {
@@ -108,7 +109,13 @@ static CGFloat uikit_scroll_bottom_inset(UIScrollView *scroll) {
 	NSString *ignored = scroll.ignoresSafeArea;
 	if ([ignored isEqualToString:@"bottom"] || [ignored isEqualToString:@"all"]
 		|| [ignored isEqualToString:@"edges"]) return 0;
-	return MAX(0, scroll.safeAreaInsets.bottom);
+	CGFloat inset = MAX(0, scroll.safeAreaInsets.bottom);
+	UIView *accessory = scroll.scrollOverlayAccessory;
+	if (accessory && accessory.superview && scroll.superview) {
+		CGRect rect = [accessory.superview convertRect:accessory.frame toView:scroll];
+		inset = MAX(inset, MAX(0, CGRectGetMaxY(scroll.bounds) - CGRectGetMinY(rect)));
+	}
+	return inset;
 }
 
 static CGFloat view_fixed_height(UIView *view);
@@ -449,7 +456,15 @@ static void layout_recursive_impl(UIView *view, CGFloat width) {
 					childH += hostTop;
 				}
 				sv.frame = CGRectMake(childX, childY, childW, childH);
-				layout_recursive(sv, childW);
+				if (!sv.scrollOverlayAccessory) layout_recursive(sv, childW);
+			}
+			// Measure the accessory first so scroll anchors use its final frame,
+			// including when the keyboard changes the available height.
+			for (UIView *sv in children) {
+				if ([sv isKindOfClass:UIScrollView.class] && sv.scrollOverlayAccessory) {
+					[sv setNeedsLayout];
+					[sv layoutIfNeeded];
+				}
 			}
 		} else if ([axis isEqualToString:@"vstack"]) {
 			NSUInteger count = children.count;

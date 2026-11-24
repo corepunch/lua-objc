@@ -481,9 +481,10 @@ UIKit preview, an OpenRouter coding agent, system keyboard dictation, source
 editing, and undo. Projects run and save locally without the Mac packager.
 See [Lua Studio](apps/studio/README.md) for setup and current boundaries.
 
-Deploy an app from `apps/<name>/` to an iPhone with
-`make iphone-deploy APP=adventure-arena`. It uses the same build, signing, and
-install flow and automatically selects the only available physical iPhone.
+Use `make iphone APP=adventure-arena` to build, sign, install, and launch the app
+on a physical iPhone. The target uses `IPHONE_DEVICE` when set and otherwise
+selects the only available physical iPhone. Pass `DEVICE=<name-or-identifier>`
+to select a different phone for one run. Use `make list-devices` to see devices.
 
 ### Adventure Arena in Xcode
 

@@ -189,7 +189,7 @@ test: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF
 DEVELOPER_DIR ?= /Applications/Xcode.app/Contents/Developer
 export DEVELOPER_DIR
 IOS_MIN := 26.5
-DEVICE ?= iPhone 17
+SIMULATOR_DEVICE = $(or $(DEVICE),iPhone 17)
 IOS_SDK := $(shell xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null)
 IOS_CC := $(shell xcrun --sdk iphonesimulator --find clang)
 LUA_SRC_DIR := vendor/lua-5.4.8/src
@@ -259,12 +259,12 @@ ios-packager-stop:
 
 ios-run: ios-host ios-packager
 	chmod +x scripts/ios-run.sh
-	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(DEVICE)" PROJECT="$(or $(PROJECT),demo/hello)" \
+	DEVELOPER_DIR=$(DEVELOPER_DIR) DEVICE="$(SIMULATOR_DEVICE)" PROJECT="$(or $(PROJECT),demo/hello)" \
 		scripts/ios-run.sh
 
 ios-internal-screenshot: ios-host ios-packager
 	DEVELOPER_DIR=$(DEVELOPER_DIR) OUT="$(or $(OUT),/tmp/ios-internal-screenshot.png)" \
-		PROJECT="$(or $(PROJECT),demo/hello)" DEVICE="$(DEVICE)" \
+		PROJECT="$(or $(PROJECT),demo/hello)" DEVICE="$(SIMULATOR_DEVICE)" \
 		scripts/ios-internal-screenshot.sh
 
 ios-screenshot:
@@ -330,10 +330,11 @@ parity-report: parity-check
 
 # Standalone iPad development app (no Mac packager required).
 .PHONY: ipad ipad-simulator ipad-run ipad-deploy list-devices
-.PHONY: iphone-deploy
-iphone-deploy:
-	$(MAKE) ipad-deploy DEVICE_TYPE=iPhone APP="$(or $(APP),adventure-arena)" \
-		DEVICE_FAMILY=1 FILE_SHARING=0
+.PHONY: iphone iphone-deploy
+iphone iphone-deploy:
+	$(MAKE) -f scripts/ipad/build.mk SDK=iphoneos deploy DEVICE_TYPE=iPhone \
+		APP="$(or $(APP),adventure-arena)" DEVICE_FAMILY=1 FILE_SHARING=0 \
+		DEVICE="$(or $(DEVICE),$(IPHONE_DEVICE))"
 
 ipad:
 	$(MAKE) -f scripts/ipad/build.mk SDK=iphoneos app

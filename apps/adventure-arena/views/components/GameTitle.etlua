@@ -1,0 +1,1 @@
+<Label id="<%= id %>" text="<%= title %>" size="34" weight="bold" design="<%= font %>" color="<%= color %>" alignment="<%= alignment %>" lines="0" />

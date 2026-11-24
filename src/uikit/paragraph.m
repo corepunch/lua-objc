@@ -1,13 +1,6 @@
 #pragma mark - Paragraph (long-form text)
 
-/* Long-form prose, set as a book sets it: selectable text with explicit
- * leading, optional hyphenation, and a figure the first lines wrap around, as
- * Zork Zero set each room's picture beside its description. UILabel cannot
- * flow text around a shape, so this is a non-scrolling UITextView on TextKit
- * 1, whose NSTextContainer.exclusionPaths carve the figure's square out of the
- * first lines — the same mechanism Pages and Books use for floating objects.
- * The figure is an ordinary view (an image view from Lua) that the paragraph
- * places. */
+/* Native selectable prose with explicit leading and optional hyphenation. */
 @interface LuaParagraphView : UITextView <UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate, LuaParagraphText>
 - (void)presentActionMenuAtLocation:(NSUInteger)location;
 @property(nonatomic, strong) UIEditMenuInteraction *actionMenu;
@@ -17,11 +10,10 @@
 @property(nonatomic) NSTextAlignment bodyAlignment;
 @property(nonatomic) CGFloat lineSpacing;
 @property(nonatomic) BOOL hyphenation;
-/* A view floated at the leading edge, a square `figureLines` lines tall. */
-@property(nonatomic, strong) UIView *figureView;
-@property(nonatomic) NSInteger figureLines;
 @property(nonatomic, copy) NSArray<LuaParagraphLink *> *links;
-/* The colour of a link's words and the thicker dotted rule under them. */
+@property(nonatomic, copy) NSArray<NSDictionary *> *boldRanges;
+@property(nonatomic, copy) NSArray<NSDictionary *> *italicRanges;
+/* The colour of a link's words. */
 @property(nonatomic, strong) UIColor *linkColor;
 @property(nonatomic) NSInteger revealedCharacters;
 /* Set once the view is initialized; see -rebuild. */
@@ -32,7 +24,7 @@
 
 - (instancetype)init {
 	NSTextStorage *storage = [[NSTextStorage alloc] init];
-	NSLayoutManager *manager = [[LuaParagraphLayoutManager alloc] init];
+	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:CGSizeMake(0, CGFLOAT_MAX)];
 	container.widthTracksTextView = YES;
 	container.lineFragmentPadding = 0;
@@ -49,7 +41,6 @@
 	_bodyFont = [UIFont preferredFontForTextStyle:UIFontTextStyleBody];
 	_bodyColor = UIColor.labelColor;
 	_bodyAlignment = NSTextAlignmentNatural;
-	_figureLines = kParagraphFigureLines;
 	_links = @[];
 	_revealedCharacters = -1;
 	/* Linked runs stay ordinary text for native long-press selection.
@@ -76,20 +67,11 @@
 - (void)setBodyAlignment:(NSTextAlignment)alignment { _bodyAlignment = alignment; [self rebuild]; }
 - (void)setLineSpacing:(CGFloat)value { _lineSpacing = MAX(0, value); [self rebuild]; }
 - (void)setHyphenation:(BOOL)value { _hyphenation = value; [self rebuild]; }
-- (void)setFigureView:(UIView *)view {
-	if (view == _figureView) return;
-	[_figureView removeFromSuperview];
-	_figureView = view;
-	if (view) {
-		view.userInteractionEnabled = NO;
-		view.clipsToBounds = YES;
-		[self addSubview:view];
-	}
-	[self rebuild];
-}
-- (void)setFigureLines:(NSInteger)value { _figureLines = MAX(1, value); [self rebuild]; }
 - (void)setLinks:(NSArray<LuaParagraphLink *> *)links { _links = [links copy] ?: @[]; [self rebuild]; }
+- (void)setBoldRanges:(NSArray<NSDictionary *> *)ranges { _boldRanges = [ranges copy] ?: @[]; [self rebuild]; }
+- (void)setItalicRanges:(NSArray<NSDictionary *> *)ranges { _italicRanges = [ranges copy] ?: @[]; [self rebuild]; }
 - (void)setLinkColor:(UIColor *)color { _linkColor = color; [self applyReveal]; }
+- (id)paragraphLinkColor { return _linkColor ?: self.tintColor; }
 - (void)tintColorDidChange { [super tintColorDidChange]; [self applyReveal]; }
 
 /* A typewriter reveal. The whole paragraph is always laid out, so words never
@@ -180,16 +162,11 @@
 }
 
 - (void)applyReveal {
-	paragraph_apply_reveal(self, _bodyColor, _linkColor ?: self.tintColor, UIColor.clearColor);
-	_figureView.hidden = _revealedCharacters == 0;
+	paragraph_apply_reveal(self, _bodyColor, self.paragraphLinkColor, UIColor.clearColor);
 }
 
 - (NSAttributedString *)bodyString {
 	return paragraph_body_string(_paragraphText, _bodyFont, _bodyColor, _lineSpacing, _bodyAlignment, _hyphenation, 0);
-}
-
-- (CGFloat)figureSide {
-	return paragraph_figure_side(_figureLines, _bodyFont.lineHeight, _lineSpacing);
 }
 
 - (void)rebuild {
@@ -197,13 +174,6 @@
 	 * class has finished initializing. */
 	if (!_ready || !_bodyFont) return;
 	[self.textStorage setAttributedString:[self bodyString]];
-	if (_figureView) {
-		CGFloat side = [self figureSide];
-		_figureView.frame = CGRectMake(0, 0, side, side);
-		self.textContainer.exclusionPaths = @[[UIBezierPath bezierPathWithRect:paragraph_figure_exclusion(side, _lineSpacing)]];
-	} else {
-		self.textContainer.exclusionPaths = @[];
-	}
 	paragraph_apply_links(self, NO);
 	[self applyReveal];
 	self.accessibilityValue = _paragraphText;
@@ -218,20 +188,16 @@
 	if (_paragraphText.length == 0) return CGSizeZero;
 	CGFloat width = proposal.width;
 	BOOL unbounded = width <= 0 || width >= CGFLOAT_MAX / 2;
-	NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:[self bodyString]];
+	NSTextStorage *storage = [[NSTextStorage alloc] initWithAttributedString:self.textStorage];
 	NSLayoutManager *manager = [[NSLayoutManager alloc] init];
 	NSTextContainer *container = [[NSTextContainer alloc] initWithSize:CGSizeMake(unbounded ? CGFLOAT_MAX : width, CGFLOAT_MAX)];
 	container.lineFragmentPadding = 0;
-	if (_figureView) container.exclusionPaths = @[[UIBezierPath bezierPathWithRect:
-		paragraph_figure_exclusion([self figureSide], _lineSpacing)]];
 	[storage addLayoutManager:manager];
 	[manager addTextContainer:container];
 	[manager ensureLayoutForTextContainer:container];
 	CGRect used = [manager usedRectForTextContainer:container];
 	CGFloat scale = self.traitCollection.displayScale ?: 1;
-	/* A short paragraph still reserves the lines of its figure. */
 	CGFloat height = CGRectGetMaxY(used);
-	if (_figureView) height = MAX(height, [self figureSide]);
 	CGFloat resultWidth = unbounded ? CGRectGetMaxX(used) : width;
 	return CGSizeMake(ceil(resultWidth * scale) / scale, ceil(height * scale) / scale);
 }

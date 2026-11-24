@@ -35,22 +35,17 @@ local controller = Controller.new {
 }
 local config, refs = xml.renderFile("apps/adventure-arena/views/layouts/Window.etlua", controller:libraryData(), ns)
 controller.navigation = refs.navigation
-controller.navigations = { library = refs.navigation, bookshelf = refs.bookshelfNavigation,
-	create = refs.createNavigation, settings = refs.settingsNavigation, search = refs.searchNavigation }
-controller.tabs = refs.tabs
-controller:attach(refs)
-
--- Nothing read yet: no shelf, an empty Library tab, no accessory.
-t.expect(controller.pages:refs("continueShelf").continue_1 == nil, "Continue Reading is absent before any story is read")
-t.expect(controller.pages:refs("bookshelf").emptyBookshelf ~= nil, "the Library tab explains how stories arrive")
-t.expect(controller.tabs.accessoryHidden, "the tab accessory waits for a story in progress")
-t.expect(controller.pages:refs("settings") ~= nil and controller.readingOptions.mounted[1].preview,
-	"the Settings tab mounts the reading options with a sample page")
+t.expect(refs.tabs == nil and refs.nowReading == nil, "no bottom tabs or accessory")
+local catalogActions = controller.pages:data("discover").actions
+t.expect(refs.continueShelf == nil, "Home has no progress shelf")
+catalogActions.openSettings()
+t.expect(controller.pages:refs("settings").noGamesInProgress ~= nil and controller.readingOptions.mounted[1].preview,
+	"Settings opens with a sample page")
+controller.navigation:pop()
 
 -- Opening a book and reading one page puts it on every shelf.
 local zork = catalog:find("infocom.zork1")
 t.expect(controller.sessionController:show(zork.id), "a story opens")
-t.expect(controller.tabs.accessoryHidden, "an open book hides the accessory with the tab bar")
 controller.sessionController:submitCommand("take egg")
 local page = controller.sessionController.refs
 t.expect(page.scoreToast.hidden == false, "points raise the glass toast")
@@ -64,15 +59,14 @@ t.assertEqual(#haptics, 1, "a command without points is silent")
 
 controller.navigation:pop()
 controller.sessionController:onDisappear()
-t.expect(not controller.tabs.accessoryHidden, "closing the book shows the accessory")
-t.assertEqual(controller.pages:refs("nowReading").nowReadingTitle.text, zork.title, "the accessory names the story")
-t.assertEqual(controller.pages:refs("nowReading").nowReadingPlace.text, "West of House", "the accessory names the room")
-t.assertEqual(controller.pages:refs("continueShelf").continue_1.accessibilityLabel,
-	"Continue " .. zork.title .. ", West of House", "Continue Reading offers the story")
-t.expect(controller.pages:refs("bookshelf").shelfRow_1 ~= nil, "the Library tab lists the story")
-local shelf = controller.pages:data("bookshelf")
-t.assertEqual(shelf.entries[1].status, "Score 5 of 350 · 0 moves", "the Library row carries the status line")
-t.assertEqual(shelf.entries[1].progress, 5 / 350, "the Library row shows progress toward the maximum")
+catalogActions.openSettings()
+local settingsRefs = controller.pages:refs("settings")
+t.assertEqual(settingsRefs.shelfRow_1.accessibilityLabel,
+	"Continue " .. zork.title .. ", West of House", "Settings lists the saved game")
+local shelf = controller.pages:data("settings")
+t.assertEqual(shelf.entries[1].status, "Score 5 of 350 · 0 moves", "the saved row carries the status line")
+t.assertEqual(shelf.entries[1].progress, 5 / 350, "the saved row shows progress toward the maximum")
+controller.navigation:pop()
 t.assertEqual(#saves.load().games, 1, "the autosave is persisted")
 
 -- The detail page offers Continue and Start Over for a story in progress.
@@ -82,28 +76,28 @@ xml.renderFile = function(path, data, platform)
 	if path:find("Detail.etlua", 1, true) then detail = data end
 	return renderFile(path, data, platform)
 end
-controller.pages:page("discover"):flow("Opening"):game(zork.id, "library")
+controller.pages:page("discover"):flow("Opening"):game(zork.id)
 xml.renderFile = renderFile
 t.assertEqual(detail.saved.place, "West of House", "the detail page knows where the reader stopped")
 controller.navigation:pop()
 
--- The accessory resumes the story at its last page.
-t.expect(controller:resumeLatest(), "the accessory resumes the latest story")
+-- Continue and restart work from Settings, and removing a save refreshes it.
+catalogActions.openSettings()
+local actions = controller.pages:data("settings").actions
+t.expect(actions.continue_1(), "Settings resumes the saved game")
 t.assertEqual(#controller.sessionModel.history, 2, "resuming replays both commands")
 t.assertEqual(controller.sessionModel.scoreChange, 0, "resuming does not announce old points")
 controller.navigation:pop()
 controller.sessionController:onDisappear()
+t.expect(controller.pages:refs("settings").shelfRow_1 ~= nil, "returning from the reader keeps Settings mounted")
 
--- Start Over reads from the title page; Remove takes it off every shelf.
-local actions = controller.pages:data("bookshelf").actions
 actions.restart_1()
 t.assertEqual(#controller.sessionModel.history, 0, "Start Over begins at the title page")
 controller.navigation:pop()
 controller.sessionController:onDisappear()
-t.expect(controller.pages:data("bookshelf").actions.remove(zork.id), "a story can be removed from the Library")
-t.expect(controller.pages:refs("continueShelf").continue_1 == nil, "a removed story leaves Continue Reading")
-t.expect(controller.pages:refs("bookshelf").emptyBookshelf ~= nil, "the Library tab is empty again")
-t.expect(controller.tabs.accessoryHidden, "the accessory hides with nothing to resume")
-t.expect(not controller:resumeLatest(), "there is nothing to resume")
+t.expect(actions.remove(zork.id), "a saved game can be removed from Settings")
+t.expect(controller.pages:refs("settings").noGamesInProgress ~= nil, "removing the game refreshes Settings")
+controller.navigation:pop()
+t.expect(controller.pages:refs("settings") == nil, "leaving Settings releases its mounted page")
 
 os.exit(t.summary() and 0 or 1)

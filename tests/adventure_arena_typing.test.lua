@@ -99,7 +99,7 @@ t.assertEqual(page().paragraph_1_1.revealedCharacters, 0, "nothing is revealed b
 t.assertEqual(page().paragraph_1_2.revealedCharacters, 0, "later paragraphs wait too")
 t.expect(page().paragraph_1_1.hidden ~= true and page().paragraph_1_2.hidden ~= true,
 	"waiting paragraphs keep their place on the page")
-t.expect(page().gameTitle ~= nil and page().gameTitle.hidden ~= true, "the title page is set at once")
+t.expect(page().synopsis == nil, "no synopsis precedes the scene being typed")
 t.assertEqual(page().sceneTitle_1.opacity, 0, "a chapter heading waits for its text")
 local openingHeight = page().entry_1.size.height
 t.expect(page().paragraph_1_2.size.height > 0 and openingHeight > page().paragraph_1_2.size.height,

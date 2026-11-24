@@ -114,7 +114,7 @@ XML vocabulary. `Window` and `Column` retain their own dimension properties.
 | `Grid` / `FlowStack` | Eager grid / wrapping layout | `spacing`, `reorderable`, `reorderContainer`, plus layout attributes |
 | `HSplit` | Horizontal split container | Same layout attributes as `VStack`; use `Window sidebar/content` for a window-level sidebar |
 | `ScrollView` | Native scroll container for one content child | `contentWidth`, `contentHeight`, `horizontal`, `vertical`, plus layout attributes |
-| `SafeAreaInset` | Pins a child to a safe-area edge (composer, CTA) | `edge` (`bottom`), `minimumBottomInset` |
+| `SafeAreaInset` | Pins a child to a safe-area edge (composer, CTA) | `edge` (`bottom`), `minimumBottomInset`, `overlay` (scrolls content beneath the accessory while reserving clearance) |
 | `ZStack` | Layers children in one rectangle | `alignment`, plus layout attributes |
 | `Spacer` | Flexible spacing view | Layout attributes |
 | `Divider` | Native separator | `orientation`, plus layout attributes |

@@ -174,7 +174,12 @@ static CGFloat view_padding_vertical(NSView *view) {
 
 static CGFloat view_padding_top(NSView *view) {
 	NSNumber *value = objc_getAssociatedObject(view, &kKeys[kPaddingTopKey]);
-	return value ? value.doubleValue : view_padding_vertical(view);
+	CGFloat declared = value ? value.doubleValue : view_padding_vertical(view);
+	return declared + ([objc_getAssociatedObject(view, &kKeys[kSafeAreaPaddingKey]) isEqualToString:@"top"] ? view.safeAreaInsets.top : 0);
+}
+
+static CGFloat overlay_scroll_bottom_inset(NSScrollView *scroll) {
+	return objc_getAssociatedObject(scroll, &kKeys[kScrollOverlayAccessoryKey]) ? scroll.contentInsets.bottom : 0;
 }
 
 static CGFloat view_padding_bottom(NSView *view) {
@@ -1168,6 +1173,21 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 				sv.frame = frame_ignoring_safe_area(view, sv, NSMakeRect(childX, childY, childW, childH));
 				layout_recursive(sv, sv.frame.size.width);
 			}
+			for (NSView *sv in view.subviews) {
+				NSView *accessory = objc_getAssociatedObject(sv, &kKeys[kScrollOverlayAccessoryKey]);
+				if (![sv isKindOfClass:NSScrollView.class] || accessory.superview != view) continue;
+				NSScrollView *scroll = (NSScrollView *)sv;
+				CGFloat bottom = MAX(0, MIN(NSHeight(scroll.bounds), NSMaxY(accessory.frame) - NSMinY(scroll.frame)));
+				NSEdgeInsets insets = scroll.contentInsets;
+				if (insets.bottom != bottom) {
+					BOOL atTop = fabs(scroll.documentView.frame.size.height - scroll.contentSize.height
+						- scroll.contentView.bounds.origin.y) < 1;
+					insets.bottom = bottom;
+					scroll.contentInsets = insets;
+					if (atTop) objc_setAssociatedObject(scroll, &kKeys[kScrollAnchorKey], @"top", OBJC_ASSOCIATION_RETAIN);
+					layout_recursive(scroll, scroll.frame.size.width);
+				}
+			}
 		} break;
 		case LayoutAxisHSplit: {
 			NSUInteger count = view.subviews.count;
@@ -1283,7 +1303,7 @@ static void layout_recursive_impl(NSView *view, CGFloat width) {
 				if (anchor && content.height > 0 && viewport.height > 0) {
 					CGFloat limit = MAX(0, content.height - viewport.height);
 					if ([anchor isEqualToString:@"bottom"])
-						origin.y = document.isFlipped ? limit : 0;
+						origin.y = document.isFlipped ? limit + overlay_scroll_bottom_inset(scroll) : -overlay_scroll_bottom_inset(scroll);
 					else if ([anchor isEqualToString:@"top"])
 						origin.y = document.isFlipped ? 0 : limit;
 					objc_setAssociatedObject(scroll, &kKeys[kScrollAnchorKey], nil,
@@ -1341,12 +1361,6 @@ static NSView *view_with_identifier(NSView *view, NSString *identifier) {
 	return nil;
 }
 
-static CGFloat clamp_scroll_offset(CGFloat value, CGFloat limit) {
-	if (value < 0) return 0;
-	if (value > limit) return limit;
-	return value;
-}
-
 /* `anchor` names the viewport edge an identified view is brought to, as
  * SwiftUI's scrollTo(_:anchor:) does: "bottom" (the default) or "top". The
  * offset is clamped, so a view near the end of the document rests as far up
@@ -1358,7 +1372,7 @@ static void scroll_view_apply_target(NSScrollView *scroll, NSString *target, BOO
 	CGFloat viewport = scroll.contentSize.height;
 	CGFloat limit = MAX(0, document.frame.size.height - viewport);
 	NSPoint origin = scroll.contentView.bounds.origin;
-	if ([target isEqualToString:@"bottom"]) origin.y = document.isFlipped ? limit : 0;
+	if ([target isEqualToString:@"bottom"]) origin.y = document.isFlipped ? limit + overlay_scroll_bottom_inset(scroll) : -overlay_scroll_bottom_inset(scroll);
 	else if ([target isEqualToString:@"top"]) origin.y = document.isFlipped ? 0 : limit;
 	else {
 		NSView *match = view_with_identifier(document, target);
@@ -1367,7 +1381,10 @@ static void scroll_view_apply_target(NSScrollView *scroll, NSString *target, BOO
 		CGFloat y = top
 			? (document.isFlipped ? NSMinY(rect) : NSMaxY(rect) - viewport)
 			: (document.isFlipped ? NSMaxY(rect) - viewport : NSMinY(rect));
-		origin.y = clamp_scroll_offset(y, limit);
+		CGFloat bottom = overlay_scroll_bottom_inset(scroll);
+		if (!top) y += document.isFlipped ? bottom : -bottom;
+		origin.y = document.isFlipped ? MIN(limit + bottom, MAX(0, y))
+			: MAX(-bottom, MIN(limit, y));
 	}
 	origin.x = 0;
 	if (animated && scroll.window) {

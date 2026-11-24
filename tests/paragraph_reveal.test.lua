@@ -14,27 +14,22 @@ local root, refs = xml.render([[
 <VStack spacing="0" alignment="leading">
 	<Paragraph id="whole" text="]] .. PROSE .. [[" size="17" design="serif" />
 	<Paragraph id="typing" text="]] .. PROSE .. [[" size="17" design="serif" revealedCharacters="0" />
-	<Paragraph id="figured" text="]] .. PROSE .. [[" size="17" design="serif" figure="apps/adventure-arena/assets/zork1.jpg" revealedCharacters="0" />
 	<Paragraph id="accents" text="Café — déjà vu 🦉 here." size="17" revealedCharacters="6" />
 </VStack>]], {}, ns)
 root.size = ns.Size(320, 2000); root:layout(320)
 
 local whole = refs.whole.size.height
-local lineHeight = refs.whole.font.ascender - refs.whole.font.descender
 t.assertEqual(refs.whole.revealedCharacters, -1, "a paragraph shows its whole text by default")
 t.assertEqual(refs.typing.revealedCharacters, 0, "the XML attribute sets the reveal")
 t.assertEqual(refs.typing.size.height, whole, "a paragraph that has revealed nothing already takes its whole height")
-local figured = refs.figured.size.height
-t.expect(figured >= lineHeight * 3 - 1, "a waiting figure reserves the lines it spans")
 t.assertEqual(refs.typing.text, PROSE, "the whole text is kept while it is revealed")
-t.expect(refs.figured.figureView.hidden == true, "the figure waits for the first character")
 
-local below = refs.figured.frame.origin.y
+local below = refs.accents.frame.origin.y
 for _, shown in ipairs { 5, 20, 90 } do
 	refs.typing.revealedCharacters = shown
 	root:layout(320)
 	t.assertEqual(refs.typing.size.height, whole, "typing never changes the paragraph's height")
-	t.assertEqual(refs.figured.frame.origin.y, below, "typing never moves what follows")
+	t.assertEqual(refs.accents.frame.origin.y, below, "typing never moves what follows")
 end
 refs.typing.revealedCharacters = utf8.len(PROSE)
 root:layout(320)
@@ -46,11 +41,6 @@ refs.typing.revealedCharacters = 10000
 t.assertEqual(refs.typing.revealedCharacters, 10000, "a reveal past the end is kept and shows everything")
 refs.typing.revealedCharacters = -7
 t.assertEqual(refs.typing.revealedCharacters, -1, "negative reveals mean everything")
-
-refs.figured.revealedCharacters = 1
-root:layout(320)
-t.expect(refs.figured.figureView.hidden == false, "the first character reveals the figure")
-t.assertEqual(refs.figured.size.height, figured, "revealing the figure keeps the paragraph's height")
 
 -- Characters count as Lua's utf8.len does, never splitting a surrogate pair.
 refs.accents.revealedCharacters = 17

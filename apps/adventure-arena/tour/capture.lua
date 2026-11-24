@@ -20,8 +20,7 @@ local Plan = {}
 -- tests/adventure_arena_onboarding.test.lua checks every image against it.
 Plan.BOX = { width = 300, height = 252, scale = 3 }
 
--- An all-ages Arena Original: its opening is short, and every scene has
--- words the reader can touch.
+-- An all-ages Arena Original with a short opening and a few moves to show.
 local STORY = "books.wondertown"
 
 -- One shot per guide page, named by its id. `commands` are played from the
@@ -31,9 +30,9 @@ local STORY = "books.wondertown"
 -- field with the keyboard up.
 Plan.SHOTS = {
 	{ name = "welcome", commands = {}, scroll = "top", top = 130 },
-	{ name = "interactive", commands = { "take broom", "look under workbench", "take oil can" }, scroll = "bottom", top = 404 },
-	{ name = "read", commands = { "north" }, scroll = "bottom", top = 370 },
-	{ name = "play", commands = { "take broom" }, scroll = "bottom", typed = "t", top = 306 },
+	{ name = "interactive", commands = { "take broom", "look under workbench", "take oil can" }, scroll = "bottom", top = 434 },
+	{ name = "read", commands = { "north" }, scroll = "bottom", top = 430 },
+	{ name = "play", commands = { "take broom" }, scroll = "bottom", typed = "t", top = 350 },
 }
 
 local SETTLE = { launch = 1, page = 1, keyboard = 1.5, appearance = 1.5 }

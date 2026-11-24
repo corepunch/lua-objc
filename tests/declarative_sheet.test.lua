@@ -43,9 +43,8 @@ local parent = ns.Window { visible = false, width = 800, height = 600 }
 local mounted
 local sheet, refs = ns.presentSheet(function()
 	local view, viewRefs = xml.render(SHEET, { actions = actions }, ns)
-	mounted = Template.new(viewRefs.mount, "apps/adventure-arena/views/sections/NowReading.etlua", ns)
-	mounted:update({ game = { title = "Zork I", cover = "apps/adventure-arena/assets/zork1.jpg", tint = "#4338CA" },
-		place = "Chapter I · West of House", actions = { resume = function() end } })
+	mounted = Template.new(viewRefs.mount, "tests/fixtures/motion_rows.etlua", ns)
+	mounted:update({ rows = { "One" } })
 	return view, viewRefs
 end, { parent = parent })
 
@@ -83,14 +82,14 @@ t.expect(static ~= nil, "static renders without actions leave events unbound")
 
 -- A retained child template belongs to its parent's scope.
 local host = ns.VStack {}
-local page = Template.new(host, "apps/adventure-arena/views/sections/SessionTitle.etlua", ns)
-local _, pageRefs = page:update({ gameTitle = "Zork I", chapterLabel = "Chapter I", roomTitle = "Page" })
+local page = Template.new(host, "tests/fixtures/motion_rows.etlua", ns)
+local _, pageRefs = page:update({ rows = { "Parent" } })
 t.expect(pageRefs ~= nil, "parent template mounts")
 local wrapper = ns.VStack {}
 host:add(wrapper)
 page.refs.slot = wrapper
-local child = page:child("slot", "apps/adventure-arena/views/sections/SessionTitle.etlua")
-child:update({ gameTitle = "Zork I", chapterLabel = "", roomTitle = "Child" })
+local child = page:child("slot", "tests/fixtures/motion_rows.etlua")
+child:update({ rows = { "Child" } })
 page:dispose()
 t.expect(child:isDisposed(), "disposing a template disposes its children")
 t.assertThrows(function() page:child("missing", "x.etlua") end, "child requires a mounted ref")

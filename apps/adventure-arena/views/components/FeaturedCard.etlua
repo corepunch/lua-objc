@@ -5,7 +5,7 @@
   local CARD = { height = 460, cornerRadius = 28, inset = 20, spacing = 6 }
 %>
 <Button id="featured_<%= index %>" action="featured_<%= index %>" style="plain" containerRelativeWidth="1" accessibilityLabel="<%= game.title %>, <%= game.genre %>. <%= game.shortDescription %>">
-  <ZStack height="<%= CARD.height %>" maxWidth="infinity" alignment="bottomLeading" cornerRadius="<%= CARD.cornerRadius %>" clipsToBounds="true" background="<%= game.tint %>">
+  <ZStack height="<%= CARD.height %>" maxWidth="infinity" alignment="bottomLeading" cornerRadius="<%= CARD.cornerRadius %>" clipsToBounds="true" background="accent">
     <Image path="<%= game.cover %>" resizable="true" contentMode="fill" />
     <LinearGradient topAlpha="0" middleAlpha="0.1" middleLocation="0.42" bottomAlpha="0.88" />
     <VStack padding="<%= CARD.inset %>" spacing="<%= CARD.spacing %>" alignment="leading" maxWidth="infinity">

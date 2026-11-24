@@ -148,15 +148,14 @@ static UIView *page_toolbar_view(UIView *view, CGFloat maxWidth) {
 }
 
 /* The bar above the keyboard for a page's `keyboard` toolbar items, set as
- * the editing input's inputAccessoryView. Items keep their own look (glass
- * buttons float over the keyboard as the system's own keyboard toolbar does)
- * and share one row: fixed-width items take their fitting width and items
+ * the editing input's inputAccessoryView. UIInputView supplies the keyboard's
+ * system background. Items share one row: fixed-width items take their fitting width and items
  * that want more (maxWidth="infinity") split what remains. While every item
  * is hidden the input has no accessory at all. Showing or hiding the bar goes
  * through -reloadInputViews on the editing input, the documented way to
  * change input views; resizing a live accessory to zero instead leaves the
  * keyboard layout guide short by the old bar's height. */
-@interface LuaKeyboardToolbar : UIView
+@interface LuaKeyboardToolbar : UIInputView
 @property(nonatomic, copy) NSArray<UIView *> *items;
 /* The input that last asked for the bar; reloaded when visibility flips. */
 @property(nonatomic, weak) UIResponder *input;
@@ -168,7 +167,7 @@ static UIView *page_toolbar_view(UIView *view, CGFloat maxWidth) {
 }
 static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
 - (instancetype)initWithItems:(NSArray<UIView *> *)items {
-	self = [super initWithFrame:CGRectZero];
+	self = [super initWithFrame:CGRectZero inputViewStyle:UIInputViewStyleKeyboard];
 	if (!self) return nil;
 	_items = [items copy];
 	for (UIView *item in _items) {
@@ -212,13 +211,13 @@ static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
 	CGFloat height = 0;
 	for (UIView *item in _items)
 		if (!item.hidden) height = MAX(height, measure_size(item, CGSizeMake([self itemWidth], CGFLOAT_MAX)).height);
-	frame.size.height = height + 2 * kKeyboardToolbarVerticalInset;
+	frame.size.height = height;
 	self.frame = frame;
 }
 - (CGFloat)itemWidth {
 	UIScreen *screen = self.window.windowScene.screen;
 	CGFloat width = self.bounds.size.width ?: self.window.bounds.size.width ?: screen.bounds.size.width;
-	return MAX(0, width - 2 * kKeyboardToolbarHorizontalInset);
+	return MAX(0, width);
 }
 - (void)layoutSubviews {
 	[super layoutSubviews];
@@ -236,7 +235,7 @@ static void *kKeyboardToolbarHiddenContext = &kKeyboardToolbarHiddenContext;
 		else fixed += sizes[index].width;
 	}
 	CGFloat share = flexible ? MAX(0, available - fixed) / flexible : 0;
-	CGFloat x = kKeyboardToolbarHorizontalInset;
+	CGFloat x = 0;
 	for (NSUInteger index = 0; index < visible.count; index++) {
 		CGFloat width = sizes[index].width >= available ? share : sizes[index].width;
 		CGFloat y = floor((self.bounds.size.height - sizes[index].height) / 2);
@@ -305,9 +304,7 @@ static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 			} else if (view) {
 				barItem = [[UIBarButtonItem alloc] initWithCustomView:page_toolbar_view(view, kNavigationTitleMaxWidth)];
 			} else {
-				UIImageSymbolConfiguration *symbol = [UIImageSymbolConfiguration
-					configurationWithPointSize:kNavigationSymbolPointSize weight:UIImageSymbolWeightRegular];
-				UIImage *image = icon.length ? [[UIImage systemImageNamed:icon] imageByApplyingSymbolConfiguration:symbol] : nil;
+				UIImage *image = icon.length ? [UIImage systemImageNamed:icon] : nil;
 				barItem = image
 					? [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStylePlain
 						target:[LuaButtonTarget shared] action:@selector(onAction:)]
@@ -330,14 +327,6 @@ static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 		keyboard.count ? [[LuaKeyboardToolbar alloc] initWithItems:keyboard] : nil, OBJC_ASSOCIATION_RETAIN);
 
 	if (lua_istable(L, 3)) {
-		lua_getfield(L, 3, "titleDisplayMode");
-		const char *titleMode = lua_tostring(L, -1);
-		if (titleMode) {
-			if (strcmp(titleMode, "inline") == 0) navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
-			else if (strcmp(titleMode, "large") == 0) navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeAlways;
-			else if (strcmp(titleMode, "automatic") == 0) navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeAutomatic;
-			else return luaL_error(L, "titleDisplayMode must be 'automatic', 'inline', or 'large'");
-		}
 		lua_getfield(L, 3, "backButtonDisplayMode");
 		const char *backMode = lua_tostring(L, -1);
 		if (backMode) {
@@ -348,7 +337,7 @@ static int bridge_UIKitNavigation_page_toolbar(lua_State *L) {
 			else return luaL_error(L, "backButtonDisplayMode must be 'default', 'generic', or 'minimal'");
 			objc_setAssociatedObject(controller, &kPageBackButtonModeKey, @(mode), OBJC_ASSOCIATION_RETAIN);
 		}
-		lua_pop(L, 2);
+		lua_pop(L, 1);
 	}
 	return 0;
 }

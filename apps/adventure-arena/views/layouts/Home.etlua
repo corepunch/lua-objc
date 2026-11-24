@@ -1,3 +1,7 @@
-<NavigationStack id="navigation" title="Discover" largeTitle="true">
+<NavigationStack id="navigation" title="Discover" largeTitle="true" titleDisplayMode="inlineLarge">
+  <Toolbar>
+    <ToolbarItem id="findStories" placement="topBarTrailing" icon="magnifyingglass" label="Search" action="openSearch" />
+    <ToolbarItem id="catalogSettings" placement="topBarTrailing" icon="gearshape" label="Settings" action="openSettings" />
+  </Toolbar>
   <%- partial("../pages/Adventures.etlua", library) %>
 </NavigationStack>
