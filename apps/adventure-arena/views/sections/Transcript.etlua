@@ -1,5 +1,5 @@
 <%
-  -- The story supplies the opening in order, including any title and credits.
+  -- The opening starts with the title and credits when the story prints them.
   -- Each new room opens a scene with its name as the title.
   -- Reader commands use a chevron and secondary ink. The story answers in prose.
   -- `reading` carries the reader’s face, size, leading, alignment and inks.

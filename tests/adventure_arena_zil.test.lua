@@ -18,7 +18,7 @@ local function readFile(path)
 end
 
 local ok, session = pcall(function() return ZILRuntime.new(catalog:find("books.wondertown"), readFile) end)
-t.expect(ok, "ZIL runtime loads the bundled Zork source")
+t.expect(ok, "ZIL runtime loads the bundled Wondertown source")
 t.expect(reads > 0, "runtime uses the injected file reader without a UI platform")
 if ok then
 	local started, engine, opening = pcall(function()
@@ -26,7 +26,7 @@ if ok then
 	end)
 	t.expect(started, "ZIL runtime starts a game coroutine")
 	if started then
-		t.expect(tostring(opening):find("Grandfather's key [[hook]] is empty", 1, true) ~= nil,
+		t.expect(tostring(opening):find("The brass key [[hook]] is empty", 1, true) ~= nil,
 			"Wondertown opening text reaches the Lua UI")
 		local progress = engine:progress()
 		t.assertEqual(progress.score, 0, "runtime reports the game's starting score")

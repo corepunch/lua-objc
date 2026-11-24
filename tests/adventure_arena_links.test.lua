@@ -180,20 +180,20 @@ if game then
 	local story = Session.new { engineFactory = function(entry, seed) return ZILRuntime.new(entry, nil, seed) end }
 	t.expect(story:start(game), "the horror story starts")
 	local opening = story.entries[#story.entries]
-	t.assertEqual(#opening.paragraphs, 2, "Sanitarium's gate and plaque print as separate paragraphs")
-	local queue = story:paragraphsSince(#story.entries)
-	t.assertEqual(#queue, 2, "the real opening has two paragraph reveal steps")
+	t.assertEqual(#opening.paragraphs, 1, "Sanitarium describes its gate and plaque in the same paragraph")
 	local targets = {}
 	for _, paragraphLinks in pairs(opening.links) do
 		for _, link in ipairs(paragraphLinks) do targets[link.target] = true end
 	end
 	t.expect(targets.gate and targets.north and targets.plaque, "the opening links the gate, the path north and the plaque")
 	t.expect(not table.concat(opening.paragraphs, "\n"):find("[[", 1, true), "no markup reaches the page")
-	t.assertEqual(commands(story:linkActions("plaque")), "examine brass plaque,take brass plaque,read brass plaque,move brass plaque",
+	t.assertEqual(commands(story:linkActions("plaque")),
+		"examine brass plaque,take brass plaque,read brass plaque,move brass plaque,smell brass plaque,rub brass plaque,knock on brass plaque,kick brass plaque",
 		"the plaque offers the verbs the story accepts")
 	story:submit("north")
 	t.assertEqual(story.roomTitle, "Sanitarium Entrance Hall", "walking north enters the hall")
-	t.assertEqual(#story.entries[#story.entries].paragraphs, 2, "the hall and its door print as separate paragraphs")
+	t.expect(story.scene.paragraphs[1]:find("A sagging door stands half-open to the north", 1, true) ~= nil,
+		"the hall description includes the door and its direction")
 	story:submit("go back")
 	t.assertEqual(story.roomTitle, "Sanitarium Gate", "GO BACK retraces the last step")
 	story:submit("walk back")

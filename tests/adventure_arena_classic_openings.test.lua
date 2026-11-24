@@ -8,8 +8,8 @@ local catalog = require("apps.adventure-arena.catalog.Adventures")
 local expected = {
 	["infocom.zork1"] = "banner,scene",
 	["infocom.zork2"] = "banner,scene",
-	["infocom.zork3"] = "narration,banner,scene",
-	["infocom.lurkinghorror"] = "narration,banner,scene",
+	["infocom.zork3"] = "banner,narration,scene",
+	["infocom.lurkinghorror"] = "banner,narration,scene",
 	["infocom.planetfall"] = "banner,narration,scene",
 	["infocom.spellbreaker"] = "banner,scene",
 }
@@ -37,7 +37,12 @@ for _, game in ipairs(catalog) do
 				t.expect(original:find(renderedBanner, 1, true) ~= nil, game.title .. " keeps the printed credits in order")
 			end
 		end
-		t.assertEqual(table.concat(kinds, ","), expected[game.id], game.title .. " keeps its opening sequence")
+		t.assertEqual(table.concat(kinds, ","), expected[game.id], game.title .. " opens with its title and credits")
+		if game.id == "infocom.zork3" then
+			t.expect(session.entries[2].paragraphs[1]:find("As in a dream", 1, true) == 1,
+				"Zork III keeps its dream prologue directly under the credits")
+			t.assertEqual(session.entries[3].title, "Endless Stair", "Zork III opens its first room after the prologue")
+		end
 	end
 end
 t.assertEqual(count, 6, "every bundled Infocom game is covered")
