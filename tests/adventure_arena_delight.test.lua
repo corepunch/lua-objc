@@ -30,8 +30,8 @@ xml.renderFile = function(...)
 	rendered = { view = view, refs = refs }
 	return view, refs
 end
-local function click(ref)
-	local callback = callbacks[rendered.refs[ref]]
+local function click(refs, ref)
+	local callback = callbacks[refs[ref]]
 	t.expect(type(callback) == "function", ref .. " has a bound action")
 	if callback then callback() end
 end
@@ -52,13 +52,15 @@ end
 
 local empty = make()
 empty:home()
-t.expect(rendered.refs.emptyCatalog ~= nil, "an empty catalog still has a named empty state")
-t.expect(rendered.refs.openCreate ~= nil, "the empty catalog names the next tap")
+local emptyRefs = empty.pages:refs("discover")
+t.expect(emptyRefs.emptyCatalog ~= nil, "an empty catalog still has a named empty state")
+t.expect(emptyRefs.openCreate ~= nil, "the empty catalog names the next tap")
 local windowed = make()
 windowed:createWindow()
 t.expect(rendered.refs.tabs == nil and rendered.refs.nowReading == nil, "the window has no bottom bar")
-t.expect(rendered.refs.openCreate ~= nil, "the windowed empty catalog still has a CTA")
-click("openCreate")
+local windowedRefs = windowed.pages:refs("discover")
+t.expect(windowedRefs.openCreate ~= nil, "the windowed empty catalog still has a CTA")
+click(windowedRefs, "openCreate")
 t.assertEqual(windowed.navigation.depth, 2, "Write an Adventure opens a page on the catalog stack")
 windowed.navigation:pop()
 

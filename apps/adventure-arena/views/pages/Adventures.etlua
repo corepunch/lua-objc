@@ -1,5 +1,5 @@
 <%
-  -- Featured stories, category shelves and the chart share the same side insets.
+  -- The reading shelf, category shelves and chart share the same side insets.
   local PAGE = { side = 16, band = 30, heading = 10 }
 %>
 <% if #games == 0 then %>
@@ -9,14 +9,8 @@
 <% else %>
 <ScrollView id="libraryScroll" topEdgeEffectStyle="soft">
   <VStack spacing="0" paddingBottom="32">
-    <% if #featured > 0 then %>
-    <ScrollView id="featuredCarousel" horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
-      <HStack spacing="12" paddingHorizontal="<%= PAGE.side %>" paddingTop="4" alignment="top">
-        <% for index, game in ipairs(featured) do %>
-        <%- partial("../components/FeaturedCard.etlua", { game = game, index = index }) %>
-        <% end %>
-      </HStack>
-    </ScrollView>
+    <% if #inProgress > 0 then %>
+    <%- partial("../sections/ContinueReading.etlua", { entries = inProgress, sideInset = PAGE.side }) %>
     <% end %>
     <% for index, shelf in ipairs(shelves) do %>
     <%- partial("../sections/Shelf.etlua", { shelf = shelf, index = index, sideInset = PAGE.side }) %>

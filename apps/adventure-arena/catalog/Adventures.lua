@@ -72,7 +72,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Whimsical Adventure",
-		categories = { "Children's" },
+		categories = { "Read with Kids" },
 		cover = "apps/adventure-arena/assets/wondertown.jpg",
 	},
 	{
@@ -174,7 +174,7 @@ return {
 		base = "infocom/zork1",
 		startFile = "pocket-weather.zil",
 		genre = "Children's Adventure",
-		categories = { "Children's" },
+		categories = { "Read with Kids" },
 		cover = "apps/adventure-arena/assets/pocket-weather.png",
 		reviews = {},
 	},
@@ -233,7 +233,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Children's Adventure",
-		categories = { "Children's" },
+		categories = { "Read with Kids" },
 		cover = "apps/adventure-arena/zilscript/books/bell-grew-leaves/cover.jpg",
 	},
 	{
@@ -252,7 +252,7 @@ return {
 		base = "infocom/zork1",
 		reviews = {},
 		genre = "Children's Adventure",
-		categories = { "Children's" },
+		categories = { "Read with Kids" },
 		cover = "apps/adventure-arena/zilscript/books/borrowed-tomorrows/cover.jpg",
 	},
 	{

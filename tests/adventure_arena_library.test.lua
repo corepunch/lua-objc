@@ -79,15 +79,17 @@ for _, shelf in ipairs(real:shelves()) do realShelves[shelf.title] = shelf.count
 t.assertEqual(realShelves["The Zork Trilogy"], 3, "the Zork trilogy shares a shelf")
 t.assertEqual(realShelves["Infocom Classics"], 3, "classic Infocom titles share a shelf")
 t.assertEqual(realShelves["Arena Originals"], 12, "studio titles share a shelf")
-local genresByTitle = {
-	["Children's"] = {"books.wondertown", "books.pocket-weather", "books.bell-grew-leaves", "books.borrowed-tomorrows"},
-	["Detective"] = {"books.limehouse-killings", "books.last-broadcast", "books.the-midnight-ledger"},
-	["Horror"] = {"books.blackwood-horror", "infocom.lurkinghorror", "books.silent-vector"},
-	["Sci-Fi"] = {"infocom.planetfall", "books.silent-vector", "books.museum-unsent-signals", "books.station-minus-one"},
+local categories = {
+	{ title = "Read with Kids", games = {"books.wondertown", "books.pocket-weather", "books.bell-grew-leaves", "books.borrowed-tomorrows"} },
+	{ title = "Detective", games = {"books.limehouse-killings", "books.last-broadcast", "books.the-midnight-ledger"} },
+	{ title = "Horror", games = {"books.blackwood-horror", "infocom.lurkinghorror", "books.silent-vector"} },
+	{ title = "Sci-Fi", games = {"infocom.planetfall", "books.silent-vector", "books.museum-unsent-signals", "books.station-minus-one"} },
 }
-t.assertEqual(#real:genreShelves(), 4, "the current catalog fills all four genre shelves")
-for _, shelf in ipairs(real:genreShelves()) do
-	local expected = genresByTitle[shelf.title]
+local genreShelves = real:genreShelves()
+t.assertEqual(#genreShelves, #categories, "the current catalog fills all four genre shelves")
+for index, category in ipairs(categories) do
+	local shelf, expected = genreShelves[index], category.games
+	t.assertEqual(shelf.title, category.title, "Discover displays the genre shelves in reading order")
 	local filtered = real:collection(shelf.title)
 	t.assertEqual(shelf.count, #expected, "the shelf counts every book for " .. shelf.title)
 	t.assertEqual(#filtered, #expected, "the heading opens every book for " .. shelf.title)

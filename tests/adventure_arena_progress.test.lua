@@ -6,6 +6,12 @@ local xml = require("ui.xml")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Controller = require("apps.adventure-arena.Controller")
+local button, callbacks = ns.Button, {}
+ns.Button = function(props)
+	local view = button(props)
+	callbacks[view] = props.action
+	return view
+end
 
 -- A scripted engine: "take egg" scores, everything else echoes.
 local score = 0
@@ -33,11 +39,11 @@ local controller = Controller.new {
 	haptics = { notification = function(kind) table.insert(haptics, kind) end },
 	after = function(seconds, callback) table.insert(timers, { seconds = seconds, callback = callback }) end,
 }
-local config, refs = xml.renderFile("apps/adventure-arena/views/layouts/Window.etlua", controller:libraryData(), ns)
-controller.navigation = refs.navigation
-t.expect(refs.tabs == nil and refs.nowReading == nil, "no bottom tabs or accessory")
+controller:home()
+local refs = controller.pages:refs("discover")
+local libraryScroll, firstShelf = refs.libraryScroll, refs.shelfScroll_1
 local catalogActions = controller.pages:data("discover").actions
-t.expect(refs.continueShelf == nil, "Home has no progress shelf")
+t.expect(refs.continueShelf == nil, "Home hides Continue Reading when there are no saves")
 catalogActions.openSettings()
 t.expect(controller.pages:refs("settings").noGamesInProgress ~= nil and controller.readingOptions.mounted[1].preview,
 	"Settings opens with a sample page")
@@ -45,6 +51,10 @@ controller.navigation:pop()
 
 -- Opening a book and reading one page puts it on every shelf.
 local zork = catalog:find("infocom.zork1")
+local continueId = "continueStory_" .. zork.id
+t.expect(controller.sessionController:show(zork.id), "an unplayed story opens")
+controller.sessionController:close()
+t.expect(controller.pages:refs("discover").continueShelf == nil, "opening without playing leaves the shelf hidden")
 t.expect(controller.sessionController:show(zork.id), "a story opens")
 controller.sessionController:submitCommand("take egg")
 local page = controller.sessionController.refs
@@ -59,6 +69,17 @@ t.assertEqual(#haptics, 1, "a command without points is silent")
 
 controller.navigation:pop()
 controller.sessionController:onDisappear()
+local home = controller.pages:refs("discover")
+t.assertEqual(home.continueHeading.text, "Continue Reading", "returning from the reader adds the shelf to Home")
+t.assertEqual(home[continueId .. "_status"].text, "Score 5 of 350 · 0 moves", "the card shows the saved status")
+t.assertEqual(home.continueCards.paddingHorizontal, home.shelfBooks_1.paddingHorizontal,
+	"Continue Reading and catalog cards share the same side insets")
+t.assertEqual(home.libraryScroll, libraryScroll, "updating saves retains the catalog scroll view")
+t.assertEqual(home.shelfScroll_1, firstShelf, "adding Continue Reading retains the existing shelves")
+t.expect(callbacks[home[continueId]](), "the Home card opens the saved story")
+t.assertEqual(controller.navigation.depth, 2, "the reader opens directly above Home")
+t.assertEqual(#controller.sessionModel.history, 2, "the Home card replays the saved commands")
+controller.sessionController:close()
 catalogActions.openSettings()
 local settingsRefs = controller.pages:refs("settings")
 t.assertEqual(settingsRefs.shelfRow_1.accessibilityLabel,
@@ -97,7 +118,24 @@ controller.navigation:pop()
 controller.sessionController:onDisappear()
 t.expect(actions.remove(zork.id), "a saved game can be removed from Settings")
 t.expect(controller.pages:refs("settings").noGamesInProgress ~= nil, "removing the game refreshes Settings")
+t.expect(controller.pages:refs("discover").continueShelf == nil, "removing the final save also hides the Home shelf")
 controller.navigation:pop()
 t.expect(controller.pages:refs("settings") == nil, "leaving Settings releases its mounted page")
+
+local planetfall = catalog:find("infocom.planetfall")
+saves.save({ games = {
+	{ gameId = zork.id, commands = { "look" }, updated = 1 },
+	{ gameId = planetfall.id, commands = { "inventory" }, updated = 2 },
+	{ gameId = "missing.story", commands = { "look" }, updated = 3 },
+} })
+local relaunched = Controller.new { ns = ns, documents = { saves = saves, reading = memoryStore() } }
+relaunched:home()
+local reopened = relaunched.pages:refs("discover")
+local stories = relaunched.pages:data("discover").inProgress
+t.assertEqual(#stories, 2, "Home restores saves for stories still in the catalog")
+t.assertEqual(stories[1].game.id, planetfall.id, "Home orders saves newest first")
+t.expect(reopened["continueStory_" .. planetfall.id] and reopened[continueId], "both saved stories have cards on launch")
+t.expect(reopened["continueStory_missing.story"] == nil, "missing catalog entries have no resume card")
+ns.Button = button
 
 os.exit(t.summary() and 0 or 1)

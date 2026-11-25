@@ -40,8 +40,8 @@ local pages = controller.pages
 
 -- A page is a request: the route answers the data, the actions are its methods.
 local discover = pages:data("discover")
-t.assertEqual(#discover.featured, 3, "Discover asks the catalog for its featured stories")
-t.expect(type(discover.actions.featured_1) == "function", "a row action named by the data is an action of the view")
+t.assertEqual(#discover.inProgress, 0, "Discover starts with no stories to resume")
+t.expect(type(discover.actions[discover.games[1].id]) == "function", "a row action named by the data is an action of the view")
 t.expect(type(discover.actions.openCreate) == "function", "a route method is an action of the view")
 t.assertEqual(discover.handlers, nil, "handlers are folded into actions")
 

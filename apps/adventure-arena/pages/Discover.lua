@@ -1,16 +1,17 @@
 local Adventures = require("apps.adventure-arena.models.Adventures")
+local SavedGames = require("apps.adventure-arena.models.SavedGames")
 
--- Discover supplies a button per game and shelf.
 return {
 	discover = {
 		view = "pages/Adventures",
 		data = function(self)
-			local games, featured = Adventures:all(), Adventures:featured()
+			local games, inProgress = Adventures:all(), SavedGames:inProgress()
 			local shelves, topRated = Adventures:genreShelves(), Adventures:topRated()
 			for _, shelf in ipairs(Adventures:shelves()) do table.insert(shelves, shelf) end
 			local handlers = {}
-			for index, game in ipairs(featured) do
-				handlers["featured_" .. index] = function() self:flow("Opening"):game(game.id) end
+			for _, entry in ipairs(inProgress) do
+				local id = entry.game.id
+				handlers["continueStory_" .. id] = function() return self:flow("Opening"):story(id) end
 			end
 			for _, game in ipairs(games) do
 				handlers[game.id] = function() self:flow("Opening"):game(game.id) end
@@ -21,7 +22,7 @@ return {
 			for index, entry in ipairs(topRated) do
 				handlers["chart_" .. index] = function() self:flow("Opening"):game(entry.game.id) end
 			end
-			return { games = games, featured = featured, shelves = shelves, topRated = topRated,
+			return { games = games, inProgress = inProgress, shelves = shelves, topRated = topRated,
 				handlers = handlers }
 		end,
 		openCreate = function(self) self.app.openCatalogPage("create") end,

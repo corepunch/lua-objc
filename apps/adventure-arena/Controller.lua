@@ -82,7 +82,7 @@ function Controller.new(options)
 				callback()
 			end)
 		end,
-		onProgress = function() self:refreshProgress() end,
+		onClose = function() self.pages:refresh() end,
 		renderTemplate = function(template, data)
 			return xml.renderFile(VIEWS .. template .. ".etlua", data, ns)
 		end,
@@ -150,13 +150,14 @@ function Controller:openCatalogPage(id)
 	self.pages:mount(id, refs.catalogContent)
 end
 
-function Controller:libraryData()
-	local library = self.pages:data("discover")
-	return { library = library, actions = library.actions }
-end
-
-function Controller:refreshProgress()
-	self.pages:refresh()
+function Controller:renderHome(template)
+	local page = self.pages:page("discover")
+	local config, refs = xml.renderFile(VIEWS .. template .. ".etlua", {
+		actions = self.pages:actions("discover", page),
+	}, self.ns)
+	self.navigation = refs.navigation
+	self.pages:mount("discover", refs.discoverContent)
+	return config
 end
 
 -- The reading options are shared with the in-book sheet: mounted once per
@@ -169,15 +170,12 @@ function Controller:mountReadingOptions(host)
 end
 
 function Controller:home()
-	local _, refs = xml.renderFile(VIEWS .. "layouts/Home.etlua", self:libraryData(), self.ns)
-	self.navigation = refs.navigation
+	self:renderHome("layouts/Home")
 	return self.navigation
 end
 
 function Controller:createWindow()
-	local config, refs = xml.renderFile(VIEWS .. "layouts/Window.etlua", self:libraryData(), self.ns)
-	self.navigation = refs.navigation
-	self.window = self.ns.Window(config)
+	self.window = self.ns.Window(self:renderHome("layouts/Window"))
 	-- Headless runs drive the tour themselves; a live launch shows it once.
 	if not rawget(_G, "__headless") and self.onboarding:needed() then
 		self.onboarding:open(self.window)

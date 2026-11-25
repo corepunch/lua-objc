@@ -39,7 +39,7 @@ function Controller.new(options)
 		reduceMotion = options.reduceMotion or function()
 			return type(options.ns.reduceMotion) == "function" and options.ns.reduceMotion() == true
 		end,
-		onProgress = options.onProgress or function() end,
+		onClose = options.onClose or function() end,
 		speech = nil,
 		dictationActive = false,
 		dictationPrefix = "",
@@ -107,7 +107,6 @@ function Controller:show(id, fresh)
 	self:applyReadingSettings()
 	-- A new story is read from its title page; a resumed one from its last line.
 	self:scrollPage(saved and "bottom" or "top", false)
-	self.onProgress()
 	return true
 end
 
@@ -366,7 +365,8 @@ function Controller:onDisappear()
 	self.refs = nil
 	self.page = nil
 	self.transcript, self.heading, self.reader, self.completions = nil, nil, nil, nil
-	self.onProgress()
+	-- The shelves are behind the reader. Ask for their updated saves on return.
+	self.onClose()
 end
 
 function Controller:submitCommand(command)
@@ -385,7 +385,6 @@ function Controller:submitCommand(command)
 	self:scrollToEntry(firstNew)
 	self:announceScore(self.model:presentation().scoreChange)
 	SavedGames:record(self.model:snapshot())
-	self.onProgress()
 	return ok, err
 end
 

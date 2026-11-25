@@ -12,15 +12,12 @@ t.assertEqual(#catalog:all(), 18, "AdventureArena catalog contains the complete 
 t.assertEqual(catalog:find("infocom.zork1").title,
 	"Zork I: The Great Underground Empire",
 	"catalog resolves games by stable id")
-t.assertEqual(#catalog:featured(), 3, "featured catalog is bounded")
 
 t.expect(catalog:all()[1].cover:find("apps/adventure-arena/assets/", 1, true) == 1,
 	"catalog records use bundled cover assets")
 t.expect(catalog:find("missing") == nil, "unknown game ids return nil")
 
 t.assertEqual(catalog:all()[1].id, "infocom.planetfall", "catalog is sorted by title")
-t.assertEqual(catalog:featured()[2].id, "books.blackwood-horror", "second featured game matches source")
-t.assertEqual(catalog:featured()[3].id, "infocom.spellbreaker", "third featured game matches source")
 local reviews = 0
 for _, game in ipairs(catalog:all()) do
 	reviews = reviews + #game.reviews
@@ -87,12 +84,10 @@ local first, second = catalog:all()[1], catalog:all()[2]
 Store.new { games = {} }
 local empty = Adventures
 t.assertEqual(#empty:all(), 0, "empty catalog stays empty")
-t.assertEqual(#empty:featured(), 0, "empty catalog has no featured records")
 t.assertEqual(empty:find(first.id), nil, "queries read the bound store, never the bundled catalog")
 Store.new { games = { second } }
 local one = Adventures
-t.assertEqual(#one:featured(), 1, "featured query handles a short catalog")
-t.assertEqual(one:featured()[1].id, second.id, "featured query uses the store's order")
+t.assertEqual(one:all()[1].id, second.id, "the catalog reads the injected store")
 local result = one:all()
 result[1] = nil
 t.assertEqual(#one:all(), 1, "editing a query result list leaves the catalog intact")

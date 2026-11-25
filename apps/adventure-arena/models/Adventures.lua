@@ -6,7 +6,8 @@ local Adventures = Model:extend("adventures")
 
 -- Shelves stay browsable at 20-30 titles: a carousel longer than this is a
 -- list nobody finishes, so the shelf heading opens the full collection.
-local LIBRARY = { featured = 3, shelf = 10, chart = 5, related = 6 }
+local LIBRARY = { shelf = 10, chart = 5, related = 6 }
+local DISCOVER_SHELF_ORDER = { "Read with Kids", "Detective", "Horror" }
 
 -- Symbols for the onboarding genre choices.
 local GENRE_SYMBOLS = {
@@ -27,10 +28,6 @@ function Adventures.genreSymbol(genre)
 	return GENRE_SYMBOLS[genre] or "book.fill"
 end
 
-function Adventures:featured()
-	return self:select(nil, {limit = LIBRARY.featured})
-end
-
 local function collectionOf(game)
 	return game.collection or game.genre or "Adventures"
 end
@@ -49,16 +46,29 @@ local function groupShelves(games, titlesOf)
 			if #shelf.games < LIBRARY.shelf then table.insert(shelf.games, game) end
 		end
 	end
-	return shelves
+	return shelves, byTitle
 end
 
 -- Shelves follow their first appearance in the catalog.
 function Adventures:shelves()
-	return groupShelves(self:all(), function(game) return { collectionOf(game) } end)
+	local shelves = groupShelves(self:all(), function(game) return { collectionOf(game) } end)
+	return shelves
 end
 
 function Adventures:genreShelves()
-	return groupShelves(self:all(), function(game) return game.categories or {} end)
+	local shelves, byTitle = groupShelves(self:all(), function(game) return game.categories or {} end)
+	local ordered = {}
+	for _, title in ipairs(DISCOVER_SHELF_ORDER) do
+		local shelf = byTitle[title]
+		if shelf then
+			table.insert(ordered, shelf)
+			byTitle[title] = nil
+		end
+	end
+	for _, shelf in ipairs(shelves) do
+		if byTitle[shelf.title] then table.insert(ordered, shelf) end
+	end
+	return ordered
 end
 
 function Adventures:collection(title)

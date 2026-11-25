@@ -37,6 +37,7 @@ xml.renderFile = function(path, data, ...)
 end
 local function click(ref)
 	local view = rendered.refs[ref] or (controller.sessionController.refs or {})[ref]
+		or controller.pages:refs("discover")[ref]
 	local callback = callbacks[view]
 	t.expect(type(callback) == "function", ref .. " has a bound action")
 	if callback then callback() end
@@ -59,12 +60,12 @@ controller = Controller.new {
 	haptics = { notification = function(kind) table.insert(haptics, kind) end },
 	after = function() end,
 }
-local config, refs = xml.renderFile("apps/adventure-arena/views/layouts/Window.etlua", controller:libraryData(), ns)
-controller.navigation = refs.navigation
+controller:home()
+local refs = controller.pages:refs("discover")
 t.assertEqual(topEdgeStyles[refs.libraryScroll], "soft", "the catalog scrolls beneath a soft top edge")
-t.assertEqual(topEdgeStyles[refs.featuredCarousel], nil, "the horizontal shelf leaves the page edge to its parent")
+t.assertEqual(topEdgeStyles[refs.shelfScroll_1], nil, "the horizontal shelf leaves the page edge to its parent")
 t.expect(refs.tabs == nil and refs.nowReading == nil, "the window has no tabs or floating reading accessory")
-t.expect(refs.continueShelf == nil, "Home dedicates its content to the catalog")
+t.expect(refs.continueShelf == nil and refs.featuredCarousel == nil, "a fresh Home opens on the catalog shelves")
 -- The transcript is retained while the command is edited.
 local function page() return controller.sessionController.transcript.refs end
 local function lastEntry()
@@ -78,11 +79,14 @@ for _, size in ipairs({ { 640, 720 }, { 420, 360 }, { 1000, 900 } }) do
 end
 local homeRendering = rendered
 local firstShelf = catalog:genreShelves()[1]
+local firstBook = firstShelf.games[1]
 t.expect(refs.genre_1 == nil and refs.seeAll_1 == nil, "shelves replace the genre tiles and See All buttons")
+t.assertEqual(refs.shelfHeading_1.accessibilityLabel, "See all Read with Kids", "the read-aloud shelf leads Discover")
 t.assertEqual(refs.shelfHeading_1.superview.paddingHorizontal, refs.shelfBooks_1.paddingHorizontal,
 	"the heading shares both side insets with its covers")
 click("shelfHeading_1")
 t.assertEqual(controller.navigation.depth, 2, "the heading opens the collection")
+t.assertEqual(rendered.data.title, "Read with Kids", "the collection uses the shelf's title")
 for index, game in ipairs(catalog:collection(firstShelf.title)) do
 	t.assertEqual(rendered.refs["collectionCover_" .. index].accessibilityLabel, game.title,
 		"the collection shows the matching book")
@@ -93,36 +97,36 @@ end
 t.expect(rendered.refs["collectionCover_" .. (firstShelf.count + 1)] == nil, "unrelated books are excluded")
 controller.navigation:pop()
 rendered = homeRendering
-click("featured_1")
-t.assertEqual(controller.navigation.depth, 2, "featured cover opens detail")
+click("cover_1_1")
+t.assertEqual(controller.navigation.depth, 2, "a shelf cover opens detail")
 t.assertEqual(topEdgeStyles[rendered.refs.detailScrollView], "soft", "the story cover meets a soft navigation edge")
 t.assertEqual(rendered.refs.detailScrollView.ignoresSafeArea, "top", "the artwork extends behind the native bar")
-t.assertEqual(rendered.refs.title.text, catalog:all()[1].title, "detail renders selected game")
+t.assertEqual(rendered.refs.title.text, firstBook.title, "detail renders selected game")
 t.assertEqual(rendered.refs.cover.clipsToBounds, true, "detail cover clips aspect-fill overflow before title")
 t.assertEqual(rendered.refs.play.title, "Start Reading", "an unplayed story offers Start Reading")
 t.expect(rendered.refs.play.image == nil, "Start Reading is text-only")
 local _, resumedRefs = renderFile("apps/adventure-arena/views/pages/Detail.etlua", {
-	game = catalog:all()[1], saved = { place = "Sanitarium Gate" },
+	game = firstBook, saved = { place = "Sanitarium Gate" },
 	actions = { play = function() end, restart = function() end },
 }, ns)
 t.assertEqual(resumedRefs.play.title, "Continue", "Continue omits the saved room name")
 t.expect(resumedRefs.play.image == nil, "Continue is text-only")
-t.assertEqual(resumedRefs.play.accessibilityLabel, "Continue " .. catalog:all()[1].title,
+t.assertEqual(resumedRefs.play.accessibilityLabel, "Continue " .. firstBook.title,
 	"Continue retains the story title for accessibility")
 t.expect(resumedRefs.restart ~= nil, "a saved story still offers Start over")
 local bookInfoSynopsis = rendered.refs.description.text
-t.assertEqual(bookInfoSynopsis, catalog:all()[1].description, "detail preserves full description")
+t.assertEqual(bookInfoSynopsis, firstBook.description, "detail preserves full description")
 local ancestor = rendered.refs.play.superview
 while ancestor and ancestor ~= rendered.refs.detailScrollView do ancestor = ancestor.superview end
 t.expect(ancestor == rendered.refs.detailScrollView, "Start Reading scrolls with book details")
 click("play")
 t.assertEqual(controller.navigation.depth, 3, "detail play opens session")
-t.assertEqual(heading().sessionTitle.text, catalog:all()[1].title, "the opening location heads the reader")
+t.assertEqual(heading().sessionTitle.text, firstBook.title, "the opening location heads the reader")
 t.expect(rendered.refs.bookCommands == nil and rendered.refs.readingActions == nil, "the reader has no ellipsis menu")
 t.expect(rendered.refs.back == nil and rendered.refs.sessionHeader == nil,
 	"the system navigation owns the back button; the screen draws no header")
 t.expect(page().bannerTitle_1 == nil and page().synopsis == nil, "the reader only uses what the game prints")
-t.assertEqual(page().sceneTitle_1.text, catalog:all()[1].title, "the opening scene is named")
+t.assertEqual(page().sceneTitle_1.text, firstBook.title, "the opening scene is named")
 t.assertEqual(page().paragraph_1_1.text, "Opening <&>", "transcript escapes XML characters")
 t.assertEqual(#page().paragraph_1_1.textContainer.exclusionPaths, 0, "the opening prose uses the full column")
 t.expect(reader().backdrop == nil, "the page is paper, not blurred cover art")
@@ -156,7 +160,7 @@ t.expect(not reader().scoreToast.hidden and reader().scoreToastText.text == "+5 
 controller.sessionController.toast = nil
 controller.sessionController:render()
 t.expect(reader().scoreToast.hidden, "and the capsule goes once the page is drawn without it")
-t.assertEqual(SavedGames:latest().gameId, catalog:all()[1].id, "a played story is saved")
+t.assertEqual(SavedGames:latest().gameId, firstBook.id, "a played story is saved")
 ns._textFieldTestInput(reader().input, "look")
 click("send")
 local lookIndex = lastEntry()
@@ -172,14 +176,14 @@ t.assertEqual(lastEntry(), transcript, "navigation preserves session state")
 t.assertEqual(controller.sessionController.transcript, nil, "closing releases the transcript template")
 controller.navigation:pop()
 controller.sessionModel.engineFactory = function() error('Missing <story> & "engine"', 0) end
-controller.sessionController:show(catalog:all()[1].id)
+controller.sessionController:show(firstBook.id)
 t.assertEqual(controller.navigation.depth, 2, "failed start opens template error state")
 click("back")
 t.assertEqual(controller.navigation.depth, 1, "error back restores catalog")
 t.assertEqual(controller.window, nil, "template components never create windows")
 
 local game = {}
-for key, value in pairs(catalog:all()[1]) do game[key] = value end
+for key, value in pairs(firstBook) do game[key] = value end
 game.title = 'An <Adventure> & "Quotes"'
 game.description = string.rep("A long description & more. ", 40)
 require("data.model").db.adventures = { game }
@@ -198,7 +202,7 @@ t.expect(not controller.sessionController:show("missing"), "missing session reco
 t.assertEqual(controller.navigation.depth, 1, "missing records do not disturb navigation")
 local data = controller.pages:data("discover")
 t.assertEqual(#data.games, 1, "controller queries its injected model catalog")
-t.assertEqual(data.featured[1].id, game.id, "controller uses the injected featured query")
+t.assertEqual(data.inProgress[1].game.title, game.title, "the saved story uses the current catalog title")
 t.assertEqual(game.stars, nil, "presentation does not decorate domain records with symbols")
 t.assertEqual(game.ratingLabel, nil, "presentation does not decorate domain records with formatting")
 controller:home()
@@ -208,7 +212,7 @@ t.assertEqual(rendered.refs.title.text, game.title, "catalog actions resolve sta
 local empty = Controller.new { games = {}, sessionModel = Session.new(), ns = ns,
 	documents = { saves = memoryStore(), reading = memoryStore() } }
 empty:home()
-t.expect(rendered.refs.emptyCatalog ~= nil, "empty model renders the etlua empty state")
+t.expect(empty.pages:refs("discover").emptyCatalog ~= nil, "empty model renders the etlua empty state")
 t.assertEqual(empty.navigation.depth, 1, "empty catalog retains navigation root")
 local _, systemRefs = renderFile("apps/adventure-arena/views/pages/Session.etlua", {
 	roomTitle = "Gate",

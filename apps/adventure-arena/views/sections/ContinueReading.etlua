@@ -1,0 +1,31 @@
+<VStack key="continueReading" spacing="10" alignment="leading" maxWidth="infinity">
+  <Resources>
+    <Number id="cardWidth" value="270" />
+    <Number id="cardInset" value="10" />
+    <Number id="cardRadius" value="14" />
+    <Number id="coverWidth" value="48" />
+    <Number id="coverHeight" value="72" />
+    <Number id="coverRadius" value="5" />
+  </Resources>
+  <Label id="continueHeading" text="Continue Reading" size="22" weight="bold" design="serif" paddingHorizontal="<%= sideInset %>" />
+  <ScrollView id="continueShelf" horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
+    <HStack id="continueCards" spacing="12" paddingHorizontal="<%= sideInset %>" alignment="center">
+      <% for _, entry in ipairs(entries) do
+        local game = entry.game
+        local id = "continueStory_" .. game.id %>
+      <Button id="<%= id %>" action="<%= id %>" style="plain" accessibilityLabel="Continue <%= game.title %>, <%= entry.place %>. <%= entry.status %>">
+        <HStack width="@cardWidth" padding="@cardInset" spacing="@cardInset" alignment="center" background="secondaryBackground" cornerRadius="@cardRadius">
+          <Image path="<%= game.cover %>" resizable="true" contentMode="fill" width="@coverWidth" height="@coverHeight" cornerRadius="@coverRadius" clipsToBounds="true" />
+          <VStack spacing="2" alignment="leading" flexGrow="1">
+            <Label text="<%= game.title %>" size="15" weight="semibold" lines="2" truncation="tail" />
+            <% if game.author and game.author ~= "" then %>
+            <Label text="<%= game.author %>" size="13" color="secondary" lines="1" truncation="tail" />
+            <% end %>
+            <Label id="<%= id %>_status" text="<%= entry.status %>" size="12" color="secondary" lines="1" truncation="tail" />
+          </VStack>
+        </HStack>
+      </Button>
+      <% end %>
+    </HStack>
+  </ScrollView>
+</VStack>
