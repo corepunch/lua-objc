@@ -126,7 +126,10 @@ function Controller:readerData()
 	data.dictation = { status = self.dictationStatus }
 	-- With speech available the microphone stands where Send would, until
 	-- there is something typed to send.
-	data.composer = { verbatim = self.ns.idiom == "phone", dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
+	-- Commands are the story's own words: no autocorrection or capitals on
+	-- any keyboard. On iPad a correction committed late could also replace
+	-- a command with its first word.
+	data.composer = { verbatim = true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
 	data.toast = self.toast
 	data.actions = self.actions
 	return data
