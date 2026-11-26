@@ -35,6 +35,8 @@ local GENRE_SYMBOLS = {
 	["Classic Adventure"] = "map.fill",
 	["Superhero RPG"] = "bolt.fill",
 	["Superhelden-Rollenspiel"] = "bolt.fill",
+	["Kinderabenteuer"] = "cloud.sun.fill",
+	["Science-Fiction"] = "sparkles",
 }
 
 function Adventures.genreSymbol(genre)

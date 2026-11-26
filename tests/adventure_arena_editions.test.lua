@@ -11,7 +11,7 @@ local Words = require("apps.adventure-arena.services.Words")
 local Languages = require("apps.adventure-arena.helpers.Languages")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 
-local englishId, germanId = "books.blackout-at-meridian", "books.blackout-at-meridian.de"
+local englishId, germanId = "books.en.blackout-at-meridian", "books.de.blackout-at-meridian"
 local reading, saves
 local documents = {
 	reading = { load = function() return reading end, save = function(value) reading = value end },
@@ -73,7 +73,7 @@ t.assertEqual(reading.language, "de", "Settings persists the chosen language")
 t.assertEqual(app.pages:refs("settings").language.selectedSegment, 2, "the native picker shows Deutsch")
 t.assertEqual(ReadingSettings.language(), "de", "the choice overrides the English device")
 t.assertEqual(Adventures:find(englishId), nil, "the English edition is hidden in the German library")
-t.assertEqual(#Adventures:all(), 1, "the German library lists the German editions only")
+t.assertEqual(#Adventures:all(), 3, "the German library lists the three German editions only")
 t.assertEqual(Adventures:all()[1].id, germanId)
 t.assertEqual(#SavedGames:inProgress(), 0, "English progress does not show in the German library")
 t.expect(contains(app.pages:refs("discover").libraryScroll, "Stromausfall in Meridian"), "Discover shows the German edition")
@@ -125,7 +125,7 @@ reading, saves = nil, nil
 app = launch({ "de-DE" })
 local discover = app.pages:refs("discover").libraryScroll
 t.assertEqual(ReadingSettings.language(), "de")
-t.assertEqual(#Adventures:all(), 1, "the German library lists the German edition only")
+t.assertEqual(#Adventures:all(), 3, "the German library lists the German editions only")
 t.expect(contains(discover, "Am besten bewertet"), "Discover speaks German")
 t.expect(contains(discover, "Arena-Originale"), "the German shelves carry German names")
 t.expect(not contains(discover, "Top Rated"), "no English is left on Discover")

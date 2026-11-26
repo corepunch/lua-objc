@@ -176,7 +176,7 @@ t.assertEqual(last.links[1][1].target, "staircase", "replayed prose carries its 
 
 -- ── The real story ──────────────────────────────────────────────────────
 Store.new()
-local game = Adventures:find("books.blackwood-horror")
+local game = Adventures:find("books.en.blackwood-horror")
 t.expect(game ~= nil, "the horror story is in the catalog")
 if game then
 	local story = Session.new { engineFactory = function(entry, seed) return ZILRuntime.new(entry, nil, seed) end }

@@ -11,10 +11,14 @@ end
 
 -- The German edition is its own book in its own catalog: another id, so
 -- its saves are its own, and the shelves of the German library only.
-local enEntry, deEntry = find(englishCatalog, "books.blackout-at-meridian"), find(germanCatalog, "books.blackout-at-meridian.de")
+local enEntry, deEntry = find(englishCatalog, "books.en.blackout-at-meridian"), find(germanCatalog, "books.de.blackout-at-meridian")
 t.expect(enEntry ~= nil and deEntry ~= nil, "Blackout at Meridian has an English and a German edition")
-t.expect(find(englishCatalog, "books.blackout-at-meridian.de") == nil, "the English catalog does not list the German edition")
-t.assertEqual(#germanCatalog, 1, "the German catalog holds the German edition of Blackout only")
+t.expect(find(englishCatalog, "books.de.blackout-at-meridian") == nil, "the English catalog does not list the German edition")
+t.assertEqual(#germanCatalog, 3, "the German catalog holds Blackout, Borrowed Tomorrows and the Museum")
+for _, entry in ipairs(germanCatalog) do
+	t.expect(entry.id:match("^books%.de%.") ~= nil, entry.id .. " is a German edition")
+	t.expect(find(englishCatalog, entry.id:gsub("^books%.de%.", "books.en.")) ~= nil, entry.id .. " has an English edition")
+end
 t.assertEqual(deEntry.cover, enEntry.cover, "both editions share one cover")
 t.assertEqual(deEntry.title, "Stromausfall in Meridian")
 t.assertEqual(deEntry.collection, "Arena-Originale")

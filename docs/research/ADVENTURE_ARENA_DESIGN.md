@@ -37,8 +37,8 @@ messaging app does. It now reads as a book:
   paths, not a side column. There are no drop caps.
   Artwork is discovered automatically at
   `apps/adventure-arena/assets/<game id with dots replaced by slashes>/images/<ROOM>.jpg`.
-  For example, `books.blackwood-horror` uses
-  `assets/books/blackwood-horror/images/SANITARIUM-GATE.jpg`.
+  For example, `books.en.blackwood-horror` uses
+  `assets/books/en/blackwood-horror/images/SANITARIUM-GATE.jpg`.
   Names are uppercase ZIL ROOM identifiers with hyphens (compiler underscores
   become hyphens), not the room's display title. No `ICON` field is needed;
   missing images leave ordinary full-width prose. The bundled horror artwork

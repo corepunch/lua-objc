@@ -32,9 +32,9 @@ local function invoke(args, reuse)
 	if not reuse then
 		assert(runtime.init(env, true))
 		env.require("zilscript")
-		package.zilpath = base .. "books/wondertown/?.zil;" .. base .. "?.zil"
+		package.zilpath = base .. "books/en/wondertown/?.zil;" .. base .. "?.zil"
 		env.PROSE_LINKS = true
-		assert(runtime.load_modules(env, { "books.wondertown.wondertown" }, { silent = true }))
+		assert(runtime.load_modules(env, { "books.en.wondertown.wondertown" }, { silent = true }))
 	end
 	local restored = not args.new_game
 	if restored and not reuse then assert(env.RESTORE(save)) end

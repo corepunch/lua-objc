@@ -21,7 +21,7 @@ local Plan = {}
 Plan.BOX = { width = 300, height = 252, scale = 3 }
 
 -- An all-ages Arena Original with a short opening and a few moves to show.
-local STORY = "books.wondertown"
+local STORY = "books.en.wondertown"
 
 -- One shot per guide page, named by its id. `commands` are played from the
 -- title page; `top` is where the band starts, in points from the top of

@@ -80,11 +80,11 @@ t.assertEqual(realShelves["The Zork Trilogy"], 3, "the Zork trilogy shares a she
 t.assertEqual(realShelves["Infocom Classics"], 3, "classic Infocom titles share a shelf")
 t.assertEqual(realShelves["Arena Originals"], 13, "studio titles share a shelf")
 local categories = {
-	{ title = "Read with Kids", games = {"books.wondertown", "books.pocket-weather", "books.bell-grew-leaves", "books.borrowed-tomorrows"} },
-	{ title = "Detective", games = {"books.limehouse-killings", "books.last-broadcast", "books.the-midnight-ledger"} },
-	{ title = "Horror", games = {"books.blackwood-horror", "infocom.lurkinghorror", "books.silent-vector"} },
-	{ title = "Sci-Fi", games = {"infocom.planetfall", "books.silent-vector", "books.museum-unsent-signals", "books.station-minus-one"} },
-	{ title = "Superheroes", games = {"books.blackout-at-meridian"} },
+	{ title = "Read with Kids", games = {"books.en.wondertown", "books.en.pocket-weather", "books.en.bell-grew-leaves", "books.en.borrowed-tomorrows"} },
+	{ title = "Detective", games = {"books.en.limehouse-killings", "books.en.last-broadcast", "books.en.the-midnight-ledger"} },
+	{ title = "Horror", games = {"books.en.blackwood-horror", "infocom.lurkinghorror", "books.en.silent-vector"} },
+	{ title = "Sci-Fi", games = {"infocom.planetfall", "books.en.silent-vector", "books.en.museum-unsent-signals", "books.en.station-minus-one"} },
+	{ title = "Superheroes", games = {"books.en.blackout-at-meridian"} },
 }
 local genreShelves = real:genreShelves()
 t.assertEqual(#genreShelves, #categories, "the current catalog fills all five genre shelves")
