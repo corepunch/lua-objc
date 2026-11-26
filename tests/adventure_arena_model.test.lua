@@ -8,7 +8,7 @@ local Store = require("apps.adventure-arena.Store")
 Store.new()
 local catalog = Adventures
 
-t.assertEqual(#catalog:all(), 18, "AdventureArena catalog contains the complete Lua catalog")
+t.assertEqual(#catalog:all(), 19, "AdventureArena catalog contains the complete Lua catalog")
 t.assertEqual(catalog:find("infocom.zork1").title,
 	"Zork I: The Great Underground Empire",
 	"catalog resolves games by stable id")

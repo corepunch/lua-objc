@@ -11,7 +11,7 @@ for _, book in ipairs(catalog) do
 	t.assertEqual(next(book.reviews), nil, "no unsourced review text: " .. book.id)
 	t.expect(book.reviewCount >= #book.reviews, "count covers displayed reviews: " .. book.id)
 end
-t.assertEqual(originals, 12, "all twelve Arena Originals are audited")
+t.assertEqual(originals, 13, "all thirteen Arena Originals are audited")
 
 local function render(path, game)
 	return xml.describeFile("apps/adventure-arena/views/" .. path .. ".etlua",
