@@ -15,6 +15,7 @@ function M.run(ns)
 			draft = hasText and "look north" or "", dictation = { status = "" },
 			composer = { dictate = not hasText, canSend = hasText },
 			actions = actions,
+			text = require("apps.adventure-arena.helpers.ReaderText").strings("en"),
 		}, ns))
 	end
 	local count = 0

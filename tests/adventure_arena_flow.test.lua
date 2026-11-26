@@ -7,6 +7,7 @@ local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
+local ReaderText = require("apps.adventure-arena.helpers.ReaderText")
 local catalog = Adventures
 local Controller = require("apps.adventure-arena.Controller")
 local renderFile, button = xml.renderFile, ns.Button
@@ -231,16 +232,16 @@ local _, systemRefs = renderFile("apps/adventure-arena/views/pages/Session.etlua
 }, ns)
 t.expect(systemRefs.back == nil, "the navigation bar owns the back button")
 local _, titleRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
-	roomTitle = "Kitchen", score = 0, maxScore = 0,
+	roomTitle = "Kitchen", progress = ReaderText.progress(ReaderText.strings("en"), nil, 0, 0, 0),
 }, ns)
 t.assertEqual(titleRefs.sessionTitle.text, "Kitchen", "the running head names the room")
 t.assertEqual(titleRefs.sessionScore.text, "Score 0", "the running head shows score on its second line")
 local _, movesRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
-	roomTitle = "Dispatch", score = 0, maxScore = 0, moves = 7, statusLine = "moves",
+	roomTitle = "Dispatch", progress = ReaderText.progress(ReaderText.strings("en"), "moves", 0, 0, 7),
 }, ns)
 t.assertEqual(movesRefs.sessionScore.text, "7 moves", "a story without points shows its moves, not Score 0")
 local _, oneRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
-	roomTitle = "Dispatch", score = 0, maxScore = 0, moves = 1, statusLine = "moves",
+	roomTitle = "Dispatch", progress = ReaderText.progress(ReaderText.strings("en"), "moves", 0, 0, 1),
 }, ns)
 t.assertEqual(oneRefs.sessionScore.text, "1 move", "one move is singular")
 ns.Button, ns._addDrag, xml.renderFile = button, addDrag, renderFile

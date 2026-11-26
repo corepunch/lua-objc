@@ -1,16 +1,9 @@
 <%
   -- The running head shares the page’s appearance, including in Night mode.
-  -- A story that counts moves instead of points (statusLine "moves") shows
-  -- its moves; the others show only the score.
-  local scoreLabel
-  if statusLine == "moves" then
-    scoreLabel = (moves or 0) == 1 and "1 move" or string.format("%d moves", moves or 0)
-  else
-    scoreLabel = maxScore > 0 and string.format("Score %d of %d", score, maxScore)
-      or string.format("Score %d", score)
-  end
+  -- Its second line (the story's moves or its score, in the story's language)
+  -- arrives ready from the controller.
 %>
 <VStack spacing="1" alignment="center" width="230" colorScheme="<%= colorScheme %>">
   <Label id="sessionTitle" text="<%= roomTitle %>" size="15" design="<%= font %>" weight="semibold" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />
-  <Label id="sessionScore" text="<%= scoreLabel %>" size="11" design="<%= font %>" color="secondary" monospacedDigit="true" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />
+  <Label id="sessionScore" text="<%= progress %>" size="11" design="<%= font %>" color="secondary" monospacedDigit="true" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />
 </VStack>

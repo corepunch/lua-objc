@@ -78,13 +78,13 @@ local realShelves = {}
 for _, shelf in ipairs(real:shelves()) do realShelves[shelf.title] = shelf.count end
 t.assertEqual(realShelves["The Zork Trilogy"], 3, "the Zork trilogy shares a shelf")
 t.assertEqual(realShelves["Infocom Classics"], 3, "classic Infocom titles share a shelf")
-t.assertEqual(realShelves["Arena Originals"], 13, "studio titles share a shelf")
+t.assertEqual(realShelves["Arena Originals"], 14, "studio titles share a shelf")
 local categories = {
 	{ title = "Read with Kids", games = {"books.wondertown", "books.pocket-weather", "books.bell-grew-leaves", "books.borrowed-tomorrows"} },
 	{ title = "Detective", games = {"books.limehouse-killings", "books.last-broadcast", "books.the-midnight-ledger"} },
 	{ title = "Horror", games = {"books.blackwood-horror", "infocom.lurkinghorror", "books.silent-vector"} },
 	{ title = "Sci-Fi", games = {"infocom.planetfall", "books.silent-vector", "books.museum-unsent-signals", "books.station-minus-one"} },
-	{ title = "Superheroes", games = {"books.blackout-at-meridian"} },
+	{ title = "Superheroes", games = {"books.blackout-at-meridian", "books.blackout-at-meridian-de"} },
 }
 local genreShelves = real:genreShelves()
 t.assertEqual(#genreShelves, #categories, "the current catalog fills all five genre shelves")
