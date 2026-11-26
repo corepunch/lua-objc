@@ -69,11 +69,9 @@ end
 
 function ZILRuntime.new(game, readFile, seed)
 	local sourceBase = game.id:gsub("%.", "/")
-	local base = game.base or sourceBase
 	local paths = {
 		lua = "apps/adventure-arena/zilscript/?.lua;apps/adventure-arena/zilscript/?/init.lua;" .. package.path,
 		zil = "apps/adventure-arena/zilscript/" .. sourceBase .. "/?.zil;"
-			.. "apps/adventure-arena/zilscript/" .. base .. "/?.zil;"
 			.. "apps/adventure-arena/zilscript/?.zil;apps/adventure-arena/zilscript/?/?.zil",
 	}
 	return withContext(readFile, paths, function()
@@ -96,9 +94,7 @@ function ZILRuntime.new(game, readFile, seed)
 		-- The bootstrap derives its own default search path from package.path;
 		-- restore the game's directory afterward so INSERT-FILE resolves relative
 		-- to the selected catalog entry on both disk and streamed iOS files.
-		package.zilpath = "apps/adventure-arena/zilscript/" .. sourceBase .. "/?.zil;"
-			.. "apps/adventure-arena/zilscript/" .. base .. "/?.zil;"
-			.. "apps/adventure-arena/zilscript/?.zil;apps/adventure-arena/zilscript/?/?.zil"
+		package.zilpath = paths.zil
 
 		local root = "apps/adventure-arena/zilscript/" .. sourceBase
 		local start = root .. "/" .. game.startFile

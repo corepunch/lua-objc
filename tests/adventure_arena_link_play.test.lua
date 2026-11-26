@@ -32,7 +32,7 @@ local function invoke(args, reuse)
 	if not reuse then
 		assert(runtime.init(env, true))
 		env.require("zilscript")
-		package.zilpath = base .. "books/wondertown/?.zil;" .. base .. "infocom/zork1/?.zil;" .. base .. "?.zil"
+		package.zilpath = base .. "books/wondertown/?.zil;" .. base .. "?.zil"
 		env.PROSE_LINKS = true
 		assert(runtime.load_modules(env, { "books.wondertown.wondertown" }, { silent = true }))
 	end
