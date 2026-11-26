@@ -7,12 +7,12 @@ local Runtime = require("apps.adventure-arena.services.ZILRuntime")
 
 Store.new()
 local titles = {
-	["books.bell-grew-leaves"] = "The Bell That Grew Leaves",
-	["books.borrowed-tomorrows"] = "The Library of Borrowed Tomorrows",
-	["books.house-of-the-ebb"] = "House of the Ebb",
-	["books.museum-unsent-signals"] = "The Museum of Unsent Signals",
-	["books.station-minus-one"] = "The Station at Minus One",
-	["books.the-midnight-ledger"] = "The Midnight Ledger",
+	["books.en.bell-grew-leaves"] = "The Bell That Grew Leaves",
+	["books.en.borrowed-tomorrows"] = "The Library of Borrowed Tomorrows",
+	["books.en.house-of-the-ebb"] = "House of the Ebb",
+	["books.en.museum-unsent-signals"] = "The Museum of Unsent Signals",
+	["books.en.station-minus-one"] = "The Station at Minus One",
+	["books.en.the-midnight-ledger"] = "The Midnight Ledger",
 }
 for id, title in pairs(titles) do
 	local book = Adventures:find(id)

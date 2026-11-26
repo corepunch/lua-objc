@@ -14,8 +14,8 @@ local function resources() return English end
 local Store = require("apps.adventure-arena.Store")
 Store.new()
 local catalog = Adventures
-local toymaker = catalog:find("books.wondertown")
-local sanitarium = catalog:find("books.blackwood-horror")
+local toymaker = catalog:find("books.en.wondertown")
+local sanitarium = catalog:find("books.en.blackwood-horror")
 t.expect(toymaker and sanitarium, "the catalog still has the all-ages and horror titles")
 
 local function source(path)

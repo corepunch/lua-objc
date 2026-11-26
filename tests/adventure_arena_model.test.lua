@@ -22,15 +22,15 @@ local reviews = 0
 for _, game in ipairs(catalog:all()) do
 	reviews = reviews + #game.reviews
 	t.expect(#game.description > 0, "source description for " .. game.id)
-	local storyFolder = game.id:gsub("%.", "/", 1)
+	local storyFolder = game.id:gsub("%.", "/")
 	local manifest <close> = assert(io.open("apps/adventure-arena/zilscript/" .. storyFolder .. "/game.json", "r"))
 	local story = jsonParse(manifest:read("*a"))
 	t.assertEqual(game.shortDescription, story.shortDescription, "card summary matches the story manifest for " .. game.id)
 	t.assertEqual(game.description, story.description, "synopsis matches the story manifest for " .. game.id)
-	t.assertEqual(game.language, story.language or "en", "the catalog language matches the story manifest for " .. game.id)
+	t.assertEqual(game.language, game.id:match("^books%.(%a%a)%.") or "en", "the catalog language is the edition folder of " .. game.id)
 end
 t.assertEqual(reviews, 0, "bundled catalog contains no unsourced reader feedback")
-t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery")
+t.assertEqual(catalog:find("books.en.limehouse-killings").genre, "Victorian Mystery")
 for _, game in ipairs(catalog:all()) do
 	t.expect(type(game.collection) == "string", "every game belongs to a library shelf: " .. game.id)
 	t.expect(game.tint == nil and game.tintDark == nil and game.ink == nil and game.titleFont == nil,

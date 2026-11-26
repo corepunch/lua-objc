@@ -17,7 +17,7 @@ local function readFile(path)
 	return body
 end
 
-local ok, session = pcall(function() return ZILRuntime.new(catalog:find("books.wondertown"), readFile) end)
+local ok, session = pcall(function() return ZILRuntime.new(catalog:find("books.en.wondertown"), readFile) end)
 t.expect(ok, "ZIL runtime loads the bundled Wondertown source")
 t.expect(reads > 0, "runtime uses the injected file reader without a UI platform")
 if ok then
@@ -50,7 +50,7 @@ t.assertEqual(io.open, originalOpen, "runtime restores host file IO")
 t.assertEqual(package.path, originalPath, "runtime restores Lua import paths")
 t.assertEqual(package.zilpath, originalZilPath, "runtime restores ZIL import paths")
 t.assertThrows(function()
-	ZILRuntime.new(catalog:find("books.wondertown"), function() error("fixture read failure") end)
+	ZILRuntime.new(catalog:find("books.en.wondertown"), function() error("fixture read failure") end)
 end, "stream read failures propagate")
 t.assertEqual(io.open, originalOpen, "failed streamed load restores file IO")
 t.assertEqual(package.path, originalPath, "failed streamed load restores Lua paths")

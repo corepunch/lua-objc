@@ -24,7 +24,7 @@ return {
 		cover = "apps/adventure-arena/assets/planetfall.jpg",
 	},
 	{
-		id = "books.blackwood-horror",
+		id = "books.en.blackwood-horror",
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		title = "Sanitarium",
@@ -57,7 +57,7 @@ return {
 		cover = "apps/adventure-arena/assets/spellbreaker.jpg",
 	},
 	{
-		id = "books.wondertown",
+		id = "books.en.wondertown",
 		collection = "Arena Originals",
 		difficulty = "Introductory",
 		title = "The Last Toymaker's Apprentice",
@@ -74,7 +74,7 @@ return {
 		cover = "apps/adventure-arena/assets/wondertown.jpg",
 	},
 	{
-		id = "books.limehouse-killings",
+		id = "books.en.limehouse-killings",
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		title = "The Limehouse Killings",
@@ -157,7 +157,7 @@ return {
 	},
 
 	{
-		id = "books.pocket-weather",
+		id = "books.en.pocket-weather",
 		statusLine = "moves",
 		collection = "Arena Originals",
 		difficulty = "Introductory",
@@ -175,7 +175,7 @@ return {
 		reviews = {},
 	},
 	{
-		id = "books.silent-vector",
+		id = "books.en.silent-vector",
 		statusLine = "moves",
 		collection = "Arena Originals",
 		difficulty = "Advanced",
@@ -193,7 +193,7 @@ return {
 		reviews = {},
 	},
 	{
-		id = "books.last-broadcast",
+		id = "books.en.last-broadcast",
 		statusLine = "moves",
 		collection = "Arena Originals",
 		difficulty = "Standard",
@@ -212,7 +212,7 @@ return {
 	},
 
 	{
-		id = "books.bell-grew-leaves",
+		id = "books.en.bell-grew-leaves",
 		collection = "Arena Originals",
 		difficulty = "Introductory",
 		statusLine = "moves",
@@ -227,10 +227,10 @@ return {
 		reviews = {},
 		genre = "Children's Adventure",
 		categories = { "Read with Kids" },
-		cover = "apps/adventure-arena/zilscript/books/bell-grew-leaves/cover.jpg",
+		cover = "apps/adventure-arena/zilscript/books/en/bell-grew-leaves/cover.jpg",
 	},
 	{
-		id = "books.borrowed-tomorrows",
+		id = "books.en.borrowed-tomorrows",
 		collection = "Arena Originals",
 		difficulty = "Introductory",
 		statusLine = "moves",
@@ -245,10 +245,10 @@ return {
 		reviews = {},
 		genre = "Children's Adventure",
 		categories = { "Read with Kids" },
-		cover = "apps/adventure-arena/zilscript/books/borrowed-tomorrows/cover.jpg",
+		cover = "apps/adventure-arena/zilscript/books/en/borrowed-tomorrows/cover.jpg",
 	},
 	{
-		id = "books.house-of-the-ebb",
+		id = "books.en.house-of-the-ebb",
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		statusLine = "moves",
@@ -262,10 +262,10 @@ return {
 		startFile = "house-of-the-ebb.zil",
 		reviews = {},
 		genre = "Supernatural Suspense",
-		cover = "apps/adventure-arena/zilscript/books/house-of-the-ebb/cover.jpg",
+		cover = "apps/adventure-arena/zilscript/books/en/house-of-the-ebb/cover.jpg",
 	},
 	{
-		id = "books.museum-unsent-signals",
+		id = "books.en.museum-unsent-signals",
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		statusLine = "moves",
@@ -280,10 +280,10 @@ return {
 		reviews = {},
 		genre = "Science Fiction",
 		categories = { "Sci-Fi" },
-		cover = "apps/adventure-arena/zilscript/books/museum-unsent-signals/cover.jpg",
+		cover = "apps/adventure-arena/zilscript/books/en/museum-unsent-signals/cover.jpg",
 	},
 	{
-		id = "books.station-minus-one",
+		id = "books.en.station-minus-one",
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		statusLine = "moves",
@@ -298,10 +298,10 @@ return {
 		reviews = {},
 		genre = "Science Fiction",
 		categories = { "Sci-Fi" },
-		cover = "apps/adventure-arena/zilscript/books/station-minus-one/cover.jpg",
+		cover = "apps/adventure-arena/zilscript/books/en/station-minus-one/cover.jpg",
 	},
 	{
-		id = "books.the-midnight-ledger",
+		id = "books.en.the-midnight-ledger",
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		statusLine = "moves",
@@ -316,10 +316,10 @@ return {
 		reviews = {},
 		genre = "Historical Detective Mystery",
 		categories = { "Detective" },
-		cover = "apps/adventure-arena/zilscript/books/the-midnight-ledger/cover.jpg",
+		cover = "apps/adventure-arena/zilscript/books/en/the-midnight-ledger/cover.jpg",
 	},
 	{
-		id = "books.blackout-at-meridian",
+		id = "books.en.blackout-at-meridian",
 		collection = "Arena Originals",
 		difficulty = "Standard",
 		statusLine = "moves",
@@ -335,6 +335,6 @@ return {
 		reviews = {},
 		genre = "Superhero RPG",
 		categories = { "Superheroes" },
-		cover = "apps/adventure-arena/assets/blackout-at-meridian.png",
+		cover = "apps/adventure-arena/zilscript/books/en/blackout-at-meridian/cover.jpg",
 	},
 }

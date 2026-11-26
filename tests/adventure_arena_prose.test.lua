@@ -5,9 +5,9 @@ local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session
 local catalog = require("apps.adventure-arena.catalog.en")
 
 local originals = {
-	["books.blackwood-horror"] = true, ["books.wondertown"] = true,
-	["books.limehouse-killings"] = true, ["books.pocket-weather"] = true,
-	["books.silent-vector"] = true, ["books.last-broadcast"] = true,
+	["books.en.blackwood-horror"] = true, ["books.en.wondertown"] = true,
+	["books.en.limehouse-killings"] = true, ["books.en.pocket-weather"] = true,
+	["books.en.silent-vector"] = true, ["books.en.last-broadcast"] = true,
 }
 local books, reads = 0, 0
 local originalOpen = io.open
@@ -38,12 +38,12 @@ for _, book in ipairs(catalog) do
 			t.assertEqual(banner.title, book.title, "the story's printed title matches the catalog")
 			t.assertEqual(banner.lines[1], book.author .. ", " .. book.year, "credits include the story's studio and year")
 			t.assertEqual(banner.lines[2], "Release 1", "release appears after the credit")
-			if book.id == "books.blackwood-horror" then
+			if book.id == "books.en.blackwood-horror" then
 				t.expect(narration.paragraphs[1]:find("For three weeks the same dream", 1, true) == 1,
 					"Sanitarium keeps its dream prologue directly under the credits")
 				t.assertEqual(session.entries[3].title, "Sanitarium Gate", "Sanitarium opens its first room after the prologue")
 			end
-			if book.id == "books.silent-vector" then
+			if book.id == "books.en.silent-vector" then
 				t.assertEqual(session.entries[3].title, "Restraint Cradle", "the first room follows the game's opening narration")
 			end
 			t.assertEqual(session.engine.roomIcon, nil, "the engine has no room artwork API")

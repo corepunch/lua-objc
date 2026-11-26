@@ -4,9 +4,9 @@ local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session
 local Runtime = require("apps.adventure-arena.services.ZILRuntime")
 local catalog = require("apps.adventure-arena.catalog.en")
 local titles = {
-	["books.pocket-weather"] = "The Pocket Weather Bureau",
-	["books.silent-vector"] = "The Silent Vector",
-	["books.last-broadcast"] = "The Last Broadcast",
+	["books.en.pocket-weather"] = "The Pocket Weather Bureau",
+	["books.en.silent-vector"] = "The Silent Vector",
+	["books.en.last-broadcast"] = "The Last Broadcast",
 }
 local function engineFactory(book, seed) return Runtime.new(book, nil, seed) end
 local count = 0

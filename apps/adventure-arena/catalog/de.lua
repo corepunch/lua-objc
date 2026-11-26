@@ -1,10 +1,10 @@
 -- The German library: the German editions only. An edition is its own book
--- with its own id (the engine keeps it in the book's `de` folder), so its
+-- with its own id (the engine keeps it in books/de/<book>), so its
 -- saves never mix with the English one's. Every entry is shown only when the
 -- app speaks German (Store.lua).
 return {
 	{
-		id = "books.blackout-at-meridian.de",
+		id = "books.de.blackout-at-meridian",
 		collection = "Arena-Originale",
 		difficulty = "Standard",
 		statusLine = "moves",
@@ -20,6 +20,42 @@ return {
 		reviews = {},
 		genre = "Superhelden-Rollenspiel",
 		categories = { "Superhelden" },
-		cover = "apps/adventure-arena/assets/blackout-at-meridian.png",
+		cover = "apps/adventure-arena/zilscript/books/en/blackout-at-meridian/cover.jpg",
+	},
+	{
+		id = "books.de.borrowed-tomorrows",
+		collection = "Arena-Originale",
+		difficulty = "Introductory",
+		statusLine = "moves",
+		title = "Die Bibliothek der geliehenen Morgen",
+		shortDescription = "Hier wird Sonnenschein tageweise verliehen. Heute fehlt ein Tag.",
+		description = "Die Stadt hat sich den Sonnenschein von morgen geliehen, doch nur ein einziges Blatt ist übrig. Finde heraus, was eine gewöhnliche Ausleihe kostet, falte das Blatt auseinander und bring das Morgen zu allen auf dem Marktplatz zurück.\n\nEin fantastisches Abenteuer ab acht Jahren. Du hast alle Zeit der Welt und kannst deine Entscheidungen rückgängig machen.",
+		author = "Studio Null",
+		year = 2026,
+		rating = 0,
+		reviewCount = 0,
+		startFile = "borrowed-tomorrows.zil",
+		reviews = {},
+		genre = "Kinderabenteuer",
+		categories = { "Zum Vorlesen" },
+		cover = "apps/adventure-arena/zilscript/books/en/borrowed-tomorrows/cover.jpg",
+	},
+	{
+		id = "books.de.museum-unsent-signals",
+		collection = "Arena-Originale",
+		difficulty = "Standard",
+		statusLine = "moves",
+		title = "Das Museum der ungesendeten Signale",
+		shortDescription = "Hör dir die letzte Aufnahme an, bevor das Museum für immer schließt.",
+		description = "Unter der Kuppel bewahrt die Stadt Nachrichten auf, die nie abgeschickt wurden. In der letzten Nacht des Museums ist eine Holzspule aus ihrer Vitrine genommen worden. Der Katalog führt sie als leer. Finde heraus, wem die Aufnahme galt, und entscheide, was das Museum nach seiner Schließung bewahren soll.",
+		author = "Studio Null",
+		year = 2026,
+		rating = 0,
+		reviewCount = 0,
+		startFile = "museum-unsent-signals.zil",
+		reviews = {},
+		genre = "Science-Fiction",
+		categories = { "Science-Fiction" },
+		cover = "apps/adventure-arena/zilscript/books/en/museum-unsent-signals/cover.jpg",
 	},
 }

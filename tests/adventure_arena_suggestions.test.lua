@@ -41,7 +41,7 @@ t.assertEqual(titles("l"), "", "finished session is quiet")
 local Runtime = require("apps.adventure-arena.services.ZILRuntime")
 require("apps.adventure-arena.Store").new()
 local blackwood = Session.new { engineFactory = function(game, seed) return Runtime.new(game, nil, seed) end }
-t.expect(blackwood:start(require("apps.adventure-arena.models.Adventures"):find("books.blackwood-horror")), "Blackwood opens")
+t.expect(blackwood:start(require("apps.adventure-arena.models.Adventures"):find("books.en.blackwood-horror")), "Blackwood opens")
 t.assertEqual(blackwood:suggestions("tak")[1].text, "take ", "typing tak completes the verb at the Sanitarium Gate")
 t.assertEqual(#blackwood:suggestions("take "), 0, "the gate has no eligible objects to take")
 t.assertEqual(blackwood:suggestions("read p")[1].text, "read plaque ", "actual gate plaque is readable")
