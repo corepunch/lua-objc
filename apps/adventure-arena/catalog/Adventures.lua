@@ -334,7 +334,7 @@ return {
 		ruleset = "superhero-percentile",
 		reviews = {},
 		genre = "Superhero RPG",
-		categories = { "Superheroes", "RPG" },
+		categories = { "Superheroes" },
 		cover = "apps/adventure-arena/assets/blackout-at-meridian.png",
 	},
 }
