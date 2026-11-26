@@ -1,7 +1,14 @@
 <%
   -- The running head shares the page’s appearance, including in Night mode.
-  local scoreLabel = maxScore > 0 and string.format("Score %d of %d", score, maxScore)
-    or string.format("Score %d", score)
+  -- A story that counts moves instead of points (statusLine "moves") shows
+  -- its moves; the others show only the score.
+  local scoreLabel
+  if statusLine == "moves" then
+    scoreLabel = (moves or 0) == 1 and "1 move" or string.format("%d moves", moves or 0)
+  else
+    scoreLabel = maxScore > 0 and string.format("Score %d of %d", score, maxScore)
+      or string.format("Score %d", score)
+  end
 %>
 <VStack spacing="1" alignment="center" width="230" colorScheme="<%= colorScheme %>">
   <Label id="sessionTitle" text="<%= roomTitle %>" size="15" design="<%= font %>" weight="semibold" lines="1" truncation="tail" alignment="center" maxWidth="infinity" />

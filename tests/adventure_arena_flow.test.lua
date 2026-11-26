@@ -152,6 +152,14 @@ t.assertEqual(page().command_2.text, "inventory", "the command appears on the pa
 t.assertEqual(page().paragraph_3_1.text, 'Response <&> "inventory"', "send updates transcript")
 t.assertEqual(reader().input.text, "", "send clears input")
 t.assertEqual(heading().sessionScore.text, "Score 0", "the clock never appears alongside the score")
+-- A story that counts moves (statusLine "moves") shows them instead of Score 0.
+local session, scored = controller.sessionController, controller.sessionController.game
+session.game = { id = scored.id, statusLine = "moves" }
+session:render()
+t.expect(heading().sessionScore.text:match("^%d+ moves?$") ~= nil, "a story without points shows its moves in the running head")
+session.game = scored
+session:render()
+t.assertEqual(heading().sessionScore.text, "Score 0", "a scored story shows its score")
 -- The score capsule is part of the page's state: shown with its text, then
 -- drawn away again.
 controller.sessionController:announceScore(5)
@@ -225,6 +233,14 @@ local _, titleRefs = renderFile("apps/adventure-arena/views/sections/SessionTitl
 }, ns)
 t.assertEqual(titleRefs.sessionTitle.text, "Kitchen", "the running head names the room")
 t.assertEqual(titleRefs.sessionScore.text, "Score 0", "the running head shows score on its second line")
+local _, movesRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
+	roomTitle = "Dispatch", score = 0, maxScore = 0, moves = 7, statusLine = "moves",
+}, ns)
+t.assertEqual(movesRefs.sessionScore.text, "7 moves", "a story without points shows its moves, not Score 0")
+local _, oneRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
+	roomTitle = "Dispatch", score = 0, maxScore = 0, moves = 1, statusLine = "moves",
+}, ns)
+t.assertEqual(oneRefs.sessionScore.text, "1 move", "one move is singular")
 ns.Button, ns._addDrag, xml.renderFile = button, addDrag, renderFile
 ns.ScrollView = scrollView
 
