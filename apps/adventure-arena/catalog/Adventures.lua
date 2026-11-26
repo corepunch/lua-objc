@@ -337,4 +337,26 @@ return {
 		categories = { "Superheroes" },
 		cover = "apps/adventure-arena/assets/blackout-at-meridian.png",
 	},
+	{
+		id = "books.blackout-at-meridian-de",
+		-- The story's language: the reader's menus, completions and status
+		-- line speak it (zilscript/reader/Language.lua).
+		language = "de",
+		collection = "Arena Originals",
+		difficulty = "Standard",
+		statusLine = "moves",
+		title = "Stromausfall in Meridian",
+		shortDescription = "Erschaffe einen Helden und rette eine Stadt im Dunkeln.",
+		description = "Gib deinem Helden einen Namen und wähle eines von drei Superhelden-Profilen: Fels, Blitz oder Luchs. Rette die Fahrgäste einer festgefahrenen Straßenbahn und bring das Stromrelais der Stadt zurück, mit Würfelproben, Heldenwerten und kluger Einteilung deiner Kräfte. Ein Rollenspiel-Abenteuer nach Art der Tischrollenspiele, auf Deutsch.",
+		author = "AdventureArena",
+		year = 2026,
+		rating = 0,
+		reviewCount = 0,
+		startFile = "blackout-at-meridian-de.zil",
+		ruleset = "superhero-percentile",
+		reviews = {},
+		genre = "Superhelden-Rollenspiel",
+		categories = { "Superheroes" },
+		cover = "apps/adventure-arena/assets/blackout-at-meridian.png",
+	},
 }

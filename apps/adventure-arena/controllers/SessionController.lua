@@ -1,4 +1,5 @@
 local Quotes = require("apps.adventure-arena.helpers.Quotes")
+local ReaderText = require("apps.adventure-arena.helpers.ReaderText")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
@@ -55,6 +56,9 @@ end
 -- a colour scheme.
 local COLOR_SCHEMES = { [1] = "light", [2] = "dark" }
 
+-- Speech recognizer locales for the languages stories are written in.
+local SPEECH_LOCALES = { de = "de-DE", German = "de-DE", en = "en-US" }
+
 -- Opens a story at its last page when it has an autosave, or from its title
 -- page when `fresh` is set or nothing is saved.
 function Controller:show(id, fresh)
@@ -74,9 +78,11 @@ function Controller:show(id, fresh)
 	self.speech = nil
 	local speechAvailable = self.speechModule ~= nil
 	if speechAvailable then
+		-- Dictation listens in the story's language, not the phone's.
+		local locale = SPEECH_LOCALES[game.language or ""]
 		self.speech = self.speechModule.recognizer(function(state, text, message)
 			self:onSpeechEvent(state, text, message)
-		end)
+		end, locale)
 	end
 	local actions = {
 		submit = function() self:submitCommand(self.draft) end,
@@ -131,6 +137,7 @@ function Controller:readerData()
 	-- a command with its first word.
 	data.composer = { verbatim = true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
 	data.toast = self.toast
+	data.text = ReaderText.strings(self.model:presentation().language)
 	data.actions = self.actions
 	return data
 end
@@ -141,8 +148,8 @@ function Controller:render()
 	self.refs = select(2, self.reader:update(data))
 	local story = self.model:presentation()
 	self.heading:update({
-		roomTitle = story.roomTitle, score = story.score, maxScore = story.maxScore,
-		moves = story.moves, statusLine = self.game and self.game.statusLine,
+		roomTitle = story.roomTitle,
+		progress = ReaderText.progress(data.text, self.game and self.game.statusLine, story.score, story.maxScore, story.moves),
 		colorScheme = data.reading.colorScheme, font = data.reading.font,
 	})
 	self:renderCompletions()
@@ -397,8 +404,7 @@ end
 -- that fades after a beat, as Game Center achievements announce themselves.
 function Controller:announceScore(change)
 	if not self.refs or type(change) ~= "number" or change == 0 then return end
-	local points = math.abs(change) == 1 and "point" or "points"
-	self.toast = string.format("%s%d %s", change > 0 and "+" or "−", math.abs(change), points)
+	self.toast = ReaderText.toast(ReaderText.strings(self.model:presentation().language), change)
 	self:render()
 	if self.haptics then
 		if change > 0 then self.haptics.notification("success") else self.haptics.notification("warning") end

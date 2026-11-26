@@ -25,9 +25,10 @@ local function engine()
 	}
 end
 
-local function open(speech)
+local function open(speech, game)
 	local refs
-	Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
+	game = game or { id = "zork", title = "Zork", description = "A story." }
+	Store.new { games = { game } }
 	local controller = SessionController.new {
 		model = Session.new { engineFactory = function() return engine() end },
 		push = function(_, data)
@@ -48,17 +49,17 @@ local function open(speech)
 		reduceMotion = function() return true end,
 		speech = speech,
 	}
-	t.expect(controller:show("zork"), "the story opens")
+	t.expect(controller:show(game.id), "the story opens")
 	return controller, controller.refs
 end
 
 local _, quiet = open(nil)
 t.expect(quiet.dictate == nil, "without the Speech plugin the composer has no microphone")
 
-local events, calls = nil, {}
+local events, calls, locale = nil, {}, nil
 local Speech = {
-	recognizer = function(onEvent)
-		events = onEvent
+	recognizer = function(onEvent, language)
+		events, locale = onEvent, language
 		return {
 			start = function() table.insert(calls, "start") end,
 			stop = function() table.insert(calls, "stop") end,
@@ -77,5 +78,11 @@ controller:toggleDictation()
 t.assertEqual(calls[2], "stop", "tapping again finishes")
 events("finished", "open the mailbox", "")
 t.assertEqual(controller.refs.input.text, "open the mailbox", "the final text replaces it")
+
+-- Dictation listens in the story's language, not the phone's.
+open(Speech, { id = "stromausfall", title = "Stromausfall", description = "Eine Geschichte.", language = "de" })
+t.assertEqual(locale, "de-DE", "a German story listens for German")
+open(Speech)
+t.assertEqual(locale, nil, "a story without a language listens in the phone's language")
 
 os.exit(t.summary() and 0 or 1)
