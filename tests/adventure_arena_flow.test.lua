@@ -134,6 +134,8 @@ t.assertEqual(heading().sessionScore.text, "Score 0", "the toolbar shows score w
 t.expect(page().progress == nil, "the transcript has no stats footer")
 t.assertEqual(controller.sessionController.completions, nil, "desktop has no suggestion UI")
 t.assertEqual(reader().input.accessibilityLabel, "Command", "composer retains accessibility label")
+t.expect(controller.sessionController:readerData().composer.verbatim,
+	"commands are typed verbatim on every device, not only on iPhone")
 t.assertEqual(reader().input.bezeled, false, "glass composer owns the visible border")
 t.assertEqual(reader().input.bordered, false, "plain input has no inner border")
 local composerAncestor, composerHorizontalInset = reader().commandBar.superview, false
