@@ -100,8 +100,8 @@ function Service.facts(run, measure, entry, completion)
 			facts.adminDir = ok and trim(output) or nil
 			if not facts.adminDir then done(); return end
 			run({"/usr/bin/stat", "-f", "%m", facts.adminDir .. "/HEAD", facts.adminDir .. "/index", path}, function(_, times)
-				for value in (times or ""):gmatch("%d+") do
-					value = tonumber(value)
+				for digits in (times or ""):gmatch("%d+") do
+					local value = tonumber(digits)
 					if not facts.lastActivity or value > facts.lastActivity then facts.lastActivity = value end
 				end
 				done()

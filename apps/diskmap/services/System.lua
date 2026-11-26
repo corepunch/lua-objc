@@ -140,8 +140,9 @@ function System.command(argv, completion)
 end
 local function lines(output)
 	local result = {}
-	for line in (output or ""):gmatch("([^\n]+)") do
-		line = line:gsub("\r$", "")
+	-- Lua 5.5 loop variables are constant; strip the CR into a local.
+	for raw in (output or ""):gmatch("([^\n]+)") do
+		local line = raw:gsub("\r$", "")
 		if line ~= "" then table.insert(result, line) end
 	end
 	return result
