@@ -63,6 +63,7 @@ function Controller:show(id, fresh)
 	local saved = not fresh and SavedGames:find(id) or nil
 	self:finishTyping()
 	local ok, err = self.model:start(game, saved)
+	self.game = game
 	if not ok then
 		self.push("pages/SessionError", {
 			title = game.title, message = err, actions = { back = self.back },
@@ -138,6 +139,7 @@ function Controller:render()
 	local story = self.model:presentation()
 	self.heading:update({
 		roomTitle = story.roomTitle, score = story.score, maxScore = story.maxScore,
+		moves = story.moves, statusLine = self.game and self.game.statusLine,
 		colorScheme = data.reading.colorScheme, font = data.reading.font,
 	})
 	self:renderCompletions()
