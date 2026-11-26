@@ -19,6 +19,8 @@ function Controller.new(options)
 		presentSheet = assert(options.presentSheet, "sheet presenter is required"),
 		dismissSheet = assert(options.dismissSheet, "sheet dismisser is required"),
 		openSession = options.openSession or function() return false end,
+		-- The app's words in its current language (resources.xml).
+		resources = assert(options.resources, "resources are required"),
 		ns = options.ns,
 	}, Controller)
 end
@@ -32,7 +34,9 @@ function Controller:persist()
 end
 
 function Controller:presentation()
-	local page = self.model:presentation(self.adventures)
+	local resources = self.resources()
+	local page = self.model:presentation(self.adventures, resources)
+	page.resources = resources
 	page.actions = {
 		next = function() self:advance() end,
 		back = function() self:retreat() end,
@@ -68,7 +72,7 @@ end
 -- panel. The page is a retained template; later steps update it in place.
 function Controller:present(parent)
 	local sheet, hostRefs = xml.renderFile(HOST, {}, self.ns)
-	self.page = Template.new(hostRefs.page, VIEW, self.ns)
+	self.page = Template.new(hostRefs.page, VIEW, self.ns, self.resources)
 	local _, refs = self.page:update(self:presentation())
 	self.sheet = self.presentSheet(sheet, { "large" })
 	self.refs = refs

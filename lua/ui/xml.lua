@@ -2862,8 +2862,16 @@ function M.parse(src)
 end
 
 -- Reads an app's `resources.xml`; pass the result as `data.resources`.
-function M.loadResources(path)
-    return require("ui.resources").fromNodes(M.parse(readFile(path)))
+-- With a `language` ("de"), the strings of `resources.de.xml` beside it
+-- replace the base ones (ui/resources.lua `translate`); a language with no
+-- file speaks the base. Load once per language and pass the table a render
+-- should use: the language is chosen where the template is rendered.
+function M.loadResources(path, language)
+    local Resources = require("ui.resources")
+    local base = Resources.fromNodes(M.parse(readFile(path)))
+    local translated = language and language ~= "" and M.source((path:gsub("%.xml$", "." .. language .. ".xml")))
+    if not translated then return base end
+    return Resources.translate(base, M.parse(translated))
 end
 
 function M.decodeFile(path, schema)

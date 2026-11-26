@@ -8,6 +8,8 @@ local Onboarding = require("apps.adventure-arena.models.Onboarding")
 local OnboardingController = require("apps.adventure-arena.controllers.OnboardingController")
 local Controller = require("apps.adventure-arena.Controller")
 local Plan = require("apps.adventure-arena.tour.capture")
+local English = require("apps.adventure-arena.services.Words").load("en")
+local function resources() return English end
 
 local Store = require("apps.adventure-arena.Store")
 Store.new()
@@ -56,7 +58,7 @@ for _, shot in ipairs(Plan.SHOTS) do shots[shot.name] = shot end
 local guide = Onboarding.new()
 for index, step in ipairs(Onboarding.guide()) do
 	t.assertEqual(guide.step, step, step .. " is guide page " .. index)
-	local page = guide:presentation(catalog).page
+	local page = guide:presentation(catalog, English).page
 	t.assertEqual(page.id, step, step .. " describes itself")
 	t.expect(#page.title > 0 and (page.detail or page.rows), step .. " explains its screenshot")
 	t.assertEqual(page.primary, "next", step .. " continues to the next page")
@@ -75,7 +77,7 @@ t.assertEqual(guide.step, "audience", "the setup follows the guide")
 local pages = {}
 local walk = Onboarding.new()
 for _, step in ipairs(Onboarding.guide()) do
-	pages[step] = walk:presentation(catalog).page
+	pages[step] = walk:presentation(catalog, English).page
 	walk:next()
 end
 t.expect(pages.welcome.detail:find("interactive stories", 1, true) ~= nil, "the welcome says what the app is")
@@ -97,7 +99,7 @@ end
 -- screenshot, and the pages speak of clicking.
 local mac = Onboarding.new(nil, { touch = false })
 mac.step = "play"
-local macPlay = mac:page()
+local macPlay = mac:page(nil, English)
 t.expect(macPlay.image == nil, "a Mac does not show the phone keyboard")
 t.assertEqual(#macPlay.rows, 2, "desktop teaches plain typing and book actions")
 for _, row in ipairs(macPlay.rows) do
@@ -123,7 +125,7 @@ t.expect(fresh:toggleInterest("Whimsical Adventure") and not fresh:hasInterest("
 t.expect(fresh:toggleInterest("Whimsical Adventure"), "the world is selected again")
 t.expect(fresh:next() and fresh.step == "ready", "next reaches the first-story screen")
 t.expect(not fresh:next(), "ready has no further step")
-t.assertEqual(fresh:presentation(catalog).page.primary, "startStory", "the last page starts the recommended story")
+t.assertEqual(fresh:presentation(catalog, English).page.primary, "startStory", "the last page starts the recommended story")
 
 local pick = fresh:recommend(catalog)
 t.assertEqual(pick.id, toymaker.id, "kids who like whimsical worlds start with the toymaker")
@@ -152,17 +154,17 @@ t.expect(horrorVisible, "parents still see horror worlds")
 local empty = Onboarding.new()
 empty.step = "ready"
 Store.new { games = {} }
-local emptyPage = empty:presentation(Adventures).page
+local emptyPage = empty:presentation(Adventures, English).page
 Store.new()
 t.assertEqual(emptyPage.primary, "browse", "an empty catalog ends on Browse the Library")
 
 -- "How to Play" reopens the guide alone and keeps what the reader chose.
 t.expect(restored:replay() and restored.step == "welcome", "the guide reopens at its first page")
 t.assertEqual(#restored:steps(), #Onboarding.guide(), "a reopened guide has no setup pages")
-t.assertEqual(restored:presentation(catalog).dismissTitle, "Done", "a reopened guide is closed, not skipped")
+t.assertEqual(restored:presentation(catalog, English).dismissTitle, "Done", "a reopened guide is closed, not skipped")
 for _ = 2, #Onboarding.guide() do restored:next() end
 t.expect(restored:isLast() and not restored:next(), "the guide ends on how to play")
-t.assertEqual(restored:presentation(catalog).page.primary, "done", "whose button closes it")
+t.assertEqual(restored:presentation(catalog, English).page.primary, "done", "whose button closes it")
 t.expect(restored:complete() and restored.audience == "kids" and restored:hasInterest("Whimsical Adventure"),
 	"closing it leaves the reader's audience and worlds alone")
 t.assertEqual(#restored:steps(), 7, "and the model is whole again")
@@ -186,6 +188,7 @@ end
 -- UIKit in name only: the pages a phone shows, built with AppKit's views.
 local phone = setmetatable({ platform = "UIKit" }, { __index = ns })
 tour = OnboardingController.new {
+	resources = resources,
 	store = store,
 	ns = phone,
 	presentSheet = function(sheet, sizes)
@@ -306,6 +309,7 @@ t.expect(opened == nil, "closing the guide opens no story")
 t.expect(saved.completed == true and saved.audience == "kids", "and the reader's choices are still saved")
 
 local skipped = OnboardingController.new {
+	resources = resources,
 	store = { save = function() end },
 	ns = ns,
 	presentSheet = function(sheet) return sheet end,

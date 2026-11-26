@@ -8,6 +8,8 @@ local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local Template = require("ui.template")
+local Words = require("apps.adventure-arena.services.Words")
+local function resources() return Words.load("en") end
 
 -- The opening appears whole. Command responses come in a few characters per
 -- tick with steady soft haptic pulses and one scroll to the full answer.
@@ -39,7 +41,7 @@ local saved = nil
 local function build()
 	Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
 	if saved then saved.gameId = "zork"; SavedGames:create(saved) end
-	local controller = SessionController.new {
+	local controller = SessionController.new { resources = resources,
 		model = Session.new { engineFactory = function() return engine() end },
 		push = function(_, data)
 			local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)
@@ -50,7 +52,7 @@ local function build()
 		ns = ns,
 		renderTemplate = function() end,
 		mountTemplate = function(host, template)
-			return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
+			return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns, resources)
 		end,
 		presentSheet = function() end,
 		dismissSheet = function() end,

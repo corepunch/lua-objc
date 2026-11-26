@@ -9,6 +9,8 @@ local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local Template = require("ui.template")
+local Words = require("apps.adventure-arena.services.Words")
+local function resources() return Words.load("en") end
 
 -- Dictation is the Speech plugin, injected as `speech`: the composer offers
 -- a microphone only when it is there, and the recognizer's events fill the
@@ -28,8 +30,8 @@ end
 local function open(speech, game)
 	local refs
 	game = game or { id = "zork", title = "Zork", description = "A story." }
-	Store.new { games = { game } }
-	local controller = SessionController.new {
+	Store.new { games = { game }, language = game.language }
+	local controller = SessionController.new { resources = resources,
 		model = Session.new { engineFactory = function() return engine() end },
 		push = function(_, data)
 			local view
@@ -40,7 +42,7 @@ local function open(speech, game)
 		ns = ns,
 		renderTemplate = function() end,
 		mountTemplate = function(host, template)
-			return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
+			return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns, resources)
 		end,
 		presentSheet = function() end,
 		dismissSheet = function() end,

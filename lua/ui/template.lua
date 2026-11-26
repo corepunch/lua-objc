@@ -11,14 +11,20 @@ local function copy(value)
 	return result
 end
 local function equal(a, b)
+	if a == b then return true end
 	if type(a) ~= type(b) then return false end
 	if type(a) ~= "table" then return a == b end
 	for k, v in pairs(a) do if not equal(v, b[k]) then return false end end
 	for k in pairs(b) do if a[k] == nil then return false end end
 	return true
 end
-function Template.new(host, path, ns)
-	local self = setmetatable({host = host, path = path, ns = ns, actions = {}}, Template)
+-- `resources`, when given, is a function answering the resources (the app's
+-- words, ui/resources.lua) every update renders with unless the update names
+-- its own: the language is chosen where the template renders, so a caller
+-- that updates a template names only what changed. A resources table is
+-- immutable and shared: it is neither copied nor compared by value.
+function Template.new(host, path, ns, resources)
+	local self = setmetatable({host = host, path = path, ns = ns, actions = {}, resources = resources}, Template)
 	self.dispatch = setmetatable({}, {__index = function(_, name)
 		if type(self.actions[name]) ~= "function" then return nil end
 		return function(...)
@@ -32,7 +38,15 @@ end
 function Template:update(data)
 	assert(not self.closed, "Cannot update a disposed template")
 	data = data or {}
-	local bindings = {}; for k, v in pairs(data) do if k ~= "actions" then bindings[k] = copy(v) end end
+	if self.resources and data.resources == nil then
+		local withResources = {resources = self.resources()}
+		for k, v in pairs(data) do withResources[k] = v end
+		data = withResources
+	end
+	local bindings = {}
+	for k, v in pairs(data) do
+		if k == "resources" then bindings[k] = v elseif k ~= "actions" then bindings[k] = copy(v) end
+	end
 	local description = xml.describeFile(self.path, data)
 	xml.validateActions(description)
 	if self.description and self.description.source == description.source and equal(self.bindings, bindings) then

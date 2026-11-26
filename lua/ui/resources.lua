@@ -19,6 +19,10 @@
 -- render as `data.resources`) apply everywhere; a `<Resources>` element
 -- applies to the subtree of its parent and overrides what it inherits, as
 -- `Panel.Resources` does in WPF. The element itself never becomes a view.
+--
+-- Languages: an app's strings are `resources.xml` (the base, English) and one
+-- `resources.<language>.xml` per other language, loaded together by
+-- `xml.loadResources(path, language)` (`translate` below).
 local Resources = {}
 
 local KINDS = {
@@ -73,6 +77,22 @@ function Resources.fromNodes(nodes)
 		end
 	end
 	if not found then error("resources: no <Resources> element", 0) end
+	return scope
+end
+
+-- `base` with the values a language file (`resources.de.xml`, a <Resources>
+-- document of the same ids) writes over. A language only translates: an id
+-- the base does not declare is an error, so a misspelled or stale string
+-- shows at once instead of silently never being used.
+function Resources.translate(base, nodes)
+	local scope = {}
+	for id, value in pairs(base) do scope[id] = value end
+	for id, value in pairs(Resources.fromNodes(nodes)) do
+		if base[id] == nil then
+			error("resources: " .. id .. " is translated but not declared in the base resources", 0)
+		end
+		scope[id] = value
+	end
 	return scope
 end
 

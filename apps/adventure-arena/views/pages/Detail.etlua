@@ -18,38 +18,38 @@
 
       <HStack spacing="12" paddingHorizontal="20" paddingVertical="16" alignment="center" maxWidth="infinity">
         <% if saved then %>
-        <Button id="restart" title="" systemImage="arrow.counterclockwise" symbolSize="20" style="glass" action="restart" accessibilityLabel="Start over" width="52" height="52" />
+        <Button id="restart" title="" systemImage="arrow.counterclockwise" symbolSize="20" style="glass" action="restart" accessibilityLabel="@startOverLabel" width="52" height="52" />
         <% end %>
-        <Button id="play" title="<%= saved and 'Continue' or 'Start Reading' %>" style="glassProminent" tint="accent" size="17" weight="semibold" truncation="tail" action="play" accessibilityLabel="<%= saved and ('Continue ' .. game.title) or ('Start reading ' .. game.title) %>" maxWidth="infinity" height="52" />
+        <Button id="play" title="<%= saved and resources.continue or resources.startReading %>" style="glassProminent" tint="accent" size="17" weight="semibold" truncation="tail" action="play" accessibilityLabel="<%= string.format(saved and resources.continueBook or resources.readBook, game.title) %>" maxWidth="infinity" height="52" />
       </HStack>
 
       <ScrollView id="facts" horizontal="true" vertical="false">
         <HStack spacing="0" paddingHorizontal="8" paddingVertical="14" alignment="center">
-          <%- partial("../components/Fact.etlua", { caption = "Rating", value = game.reviewCount > 0 and string.format("%.1f", game.rating) or "—", detail = game.reviewCount > 0 and (game.reviewCount .. " ratings") or "No ratings yet", divider = true }) %>
-          <%- partial("../components/Fact.etlua", { caption = "Difficulty", value = game.difficulty or "—", detail = "Infocom level", divider = true }) %>
-          <%- partial("../components/Fact.etlua", { caption = "Genre", value = game.genre:gsub(" Adventure$", ""), detail = "Adventure", divider = true }) %>
-          <%- partial("../components/Fact.etlua", { caption = "Released", value = tostring(game.year), detail = game.author, divider = false }) %>
+          <%- partial("../components/Fact.etlua", { caption = resources.factRating, value = game.reviewCount > 0 and string.format("%.1f", game.rating) or "—", detail = game.reviewCount > 0 and string.format(resources.ratingsCount, game.reviewCount) or resources.noRatings, divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = resources.factDifficulty, value = game.difficulty or "—", detail = resources.infocomLevel, divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = resources.factGenre, value = game.genre:gsub(" Adventure$", ""), detail = resources.factAdventure, divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = resources.factReleased, value = tostring(game.year), detail = game.author, divider = false }) %>
         </HStack>
       </ScrollView>
       <Divider />
 
       <VStack padding="20" spacing="12" alignment="leading" maxWidth="infinity">
-        <Label text="About this Story" size="22" weight="bold" />
+        <Label text="@aboutStory" size="22" weight="bold" />
         <Paragraph id="description" text="<%= game.description %>" size="17" lineSpacing="4" color="secondary" />
       </VStack>
 
       <% if game.reviews and #game.reviews > 0 then %>
       <VStack paddingTop="8" spacing="12" alignment="leading" maxWidth="infinity">
         <HStack paddingHorizontal="20" spacing="8" alignment="bottom" maxWidth="infinity">
-          <Label text="Ratings &amp; Reviews" size="22" weight="bold" flexGrow="1" />
-          <Label text="<%= game.reviewCount %> ratings" size="15" color="secondary" />
+          <Label text="@ratingsAndReviews" size="22" weight="bold" flexGrow="1" />
+          <Label text="<%= string.format(resources.ratingsCount, game.reviewCount) %>" size="15" color="secondary" />
         </HStack>
         <ScrollView horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
           <HStack spacing="12" paddingHorizontal="20" alignment="top">
             <% for index, review in ipairs(game.reviews) do %>
             <VStack id="review_<%= index %>" width="<%= REVIEW.width %>" padding="<%= REVIEW.padding %>" spacing="6" alignment="leading" background="secondaryBackground" cornerRadius="<%= REVIEW.radius %>" clipsToBounds="true">
               <Label text="<%= review.title %>" size="16" weight="semibold" lines="1" truncation="tail" />
-              <HStack spacing="2"><%- partial("../components/Stars.etlua", { rating = review.rating or 5, size = 11 }) %></HStack>
+              <HStack spacing="2"><%- partial("../components/Stars.etlua", { rating = review.rating or 5, size = 11, resources = resources }) %></HStack>
               <Label text="<%= review.body %>" size="15" color="secondary" lines="5" truncation="tail" />
               <Label text="<%= review.author %>" size="12" color="tertiary" />
             </VStack>
@@ -61,7 +61,7 @@
 
       <% if related and #related > 0 then %>
       <VStack paddingTop="28" spacing="10" alignment="leading" maxWidth="infinity">
-        <Label text="More in <%= game.collection or game.genre %>" size="22" weight="bold" paddingHorizontal="20" />
+        <Label text="<%= string.format(resources.moreIn, game.collection or game.genre) %>" size="22" weight="bold" paddingHorizontal="20" />
         <ScrollView horizontal="true" vertical="false">
           <HStack spacing="14" paddingHorizontal="20" alignment="top">
             <% for index, other in ipairs(related) do %>

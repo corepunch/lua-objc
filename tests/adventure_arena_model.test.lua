@@ -8,7 +8,7 @@ local Store = require("apps.adventure-arena.Store")
 Store.new()
 local catalog = Adventures
 
-t.assertEqual(#catalog:all(), 20, "AdventureArena catalog contains the complete Lua catalog")
+t.assertEqual(#catalog:all(), 19, "the English library holds the complete English catalog and no other edition")
 t.assertEqual(catalog:find("infocom.zork1").title,
 	"Zork I: The Great Underground Empire",
 	"catalog resolves games by stable id")
@@ -27,7 +27,7 @@ for _, game in ipairs(catalog:all()) do
 	local story = jsonParse(manifest:read("*a"))
 	t.assertEqual(game.shortDescription, story.shortDescription, "card summary matches the story manifest for " .. game.id)
 	t.assertEqual(game.description, story.description, "synopsis matches the story manifest for " .. game.id)
-	t.assertEqual(game.language, story.language, "the catalog language matches the story manifest for " .. game.id)
+	t.assertEqual(game.language, story.language or "en", "the catalog language matches the story manifest for " .. game.id)
 end
 t.assertEqual(reviews, 0, "bundled catalog contains no unsourced reader feedback")
 t.assertEqual(catalog:find("books.limehouse-killings").genre, "Victorian Mystery")

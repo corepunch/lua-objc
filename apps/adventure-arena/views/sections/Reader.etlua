@@ -12,11 +12,11 @@
       <Label id="dictationStatus" text="<%= dictation.status %>" size="13" color="<%= reading.secondary %>" paddingHorizontal="20" lines="2" hidden="<%= tostring(dictation.status == "") %>" />
       <GlassEffect id="commandBar" style="regular" cornerRadius="<%= BAR.radius %>" maxWidth="infinity">
         <HStack paddingLeading="18" paddingTrailing="5" spacing="4" minHeight="<%= BAR.height %>">
-          <TextField id="input" verbatim="<%= tostring(composer.verbatim == true) %>" text="<%= draft %>" placeholder="<%= text.placeholder %>" accessibilityLabel="<%= text.command %>" style="plain" size="<%= fieldSize %>" design="<%= reading.font %>" color="<%= reading.primary %>" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
+          <TextField id="input" verbatim="<%= tostring(composer.verbatim == true) %>" text="<%= draft %>" placeholder="@placeholder" accessibilityLabel="@command" style="plain" size="<%= fieldSize %>" design="<%= reading.font %>" color="<%= reading.primary %>" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
           <% if composer.dictate then %>
-          <Button id="dictate" title="" systemImage="mic" symbolSize="20" accessibilityLabel="<%= text.dictate %>" action="dictate" style="plain" width="40" height="44" />
+          <Button id="dictate" title="" systemImage="mic" symbolSize="20" accessibilityLabel="@dictate" action="dictate" style="plain" width="40" height="44" />
           <% else %>
-          <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="30" weight="semibold" foregroundStyle="accent" tint="accent" accessibilityLabel="<%= text.send %>" action="submit" style="plain" width="40" height="44" disabled="<%= tostring(not composer.canSend) %>" />
+          <Button id="send" title="" systemImage="arrow.up.circle.fill" symbolSize="30" weight="semibold" foregroundStyle="accent" tint="accent" accessibilityLabel="@send" action="submit" style="plain" width="40" height="44" disabled="<%= tostring(not composer.canSend) %>" />
           <% end %>
         </HStack>
       </GlassEffect>
@@ -24,9 +24,9 @@
   </SafeAreaInset>
 
   <VStack id="toastLayer" safeAreaPadding="top" paddingTop="8" allowsHitTesting="false" maxWidth="infinity" alignment="center">
-    <GlassEffect id="scoreToast" style="regular" hidden="<%= tostring(toast == nil) %>" accessibilityLabel="<%= text.score %>">
+    <GlassEffect id="scoreToast" style="regular" hidden="<%= tostring(toast == nil) %>" accessibilityLabel="@score">
       <HStack paddingHorizontal="16" paddingVertical="10" spacing="8" alignment="center">
-        <SystemImage name="sparkles" size="15" color="accent" label="<%= text.points %>" />
+        <SystemImage name="sparkles" size="15" color="accent" label="@points" />
         <Label id="scoreToastText" text="<%= toast or "" %>" size="15" weight="semibold" monospacedDigit="true" />
       </HStack>
     </GlassEffect>

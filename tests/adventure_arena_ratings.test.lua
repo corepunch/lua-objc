@@ -1,8 +1,10 @@
 _G.__headless = true
 local t = require("TestKit")
 local xml = require("ui.xml")
-local catalog = require("apps.adventure-arena.catalog.Adventures")
+local catalog = require("apps.adventure-arena.catalog.en")
+local English = require("apps.adventure-arena.services.Words").load("en")
 
+t.assertEqual(English.noRatings, "No ratings yet", "the unreviewed state is worded as the library words it")
 local originals = 0
 for _, book in ipairs(catalog) do
 	if book.collection == "Arena Originals" then originals = originals + 1 end
@@ -11,16 +13,19 @@ for _, book in ipairs(catalog) do
 	t.assertEqual(next(book.reviews), nil, "no unsourced review text: " .. book.id)
 	t.expect(book.reviewCount >= #book.reviews, "count covers displayed reviews: " .. book.id)
 end
-t.assertEqual(originals, 14, "all fourteen Arena Originals are audited")
+t.assertEqual(originals, 13, "all thirteen English Arena Originals are audited")
 
 local function render(path, game)
 	return xml.describeFile("apps/adventure-arena/views/" .. path .. ".etlua",
-		{ game = game, index = 1, id = "book", action = "open", related = {} }).source
+		{ game = game, index = 1, id = "book", action = "open", related = {}, resources = English }).source
 end
 for _, path in ipairs({ "components/FeaturedCard", "components/GameRow", "pages/Detail" }) do
 	for _, book in ipairs(catalog) do
 		local source = render(path, book)
-		t.expect(source:find("No ratings yet", 1, true), path .. " explains unreviewed state: " .. book.id)
+		-- A template says it as the resource `@noRatings` or, where it formats
+		-- other text with it, as the resolved string.
+		t.expect(source:find("@noRatings", 1, true) or source:find(English.noRatings, 1, true),
+			path .. " explains unreviewed state: " .. book.id)
 		t.expect(not source:find('name="star', 1, true) and not source:find('systemImage="star', 1, true),
 			path .. " does not present zero as a star score")
 		t.expect(not source:find("Rated 0.0", 1, true) and not source:find('id="review_', 1, true),
@@ -32,7 +37,8 @@ for _, path in ipairs({ "components/FeaturedCard", "components/GameRow", "pages/
 	rated.rating, rated.reviewCount = 4.5, 1
 	rated.reviews = {{ author = "Test reader", rating = 4, title = "Test title", body = "Test feedback" }}
 	local source = render(path, rated)
-	t.expect(not source:find("No ratings yet", 1, true), path .. " retains rated state")
+	t.expect(not source:find("@noRatings", 1, true) and not source:find(English.noRatings, 1, true),
+		path .. " retains rated state")
 	t.expect(source:find("4.5", 1, true), path .. " retains supplied aggregate")
 	if path == "pages/Detail" then
 		t.expect(source:find("Test feedback", 1, true), "supplied reader text remains visible")

@@ -1,4 +1,5 @@
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
+local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 
 -- The Settings page: the reading options (a coordinating controller owns
 -- them, they are shared with the in-book sheet) and the guide.
@@ -14,7 +15,15 @@ return {
 				handlers["restart_" .. index] = function() return self:flow("Opening"):story(id, true) end
 				handlers["remove_" .. index] = function() return self:remove(id) end
 			end
-			return { entries = entries, handlers = handlers }
+			local settings = ReadingSettings:current()
+			return {
+				entries = entries, handlers = handlers,
+				languages = ReadingSettings.languages(), languageIndex = settings:languageIndex(),
+			}
+		end,
+		changeLanguage = function(self, index)
+			local settings = ReadingSettings:current()
+			if settings:setLanguageIndex(index) then settings:persist() end
 		end,
 		remove = function(self, id) return SavedGames:remove(id) end,
 		howToPlay = function(self) self.app.openGuide() end,

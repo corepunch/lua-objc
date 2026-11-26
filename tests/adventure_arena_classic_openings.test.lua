@@ -3,7 +3,7 @@ _G.__headless = true
 local t = require("TestKit")
 local Runtime = require("apps.adventure-arena.services.ZILRuntime")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
-local catalog = require("apps.adventure-arena.catalog.Adventures")
+local catalog = require("apps.adventure-arena.catalog.en")
 
 local expected = {
 	["infocom.zork1"] = "banner,scene",

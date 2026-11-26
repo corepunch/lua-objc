@@ -13,19 +13,19 @@
 <VStack spacing="0" maxWidth="infinity" maxHeight="infinity" padding="<%= PAGE.side %>">
   <HStack maxWidth="infinity" alignment="center">
     <% if canBack then %>
-    <Button id="back" title="Back" action="back" style="plain" />
+    <Button id="back" title="@back" action="back" style="plain" />
     <% else %>
     <Label text="" />
     <% end %>
     <Spacer />
-    <Label id="step" text="<%= stepNumber %> of <%= stepCount %>" size="13" weight="medium" color="secondary" monospacedDigit="true" />
+    <Label id="step" text="<%= string.format(resources.guideStep, stepNumber, stepCount) %>" size="13" weight="medium" color="secondary" monospacedDigit="true" />
     <Spacer />
     <Button id="skip" title="<%= dismissTitle %>" action="skip" style="plain" />
   </HStack>
   <ScrollView id="content" flexGrow="1" maxWidth="infinity">
     <VStack spacing="<%= PAGE.section %>" alignment="center" maxWidth="infinity" paddingTop="<%= PAGE.section %>" paddingBottom="<%= PAGE.gap %>">
       <% if page.image then %>
-      <Image id="shot_<%= page.id %>" path="<%= page.image %>" darkPath="<%= page.darkImage %>" resizable="true" contentMode="fill" width="<%= GUIDE.imageWidth %>" height="<%= GUIDE.imageHeight %>" cornerRadius="<%= GUIDE.radius %>" clipsToBounds="true" accessibilityLabel="The reader. <%= page.title %>" />
+      <Image id="shot_<%= page.id %>" path="<%= page.image %>" darkPath="<%= page.darkImage %>" resizable="true" contentMode="fill" width="<%= GUIDE.imageWidth %>" height="<%= GUIDE.imageHeight %>" cornerRadius="<%= GUIDE.radius %>" clipsToBounds="true" accessibilityLabel="<%= string.format(resources.readerShot, page.title) %>" />
       <% else %>
       <SystemImage id="hero_<%= page.id %>" name="<%= page.symbol %>" size="<%= PAGE.hero %>" color="accent" accessibilityLabel="<%= page.title %>" />
       <% end %>
@@ -83,7 +83,7 @@
   <VStack spacing="8" maxWidth="infinity" paddingTop="<%= PAGE.gap %>">
     <Button id="<%= page.primary %>" title="<%= page.action %>" action="<%= page.primary %>" style="borderedProminent" controlSize="large" disabled="<%= canAdvance and 'false' or 'true' %>" />
     <% if page.primary == "startStory" then %>
-    <Button id="browse" title="Browse the Library" action="browse" style="plain" />
+    <Button id="browse" title="@browseLibrary" action="browse" style="plain" />
     <% end %>
   </VStack>
 </VStack>

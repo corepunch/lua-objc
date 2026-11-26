@@ -6,26 +6,26 @@
 %>
 <VStack spacing="24" alignment="leading" maxWidth="infinity">
   <VStack spacing="10" alignment="leading" maxWidth="infinity">
-    <Label text="Text Size" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <Label text="@textSize" size="13" weight="semibold" color="secondary" smallCaps="true" />
     <GlassEffectContainer spacing="12">
       <HStack spacing="12" alignment="center" maxWidth="infinity">
-        <Button id="decreaseSize" title="" systemImage="textformat.size.smaller" symbolSize="20" style="glass" action="decreaseSize" accessibilityLabel="Smaller text" width="56" height="44" disabled="<%= fontSize <= minimumFontSize and 'true' or 'false' %>" />
+        <Button id="decreaseSize" title="" systemImage="textformat.size.smaller" symbolSize="20" style="glass" action="decreaseSize" accessibilityLabel="@smallerText" width="56" height="44" disabled="<%= fontSize <= minimumFontSize and 'true' or 'false' %>" />
         <Slider id="sizeSlider" min="<%= minimumFontSize %>" max="<%= maximumFontSize %>" value="<%= fontSize %>" onChange="sizeChanged" flexGrow="1" />
-        <Button id="increaseSize" title="" systemImage="textformat.size.larger" symbolSize="20" style="glass" action="increaseSize" accessibilityLabel="Larger text" width="56" height="44" disabled="<%= fontSize >= maximumFontSize and 'true' or 'false' %>" />
+        <Button id="increaseSize" title="" systemImage="textformat.size.larger" symbolSize="20" style="glass" action="increaseSize" accessibilityLabel="@largerText" width="56" height="44" disabled="<%= fontSize >= maximumFontSize and 'true' or 'false' %>" />
       </HStack>
     </GlassEffectContainer>
   </VStack>
 
   <VStack spacing="10" alignment="leading" maxWidth="infinity">
-    <Label text="Theme" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <Label text="@theme" size="13" weight="semibold" color="secondary" smallCaps="true" />
     <FlowStack spacing="12" maxWidth="infinity">
       <% for _, theme in ipairs(themes) do %>
-      <Button id="theme_<%= theme.id %>" action="theme_<%= theme.index %>" style="plain" accessibilityLabel="<%= theme.title %> theme<%= theme.selected and ', selected' or '' %>">
+      <Button id="theme_<%= theme.id %>" action="theme_<%= theme.index %>" style="plain" accessibilityLabel="<%= string.format(resources.themeLabel, resources['theme_' .. theme.id]) %><%= theme.selected and resources.selected or '' %>">
         <VStack spacing="6" alignment="center">
           <ZStack width="<%= SWATCH.width %>" height="<%= SWATCH.height %>" background="<%= theme.page %>" cornerRadius="<%= SWATCH.radius %>" clipsToBounds="true" alignment="center">
             <Label text="Aa" size="<%= SWATCH.sample %>" design="serif" weight="semibold" color="<%= theme.ink %>" />
           </ZStack>
-          <Label text="<%= theme.title %>" size="13" weight="<%= theme.selected and 'semibold' or 'regular' %>" color="<%= theme.selected and 'accent' or 'secondary' %>" systemImage="<%= theme.selected and 'checkmark.circle.fill' or '' %>" iconSize="13" />
+          <Label text="<%= resources['theme_' .. theme.id] %>" size="13" weight="<%= theme.selected and 'semibold' or 'regular' %>" color="<%= theme.selected and 'accent' or 'secondary' %>" systemImage="<%= theme.selected and 'checkmark.circle.fill' or '' %>" iconSize="13" />
         </VStack>
       </Button>
       <% end %>
@@ -33,29 +33,29 @@
   </VStack>
 
   <VStack spacing="10" alignment="leading" maxWidth="infinity">
-    <Label text="Font" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <Label text="@font" size="13" weight="semibold" color="secondary" smallCaps="true" />
     <Picker id="fontPicker" value="<%= fontIndex %>" style="segmented" onChange="fontChanged" maxWidth="infinity">
-      <Option title="Serif" />
-      <Option title="Sans" />
-      <Option title="Rounded" />
-      <Option title="Mono" />
+      <Option title="@fontSerif" />
+      <Option title="@fontSans" />
+      <Option title="@fontRounded" />
+      <Option title="@fontMono" />
     </Picker>
   </VStack>
 
   <VStack spacing="10" alignment="leading" maxWidth="infinity">
-    <Label text="Line Spacing" size="13" weight="semibold" color="secondary" smallCaps="true" />
+    <Label text="@lineSpacing" size="13" weight="semibold" color="secondary" smallCaps="true" />
     <Picker id="spacingPicker" value="<%= spacingIndex %>" style="segmented" onChange="spacingChanged" maxWidth="infinity">
-      <Option title="Compact" />
-      <Option title="Normal" />
-      <Option title="Relaxed" />
+      <Option title="@spacingCompact" />
+      <Option title="@spacingNormal" />
+      <Option title="@spacingRelaxed" />
     </Picker>
-    <Toggle id="justifyToggle" label="Justify Text" value="<%= justified and 'true' or 'false' %>" onChange="justifyChanged" maxWidth="infinity" />
+    <Toggle id="justifyToggle" label="@justify" value="<%= justified and 'true' or 'false' %>" onChange="justifyChanged" maxWidth="infinity" />
   </VStack>
 
   <% if preview then %>
   <VStack id="preview" padding="20" spacing="0" alignment="leading" background="<%= pageColor %>" cornerRadius="22" clipsToBounds="true" maxWidth="infinity">
-    <Label text="West of House" size="<%= fontSize + 6 %>" weight="semibold" design="<%= font %>" color="<%= primaryTextColor %>" paddingBottom="<%= math.floor(fontSize * 0.7) %>" />
-    <Paragraph id="previewBody" text="You are standing in an open field west of a white house, with a boarded front door. There is a small mailbox here." size="<%= fontSize %>" design="<%= font %>" color="<%= primaryTextColor %>" lineSpacing="<%= lineSpacing %>" alignment="<%= alignment %>" hyphenation="<%= justified and 'true' or 'false' %>" selectable="false" />
+    <Label text="@previewTitle" size="<%= fontSize + 6 %>" weight="semibold" design="<%= font %>" color="<%= primaryTextColor %>" paddingBottom="<%= math.floor(fontSize * 0.7) %>" />
+    <Paragraph id="previewBody" text="@previewBody" size="<%= fontSize %>" design="<%= font %>" color="<%= primaryTextColor %>" lineSpacing="<%= lineSpacing %>" alignment="<%= alignment %>" hyphenation="<%= justified and 'true' or 'false' %>" selectable="false" />
   </VStack>
   <% end %>
 </VStack>

@@ -1,8 +1,19 @@
 local Model = require("data.model")
+local Languages = require("apps.adventure-arena.helpers.Languages")
+local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 
--- The catalog of adventures, the store's `adventures` table in editorial
--- order: shelves, charts, genres and search are queries over it.
-local Adventures = Model:extend("adventures")
+-- The catalog of adventures in the app's language (ReadingSettings.language),
+-- from the store's `adventures` table in editorial order: shelves, charts,
+-- genres and search are queries over it. A game with no `language` is shown
+-- in every language; an edition is shown only in its own.
+local Adventures = Model:extend("adventures", { source = function(db)
+	local language = ReadingSettings.language()
+	local games = {}
+	for _, game in ipairs(db.adventures or {}) do
+		if not game.language or game.language == language then table.insert(games, game) end
+	end
+	return games
+end })
 
 -- Shelves stay browsable at 20-30 titles: a carousel longer than this is a
 -- list nobody finishes, so the shelf heading opens the full collection.
@@ -22,6 +33,8 @@ local GENRE_SYMBOLS = {
 	["Whimsical Adventure"] = "gearshape.2.fill",
 	["Victorian Mystery"] = "magnifyingglass",
 	["Classic Adventure"] = "map.fill",
+	["Superhero RPG"] = "bolt.fill",
+	["Superhelden-Rollenspiel"] = "bolt.fill",
 }
 
 function Adventures.genreSymbol(genre)
@@ -29,7 +42,7 @@ function Adventures.genreSymbol(genre)
 end
 
 local function collectionOf(game)
-	return game.collection or game.genre or "Adventures"
+	return game.collection or game.genre
 end
 
 local function groupShelves(games, titlesOf)
@@ -130,21 +143,21 @@ function Adventures:related(id, limit)
 end
 
 local function searchable(game)
-	return table.concat({
+	return Languages.lower(table.concat({
 		game.title or "", game.author or "", game.genre or "", collectionOf(game), table.concat(game.categories or {}, " "),
 		game.shortDescription or "", tostring(game.year or ""), game.difficulty or "",
-	}, " "):lower()
+	}, " "))
 end
 
 -- Every query word must match somewhere, so "zork wizard" narrows instead of
 -- widening. Title matches rank first; ties keep catalog order.
 function Adventures:search(query)
 	local terms = {}
-	for term in tostring(query or ""):lower():gmatch("%S+") do table.insert(terms, term) end
+	for term in Languages.lower(tostring(query or "")):gmatch("%S+") do table.insert(terms, term) end
 	if #terms == 0 then return {} end
 	local matches = {}
 	for index, game in ipairs(self:all()) do
-		local text, title, matched = searchable(game), (game.title or ""):lower(), true
+		local text, title, matched = searchable(game), Languages.lower(game.title or ""), true
 		local titleHits = 0
 		for _, term in ipairs(terms) do
 			if not text:find(term, 1, true) then matched = false break end

@@ -2,7 +2,6 @@
 -- The in-book sheet and the Settings tab each mount the same template; every
 -- mounted copy re-renders when any of them changes a preference, and the
 -- change is persisted and announced so an open book re-sets its type.
-local Model = require("data.model")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 
 local Controller = {}
@@ -78,8 +77,7 @@ function Controller:apply(changed, keepPanel)
 		if entry.template:isDisposed() then table.remove(self.mounted, index)
 		elseif not keepPanel then self:renderEntry(entry) end
 	end
-	local document = Model.db.documents and Model.db.documents.reading
-	if document and document.save then document.save(self:settings():snapshot()) end
+	self:settings():persist()
 	self.onChange(self:settings():presentation())
 	return true
 end

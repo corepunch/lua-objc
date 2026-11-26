@@ -17,13 +17,16 @@ for _, step in ipairs(SETUP) do table.insert(STEPS, step) end
 -- opening of an all-ages story in the iPhone Simulator, in light and dark.
 local IMAGES = "apps/adventure-arena/tour/"
 
+-- Words are the app's resources (resources.xml, one set per language): the
+-- model holds their ids, and `presentation` takes the strings of the
+-- language it speaks.
 local AUDIENCE = {
-	{ id = "kids", title = "Kids", symbol = "figure.and.child.holdinghands",
-		detail = "Gentle worlds and introductory puzzles." },
-	{ id = "parents", title = "Parents", symbol = "book.fill",
-		detail = "The full shelf, including the darker classics." },
-	{ id = "together", title = "Together", symbol = "person.2.fill",
-		detail = "Stories that work read out loud." },
+	{ id = "kids", title = "audienceKids", symbol = "figure.and.child.holdinghands",
+		detail = "audienceKidsDetail" },
+	{ id = "parents", title = "audienceParents", symbol = "book.fill",
+		detail = "audienceParentsDetail" },
+	{ id = "together", title = "audienceTogether", symbol = "person.2.fill",
+		detail = "audienceTogetherDetail" },
 }
 
 -- Horror stays off the kids shelf. The other genres come from the catalog.
@@ -201,81 +204,76 @@ end
 -- What one page says. A guide page has a screenshot and, where it explains
 -- parts of the reader, a legend: one row for each part. `primary` names the
 -- action of the button at the foot: next, done, startStory or browse.
-function Onboarding:page(recommendation)
+function Onboarding:page(recommendation, strings)
 	local step = self.step
-	local tap = self.touch and "Tap" or "Click"
-	local page = { id = step, primary = "next", action = "Continue" }
+	local page = { id = step, primary = "next", action = strings.next }
 	if step == "welcome" then
 		page.symbol = "books.vertical.fill"
-		page.title = "A book that answers back"
-		page.detail = "Adventure Arena is a shelf of interactive stories. Each one opens like a book and puts you inside it: you are the main character."
-		page.action = "Get Started"
+		page.title = strings.welcomeTitle
+		page.detail = strings.welcomeDetail
+		page.action = strings.getStarted
 		page.image, page.darkImage = screenshot(step)
 	elseif step == "interactive" then
 		page.symbol = "arrow.triangle.branch"
-		page.title = "Not a book you read. A book you play."
-		page.detail = "A printed book tells everyone the same story. Here the story stops and waits for you: say what you do, and it writes what happens next. Your place is saved after every move."
+		page.title = strings.interactiveTitle
+		page.detail = strings.interactiveDetail
 		page.image, page.darkImage = screenshot(step)
 	elseif step == "read" then
 		page.symbol = "text.book.closed.fill"
-		page.title = "How to read a page"
+		page.title = strings.readTitle
 		page.image, page.darkImage = screenshot(step)
 		page.rows = {
-			{ symbol = "mappin.and.ellipse", title = "The heading is where you are",
-				detail = "Each new place opens with its name and what you find there." },
-			{ symbol = "figure.walk", title = "The chevron marks your moves",
-				detail = "What you did, set apart from the story's answer." },
+			{ symbol = "mappin.and.ellipse", title = strings.readHeadingTitle, detail = strings.readHeadingDetail },
+			{ symbol = "figure.walk", title = strings.readChevronTitle, detail = strings.readChevronDetail },
 		}
 	elseif step == "play" then
 		page.symbol = "text.bubble.fill"
-		page.title = "How to play"
+		page.title = strings.playTitle
 		page.rows = {
-			{ symbol = "keyboard", title = "Type what you do",
-				detail = "A word or two is enough: LOOK, TAKE BROOM, NORTH." },
-			{ symbol = "eye", title = "Look around and check your inventory",
-				detail = "LOOK describes where you are. INVENTORY lists what you carry." },
+			{ symbol = "keyboard", title = strings.playTypeTitle, detail = strings.playTypeDetail },
+			{ symbol = "eye", title = strings.playLookTitle, detail = strings.playLookDetail },
 		}
 
 		if self.touch then
 			page.image, page.darkImage = screenshot(step)
-			table.insert(page.rows, 2, { symbol = "keyboard", title = "Tap command suggestions",
-				detail = "Look around and Inventory stay above the keyboard. Type a letter to choose a verb, then an object. Send when ready." })
+			table.insert(page.rows, 2, { symbol = "keyboard", title = strings.playSuggestionsTitle,
+				detail = strings.playSuggestionsDetail })
 		end
 	elseif step == "audience" then
 		page.symbol = "person.2.fill"
-		page.title = "Who is playing?"
-		page.detail = "We'll put the right shelf first. You can change this later."
+		page.title = strings.audienceTitle
+		page.detail = strings.audienceDetail
 	elseif step == "worlds" then
 		page.symbol = "globe.desk.fill"
-		page.title = "Worlds you like"
-		page.detail = "Pick as many as you want. We'll open with a story from those shelves."
+		page.title = strings.worldsTitle
+		page.detail = strings.worldsDetail
 	elseif step == "ready" then
 		page.symbol = "sparkles"
 		if recommendation then
 			page.title = recommendation.title
 			page.detail = recommendation.shortDescription
-			page.primary, page.action = "startStory", "Start Reading"
+			page.primary, page.action = "startStory", strings.startReading
 		else
-			page.title = "Your library is ready"
-			page.detail = "Browse the shelves and open any cover."
-			page.primary, page.action = "browse", "Browse the Library"
+			page.title = strings.readyTitle
+			page.detail = strings.readyDetail
+			page.primary, page.action = "browse", strings.browseLibrary
 		end
 	end
-	if self.guideOnly and self:isLast() then page.primary, page.action = "done", "Done" end
+	if self.guideOnly and self:isLast() then page.primary, page.action = "done", strings.done end
 	return page
 end
 
 -- One payload per screen so the template never branches on controller state.
-function Onboarding:presentation(adventures)
+function Onboarding:presentation(adventures, strings)
 	local index = self:stepIndex()
 	local recommendation = self.step == "ready" and self:recommend(adventures) or nil
 	local audience = {}
 	for _, option in ipairs(AUDIENCE) do
 		table.insert(audience, {
 			id = option.id,
-			title = option.title,
+			title = strings[option.title],
 			symbol = option.symbol,
-			detail = option.detail,
+			detail = strings[option.detail],
 			selected = self.audience == option.id,
 		})
 	end
@@ -287,8 +285,8 @@ function Onboarding:presentation(adventures)
 		canAdvance = self:canAdvance(),
 		isLast = self:isLast(),
 		-- A reopened guide is closed, not skipped: there is nothing after it.
-		dismissTitle = self.guideOnly and "Done" or "Skip",
-		page = self:page(recommendation),
+		dismissTitle = self.guideOnly and strings.done or strings.skip,
+		page = self:page(recommendation, strings),
 		audience = audience,
 		audienceId = self.audience,
 		worlds = self:worlds(adventures),

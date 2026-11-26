@@ -7,13 +7,13 @@
     <Number id="coverHeight" value="72" />
     <Number id="coverRadius" value="5" />
   </Resources>
-  <Label id="continueHeading" text="Continue Reading" size="22" weight="bold" design="serif" paddingHorizontal="<%= sideInset %>" />
+  <Label id="continueHeading" text="@continueReading" size="22" weight="bold" design="serif" paddingHorizontal="<%= sideInset %>" />
   <ScrollView id="continueShelf" horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
     <HStack id="continueCards" spacing="12" paddingHorizontal="<%= sideInset %>" alignment="center">
       <% for _, entry in ipairs(entries) do
         local game = entry.game
         local id = "continueStory_" .. game.id %>
-      <Button id="<%= id %>" action="<%= id %>" style="plain" accessibilityLabel="Continue <%= game.title %>, <%= entry.place %>. <%= entry.status %>">
+      <Button id="<%= id %>" action="<%= id %>" style="plain" accessibilityLabel="<%= string.format(resources.continueAtStatus, game.title, entry.place, entry.status) %>">
         <HStack width="@cardWidth" padding="@cardInset" spacing="@cardInset" alignment="center" background="secondaryBackground" cornerRadius="@cardRadius">
           <Image path="<%= game.cover %>" resizable="true" contentMode="fill" width="@coverWidth" height="@coverHeight" cornerRadius="@coverRadius" clipsToBounds="true" />
           <VStack spacing="2" alignment="leading" flexGrow="1">
