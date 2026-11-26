@@ -4,6 +4,8 @@ local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local xml = require("ui.xml")
 local Template = require("ui.template")
+local Words = require("apps.adventure-arena.services.Words")
+local function resources() return Words.load("en") end
 local Store = require("apps.adventure-arena.Store")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Controller = require("apps.adventure-arena.controllers.SessionController")
@@ -33,7 +35,7 @@ local model = Session.new { engineFactory = function()
 		}, "Workshop\nAn old broom and a brass key lie here."
 	end }
 end }
-local controller = Controller.new {
+local controller = Controller.new { resources = resources,
 	model = model, ns = phone,
 	push = function(_, data)
 		local _, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, phone)
@@ -43,7 +45,7 @@ local controller = Controller.new {
 	presentSheet = function() end, dismissSheet = function() end,
 	reduceMotion = function() return true end,
 	mountTemplate = function(host, name)
-		return Template.new(host, "apps/adventure-arena/views/" .. name .. ".etlua", phone)
+		return Template.new(host, "apps/adventure-arena/views/" .. name .. ".etlua", phone, resources)
 	end,
 }
 local function nativeButton(view)

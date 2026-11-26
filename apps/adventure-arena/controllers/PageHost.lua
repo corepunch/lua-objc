@@ -74,6 +74,7 @@ end
 -- navigation stack, drawn once.
 function PageHost:render(id, state)
 	local data, page = self:data(id, state)
+	data.resources = self.services.resources()
 	local view, refs = xml.renderFile(VIEWS .. page.view .. ".etlua", data, self.ns)
 	return view, refs
 end
@@ -82,7 +83,7 @@ end
 function PageHost:mount(id, host, state)
 	self:unmount(id)
 	local page = self:page(id)
-	local entry = { id = id, state = state, template = Template.new(host, VIEWS .. page.view .. ".etlua", self.ns) }
+	local entry = { id = id, state = state, template = Template.new(host, VIEWS .. page.view .. ".etlua", self.ns, self.services.resources) }
 	self.mounted[id] = entry
 	self:draw(entry)
 	return entry.template

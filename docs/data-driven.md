@@ -222,6 +222,22 @@ controller does it); a `<Resources>` element scopes to its parent element (its o
 attributes and its subtree) and overrides what it inherits. `@` is a reference only
 where some resources are in scope; there an undeclared name is an error.
 
+### Languages
+
+`<String>` resources are the app's words. English is `resources.xml`; each other
+language is a file beside it, `resources.de.xml`, a `<Resources>` of the same ids
+whose strings replace the base. `xml.loadResources(path, "de")` reads both and
+errors on an id the base does not declare, so a stale or misspelled translation
+shows at once; a language with no file speaks the base. The language is chosen
+where the template renders: the app loads one table per language and passes the
+one it speaks as `data.resources`, or gives a retained template a function
+(`Template.new(host, path, ns, function() return resources end)`) that every
+update asks, so a language change shows on the next render. A string with
+placeholders is formatted in the template, `string.format(resources.seeAll,
+title)`; a plain one is `text="@seeAll"`. Adventure Arena is the example
+(`apps/adventure-arena/resources.xml`, `resources.de.xml`,
+`tests/adventure_arena_strings.test.lua`).
+
 ## The manifest
 
 ```xml

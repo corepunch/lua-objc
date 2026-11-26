@@ -1,6 +1,6 @@
-<Page title="Search" onDisappear="closeCatalogPage">
+<Page title="@search" onDisappear="closeCatalogPage">
   <VStack spacing="0" maxWidth="infinity" maxHeight="infinity">
-    <SearchField id="searchField" text="<%= query %>" placeholder="Titles, authors, genres" accessibilityLabel="Search adventures" onChange="search" paddingHorizontal="16" paddingBottom="8" />
+    <SearchField id="searchField" text="<%= query %>" placeholder="@searchPlaceholder" accessibilityLabel="@searchLabel" onChange="search" paddingHorizontal="16" paddingBottom="8" />
     <VStack id="catalogContent" maxWidth="infinity" maxHeight="infinity" />
   </VStack>
 </Page>

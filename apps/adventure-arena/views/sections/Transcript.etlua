@@ -52,7 +52,7 @@
   <VStack id="entry_<%= index %>" paddingTop="@turnGap" alignment="leading" maxWidth="infinity">
     <HStack spacing="6" alignment="center">
       <SystemImage name="chevron.right" size="<%= PAGE.commandMarker %>" weight="semibold" color="<%= reading.secondary %>" label="" />
-      <Label id="command_<%= index %>" text="<%= entry.text %>" size="<%= size - 1 %>" design="<%= reading.font %>" weight="medium" color="<%= reading.secondary %>" lines="0" accessibilityLabel="You: <%= entry.text %>" />
+      <Label id="command_<%= index %>" text="<%= entry.text %>" size="<%= size - 1 %>" design="<%= reading.font %>" weight="medium" color="<%= reading.secondary %>" lines="0" accessibilityLabel="<%= string.format(resources.youSaid, entry.text) %>" />
     </HStack>
   </VStack>
   <% else %>

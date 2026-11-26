@@ -6,6 +6,6 @@
 <HStack id="completionRow" colorScheme="<%= colorScheme %>" spacing="0" alignment="center" height="@completionHeight" maxWidth="infinity">
   <% for i, choice in ipairs(choices) do %>
   <% if i > 1 then %><Divider orientation="vertical" height="@completionDividerHeight" /><% end %>
-  <Button id="completion<%= i %>" title="<%= choice.title %>" accessibilityLabel="<%= choice.command and choice.title or ('Complete ' .. choice.title) %>" action="complete<%= i %>" style="plain" foregroundStyle="primary" size="@completionFontSize" truncation="tail" height="@completionHeight" flexGrow="1" flexBasis="0" maxWidth="infinity" />
+  <Button id="completion<%= i %>" title="<%= choice.title %>" accessibilityLabel="<%= choice.command and choice.title or string.format(resources.complete, choice.title) %>" action="complete<%= i %>" style="plain" foregroundStyle="primary" size="@completionFontSize" truncation="tail" height="@completionHeight" flexGrow="1" flexBasis="0" maxWidth="infinity" />
   <% end %>
 </HStack>

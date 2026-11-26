@@ -1,5 +1,5 @@
 <VStack paddingTop="28" spacing="10" alignment="leading" maxWidth="infinity">
-  <Button id="shelfHeading_<%= index %>" style="plain" action="shelf_<%= index %>" paddingHorizontal="<%= sideInset %>" accessibilityLabel="See all <%= shelf.title %>">
+  <Button id="shelfHeading_<%= index %>" style="plain" action="shelf_<%= index %>" paddingHorizontal="<%= sideInset %>" accessibilityLabel="<%= string.format(resources.seeAll, shelf.title) %>">
     <HStack spacing="6" alignment="center">
       <Label text="<%= shelf.title %>" size="22" weight="bold" design="serif" lines="1" truncation="tail" />
       <SystemImage name="chevron.right" size="12" weight="semibold" color="secondary" label="" />

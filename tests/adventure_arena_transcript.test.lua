@@ -8,8 +8,10 @@ local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local Template = require("ui.template")
+local Words = require("apps.adventure-arena.services.Words")
+local function resources() return Words.load("en") end
 local function mountTemplate(host, template)
-	return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
+	return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns, resources)
 end
 
 local opening = string.rep("A long opening paragraph. ", 40)
@@ -39,7 +41,7 @@ local function finishTimers()
 	while #timers > 0 do table.remove(timers, 1)() end
 end
 Store.new { games = { { id = "zork", title = "Zork", description = "A story." } } }
-local controller = SessionController.new {
+local controller = SessionController.new { resources = resources,
 	model = model,
 	push = function(_, data)
 		local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)
@@ -149,7 +151,7 @@ Store.new { games = { { id = "zork", title = "Zork", description = "A story." } 
 local record = { seed = 1, commands = {} }
 record.gameId = "zork"
 SavedGames:create(record)
-local loaded = SessionController.new {
+local loaded = SessionController.new { resources = resources,
 	model = saved,
 	push = function(_, data)
 		local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)

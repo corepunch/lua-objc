@@ -1,7 +1,7 @@
-<NavigationStack id="navigation" title="Discover" largeTitle="true" titleDisplayMode="inlineLarge">
+<NavigationStack id="navigation" title="@discover" largeTitle="true" titleDisplayMode="inlineLarge">
   <Toolbar>
-    <ToolbarItem id="findStories" placement="topBarTrailing" icon="magnifyingglass" label="Search" action="openSearch" />
-    <ToolbarItem id="catalogSettings" placement="topBarTrailing" icon="gearshape" label="Settings" action="openSettings" />
+    <ToolbarItem id="findStories" placement="topBarTrailing" icon="magnifyingglass" label="@search" action="openSearch" />
+    <ToolbarItem id="catalogSettings" placement="topBarTrailing" icon="gearshape" label="@settings" action="openSettings" />
   </Toolbar>
   <VStack id="discoverContent" maxWidth="infinity" maxHeight="infinity" />
 </NavigationStack>

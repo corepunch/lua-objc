@@ -1,5 +1,6 @@
 local Quotes = require("apps.adventure-arena.helpers.Quotes")
-local ReaderText = require("apps.adventure-arena.helpers.ReaderText")
+local ReaderStatus = require("apps.adventure-arena.helpers.ReaderStatus")
+local Languages = require("apps.adventure-arena.helpers.Languages")
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
@@ -28,6 +29,8 @@ function Controller.new(options)
 		back = assert(options.back, "navigation back callback is required"),
 		ns = assert(options.ns, "native platform module is required"),
 		readingOptions = options.readingOptions,
+		-- The app's words in its current language (resources.xml).
+		resources = assert(options.resources, "resources are required"),
 		renderTemplate = assert(options.renderTemplate, "template renderer is required"),
 		mountTemplate = assert(options.mountTemplate, "template mount is required"),
 		presentSheet = assert(options.presentSheet, "sheet presenter is required"),
@@ -56,9 +59,6 @@ end
 -- a colour scheme.
 local COLOR_SCHEMES = { [1] = "light", [2] = "dark" }
 
--- Speech recognizer locales for the languages stories are written in.
-local SPEECH_LOCALES = { de = "de-DE", German = "de-DE", en = "en-US" }
-
 -- Opens a story at its last page when it has an autosave, or from its title
 -- page when `fresh` is set or nothing is saved.
 function Controller:show(id, fresh)
@@ -79,7 +79,7 @@ function Controller:show(id, fresh)
 	local speechAvailable = self.speechModule ~= nil
 	if speechAvailable then
 		-- Dictation listens in the story's language, not the phone's.
-		local locale = SPEECH_LOCALES[game.language or ""]
+		local locale = game.language and Languages.speechLocale(game.language)
 		self.speech = self.speechModule.recognizer(function(state, text, message)
 			self:onSpeechEvent(state, text, message)
 		end, locale)
@@ -137,7 +137,6 @@ function Controller:readerData()
 	-- a command with its first word.
 	data.composer = { verbatim = true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
 	data.toast = self.toast
-	data.text = ReaderText.strings(self.model:presentation().language)
 	data.actions = self.actions
 	return data
 end
@@ -149,7 +148,7 @@ function Controller:render()
 	local story = self.model:presentation()
 	self.heading:update({
 		roomTitle = story.roomTitle,
-		progress = ReaderText.progress(data.text, self.game and self.game.statusLine, story.score, story.maxScore, story.moves),
+		progress = ReaderStatus.progress(self.resources(), self.game and self.game.statusLine, story.score, story.maxScore, story.moves),
 		colorScheme = data.reading.colorScheme, font = data.reading.font,
 	})
 	self:renderCompletions()
@@ -309,15 +308,13 @@ function Controller:typeNext(generation)
 	self.after(TYPING.tick, function() self:typeNext(generation) end)
 end
 
-local DICTATION = {
-	listening = "Listening… Tap the microphone to finish.",
-	starting = "Waiting for microphone access…",
-	processing = "Transcribing…",
-	unavailable = "Dictation is unavailable. Check microphone and speech access in Settings.",
-}
-
 function Controller:onSpeechEvent(state, text, message)
 	if not self.refs then return end
+	local resources = self.resources()
+	local DICTATION = {
+		listening = resources.dictationListening, starting = resources.dictationStarting,
+		processing = resources.dictationProcessing, unavailable = resources.dictationUnavailable,
+	}
 	local draft = self.draft
 	if state == "listening" then
 		self.dictationActive = true
@@ -333,7 +330,7 @@ function Controller:onSpeechEvent(state, text, message)
 	elseif state == "starting" then
 		self.dictationStatus = DICTATION.starting
 	elseif state == "processing" then
-		self.dictationStatus = DICTATION.processing
+		self.dictationStatus = self.resources().dictationProcessing
 	elseif state == "error" then
 		self.dictationActive = false
 		self.dictationStatus = message or DICTATION.unavailable
@@ -348,7 +345,7 @@ function Controller:toggleDictation()
 	if not self.speech then return end
 	if self.dictationActive then
 		self.speech:stop()
-		self.dictationStatus = DICTATION.processing
+		self.dictationStatus = self.resources().dictationProcessing
 	else
 		self.dictationPrefix = self.draft
 		self.dictationActive = true
@@ -404,7 +401,7 @@ end
 -- that fades after a beat, as Game Center achievements announce themselves.
 function Controller:announceScore(change)
 	if not self.refs or type(change) ~= "number" or change == 0 then return end
-	self.toast = ReaderText.toast(ReaderText.strings(self.model:presentation().language), change)
+	self.toast = ReaderStatus.toast(self.resources(), change)
 	self:render()
 	if self.haptics then
 		if change > 0 then self.haptics.notification("success") else self.haptics.notification("warning") end

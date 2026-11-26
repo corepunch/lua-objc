@@ -3,9 +3,9 @@
     <ScrollView>
       <VStack padding="20" spacing="20" alignment="leading" maxWidth="infinity">
         <HStack spacing="8" alignment="center" maxWidth="infinity">
-          <Label text="Themes &amp; Settings" size="20" weight="bold" lines="1" maxWidth="infinity" />
+          <Label text="@themesAndSettings" size="20" weight="bold" lines="1" maxWidth="infinity" />
           <Spacer />
-          <Button id="done" title="Done" action="done" style="glass" size="16" weight="semibold" />
+          <Button id="done" title="@done" action="done" style="glass" size="16" weight="semibold" />
         </HStack>
         <VStack id="readingOptions" maxWidth="infinity" />
       </VStack>

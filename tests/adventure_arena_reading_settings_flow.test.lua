@@ -10,6 +10,8 @@ local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local SessionController = require("apps.adventure-arena.controllers.SessionController")
 local ReadingSettingsController = require("apps.adventure-arena.controllers.ReadingSettingsController")
 local Template = require("ui.template")
+local Words = require("apps.adventure-arena.services.Words")
+local function resources() return Words.load("en") end
 
 local button, slider, picker, page, toggle = ns.Button, ns.Slider, ns.Picker, ns.Page, ns.Toggle
 local paragraph = ns.Paragraph
@@ -67,7 +69,7 @@ local model = Session.new({ engineFactory = function()
 end })
 
 local function mountTemplate(host, template)
-	return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
+	return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns, resources)
 end
 local saved
 Store.new { games = { game }, documents = { reading = { save = function(value) saved = value end } } }
@@ -79,7 +81,7 @@ local options = ReadingSettingsController.new {
 }
 
 local sessionRefs, sheetRefs, presentedSheet, presentedDetents, dismissedSheet
-controller = SessionController.new {
+controller = SessionController.new { resources = resources,
 	model = model,
 	push = function(template, data)
 		local view, refs = xml.renderFile("apps/adventure-arena/views/" .. template .. ".etlua", data, ns)

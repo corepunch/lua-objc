@@ -1,0 +1,141 @@
+<Resources>
+	<!-- Home and navigation -->
+	<String id="discover" value="Entdecken" />
+	<String id="search" value="Suchen" />
+	<String id="settings" value="Einstellungen" />
+	<String id="back" value="Zurück" />
+	<String id="done" value="Fertig" />
+	<!-- Discover -->
+	<String id="noAdventures" value="Keine Abenteuer" />
+	<String id="emptyCatalog" value="Das Regal ist leer. Schreibe eine ZIL-Geschichte oder komm wieder, wenn der Katalog da ist." />
+	<String id="writeAdventure" value="Abenteuer schreiben" />
+	<String id="continueReading" value="Weiterlesen" />
+	<String id="topRated" value="Am besten bewertet" />
+	<String id="topRatedDetail" value="Diese Abenteuer mögen Spieler am liebsten" />
+	<String id="seeAll" value="Alle %s ansehen" />
+	<String id="featured" value="Empfohlen" />
+	<String id="read" value="Lesen" />
+	<!-- Ratings -->
+	<String id="noRatings" value="Keine Bewertungen" />
+	<String id="ratingsCount" value="%d Bewertungen" />
+	<String id="outOfFive" value="%s von 5" />
+	<String id="ratedOutOfFive" value="Bewertet mit %s von 5" />
+	<!-- Detail -->
+	<String id="startOver" value="Neu beginnen" />
+	<String id="startOverLabel" value="Von vorn beginnen" />
+	<String id="continue" value="Weiterlesen" />
+	<String id="startReading" value="Lesen starten" />
+	<String id="continueBook" value="%s weiterlesen" />
+	<String id="readBook" value="%s lesen" />
+	<String id="factRating" value="Bewertung" />
+	<String id="factDifficulty" value="Schwierigkeit" />
+	<String id="factGenre" value="Genre" />
+	<String id="factReleased" value="Erschienen" />
+	<String id="infocomLevel" value="Infocom-Stufe" />
+	<String id="factAdventure" value="Abenteuer" />
+	<String id="aboutStory" value="Über diese Geschichte" />
+	<String id="ratingsAndReviews" value="Bewertungen &amp; Rezensionen" />
+	<String id="moreIn" value="Mehr aus %s" />
+	<!-- Create -->
+	<String id="create" value="Erstellen" />
+	<String id="createDetail" value="Bring deine eigene ZIL-Geschichte in die Arena. Die Werkzeuge zum Schreiben kommen bald." />
+	<!-- Search -->
+	<String id="searchPlaceholder" value="Titel, Autoren, Genres" />
+	<String id="searchLabel" value="Abenteuer suchen" />
+	<String id="noResults" value="Keine Treffer" />
+	<String id="noResultsFor" value="Kein Abenteuer passt zu „%s“. Versuche es mit einem Titel, Autor oder Genre." />
+	<!-- Settings -->
+	<String id="language" value="Sprache" />
+	<String id="languageAutomatic" value="Automatisch" />
+	<String id="readingOptionsDetail" value="So sind alle Geschichten eingestellt. Du kannst das auch beim Lesen ändern, mit dem Textknopf oben auf der Seite." />
+	<String id="help" value="Hilfe" />
+	<String id="helpDetail" value="Was eine interaktive Geschichte ist, wie du eine Seite liest und wie du sagst, was du tust." />
+	<String id="howToPlay" value="So wird gespielt" />
+	<String id="gamesInProgress" value="Angefangene Geschichten" />
+	<String id="noGamesInProgress" value="Noch nichts angefangen" />
+	<String id="continueAt" value="%s weiterlesen, %s" />
+	<String id="continueAtStatus" value="%s weiterlesen, %s. %s" />
+	<String id="moreFor" value="Mehr zu %s" />
+	<String id="removeFromProgress" value="Aus der Liste entfernen" />
+	<!-- Reader -->
+	<String id="commandSuggestions" value="Befehlsvorschläge" />
+	<String id="themesAndSettingsButton" value="Design und Einstellungen" />
+	<String id="couldNotStart" value="Das Abenteuer konnte nicht starten" />
+	<String id="complete" value="%s vervollständigen" />
+	<String id="placeholder" value="Was tust du?" />
+	<String id="command" value="Befehl" />
+	<String id="send" value="Befehl senden" />
+	<String id="dictate" value="Befehl diktieren" />
+	<String id="score" value="Punkte" />
+	<String id="points" value="Punkte" />
+	<String id="point" value="Punkt" />
+	<String id="pointsUnit" value="Punkte" />
+	<String id="scoreOf" value="Punkte %d von %d" />
+	<String id="scoreOnly" value="Punkte %d" />
+	<String id="oneMove" value="1 Zug" />
+	<String id="moves" value="%d Züge" />
+	<String id="youSaid" value="Du: %s" />
+	<String id="dictationListening" value="Ich höre zu … Tippe auf das Mikrofon, wenn du fertig bist." />
+	<String id="dictationStarting" value="Warte auf den Zugriff auf das Mikrofon …" />
+	<String id="dictationProcessing" value="Ich schreibe mit …" />
+	<String id="dictationUnavailable" value="Diktieren geht gerade nicht. Prüfe in den Einstellungen den Zugriff auf Mikrofon und Spracherkennung." />
+	<!-- Themes & Settings -->
+	<String id="themesAndSettings" value="Design &amp; Einstellungen" />
+	<String id="textSize" value="Textgröße" />
+	<String id="smallerText" value="Kleinerer Text" />
+	<String id="largerText" value="Größerer Text" />
+	<String id="theme" value="Design" />
+	<String id="themeLabel" value="Design %s" />
+	<String id="selected" value=", ausgewählt" />
+	<String id="theme_paper" value="Papier" />
+	<String id="theme_original" value="Original" />
+	<String id="theme_quiet" value="Ruhig" />
+	<String id="theme_night" value="Nacht" />
+	<String id="font" value="Schrift" />
+	<String id="fontSerif" value="Serif" />
+	<String id="fontSans" value="Sans" />
+	<String id="fontRounded" value="Rund" />
+	<String id="fontMono" value="Mono" />
+	<String id="lineSpacing" value="Zeilenabstand" />
+	<String id="spacingCompact" value="Eng" />
+	<String id="spacingNormal" value="Normal" />
+	<String id="spacingRelaxed" value="Weit" />
+	<String id="justify" value="Blocksatz" />
+	<String id="previewTitle" value="Vor dem Haus" />
+	<String id="previewBody" value="Du stehst auf einer Wiese westlich von einem weißen Haus. Die Haustür ist mit Brettern vernagelt. Hier steht ein kleiner Briefkasten." />
+	<!-- First-launch guide -->
+	<String id="guideStep" value="%d von %d" />
+	<String id="skip" value="Überspringen" />
+	<String id="readerShot" value="Der Reader. %s" />
+	<String id="browseLibrary" value="Bibliothek ansehen" />
+	<String id="next" value="Weiter" />
+	<String id="getStarted" value="Los geht’s" />
+	<String id="welcomeTitle" value="Ein Buch, das antwortet" />
+	<String id="welcomeDetail" value="Adventure Arena ist ein Regal voller interaktiver Geschichten. Jede öffnet sich wie ein Buch und setzt dich mitten hinein: Du bist die Hauptfigur." />
+	<String id="interactiveTitle" value="Kein Buch zum Lesen. Ein Buch zum Spielen." />
+	<String id="interactiveDetail" value="Ein gedrucktes Buch erzählt allen dieselbe Geschichte. Hier bleibt die Geschichte stehen und wartet auf dich: Sag, was du tust, und sie schreibt, was als Nächstes passiert. Dein Platz wird nach jedem Zug gespeichert." />
+	<String id="readTitle" value="So liest du eine Seite" />
+	<String id="readHeadingTitle" value="Die Überschrift zeigt, wo du bist" />
+	<String id="readHeadingDetail" value="Jeder neue Ort beginnt mit seinem Namen und dem, was du dort findest." />
+	<String id="readChevronTitle" value="Der Pfeil markiert deine Züge" />
+	<String id="readChevronDetail" value="Was du getan hast, steht abgesetzt von der Antwort der Geschichte." />
+	<String id="playTitle" value="So wird gespielt" />
+	<String id="playTypeTitle" value="Schreib, was du tust" />
+	<String id="playTypeDetail" value="Ein oder zwei Wörter reichen: SCHAU, NIMM BESEN, NORDEN." />
+	<String id="playLookTitle" value="Schau dich um und sieh in deine Taschen" />
+	<String id="playLookDetail" value="SCHAU beschreibt, wo du bist. INVENTAR zeigt, was du trägst." />
+	<String id="playSuggestionsTitle" value="Tippe auf Vorschläge" />
+	<String id="playSuggestionsDetail" value="„Umsehen“ und „Inventar“ bleiben über der Tastatur. Tippe einen Buchstaben, um ein Verb zu wählen, dann ein Objekt. Sende, wenn du fertig bist." />
+	<String id="audienceTitle" value="Wer spielt?" />
+	<String id="audienceDetail" value="Wir legen das passende Regal nach vorn. Du kannst das später ändern." />
+	<String id="audienceKids" value="Kinder" />
+	<String id="audienceKidsDetail" value="Sanfte Welten und leichte Rätsel." />
+	<String id="audienceParents" value="Eltern" />
+	<String id="audienceParentsDetail" value="Das ganze Regal, auch die dunkleren Klassiker." />
+	<String id="audienceTogether" value="Gemeinsam" />
+	<String id="audienceTogetherDetail" value="Geschichten, die sich gut vorlesen lassen." />
+	<String id="worldsTitle" value="Welten, die dir gefallen" />
+	<String id="worldsDetail" value="Wähle so viele, wie du magst. Wir beginnen mit einer Geschichte aus diesen Regalen." />
+	<String id="readyTitle" value="Deine Bibliothek ist bereit" />
+	<String id="readyDetail" value="Stöbere in den Regalen und öffne ein Cover." />
+</Resources>

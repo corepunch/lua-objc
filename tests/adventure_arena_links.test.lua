@@ -5,6 +5,8 @@ local ns = require("AppKit")
 local bridge = require("AppKitNative")
 local xml = require("ui.xml")
 local Template = require("ui.template")
+local Words = require("apps.adventure-arena.services.Words")
+local function resources() return Words.load("en") end
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local ReadingSettings = require("apps.adventure-arena.models.ReadingSettings")
@@ -112,7 +114,7 @@ end
 state.room = "Gate"
 local rendered
 Store.new { games = { { id = "links", title = "Links" } } }
-local controller = SessionController.new {
+local controller = SessionController.new { resources = resources,
 	model = model,
 	push = function(_, data)
 		local view, refs = xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns)
@@ -123,7 +125,7 @@ local controller = SessionController.new {
 	ns = ns,
 	renderTemplate = function() end,
 	mountTemplate = function(host, template)
-		return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns)
+		return Template.new(host, "apps/adventure-arena/views/" .. template .. ".etlua", ns, resources)
 	end,
 	presentSheet = function() end,
 	dismissSheet = function() end,

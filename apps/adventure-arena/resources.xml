@@ -1,0 +1,141 @@
+<Resources>
+	<!-- Home and navigation -->
+	<String id="discover" value="Discover" />
+	<String id="search" value="Search" />
+	<String id="settings" value="Settings" />
+	<String id="back" value="Back" />
+	<String id="done" value="Done" />
+	<!-- Discover -->
+	<String id="noAdventures" value="No Adventures" />
+	<String id="emptyCatalog" value="The shelf is empty. Write a ZIL story, or come back when the catalog has landed." />
+	<String id="writeAdventure" value="Write an Adventure" />
+	<String id="continueReading" value="Continue Reading" />
+	<String id="topRated" value="Top Rated" />
+	<String id="topRatedDetail" value="The adventures players love most" />
+	<String id="seeAll" value="See all %s" />
+	<String id="featured" value="Featured" />
+	<String id="read" value="Read" />
+	<!-- Ratings -->
+	<String id="noRatings" value="No ratings yet" />
+	<String id="ratingsCount" value="%d ratings" />
+	<String id="outOfFive" value="%s out of 5" />
+	<String id="ratedOutOfFive" value="Rated %s out of 5" />
+	<!-- Detail -->
+	<String id="startOver" value="Start Over" />
+	<String id="startOverLabel" value="Start over" />
+	<String id="continue" value="Continue" />
+	<String id="startReading" value="Start Reading" />
+	<String id="continueBook" value="Continue %s" />
+	<String id="readBook" value="Start reading %s" />
+	<String id="factRating" value="Rating" />
+	<String id="factDifficulty" value="Difficulty" />
+	<String id="factGenre" value="Genre" />
+	<String id="factReleased" value="Released" />
+	<String id="infocomLevel" value="Infocom level" />
+	<String id="factAdventure" value="Adventure" />
+	<String id="aboutStory" value="About this Story" />
+	<String id="ratingsAndReviews" value="Ratings &amp; Reviews" />
+	<String id="moreIn" value="More in %s" />
+	<!-- Create -->
+	<String id="create" value="Create" />
+	<String id="createDetail" value="Bring your own ZIL story to the arena. Authoring tools are on the way." />
+	<!-- Search -->
+	<String id="searchPlaceholder" value="Titles, authors, genres" />
+	<String id="searchLabel" value="Search adventures" />
+	<String id="noResults" value="No Results" />
+	<String id="noResultsFor" value="No adventures match “%s”. Try a title, author, or genre." />
+	<!-- Settings -->
+	<String id="language" value="Language" />
+	<String id="languageAutomatic" value="Automatic" />
+	<String id="readingOptionsDetail" value="How every story is set. You can also change these while reading with the text button at the top of the page." />
+	<String id="help" value="Help" />
+	<String id="helpDetail" value="What an interactive story is, how to read its page and how to say what you do." />
+	<String id="howToPlay" value="How to Play" />
+	<String id="gamesInProgress" value="Games in Progress" />
+	<String id="noGamesInProgress" value="No games in progress" />
+	<String id="continueAt" value="Continue %s, %s" />
+	<String id="continueAtStatus" value="Continue %s, %s. %s" />
+	<String id="moreFor" value="More for %s" />
+	<String id="removeFromProgress" value="Remove from Games in Progress" />
+	<!-- Reader -->
+	<String id="commandSuggestions" value="Command suggestions" />
+	<String id="themesAndSettingsButton" value="Themes and settings" />
+	<String id="couldNotStart" value="Couldn’t start adventure" />
+	<String id="complete" value="Complete %s" />
+	<String id="placeholder" value="What do you do?" />
+	<String id="command" value="Command" />
+	<String id="send" value="Send command" />
+	<String id="dictate" value="Dictate command" />
+	<String id="score" value="Score" />
+	<String id="points" value="Points" />
+	<String id="point" value="point" />
+	<String id="pointsUnit" value="points" />
+	<String id="scoreOf" value="Score %d of %d" />
+	<String id="scoreOnly" value="Score %d" />
+	<String id="oneMove" value="1 move" />
+	<String id="moves" value="%d moves" />
+	<String id="youSaid" value="You: %s" />
+	<String id="dictationListening" value="Listening… Tap the microphone to finish." />
+	<String id="dictationStarting" value="Waiting for microphone access…" />
+	<String id="dictationProcessing" value="Transcribing…" />
+	<String id="dictationUnavailable" value="Dictation is unavailable. Check microphone and speech access in Settings." />
+	<!-- Themes & Settings -->
+	<String id="themesAndSettings" value="Themes &amp; Settings" />
+	<String id="textSize" value="Text Size" />
+	<String id="smallerText" value="Smaller text" />
+	<String id="largerText" value="Larger text" />
+	<String id="theme" value="Theme" />
+	<String id="themeLabel" value="%s theme" />
+	<String id="selected" value=", selected" />
+	<String id="theme_paper" value="Paper" />
+	<String id="theme_original" value="Original" />
+	<String id="theme_quiet" value="Quiet" />
+	<String id="theme_night" value="Night" />
+	<String id="font" value="Font" />
+	<String id="fontSerif" value="Serif" />
+	<String id="fontSans" value="Sans" />
+	<String id="fontRounded" value="Rounded" />
+	<String id="fontMono" value="Mono" />
+	<String id="lineSpacing" value="Line Spacing" />
+	<String id="spacingCompact" value="Compact" />
+	<String id="spacingNormal" value="Normal" />
+	<String id="spacingRelaxed" value="Relaxed" />
+	<String id="justify" value="Justify Text" />
+	<String id="previewTitle" value="West of House" />
+	<String id="previewBody" value="You are standing in an open field west of a white house, with a boarded front door. There is a small mailbox here." />
+	<!-- First-launch guide -->
+	<String id="guideStep" value="%d of %d" />
+	<String id="skip" value="Skip" />
+	<String id="readerShot" value="The reader. %s" />
+	<String id="browseLibrary" value="Browse the Library" />
+	<String id="next" value="Continue" />
+	<String id="getStarted" value="Get Started" />
+	<String id="welcomeTitle" value="A book that answers back" />
+	<String id="welcomeDetail" value="Adventure Arena is a shelf of interactive stories. Each one opens like a book and puts you inside it: you are the main character." />
+	<String id="interactiveTitle" value="Not a book you read. A book you play." />
+	<String id="interactiveDetail" value="A printed book tells everyone the same story. Here the story stops and waits for you: say what you do, and it writes what happens next. Your place is saved after every move." />
+	<String id="readTitle" value="How to read a page" />
+	<String id="readHeadingTitle" value="The heading is where you are" />
+	<String id="readHeadingDetail" value="Each new place opens with its name and what you find there." />
+	<String id="readChevronTitle" value="The chevron marks your moves" />
+	<String id="readChevronDetail" value="What you did, set apart from the story’s answer." />
+	<String id="playTitle" value="How to play" />
+	<String id="playTypeTitle" value="Type what you do" />
+	<String id="playTypeDetail" value="A word or two is enough: LOOK, TAKE BROOM, NORTH." />
+	<String id="playLookTitle" value="Look around and check your inventory" />
+	<String id="playLookDetail" value="LOOK describes where you are. INVENTORY lists what you carry." />
+	<String id="playSuggestionsTitle" value="Tap command suggestions" />
+	<String id="playSuggestionsDetail" value="Look around and Inventory stay above the keyboard. Type a letter to choose a verb, then an object. Send when ready." />
+	<String id="audienceTitle" value="Who is playing?" />
+	<String id="audienceDetail" value="We’ll put the right shelf first. You can change this later." />
+	<String id="audienceKids" value="Kids" />
+	<String id="audienceKidsDetail" value="Gentle worlds and introductory puzzles." />
+	<String id="audienceParents" value="Parents" />
+	<String id="audienceParentsDetail" value="The full shelf, including the darker classics." />
+	<String id="audienceTogether" value="Together" />
+	<String id="audienceTogetherDetail" value="Stories that work read out loud." />
+	<String id="worldsTitle" value="Worlds you like" />
+	<String id="worldsDetail" value="Pick as many as you want. We’ll open with a story from those shelves." />
+	<String id="readyTitle" value="Your library is ready" />
+	<String id="readyDetail" value="Browse the shelves and open any cover." />
+</Resources>

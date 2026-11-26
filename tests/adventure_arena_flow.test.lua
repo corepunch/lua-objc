@@ -7,10 +7,15 @@ local Adventures = require("apps.adventure-arena.models.Adventures")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 local Store = require("apps.adventure-arena.Store")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
-local ReaderText = require("apps.adventure-arena.helpers.ReaderText")
+local ReaderStatus = require("apps.adventure-arena.helpers.ReaderStatus")
+local English = require("apps.adventure-arena.services.Words").load("en")
 local catalog = Adventures
 local Controller = require("apps.adventure-arena.Controller")
-local renderFile, button = xml.renderFile, ns.Button
+local rawRenderFile, button = xml.renderFile, ns.Button
+local function renderFile(path, data, ...)
+	data.resources = data.resources or English
+	return rawRenderFile(path, data, ...)
+end
 local scrollView, topEdgeStyles = ns.ScrollView, {}
 ns.ScrollView = function(props)
 	local view = scrollView(props)
@@ -232,19 +237,19 @@ local _, systemRefs = renderFile("apps/adventure-arena/views/pages/Session.etlua
 }, ns)
 t.expect(systemRefs.back == nil, "the navigation bar owns the back button")
 local _, titleRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
-	roomTitle = "Kitchen", progress = ReaderText.progress(ReaderText.strings("en"), nil, 0, 0, 0),
+	roomTitle = "Kitchen", progress = ReaderStatus.progress(English, nil, 0, 0, 0),
 }, ns)
 t.assertEqual(titleRefs.sessionTitle.text, "Kitchen", "the running head names the room")
 t.assertEqual(titleRefs.sessionScore.text, "Score 0", "the running head shows score on its second line")
 local _, movesRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
-	roomTitle = "Dispatch", progress = ReaderText.progress(ReaderText.strings("en"), "moves", 0, 0, 7),
+	roomTitle = "Dispatch", progress = ReaderStatus.progress(English, "moves", 0, 0, 7),
 }, ns)
 t.assertEqual(movesRefs.sessionScore.text, "7 moves", "a story without points shows its moves, not Score 0")
 local _, oneRefs = renderFile("apps/adventure-arena/views/sections/SessionTitle.etlua", {
-	roomTitle = "Dispatch", progress = ReaderText.progress(ReaderText.strings("en"), "moves", 0, 0, 1),
+	roomTitle = "Dispatch", progress = ReaderStatus.progress(English, "moves", 0, 0, 1),
 }, ns)
 t.assertEqual(oneRefs.sessionScore.text, "1 move", "one move is singular")
-ns.Button, ns._addDrag, xml.renderFile = button, addDrag, renderFile
+ns.Button, ns._addDrag, xml.renderFile = button, addDrag, rawRenderFile
 ns.ScrollView = scrollView
 
 os.exit(t.summary() and 0 or 1)

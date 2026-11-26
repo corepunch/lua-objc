@@ -211,6 +211,12 @@ static void push_objc_value(lua_State *L, id value) {
 	lua_objc_push_foundation_value(L, value, ancestors, 0);
 }
 
+// The device's language tags in the reader's order of preference.
+static int bridge_preferred_languages(lua_State *L) {
+	push_objc_value(L, NSLocale.preferredLanguages);
+	return 1;
+}
+
 static id lua_objc_foundation_value_at_index(
 	lua_State *L,
 	int idx,

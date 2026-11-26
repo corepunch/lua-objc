@@ -6,7 +6,7 @@
   <VStack width="<%= COVER.width %>" spacing="6" alignment="leading">
     <Image path="<%= game.cover %>" resizable="true" contentMode="fill" cornerRadius="<%= COVER.cornerRadius %>" width="<%= COVER.width %>" height="<%= COVER.height %>" clipsToBounds="true" />
     <VStack spacing="1" alignment="leading">
-      <Label text="<%= game.title %>" size="14" weight="semibold" lines="1" truncation="tail" />
+      <Label text="<%= game.title %>" size="14" weight="semibold" lines="2" truncation="tail" />
       <% if game.author and game.author ~= "" then %>
       <Label id="<%= id %>_author" text="<%= game.author %>" size="12" color="secondary" lines="1" truncation="tail" />
       <% end %>
