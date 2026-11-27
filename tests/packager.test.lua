@@ -30,6 +30,12 @@ t.assertEqual(paths.moduleRel("zilscript.runtime"),
 t.assertEqual(paths.moduleCandidates("zilscript.compiler")[1],
 	"apps/adventure-arena/zilscript/zilscript/compiler.lua", "zilscript compiler is streamed")
 
+t.assertEqual(paths.moduleCandidates("en_ru.engine")[1],
+	"apps/translator/en-ru-translator/en_ru/engine.lua", "translator engine is streamed")
+t.expect(paths.watched("apps/translator/en-ru-translator/dictionary/lex-01.tsv"), "watch translator data")
+t.assertEqual(paths.contentType("dictionary/assets.tsv"), "text/tab-separated-values; charset=utf-8",
+	"translator data uses UTF-8")
+
 local full, norm = paths.jail("/tmp/repo", "demo/hello/views/Window.etlua")
 t.assertEqual(norm, "demo/hello/views/Window.etlua", "jail keeps relative path")
 t.expect(full:find("demo/hello/views/Window.etlua", 1, true), "jail joins root")
