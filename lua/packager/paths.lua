@@ -7,7 +7,7 @@ local M = {}
 
 local ASSET_EXT = {
 	png = true, jpg = true, jpeg = true, gif = true, webp = true,
-	svg = true, json = true, zil = true, txt = true, md = true,
+	svg = true, json = true, zil = true, txt = true, md = true, tsv = true,
 }
 
 local MODULES = {
@@ -85,6 +85,7 @@ function M.contentType(path)
 	if ext == "webp" then return "image/webp" end
 	if ext == "svg" then return "image/svg+xml" end
 	if ext == "json" then return "application/json" end
+	if ext == "tsv" then return "text/tab-separated-values; charset=utf-8" end
 	return "application/octet-stream"
 end
 
@@ -92,6 +93,9 @@ function M.moduleRel(name)
 	if type(name) ~= "string" or name == "" then return nil, "empty" end
 	if NATIVE[name] then return nil, "native" end
 	if MODULES[name] then return MODULES[name] end
+	if name:match("^en_ru%.") then
+		return "apps/translator/en-ru-translator/" .. name:gsub("%.", "/") .. ".lua"
+	end
 	if name == "zilscript" then return "apps/adventure-arena/zilscript/zilscript/init.lua" end
 	if name:match("^zilscript%.") then
 		return "apps/adventure-arena/zilscript/" .. name:gsub("%.", "/") .. ".lua"
@@ -103,7 +107,7 @@ function M.moduleCandidates(name)
 	local rel, err = M.moduleRel(name)
 	if not rel then return nil, err end
 	if MODULES[name] then return { rel } end
-	if name == "zilscript" or name:match("^zilscript%.") then
+	if name == "zilscript" or name:match("^zilscript%.") or name:match("^en_ru%.") then
 		return { rel, rel:gsub("%.lua$", "/init.lua") }
 	end
 	return { rel, "lua/" .. rel, "apps/" .. rel }
