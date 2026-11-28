@@ -111,8 +111,11 @@ function ZILRuntime.new(game, readFile, seed)
 		end
 		return {
 			setupProfiles = setupProfiles,
-			start = function(_, selection)
+			start = function(_, selection, restoreLegacy)
 				return withContext(readFile, paths, function()
+					if restoreLegacy and type(env.RPG_RESTORE_LEGACY) == "function" then
+						env.RPG_RESTORE_LEGACY()
+					end
 					if selection then
 						local ok, reason = Setup.select(env, selection)
 						if not ok then error(reason, 0) end
