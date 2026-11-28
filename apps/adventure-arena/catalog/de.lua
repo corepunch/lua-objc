@@ -16,6 +16,7 @@ return {
 		rating = 0,
 		reviewCount = 0,
 		startFile = "blackout-at-meridian.zil",
+		portraitRoot = "books/en/blackout-at-meridian",
 		ruleset = "superhero-percentile",
 		reviews = {},
 		genre = "Superhelden-Rollenspiel",

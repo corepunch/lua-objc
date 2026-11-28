@@ -20,11 +20,13 @@ t.expect(Adventures:find("books.en.blackout-at-meridian") == nil, "editions have
 local controller = app.sessionController
 controller.reduceMotion = function() return true end
 controller.model.newSeed = function() return 97 end
-local setupActions
+local setupActions, statusActions, statusRefs
 local render = controller.renderTemplate
 controller.renderTemplate = function(template, data)
 	if template == "sheets/CharacterSetup" then setupActions = data.actions end
-	return render(template, data)
+	local view, refs = render(template, data)
+	if template == "sheets/CharacterStatus" then statusActions, statusRefs = data.actions, refs end
+	return view, refs
 end
 controller.presentSheet = function(sheet) return sheet end
 controller.dismissSheet = function() end
@@ -74,23 +76,25 @@ t.expect(document:find("Таланты и снаряжение", 1, true), "the 
 t.expect(document:find("@media print", 1, true), "the HTML has a print layout")
 t.assertEqual(reader:snapshot().moves, before.moves, "export does not take a turn")
 t.assertEqual(#reader:snapshot().commands, #before.commands, "export does not enter the transcript")
-local sent
+local sent, title
 local priorNS = controller.ns
-controller.ns = setmetatable({ shareFiles = function(items) sent = items[1]; return true end }, { __index = priorNS })
-t.expect(controller:exportSheet(), "the print action shares an HTML file on iOS")
-t.assertEqual(sent.name, "character-sheet.html")
-t.assertEqual(sent.text, document)
-local opened
-t.expect(CharacterSheet.share({ openPath = function(path)
-	opened = path
-	local file = assert(io.open(path, "rb"))
-	t.assertEqual(file:read("a"), document, "the macOS print action opens the same HTML")
-	file:close()
-	return true
-end }, sheet), "the macOS print action succeeds")
-t.expect(opened:match("%.html$"))
-os.remove(opened)
-
+controller.ns = setmetatable({
+	printHTML = function(html, jobTitle) sent, title = html, jobTitle; return true end,
+	shareFiles = function() error("unexpected share") end,
+	openPath = function() error("unexpected browser") end,
+}, { __index = priorNS })
+t.expect(controller:showCharacterStatus(), "open the live status sheet")
+t.expect(statusActions.print(), "the status sheet sends the HTML to the system print dialog")
+t.assertEqual(statusRefs.characterPrintError.hidden, true)
+t.assertEqual(title, "Лист персонажа: Алёна <Гром> & дочь")
+t.assertEqual(sent, document)
+t.assertEqual(reader:snapshot().moves, before.moves, "printing does not take a turn")
+t.assertEqual(#reader:snapshot().commands, #before.commands, "printing does not enter the transcript")
+controller.ns.printHTML = function() return false end
+t.expect(not statusActions.print(), "a print failure stays in the character status sheet")
+t.assertEqual(statusRefs.characterPrintError.hidden, false)
+statusActions.done()
+t.expect(not statusActions.print(), "a dismissed sheet cannot open the print dialog")
 controller.ns = priorNS
 
 os.exit(t.summary() and 0 or 1)

@@ -2617,6 +2617,12 @@ function AppKit.revealInFinder(path)
 	bridge._revealInFinder(path)
 end
 
+-- True means the operating system accepted the print request, not that
+-- the user selected a printer or completed a job.
+function AppKit.printHTML(html, title)
+	return bridge._printHTML(html, title)
+end
+
 function AppKit.openPath(path)
 	return bridge._openPath(path)
 end

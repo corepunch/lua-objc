@@ -10,6 +10,7 @@ return {
 		reviewCount = 0,
 		reviews = {},
 		startFile = "blackout-at-meridian.zil",
+		portraitRoot = "books/en/blackout-at-meridian",
 		genre = "Супергеройская ролевая игра",
 		statusLine = "moves",
 		collection = "Оригинальные приключения",

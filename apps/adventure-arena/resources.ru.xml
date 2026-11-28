@@ -92,8 +92,8 @@
 	<String id="characterStatus" value="Характеристики персонажа" />
 	<String id="hideCharacterMonitor" value="Скрыть показатель состояния" />
 	<String id="showCharacterMonitor" value="Показать показатель состояния" />
-	<String id="exportCharacterSheet" value="Печать карточки героя" />
-	<String id="sheetExportFailed" value="Не удалось открыть карточку героя." />
+	<String id="printCharacterSheet" value="Распечатать лист персонажа" />
+	<String id="sheetPrintFailed" value="Не удалось открыть окно печати." />
 	<String id="audienceDetail" value="Мы подберём первые полки. Это можно изменить позже." />
 	<String id="audienceKids" value="Дети" />
 	<String id="audienceKidsDetail" value="Добрые миры и простые загадки." />

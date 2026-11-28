@@ -141,8 +141,8 @@
 	<String id="characterStatus" value="Character Stats" />
 	<String id="hideCharacterMonitor" value="Hide Resource Monitor" />
 	<String id="showCharacterMonitor" value="Show Resource Monitor" />
-	<String id="exportCharacterSheet" value="Print Character Sheet" />
-	<String id="sheetExportFailed" value="Couldn’t open the character sheet." />
+	<String id="printCharacterSheet" value="Print Character Sheet" />
+	<String id="sheetPrintFailed" value="Couldn’t open the print dialog." />
 	<String id="chooseHero" value="Choose a character" />
 	<String id="cancelHeroSetup" value="Cancel" />
 	<String id="heroSelected" value="Selected" />

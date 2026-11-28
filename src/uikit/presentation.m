@@ -135,6 +135,53 @@ static int bridge_UIKitPresentation_confirm(lua_State *L) {
 	return 0;
 }
 
+/* Present the real system print panel, not a share sheet. Keep the shared
+ * controller reserved until cancellation or print completion. */
+static BOOL lua_uikit_printing;
+static int bridge_UIKitPresentation_printHTML(lua_State *L) {
+	size_t length = 0;
+	const char *bytes = luaL_checklstring(L, 1, &length);
+	const char *title = luaL_optstring(L, 2, "Document");
+	if (!NSThread.isMainThread || !length || length > 4 * 1024 * 1024 ||
+		lua_uikit_printing || !UIPrintInteractionController.isPrintingAvailable) {
+		lua_pushboolean(L, NO);
+		return 1;
+	}
+	UIView *host = lua_uikit_presenter().viewIfLoaded;
+	NSString *html = [[NSString alloc] initWithBytes:bytes length:length encoding:NSUTF8StringEncoding];
+	UIPrintInteractionController *controller = UIPrintInteractionController.sharedPrintController;
+	if (!host.window || !html || !controller) {
+		lua_pushboolean(L, NO);
+		return 1;
+	}
+
+	UIPrintInfo *info = UIPrintInfo.printInfo;
+	info.jobName = [NSString stringWithUTF8String:title] ?: @"Document";
+	info.outputType = UIPrintInfoOutputGrayscale;
+	controller.printInfo = info;
+	controller.printFormatter = [[UIMarkupTextPrintFormatter alloc] initWithMarkupText:html];
+	BOOL animated = !UIAccessibilityIsReduceMotionEnabled();
+	UIPrintInteractionCompletionHandler completion = ^(UIPrintInteractionController *sender, __unused BOOL completed, NSError *error) {
+		if (error) NSLog(@"Printing failed: %@", error.localizedDescription);
+		sender.printFormatter = nil;
+		lua_uikit_printing = NO;
+	};
+	lua_uikit_printing = YES;
+	BOOL shown;
+	if (host.traitCollection.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+		CGRect anchor = CGRectMake(CGRectGetMidX(host.bounds), CGRectGetMidY(host.bounds), 1, 1);
+		shown = [controller presentFromRect:anchor inView:host animated:animated completionHandler:completion];
+	} else {
+		shown = [controller presentAnimated:animated completionHandler:completion];
+	}
+	if (!shown) {
+		controller.printFormatter = nil;
+		lua_uikit_printing = NO;
+	}
+	lua_pushboolean(L, shown);
+	return 1;
+}
+
 /* Foundation's coordinated uploading read makes the ZIP; the system activity
  * controller owns destinations, presentation, and completion. */
 static int bridge_UIKitPresentation_shareFiles(lua_State *L) {
