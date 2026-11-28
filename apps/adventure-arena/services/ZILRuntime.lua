@@ -111,6 +111,25 @@ function ZILRuntime.new(game, readFile, seed)
 						resume = function(_, command)
 							return withContext(readFile, paths, function() return engine:resume(command) end)
 						end,
+						canExportSheet = function()
+							return type(env.RPG_EXPORT_SHEET) == "function" and env.ZIL_TRUE(env.RPG_STARTED)
+						end,
+						characterSheet = function()
+							if type(env.RPG_EXPORT_SHEET) ~= "function" then return nil end
+							return withContext(readFile, paths, function()
+								local sheet = { rows = {}, title = game.title, language = game.language or "en" }
+								env.SHEET_IDENTITY = function(name, profile)
+									sheet.name, sheet.profile = name, profile
+								end
+								env.SHEET_ROW = function(label, value, maximum)
+									table.insert(sheet.rows, { label = label, value = value, maximum = maximum > 0 and maximum or nil })
+								end
+								local ok, result = pcall(env.RPG_EXPORT_SHEET)
+								env.SHEET_IDENTITY, env.SHEET_ROW = nil, nil
+								if not ok then error(result, 0) end
+								if result then return sheet end
+							end)
+						end,
 						progress = function()
 							return {
 								score = tonumber(env.SCORE) or 0,

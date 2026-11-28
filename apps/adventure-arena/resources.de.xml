@@ -138,4 +138,6 @@
 	<String id="worldsDetail" value="Wähle so viele, wie du magst. Wir beginnen mit einer Geschichte aus diesen Regalen." />
 	<String id="readyTitle" value="Deine Bibliothek ist bereit" />
 	<String id="readyDetail" value="Stöbere in den Regalen und öffne ein Cover." />
+	<String id="exportCharacterSheet" value="Heldenbogen drucken" />
+	<String id="sheetExportFailed" value="Der Heldenbogen konnte nicht geöffnet werden." />
 </Resources>

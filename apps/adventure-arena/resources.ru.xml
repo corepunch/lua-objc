@@ -1,0 +1,133 @@
+<Resources>
+	<String id="discover" value="Обзор" />
+	<String id="search" value="Поиск" />
+	<String id="settings" value="Настройки" />
+	<String id="back" value="Назад" />
+	<String id="done" value="Готово" />
+	<String id="noAdventures" value="Нет приключений" />
+	<String id="emptyCatalog" value="В каталоге пока нет приключений." />
+	<String id="writeAdventure" value="Написать приключение" />
+	<String id="continueReading" value="Продолжить чтение" />
+	<String id="topRated" value="Лучшие по оценкам" />
+	<String id="topRatedDetail" value="Любимые приключения читателей" />
+	<String id="seeAll" value="Показать все: %s" />
+	<String id="featured" value="Избранное" />
+	<String id="read" value="Читать" />
+	<String id="noRatings" value="Оценок пока нет" />
+	<String id="ratingsCount" value="Оценок: %d" />
+	<String id="outOfFive" value="%s из 5" />
+	<String id="ratedOutOfFive" value="Оценка %s из 5" />
+	<String id="startOver" value="Начать заново" />
+	<String id="startOverLabel" value="Начать заново" />
+	<String id="continue" value="Продолжить" />
+	<String id="startReading" value="Начать чтение" />
+	<String id="continueBook" value="Продолжить «%s»" />
+	<String id="readBook" value="Начать читать «%s»" />
+	<String id="factRating" value="Оценка" />
+	<String id="factDifficulty" value="Сложность" />
+	<String id="factGenre" value="Жанр" />
+	<String id="factReleased" value="Выпуск" />
+	<String id="factAdventure" value="Приключение" />
+	<String id="aboutStory" value="Об этой истории" />
+	<String id="ratingsAndReviews" value="Оценки и отзывы" />
+	<String id="moreIn" value="Другие в разделе «%s»" />
+	<String id="searchPlaceholder" value="Названия, авторы, жанры" />
+	<String id="searchLabel" value="Поиск приключений" />
+	<String id="noResults" value="Ничего не найдено" />
+	<String id="noResultsFor" value="По запросу «%s» ничего не найдено. Попробуйте ввести название, автора или жанр." />
+	<String id="language" value="Язык" />
+	<String id="languageAutomatic" value="Автоматически" />
+	<String id="help" value="Помощь" />
+	<String id="howToPlay" value="Как играть" />
+	<String id="gamesInProgress" value="Начатые приключения" />
+	<String id="noGamesInProgress" value="Нет начатых приключений" />
+	<String id="continueAt" value="Продолжить «%s», %s" />
+	<String id="continueAtStatus" value="Продолжить «%s», %s. %s" />
+	<String id="moreFor" value="Ещё для «%s»" />
+	<String id="removeFromProgress" value="Удалить из начатых" />
+	<String id="commandSuggestions" value="Предложения команд" />
+	<String id="themesAndSettingsButton" value="Темы и настройки" />
+	<String id="couldNotStart" value="Не удалось начать приключение" />
+	<String id="complete" value="Дополнить «%s»" />
+	<String id="placeholder" value="Что вы делаете?" />
+	<String id="command" value="Команда" />
+	<String id="send" value="Отправить команду" />
+	<String id="dictate" value="Продиктовать команду" />
+	<String id="score" value="Очки" />
+	<String id="points" value="Очки" />
+	<String id="point" value="очко" />
+	<String id="pointsUnit" value="очков" />
+	<String id="scoreOf" value="Очки: %d из %d" />
+	<String id="scoreOnly" value="Очки: %d" />
+	<String id="oneMove" value="Ходы: 1" />
+	<String id="moves" value="Ходы: %d" />
+	<String id="youSaid" value="Вы: %s" />
+	<String id="dictationListening" value="Слушаю… Нажмите на микрофон, чтобы закончить." />
+	<String id="dictationStarting" value="Ожидание доступа к микрофону…" />
+	<String id="dictationProcessing" value="Распознавание речи…" />
+	<String id="dictationUnavailable" value="Диктовка недоступна. Проверьте доступ к микрофону и распознаванию речи в настройках." />
+	<String id="themesAndSettings" value="Темы и настройки" />
+	<String id="textSize" value="Размер текста" />
+	<String id="smallerText" value="Уменьшить текст" />
+	<String id="largerText" value="Увеличить текст" />
+	<String id="theme" value="Тема" />
+	<String id="themeLabel" value="Тема «%s»" />
+	<String id="selected" value=", выбрано" />
+	<String id="theme_paper" value="Бумага" />
+	<String id="theme_original" value="Оригинал" />
+	<String id="theme_quiet" value="Спокойная" />
+	<String id="theme_night" value="Ночь" />
+	<String id="font" value="Шрифт" />
+	<String id="fontSerif" value="С засечками" />
+	<String id="fontSans" value="Без засечек" />
+	<String id="fontRounded" value="Скруглённый" />
+	<String id="fontMono" value="Моноширинный" />
+	<String id="lineSpacing" value="Межстрочный интервал" />
+	<String id="spacingCompact" value="Компактный" />
+	<String id="spacingNormal" value="Обычный" />
+	<String id="spacingRelaxed" value="Свободный" />
+	<String id="justify" value="По ширине" />
+	<String id="previewTitle" value="К западу от дома" />
+	<String id="previewBody" value="Вы стоите на поле к западу от белого дома. Вход заколочен. Рядом стоит небольшой почтовый ящик." />
+	<String id="exportCharacterSheet" value="Печать карточки героя" />
+	<String id="sheetExportFailed" value="Не удалось открыть карточку героя." />
+	<String id="audienceDetail" value="Мы подберём первые полки. Это можно изменить позже." />
+	<String id="audienceKids" value="Дети" />
+	<String id="audienceKidsDetail" value="Добрые миры и простые загадки." />
+	<String id="audienceParents" value="Родители" />
+	<String id="audienceParentsDetail" value="Весь каталог, включая мрачную классику." />
+	<String id="audienceTitle" value="Кто будет играть?" />
+	<String id="audienceTogether" value="Вместе" />
+	<String id="audienceTogetherDetail" value="Истории, которые хорошо читать вслух." />
+	<String id="browseLibrary" value="Открыть каталог" />
+	<String id="create" value="Создать" />
+	<String id="createDetail" value="Добавьте свою историю на ZIL. Инструменты для авторов появятся позже." />
+	<String id="getStarted" value="Начать" />
+	<String id="guideStep" value="%d из %d" />
+	<String id="helpDetail" value="Что такое интерактивная история, как её читать и как выбирать действия." />
+	<String id="infocomLevel" value="Уровень Infocom" />
+	<String id="interactiveDetail" value="В обычной книге события уже написаны. Здесь история ждёт вашего решения и продолжается в ответ на него. Прогресс сохраняется после каждого хода." />
+	<String id="interactiveTitle" value="История, в которой вы действуете" />
+	<String id="next" value="Продолжить" />
+	<String id="playLookDetail" value="«Осмотреться» описывает место. «Инвентарь» показывает, что у вас с собой." />
+	<String id="playLookTitle" value="Осмотр и инвентарь" />
+	<String id="playSuggestionsDetail" value="Над клавиатурой доступны осмотр и инвентарь. Начните вводить команду, чтобы выбрать действие и предмет." />
+	<String id="playSuggestionsTitle" value="Пользуйтесь подсказками команд" />
+	<String id="playTitle" value="Как играть" />
+	<String id="playTypeDetail" value="Достаточно одного-двух слов: «осмотреться», «взять предмет», «север»." />
+	<String id="playTypeTitle" value="Напишите, что вы делаете" />
+	<String id="readChevronDetail" value="Ваше действие выделено среди ответов истории." />
+	<String id="readChevronTitle" value="Стрелка отмечает ваш ход" />
+	<String id="readHeadingDetail" value="В начале каждой новой сцены показано название места." />
+	<String id="readHeadingTitle" value="Заголовок показывает, где вы" />
+	<String id="readTitle" value="Как читать страницу" />
+	<String id="readerShot" value="Экран истории. %s" />
+	<String id="readingOptionsDetail" value="Настройте оформление всех историй. Во время чтения настройки открываются кнопкой текста вверху страницы." />
+	<String id="readyDetail" value="Просмотрите полки и откройте любую обложку." />
+	<String id="readyTitle" value="Ваш каталог готов" />
+	<String id="skip" value="Пропустить" />
+	<String id="welcomeDetail" value="Adventure Arena — каталог интерактивных историй. Каждая начинается как книга, в которой главный герой — вы." />
+	<String id="welcomeTitle" value="Книга, которая вам отвечает" />
+	<String id="worldsDetail" value="Выберите любые жанры. Мы предложим историю с одной из этих полок." />
+	<String id="worldsTitle" value="Какие миры вам нравятся?" />
+</Resources>

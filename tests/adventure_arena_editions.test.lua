@@ -64,7 +64,7 @@ app:openCatalogPage("settings")
 local picker = app.pages:refs("settings").language
 local settings = app.pages:data("settings")
 t.assertEqual(settings.languageIndex, 0, "Automatic starts selected")
-t.assertEqual(#settings.languages, 2, "Settings offers every language by its own name")
+t.assertEqual(#settings.languages, 3, "Settings offers every language by its own name")
 t.assertEqual(settings.languages[2].title, "Deutsch")
 t.assertEqual(picker.selectedSegment, 0, "the native picker shows Automatic")
 

@@ -10,6 +10,12 @@
     </ScrollView>
     <VStack spacing="8" maxWidth="infinity">
       <Label id="dictationStatus" text="<%= dictation.status %>" size="13" color="<%= reading.secondary %>" paddingHorizontal="20" lines="2" hidden="<%= tostring(dictation.status == "") %>" />
+      <% if canExportSheet then %>
+      <Button id="exportSheet" title="@exportCharacterSheet" systemImage="printer" action="exportSheet" style="plain" />
+      <% end %>
+      <% if sheetError then %>
+      <Label id="sheetExportError" text="@sheetExportFailed" size="13" color="secondary" />
+      <% end %>
       <GlassEffect id="commandBar" style="regular" cornerRadius="<%= BAR.radius %>" maxWidth="infinity">
         <HStack paddingLeading="18" paddingTrailing="5" spacing="4" minHeight="<%= BAR.height %>">
           <TextField id="input" verbatim="<%= tostring(composer.verbatim == true) %>" text="<%= draft %>" placeholder="@placeholder" accessibilityLabel="@command" style="plain" size="<%= fieldSize %>" design="<%= reading.font %>" color="<%= reading.primary %>" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
