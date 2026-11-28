@@ -19,7 +19,7 @@ local buttonActions, pickerControls, sliderControls, toolbarActions, toggleContr
 local proseColors
 ns.Paragraph = function(props)
 	if props[1] == "The rusted gate stands open." then
-		proseColors = { body = props.color, link = props.linkColor }
+		proseColors = { body = props.color }
 	end
 	return paragraph(props)
 end
@@ -112,8 +112,7 @@ t.assertEqual(page().bannerTitle_1.font.pointSize, 30, "the story's title is lar
 t.assertEqual(page().bannerLine_1_1.text, "Studio Null, 2024", "the game supplies its credits")
 t.assertEqual(page().bannerLine_1_1.font.pointSize, 14, "credits use a smaller size")
 t.assertEqual(page().bannerLine_1_2.text, "Release 1", "release follows the credits")
-t.expect(proseColors and proseColors.body == settings:presentation().primaryTextColor
-	and proseColors.link == nil, "ordinary prose uses the page ink")
+t.expect(proseColors and proseColors.body == settings:presentation().primaryTextColor, "ordinary prose uses the page ink")
 t.expect(page().synopsis == nil, "the catalog synopsis stays outside the reader")
 t.assertEqual(page().sceneTitle_2.text, "Sanitarium Gate", "the first scene identifies the active room")
 t.assertEqual(controller.heading.refs.sessionScore.text, "Score 2 of 10", "the running head shows only the score")
@@ -162,8 +161,7 @@ t.assertEqual(controller.readingSettingsOptions.refs.fontPicker.selectedSegment,
 
 buttonActions[controller.readingSettingsOptions.refs.theme_night]()
 t.assertEqual(settings.theme, "night", "the Night swatch selects the night page")
-t.expect(proseColors and proseColors.body == settings:presentation().primaryTextColor
-	and proseColors.link == nil, "ordinary prose follows the page ink after changing themes")
+t.expect(proseColors and proseColors.body == settings:presentation().primaryTextColor, "ordinary prose follows the page ink after changing themes")
 t.expect(math.abs(controller.refs.session.backgroundColor.redComponent) < 0.01, "the page turns black")
 t.assertEqual(controller.refs.session.colorScheme, "dark", "a Night page is dark whatever the system says")
 t.assertEqual(controller.heading.refs.sessionTitle.superview.colorScheme, "dark", "and so is its running head")

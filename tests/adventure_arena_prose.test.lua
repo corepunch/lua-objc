@@ -57,7 +57,7 @@ for _, book in ipairs(catalog) do
 			t.assertEqual(restored.roomTitle, session.roomTitle, "restoring preserves the current room")
 			t.assertEqual(restored.moves, session.moves, "restoring preserves the move count")
 			for _, entry in ipairs(restored.entries) do
-				t.assertEqual(entry.icon, nil, "restored entries contain only text and prose actions")
+				t.assertEqual(entry.icon, nil, "restored entries contain only text")
 			end
 		end
 	end

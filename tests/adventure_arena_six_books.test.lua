@@ -37,16 +37,6 @@ for id, title in pairs(titles) do
 			t.assertEqual(banner.lines[1], book.author .. ", " .. book.year, "the story prints its own credits")
 			t.expect(session.scene ~= nil, title .. " has an opening scene")
 			t.assertEqual(session.engine.roomIcon, nil, title .. " has no room artwork API")
-			local command
-			for _, links in ipairs(session.scene.links or {}) do
-				for _, link in ipairs(links) do
-					local actions = session:linkActions(link.target)
-					if actions[1] then command = actions[1].command; break end
-				end
-				if command then break end
-			end
-			t.expect(command ~= nil, title .. " offers an opening prose action")
-			if command then t.expect(session:submit(command), title .. " executes a prose action") end
 			t.expect(session:submit("look"), title .. " accepts a command")
 			local restored = Session.new { engineFactory = factory }
 			t.expect(restored:start(book, session:snapshot()), title .. " restores its saved session")

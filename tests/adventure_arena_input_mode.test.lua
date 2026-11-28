@@ -10,7 +10,7 @@ local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session
 local Controller = require("apps.adventure-arena.controllers.SessionController")
 local catalog = require("apps.adventure-arena.catalog.en")
 for _, game in ipairs(catalog) do
-	t.assertEqual(game.hideTextInput, nil, game.id .. " has no separate link input mode")
+	t.assertEqual(game.hideTextInput, nil, game.id .. " supports the text composer")
 end
 local commands, recognizers = {}, 0
 Store.new { games = {{ id = "original", title = "Original" }, { id = "classic", title = "Classic" }} }
@@ -19,7 +19,7 @@ local controller = Controller.new { resources = resources,
 		return { start = function() return {
 			resume = function(_, command) table.insert(commands, command); return "A reply." end,
 			exits = function() return { "north" } end,
-		}, "A [[door]]." end }
+		}, "A door." end }
 	end },
 	push = function(_, data) return xml.renderFile("apps/adventure-arena/views/pages/Session.etlua", data, ns) end,
 	back = function() end, ns = ns, renderTemplate = function() end,

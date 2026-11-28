@@ -10,11 +10,6 @@ for _, part in ipairs({ "en", "early", "village", "late" }) do
 	local path = "books/en/last-door-of-battleworld/" .. part .. ".zil"
 	t.expect(contains(story.words, path), "vocabulary checks read " .. path)
 	t.expect(contains(story.declarations, path), "parser checks read declarations in " .. path)
-	t.expect(contains(story.sources, path), "link checks read " .. path)
-end
-for _, part in ipairs({ "logic", "rules", "early", "village", "late" }) do
-	local path = "books/shared/last-door-of-battleworld/" .. part .. ".zil"
-	t.expect(contains(story.sources, path), "link checks read shared " .. path)
 end
 local make = assert(io.popen("make -s -n -C apps/adventure-arena/zilscript lint-zil"))
 local commands = make:read("a")

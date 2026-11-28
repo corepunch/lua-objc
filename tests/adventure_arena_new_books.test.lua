@@ -28,26 +28,14 @@ for _, book in ipairs(catalog) do
 		t.expect(#session.items > 0 and session.scene ~= nil, "opening exposes the actual room and its objects")
 		t.assertEqual(Session.statusLine(book, 0, 0, 7), "7 moves", "scoreless stories show turns rather than an invented score")
 		local first = session.roomTitle
-		local command
-		for _, links in ipairs(session.scene.links or {}) do
-			for _, link in ipairs(links) do
-				for _, action in ipairs(session:linkActions(link.target)) do
-					if action.command:match("^examine ") then command = action.command; break end
-				end
-				if command then break end
-			end
-			if command then break end
-		end
-		t.expect(command ~= nil, "opening prose provides an actual examination affordance")
-		t.expect(session:submit(command), "a supplied reader command executes")
-		t.assertEqual(session.roomTitle, first, "examining does not silently change rooms")
+		t.expect(session:submit("look"), "the story accepts a typed command")
+		t.assertEqual(session.roomTitle, first, "looking does not change rooms")
 		local saved = session:snapshot()
 		local restored = Session.new { engineFactory = engineFactory }
 		t.expect(restored:start(book, saved), "app saves resume the selected new title")
 		t.assertEqual(restored.roomTitle, session.roomTitle, "resumed room matches")
 		t.assertEqual(restored.score, session.score, "resumed score matches")
 		t.assertEqual(#restored.items, #session.items, "resumed object scope matches")
-		t.assertEqual(#restored:linkActions("nonexistent gateway"), 0, "prose cannot invent a physical interaction")
 	end
 end
 t.assertEqual(count, 3, "all three new adventures are available in the real catalog")

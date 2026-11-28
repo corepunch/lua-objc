@@ -21,7 +21,7 @@ local function engine()
 		start = function()
 			return {
 				resume = function(_, command)
-				if command == "north" then return "Cellar\nA damp cellar. “[[door]]” swings open.\n\nThe stairs creak." end
+				if command == "north" then return "Cellar\nA damp cellar. “door” swings open.\n\nThe stairs creak." end
 					if command == "look" then return longAnswer end
 				if command == "wait" then return "Response wait.\n\nNothing happens." end
 					return "Response " .. command
