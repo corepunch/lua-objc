@@ -121,8 +121,12 @@ function ZILRuntime.new(game, readFile, seed)
 								env.SHEET_IDENTITY = function(name, profile)
 									sheet.name, sheet.profile = name, profile
 								end
-								env.SHEET_ROW = function(label, value, maximum)
-									table.insert(sheet.rows, { label = label, value = value, maximum = maximum > 0 and maximum or nil })
+								env.SHEET_ROW = function(label, value, maximum, group, rankLabel)
+									table.insert(sheet.rows, {
+										label = label, value = value, maximum = maximum > 0 and maximum or nil,
+										group = type(group) == "string" and group or nil,
+										rankLabel = type(rankLabel) == "string" and rankLabel or nil,
+									})
 								end
 								local ok, result = pcall(env.RPG_EXPORT_SHEET)
 								env.SHEET_IDENTITY, env.SHEET_ROW = nil, nil
