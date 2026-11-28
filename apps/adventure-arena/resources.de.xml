@@ -141,8 +141,8 @@
 	<String id="characterStatus" value="Charakterwerte" />
 	<String id="hideCharacterMonitor" value="Statusanzeige ausblenden" />
 	<String id="showCharacterMonitor" value="Statusanzeige einblenden" />
-	<String id="exportCharacterSheet" value="Heldenbogen drucken" />
-	<String id="sheetExportFailed" value="Der Heldenbogen konnte nicht geöffnet werden." />
+	<String id="printCharacterSheet" value="Heldenbogen drucken" />
+	<String id="sheetPrintFailed" value="Der Druckdialog konnte nicht geöffnet werden." />
 	<String id="chooseHero" value="Figur auswählen" />
 	<String id="cancelHeroSetup" value="Abbrechen" />
 	<String id="heroSelected" value="Ausgewählt" />

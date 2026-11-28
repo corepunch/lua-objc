@@ -358,6 +358,7 @@ static void bridge_set_optional_callback(
 #include "shared/notifications.m"
 #include "appkit/toolbar.m"
 #include "appkit/presentation.m"
+#include "appkit/printing.m"
 #include "appkit/text_field.m"
 #include "appkit/views.m"
 #include "shared/paragraph.m"
@@ -565,6 +566,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_credentialRemove", bridge_credential_remove},
 	{"_jsonEncode", bridge_json_encode},
 	{"_openPath", bridge_open_path},
+	{"_printHTML", bridge_print_html},
 	{"_moveToTrash", bridge_move_to_trash},
 	{"_moveItem", bridge_move_item},
 	{"_quickLook", bridge_quick_look},

@@ -1,3 +1,5 @@
+local Portrait = require("apps.adventure-arena.services.Portrait")
+
 local ZILRuntime = {}
 
 local function remoteOpen(readFile, fallback)
@@ -65,6 +67,13 @@ local function roomString(env, propertyId)
 		return value
 	end
 	return nil
+end
+
+-- An invalid optional extension cannot block the rest of the sheet.
+local function portraitReference(env, assetRoot)
+	if type(env.RPG_PORTRAIT) ~= "function" then return nil end
+	local ok, slug = pcall(env.RPG_PORTRAIT)
+	if ok then return Portrait.reference(assetRoot, slug) end
 end
 
 function ZILRuntime.new(game, readFile, seed)
@@ -151,7 +160,10 @@ function ZILRuntime.new(game, readFile, seed)
 								local ok, result = pcall(env.RPG_EXPORT_SHEET)
 								env.SHEET_IDENTITY, env.SHEET_ROW = nil, nil
 								if not ok then error(result, 0) end
-								if result then return sheet end
+								if result then
+									sheet.portrait = portraitReference(env, game.portraitRoot or sourceBase)
+									return sheet
+								end
 							end)
 						end,
 						progress = function()

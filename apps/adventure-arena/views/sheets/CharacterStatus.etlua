@@ -9,10 +9,10 @@
           </VStack>
           <Button id="done" title="@done" action="done" style="glass" />
         </HStack>
-        <% if #resources > 0 then %>
+        <% if #vitals > 0 then %>
         <VStack spacing="8" alignment="leading" maxWidth="infinity">
           <Label text="<%= text.resources %>" size="14" color="secondary" weight="semibold" />
-          <% for _, row in ipairs(resources) do %>
+          <% for _, row in ipairs(vitals) do %>
           <HStack spacing="14" maxWidth="infinity">
             <Label text="<%= row.label %>" size="16" maxWidth="infinity" />
             <Label text="<%= row.value %>" size="17" weight="semibold" monospacedDigit="true" />
@@ -36,7 +36,8 @@
           <% if monitorAvailable then %>
           <Button id="characterMonitor" title="<%= monitorHidden and '@showCharacterMonitor' or '@hideCharacterMonitor' %>" action="monitor" style="glass" />
           <% end %>
-          <Button id="printCharacter" title="@exportCharacterSheet" systemImage="printer" action="print" style="glass" />
+          <Button id="printCharacter" title="@printCharacterSheet" systemImage="printer" action="print" style="glass" />
+          <Label id="characterPrintError" text="@sheetPrintFailed" size="13" color="secondary" lines="0" hidden="true" />
         </VStack>
       </VStack>
     </ScrollView>

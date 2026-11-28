@@ -1840,6 +1840,12 @@ UIKit.Credentials = {
 
 --- Share an explicit set of Documents files as an archive using the system sheet.
 --- Each item has `source` (relative to Documents) or `text`, and `name` inside the archive.
+-- True means the operating system accepted the print request, not that
+-- the user selected a printer or completed a job.
+function UIKit.printHTML(html, title)
+	return bridge._printHTML(html, title)
+end
+
 function UIKit.shareFiles(items, name)
 	return bridge._shareFiles(items, name)
 end

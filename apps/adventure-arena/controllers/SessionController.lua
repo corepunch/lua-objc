@@ -176,7 +176,7 @@ function Controller:openReader(game, saved)
 	local presentation = self.model:presentation()
 	actions.disappear = function() self:onDisappear() end
 	self.actions = actions
-	self.draft, self.dictationStatus, self.toast, self.sheetError = "", "", nil, nil
+	self.draft, self.dictationStatus, self.toast = "", "", nil
 	local pageRefs
 	self.page, pageRefs = self.push("pages/Session", {
 		roomTitle = presentation.roomTitle, phone = self.ns.idiom == "phone", actions = actions,
@@ -215,7 +215,6 @@ function Controller:readerData()
 	data.composer = { verbatim = true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
 	local engine = self.model.engine
 	data.canShowCharacterStatus = engine and engine.canExportSheet and engine:canExportSheet()
-	data.sheetError = self.sheetError
 	data.toast = self.toast
 	data.actions = self.actions
 	return data
@@ -248,17 +247,23 @@ function Controller:showCharacterStatus()
 	local data = CharacterSheet.presentation(current)
 	data.monitorAvailable = ReaderStatus.monitor(current) ~= nil
 	data.monitorHidden = self.monitorHidden == true
+	local handle, sheetRefs
 	data.actions = {
 		done = function() self:closeCharacterStatus() end,
-		print = function() self:exportSheet() end,
+		print = function()
+			if not handle or self.characterStatusSheet ~= handle then return false end
+			local ok = self:printCharacterSheet()
+			sheetRefs.characterPrintError.hidden = ok
+			return ok
+		end,
 		monitor = function()
 			self.monitorHidden = not self.monitorHidden
 			self:closeCharacterStatus()
 			self:render()
 		end,
 	}
-	local sheet = self.renderTemplate("sheets/CharacterStatus", data)
-	local handle
+	local sheet
+	sheet, sheetRefs = self.renderTemplate("sheets/CharacterStatus", data)
 	handle = self.presentSheet(sheet, { "medium", "large" }, function()
 		if self.characterStatusSheet == handle then self.characterStatusSheet = nil end
 	end)
@@ -272,16 +277,11 @@ function Controller:closeCharacterStatus()
 	if sheet then self.dismissSheet(sheet) end
 end
 
-function Controller:exportSheet()
-	local engine = self.model.engine
-	if not engine or not engine.characterSheet then return false end
-	local ok, shared = pcall(function()
-		local sheet = engine:characterSheet()
-		return sheet and CharacterSheet.share(self.ns, sheet)
-	end)
-	self.sheetError = not ok or not shared
-	self:render()
-	return ok and shared
+function Controller:printCharacterSheet()
+	local sheet = self:currentCharacterSheet()
+	if not sheet then return false end
+	local ok, presented = pcall(CharacterSheet.print, self.ns, sheet)
+	return ok and presented == true
 end
 
 function Controller:isOpen()

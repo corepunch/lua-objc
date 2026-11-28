@@ -344,6 +344,7 @@ static const luaL_Reg bridge_lib[] = {
 	{"_navigationLink", bridge_UIKitNavigation_link},
 	{"_presentSheet", bridge_UIKitPresentation_presentSheet},
 	{"_shareFiles", bridge_UIKitPresentation_shareFiles},
+	{"_printHTML", bridge_UIKitPresentation_printHTML},
 	{"_importTextFiles", bridge_UIKitPresentation_importTextFiles},
 	{"_dismiss", bridge_UIKitPresentation_dismiss},
 	{"_confirm", bridge_UIKitPresentation_confirm},

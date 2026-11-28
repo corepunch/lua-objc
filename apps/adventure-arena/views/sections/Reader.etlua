@@ -13,9 +13,6 @@
       <% if canShowCharacterStatus then %>
       <Button id="characterStatus" title="@characterStatus" systemImage="person.text.rectangle" action="characterStatus" style="plain" />
       <% end %>
-      <% if sheetError then %>
-      <Label id="sheetExportError" text="@sheetExportFailed" size="13" color="secondary" />
-      <% end %>
       <GlassEffect id="commandBar" style="regular" cornerRadius="<%= BAR.radius %>" maxWidth="infinity">
         <HStack paddingLeading="18" paddingTrailing="5" spacing="4" minHeight="<%= BAR.height %>">
           <TextField id="input" verbatim="<%= tostring(composer.verbatim == true) %>" text="<%= draft %>" placeholder="@placeholder" accessibilityLabel="@command" style="plain" size="<%= fieldSize %>" design="<%= reading.font %>" color="<%= reading.primary %>" maxWidth="infinity" onChange="inputChanged" onCommand="inputCommand" onFocus="inputFocused" />
