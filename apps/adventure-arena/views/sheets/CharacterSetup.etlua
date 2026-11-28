@@ -1,0 +1,13 @@
+<Sheet width="540" height="690">
+  <NavigationStack hidesNavigationBar="true">
+    <ScrollView>
+      <VStack padding="20" spacing="14" alignment="leading" maxWidth="infinity">
+        <HStack spacing="8" maxWidth="infinity">
+          <Label text="@chooseHero" size="23" weight="bold" maxWidth="infinity" />
+          <Button id="cancelSetup" title="@cancelHeroSetup" action="cancel" style="glass" />
+        </HStack>
+        <VStack id="characterSetup" maxWidth="infinity" />
+      </VStack>
+    </ScrollView>
+  </NavigationStack>
+</Sheet>

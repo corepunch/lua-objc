@@ -101,13 +101,30 @@ function ZILRuntime.new(game, readFile, seed)
 		assert(runtime.load_zil_files({ start }, env, { silent = true }),
 			"failed to load " .. game.title)
 
+		local Setup = require("zilscript.rpg_setup")
+		local profiles
+		local function setupProfiles()
+			if not profiles then
+				profiles = withContext(readFile, paths, function() return Setup.profiles(env) end)
+			end
+			return profiles
+		end
 		return {
-			start = function()
+			setupProfiles = setupProfiles,
+			start = function(_, selection)
 				return withContext(readFile, paths, function()
+					if selection then
+						local ok, reason = Setup.select(env, selection)
+						if not ok then error(reason, 0) end
+					end
 					local engine = runtime.create_game(env, true)
 					local opening = engine:start()
 					return {
 						isRunning = function() return engine:is_running() end,
+						requiresSetup = function()
+							return type(env.RPG_PRESET_COUNT) == "function" and env.RPG_PRESET_COUNT() > 0
+								and not env.ZIL_TRUE(env.RPG_STARTED)
+						end,
 						resume = function(_, command)
 							return withContext(readFile, paths, function() return engine:resume(command) end)
 						end,

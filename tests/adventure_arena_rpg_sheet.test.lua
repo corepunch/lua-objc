@@ -20,21 +20,30 @@ t.expect(Adventures:find("books.en.blackout-at-meridian") == nil, "editions have
 local controller = app.sessionController
 controller.reduceMotion = function() return true end
 controller.model.newSeed = function() return 97 end
-t.expect(controller:show(id, true), "Russian edition opens in the normal reader")
+local setupActions
+local render = controller.renderTemplate
+controller.renderTemplate = function(template, data)
+	if template == "sheets/CharacterSetup" then setupActions = data.actions end
+	return render(template, data)
+end
+controller.presentSheet = function(sheet) return sheet end
+controller.dismissSheet = function() end
+t.expect(controller:show(id, true), "the book opens its generic setup")
 local reader = controller.model
+t.expect(setupActions and not controller.refs and not reader.engine, "no reader or GO before confirmation")
+t.expect(not SavedGames:find(id), "preview is not an autosave")
+t.expect(not setupActions.confirm(), "confirmation without a hero is refused")
+setupActions.pick_1()
+setupActions.pick_2()
+setupActions.nameChanged("Алёна <Гром> & дочь")
+t.expect(setupActions.confirm(), "confirming starts the mission")
 t.assertEqual(reader.entries[1].kind, "banner", "the Russian release line is parsed as a banner")
-t.expect(not reader.engine:canExportSheet(), "there is no sheet before hero selection")
-t.expect(not controller.refs.exportSheet, "the pre-game composer has no print action")
-t.assertEqual(reader:linkActions("ИСКРУ")[1].command, "осмотреть искру")
-t.assertEqual(reader:suggestions("ОСМОТРЕТЬ ИС")[1].text, "осмотреть искру ")
-controller:submitCommand("осмотреть искру")
-controller:submitCommand("назвать карточку героя")
-controller:submitCommand("Алёна <Гром> & дочь")
-t.assertEqual(reader.moves, 0, "setup does not advance the adventure clock")
-controller:submitCommand("выбрать искру")
 t.assertEqual(reader.moves, 0, "the mission begins at turn zero")
-t.expect(reader.engine:canExportSheet(), "selecting a profile enables the character sheet")
+t.expect(reader.engine:canExportSheet(), "confirmation enables the character sheet")
 t.expect(controller.refs.exportSheet ~= nil, "the print action appears in the normal reader")
+t.expect(not reader.entries[2] or not reader.entries[2].text or not reader.entries[2].text:find("Выберите героя", 1, true), "profile choices are not part of the story transcript")
+t.assertEqual(SavedGames:find(id).setup.id, "arc", "confirmed profile persists at turn zero")
+t.assertEqual(#SavedGames:find(id).commands, 0, "setup leaves no parser commands")
 controller:submitCommand("север")
 t.expect(reader:start(Adventures:find(id), SavedGames:find(id)), "Russian progress replays from an autosave")
 t.assertEqual(reader.roomTitle, "Мост Меридиана")

@@ -130,4 +130,10 @@
 	<String id="welcomeTitle" value="Книга, которая вам отвечает" />
 	<String id="worldsDetail" value="Выберите любые жанры. Мы предложим историю с одной из этих полок." />
 	<String id="worldsTitle" value="Какие миры вам нравятся?" />
+	<String id="chooseHero" value="Выберите героя" />
+	<String id="cancelHeroSetup" value="Отмена" />
+	<String id="heroSelected" value="Выбран" />
+	<String id="heroNameOptional" value="Имя героя (необязательно)" />
+	<String id="startMission" value="Начать миссию" />
+	<String id="heroNameError" value="Введите имя до 32 символов, без переносов строки и разметки." />
 </Resources>

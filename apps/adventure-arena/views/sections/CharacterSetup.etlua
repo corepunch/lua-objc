@@ -1,0 +1,12 @@
+<VStack spacing="12" alignment="leading" maxWidth="infinity">
+  <% for index, hero in ipairs(profiles) do %>
+  <% local active = selected == hero.id %>
+  <VStack id="profile_<%= index %>" padding="12" spacing="5" alignment="leading" maxWidth="infinity" background="secondaryBackground" cornerRadius="12">
+    <Button id="select_<%= index %>" title="<%= hero.title %>" accessibilityLabel="<%= (active and resources.heroSelected .. ': ' or '') .. hero.title %>" systemImage="<%= active and 'checkmark.circle.fill' or 'circle' %>" style="<%= active and 'glassProminent' or 'glass' %>" action="pick_<%= index %>" />
+    <Paragraph text="<%= hero.summary %>" size="15" color="secondary" />
+  </VStack>
+  <% end %>
+  <TextField id="heroName" text="<%= name %>" placeholder="@heroNameOptional" accessibilityLabel="@heroNameOptional" onChange="nameChanged" verbatim="true" size="17" maxWidth="infinity" />
+  <% if error then %><Label text="<%= error %>" color="secondary" /><% end %>
+  <Button id="confirmHero" title="@startMission" action="confirm" disabled="<%= tostring(selected == nil) %>" style="glassProminent" tint="accent" height="46" maxWidth="infinity" />
+</VStack>
