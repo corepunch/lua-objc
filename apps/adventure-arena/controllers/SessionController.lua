@@ -67,14 +67,84 @@ function Controller:show(id, fresh)
 	if not game then return false end
 	local saved = not fresh and SavedGames:find(id) or nil
 	self:finishTyping()
-	local ok, err = self.model:start(game, saved)
-	self.game = game
-	if not ok then
-		self.push("pages/SessionError", {
-			title = game.title, message = err, actions = { back = self.back },
-		})
-		return false
+	local prepared
+	if not saved and type(self.model.prepare) == "function" then
+		local failure
+		prepared, failure = self.model:prepare(game)
+		if not prepared and failure then return self:showStartError(game, failure) end
+		if prepared and #prepared.profiles > 0 then return self:showCharacterSetup(game, prepared) end
 	end
+	local ok, err = self.model:start(game, saved, nil, prepared)
+	if not ok then return self:showStartError(game, err) end
+	-- If an older autosave only named/inspected a character but never
+	-- started the mission, promote it to the new optional setup path.
+	local engine = self.model.engine
+	if saved and not saved.setup and engine and engine.requiresSetup and engine:requiresSetup() then
+		local catalog, failure = self.model:prepare(game)
+		if not catalog then return self:showStartError(game, failure) end
+		return self:showCharacterSetup(game, catalog)
+	end
+	return self:openReader(game, saved)
+end
+
+function Controller:showStartError(game, errorText)
+	self.push("pages/SessionError", {
+		title = game.title, message = errorText, actions = { back = self.back },
+	})
+	return false
+end
+
+-- A generic setup sheet; the app owns only selection UI state. The builder
+-- still hasn't run GO, and nothing is saved until confirmation succeeds.
+function Controller:showCharacterSetup(game, prepared)
+	local data = { profiles = prepared.profiles, name = "" }
+	local handle, content, closed
+	local actions = {}
+	data.actions = actions
+	local function close()
+		if closed then return false end
+		closed = true
+		if content then content:dispose() end
+		self.dismissSheet(handle)
+		return true
+	end
+	actions.cancel = close
+	actions.nameChanged = function(value)
+		data.name = type(value) == "string" and value or ""
+	end
+	actions.confirm = function()
+		if closed or not data.selected then return false end
+		local ok, reason = self.model:start(game, nil, { id = data.selected, name = data.name }, prepared)
+		if not ok then
+			if reason == "invalid_name" then
+				data.error = self.resources().heroNameError
+				content:update(data)
+			else
+				close()
+				return self:showStartError(game, reason)
+			end
+			return false
+		end
+		close()
+		SavedGames:record(self.model:snapshot())
+		return self:openReader(game, nil)
+	end
+	for index, hero in ipairs(prepared.profiles) do
+		actions["pick_" .. index] = function()
+			if closed then return end
+			data.selected, data.error = hero.id, nil
+			content:update(data)
+		end
+	end
+	local sheet, refs = self.renderTemplate("sheets/CharacterSetup", { actions = actions })
+	content = self.mountTemplate(refs.characterSetup, "sections/CharacterSetup")
+	content:update(data)
+	handle = self.presentSheet(sheet, { "large" })
+	return true
+end
+
+function Controller:openReader(game, saved)
+	self.game = game
 	self:cancelDictation()
 	self.speech = nil
 	local speechAvailable = self.speechModule ~= nil

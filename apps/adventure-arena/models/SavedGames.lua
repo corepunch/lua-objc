@@ -39,11 +39,11 @@ function SavedGames:persist()
 	document.save({ games = games })
 end
 
--- A story with no commands yet is not worth resuming: opening a book is not
--- reading it. Saving it would put every browsed title on the shelf.
+-- Browsing a book isn't a save. An RPG's confirmed pre-game selection,
+-- however, is an explicit start and belongs on the shelf even before turn 1.
 function SavedGames:record(snapshot)
 	if not validRecord(snapshot) then return false end
-	if #snapshot.commands == 0 then return false end
+	if #snapshot.commands == 0 and not snapshot.setup then return false end
 	local record = {}
 	for key, value in pairs(snapshot) do record[key] = value end
 	record.updated = SavedGames.clock()

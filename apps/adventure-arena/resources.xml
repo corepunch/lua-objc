@@ -140,4 +140,10 @@
 	<String id="readyDetail" value="Browse the shelves and open any cover." />
 	<String id="exportCharacterSheet" value="Print Character Sheet" />
 	<String id="sheetExportFailed" value="Couldn’t open the character sheet." />
+	<String id="chooseHero" value="Choose a hero" />
+	<String id="cancelHeroSetup" value="Cancel" />
+	<String id="heroSelected" value="Selected" />
+	<String id="heroNameOptional" value="Hero name (optional)" />
+	<String id="startMission" value="Start mission" />
+	<String id="heroNameError" value="Enter a name of up to 32 characters, without line breaks or markup." />
 </Resources>
