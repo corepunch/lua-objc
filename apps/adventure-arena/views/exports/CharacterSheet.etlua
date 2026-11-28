@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="<%= language %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= text.sheet %>: <%= sheet.name %></title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #172131;
+    --muted: #48576a;
+    --line: #aeb9c5;
+    --accent: #854b19;
+    --paper: #fff;
+    background: #f1f3f6;
+    color: var(--ink);
+    font: 16px/1.42 system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; padding: clamp(.6rem, 4vw, 2rem); }
+  h1, h2, p, dl, dd { margin: 0; }
+  .sheet, .toolbar { max-width: 46rem; margin: 0 auto; }
+  .sheet { background: var(--paper); padding: clamp(1rem, 5vw, 2.5rem); border: 1px solid var(--line); }
+  .masthead { border-top: .4rem solid var(--ink); border-bottom: 2px solid var(--ink); padding: .8rem 0 1rem; }
+  .overline, .facts dt, .vitals dt, table thead th {
+    font-size: .72rem; font-weight: 700; letter-spacing: .075em; text-transform: uppercase;
+  }
+  .overline { color: var(--accent); }
+  h1 { margin: .16em 0 .3em; font: 700 clamp(1.85rem, 7vw, 3.35rem)/1.08 Georgia, serif; overflow-wrap: anywhere; }
+  .facts { display: flex; flex-wrap: wrap; gap: .45rem 1.75rem; }
+  .facts div { min-width: 8rem; }
+  .facts dt { color: var(--muted); }
+  .facts dd { font-weight: 650; overflow-wrap: anywhere; }
+  section { margin-block: 1rem 0; }
+  h2 { font-size: 1rem; margin-bottom: .35rem; }
+  .vitals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+  .vitals div { border: 1px solid var(--line); border-inline-start: .22rem solid var(--ink); padding: .4rem .65rem; break-inside: avoid; }
+  .vitals dd { font-size: 1.45rem; font-weight: 700; }
+  .vitals dt { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  table thead th { color: var(--muted); padding: .15rem .35rem .3rem; }
+  table tbody th, table td { padding: .25rem .35rem; border-top: 1px solid var(--line); }
+  th { text-align: start; }
+  tbody th { font-weight: 600; }
+  .with-ranks th:first-child { width: 42%; }
+  .with-ranks th:last-child { width: 12%; }
+  .rank { font-weight: 500; color: var(--muted); }
+  .number { text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .note-hint { font-size: .76rem; color: var(--muted); margin-top: -.2rem; margin-bottom: .45rem; }
+  .notes-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+  .note { border: 1px solid var(--line); padding: .35rem .55rem .5rem; break-inside: avoid; }
+  .note:only-child { grid-column: 1 / -1; }
+  .note p { font-size: .76rem; font-weight: 700; }
+  .writing-line { height: .95rem; border-bottom: 1px dotted var(--line); }
+  .toolbar { text-align: end; margin-bottom: .65rem; }
+  button { font: 700 .875rem/1.3 system-ui, sans-serif; cursor: pointer; color: var(--paper); background: var(--ink); border: 1px solid var(--ink); border-radius: .18rem; padding: .5rem .85rem; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media screen and (max-width: 26rem) {
+    .notes-grid { grid-template-columns: 1fr; }
+    .with-ranks th:first-child { width: auto; }
+  }
+  @page { size: auto; margin: 13mm; }
+  @media print {
+    :root { --ink: #111; --muted: #383838; --line: #818181; --accent: #111; font-size: 11pt; background: #fff; }
+    body, .sheet { margin: 0; padding: 0; border: 0; max-width: none; }
+    .toolbar { display: none; }
+    h1 { font-size: 27pt; }
+    h2, .note-hint { break-after: avoid; }
+    .masthead, tr { break-inside: avoid; }
+    .writing-line { height: 1.12em; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar"><button type="button" onclick="window.print()"><%= text.print %></button></div>
+<main class="sheet">
+  <header class="masthead">
+    <p class="overline"><%= text.sheet %></p>
+    <h1><%= sheet.name %></h1>
+    <dl class="facts">
+      <div><dt><%= text.adventure %></dt><dd><%= sheet.title %></dd></div>
+      <div><dt><%= text.profile %></dt><dd><%= sheet.profile %></dd></div>
+    </dl>
+  </header>
+  <% if #resources > 0 then %>
+  <section aria-labelledby="resources">
+    <h2 id="resources"><%= text.resources %></h2>
+    <dl class="vitals">
+      <% for _, row in ipairs(resources) do %>
+      <div><dt><%= row.label %></dt><dd><%= row.value %></dd></div>
+      <% end %>
+    </dl>
+  </section>
+  <% end %>
+  <% for _, group in ipairs(tables) do %>
+  <section aria-labelledby="<%= group.id %>">
+    <h2 id="<%= group.id %>"><%= group.title %></h2>
+    <table aria-labelledby="<%= group.id %>"<% if group.hasRanks then %> class="with-ranks"<% end %>>
+      <thead>
+        <tr><th scope="col"><%= text.attribute %></th><% if group.hasRanks then %><th scope="col"><%= text.rank %></th><% end %><th scope="col" class="number"><%= text.value %></th></tr>
+      </thead>
+      <tbody>
+        <% for _, row in ipairs(group.rows) do %>
+        <tr><th scope="row"><%= row.label %></th><% if group.hasRanks then %><td class="rank"><%= row.rank or "" %></td><% end %><td class="number"><%= row.value %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </section>
+  <% end %>
+  <section aria-labelledby="notes">
+    <h2 id="notes"><%= text.notes %></h2>
+    <p class="note-hint"><%= text.handwritten %></p>
+    <div class="notes-grid">
+      <% for _, label in ipairs(notes) do %>
+      <div class="note">
+        <p><%= label %></p>
+        <% for _ = 1, 4 do %><div class="writing-line" aria-hidden="true"></div><% end %>
+      </div>
+      <% end %>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -1,52 +1,73 @@
+local etlua = require("etlua")
 local CharacterSheet = {}
 
-local printTitle = { en = "Print", de = "Drucken", ru = "Печать" }
+local TEMPLATE = "apps/adventure-arena/views/exports/CharacterSheet.etlua"
 
-local escapes = { ["&"] = "&amp;", ["<"] = "&lt;", [">"] = "&gt;", ['"'] = "&quot;", ["'"] = "&#39;" }
-local function html(value)
-	return (tostring(value or ""):gsub("[&<>\"']", escapes))
+local words = {
+	en = {
+		sheet = "Character sheet", adventure = "Adventure", profile = "Profile",
+		abilities = "Core abilities", powers = "Powers", resources = "Current status", stats = "Statistics",
+		attribute = "Attribute", rank = "Rank", value = "Value", print = "Print sheet",
+		notes = "Field notes", handwritten = "For handwritten notes. Not read from the game.",
+		powerNotes = "Power uses & limits", talents = "Talents & gear", contacts = "Contacts", history = "History",
+	},
+	de = {
+		sheet = "Charakterbogen", adventure = "Abenteuer", profile = "Profil",
+		abilities = "Grundfähigkeiten", powers = "Kräfte", resources = "Aktueller Status", stats = "Werte",
+		attribute = "Attribut", rank = "Rang", value = "Wert", print = "Bogen drucken",
+		notes = "Einsatznotizen", handwritten = "Für handschriftliche Notizen. Keine Daten aus dem Spiel.",
+		powerNotes = "Kräfte & Grenzen", talents = "Talente & Ausrüstung", contacts = "Kontakte", history = "Vorgeschichte",
+	},
+	ru = {
+		sheet = "Лист персонажа", adventure = "Приключение", profile = "Профиль",
+		abilities = "Основные характеристики", powers = "Сверхспособности", resources = "Текущее состояние", stats = "Параметры",
+		attribute = "Характеристика", rank = "Ранг", value = "Число", print = "Распечатать лист",
+		notes = "Полевые заметки", handwritten = "Для записей от руки. Эти поля не заполняются из игры.",
+		powerNotes = "Силы и ограничения", talents = "Таланты и снаряжение", contacts = "Связи", history = "История",
+	},
+}
+
+local function loadTemplate(readFile)
+	if readFile then
+		return assert(readFile(TEMPLATE))
+	end
+	local file = assert(io.open(TEMPLATE, "rb"))
+	local source = assert(file:read("a"))
+	file:close()
+	return source
 end
 
-function CharacterSheet.document(sheet)
-	local rows = {}
+function CharacterSheet.document(sheet, readFile)
+	local language = words[sheet.language] and sheet.language or "en"
+	local text = words[language]
+	local groups = { abilities = {}, powers = {}, resources = {}, stats = {} }
 	for _, row in ipairs(sheet.rows) do
-		local value = row.maximum and string.format("%d / %d", row.value, row.maximum) or tostring(row.value)
-		table.insert(rows, string.format("<div><dt>%s</dt><dd>%s</dd></div>", html(row.label), html(value)))
+		local group = groups[row.group] or groups.stats
+		local value = row.maximum and tostring(row.value) .. " / " .. tostring(row.maximum) or tostring(row.value)
+		group[#group + 1] = { label = row.label, rank = row.rankLabel, value = value }
 	end
-	return ([[<!doctype html>
-<html lang="%s">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>%s</title>
-<style>
-:root { color-scheme: light; color: #191713; background: #fff; }
-body { max-width: 45rem; margin: 2rem auto; padding: 0 1.25rem; font: 1rem/1.5 system-ui, sans-serif; }
-header { border-top: .6rem solid #171717; border-bottom: 2px solid #171717; padding: 1rem 0; }
-p { margin: 0; }
-.kicker { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-h1 { font: 700 clamp(2.25rem, 9vw, 4rem)/1 Georgia, serif; margin: .35em 0 .15em; overflow-wrap: anywhere; }
-.profile { color: #3d3934; }
-dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0 1.75rem; }
-dl div { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; border-bottom: 1px solid #a29b90; padding: .5em 0; break-inside: avoid; }
-dt { font-weight: 600; }
-button { margin: 1.25rem 0; font: inherit; padding: .4rem 1rem; }
-dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-@page { margin: 15mm; }
-@media print { body { margin: 0; padding: 0; } dl { grid-template-columns: repeat(2, 1fr); } button { display: none; } }
-</style>
-</head>
-<body>
-<header><p class="kicker">%s</p><h1>%s</h1><p class="profile">%s</p></header>
-<dl>%s</dl>
-<button type="button" onclick="window.print()">%s</button>
-</body>
-</html>
-]]):format(html(sheet.language), html(sheet.title), html(sheet.title), html(sheet.name), html(sheet.profile), table.concat(rows, "\n"), printTitle[sheet.language] or printTitle.en)
+	local tables = {}
+	for _, key in ipairs({ "abilities", "powers", "stats" }) do
+		local rows, hasRanks = groups[key], false
+		for _, row in ipairs(rows) do
+			if type(row.rank) == "string" and row.rank ~= "" then hasRanks = true end
+		end
+		if #rows > 0 then
+			tables[#tables + 1] = { id = key, title = text[key], rows = rows, hasRanks = hasRanks }
+		end
+	end
+
+	local notes = { text.notes }
+	if #groups.abilities > 0 and #groups.powers > 0 then
+		notes = { text.powerNotes, text.talents, text.contacts, text.history }
+	end
+	return assert(etlua.render(loadTemplate(readFile), {
+		language = language, text = text, sheet = sheet, resources = groups.resources, tables = tables, notes = notes,
+	}))
 end
 
 function CharacterSheet.share(ns, sheet)
-	local document = CharacterSheet.document(sheet)
+	local document = CharacterSheet.document(sheet, ns._readFile)
 	if ns.shareFiles then
 		return ns.shareFiles({ { name = "character-sheet.html", text = document } }, "CharacterSheet")
 	end
