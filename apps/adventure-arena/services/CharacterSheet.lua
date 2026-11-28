@@ -37,7 +37,7 @@ local function loadTemplate(readFile)
 	return source
 end
 
-function CharacterSheet.document(sheet, readFile)
+function CharacterSheet.presentation(sheet)
 	local language = words[sheet.language] and sheet.language or "en"
 	local text = words[language]
 	local groups = { abilities = {}, powers = {}, resources = {}, stats = {} }
@@ -61,9 +61,11 @@ function CharacterSheet.document(sheet, readFile)
 	if #groups.abilities > 0 and #groups.powers > 0 then
 		notes = { text.powerNotes, text.talents, text.contacts, text.history }
 	end
-	return assert(etlua.render(loadTemplate(readFile), {
-		language = language, text = text, sheet = sheet, resources = groups.resources, tables = tables, notes = notes,
-	}))
+	return { language = language, text = text, sheet = sheet, resources = groups.resources, tables = tables, notes = notes }
+end
+
+function CharacterSheet.document(sheet, readFile)
+	return assert(etlua.render(loadTemplate(readFile), CharacterSheet.presentation(sheet)))
 end
 
 function CharacterSheet.share(ns, sheet)

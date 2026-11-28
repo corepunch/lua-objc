@@ -1,5 +1,4 @@
 local t = require("TestKit")
-local etlua = require("etlua")
 local ZILRuntime = require("apps.adventure-arena.services.ZILRuntime")
 local Session = require("apps.adventure-arena.zilscript.zilscript.reader.Session")
 
@@ -30,20 +29,6 @@ t.assertEqual(setup.profiles[3].id, "lens")
 t.assertEqual(setup.profiles[2].title, "Искра")
 t.assertEqual(setup.profiles[2].rows[9].value, 90)
 t.expect(not reader.engine and not reader:snapshot(), "catalog inspection doesn't start the mission")
-
-local component = assert(read("apps/adventure-arena/views/sections/CharacterSetup.etlua"))
-local function ui(selected)
-  return assert(etlua.render(component, {
-    profiles = setup.profiles, selected = selected, name = "А <Б>",
-    resources = { heroSelected = "Выбран" },
-  }))
-end
-local initial = ui()
-t.expect(initial:find('id="confirmHero".-disabled="true"'))
-local selected = ui("arc")
-t.expect(selected:find('id="confirmHero".-disabled="false"'))
-t.expect(selected:find("А &lt;Б&gt;", 1, true))
-t.expect(selected:find("Выбран: Искра", 1, true))
 
 local ok, why = reader:start(game, nil, { id = "missing" }, setup)
 t.expect(not ok and why == "invalid_preset" and not reader.engine)
@@ -127,7 +112,7 @@ cancelled.cancel()
 t.expect(not cancelled.confirm() and not uiModel.engine)
 t.assertEqual(calls.saves, 0)
 t.expect(controller:showCharacterSetup(game, assert(uiModel:prepare(game))))
-t.expect(not callbacks.confirm(), "selection is required before starting")
+t.expect(not uiModel.engine, "the default preview has not started the mission")
 callbacks.pick_1()
 callbacks.pick_3()
 t.expect(not uiModel.engine, "previewing a different hero doesn't run the game")

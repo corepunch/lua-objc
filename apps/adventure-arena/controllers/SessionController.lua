@@ -1,3 +1,4 @@
+local CharacterSetup = require("apps.adventure-arena.helpers.CharacterSetup")
 local CharacterSheet = require("apps.adventure-arena.services.CharacterSheet")
 local Quotes = require("apps.adventure-arena.helpers.Quotes")
 local ReaderStatus = require("apps.adventure-arena.helpers.ReaderStatus")
@@ -97,24 +98,25 @@ end
 -- A generic setup sheet; the app owns only selection UI state. The builder
 -- still hasn't run GO, and nothing is saved until confirmation succeeds.
 function Controller:showCharacterSetup(game, prepared)
-	local data = { profiles = prepared.profiles, name = "" }
+	local first = prepared.profiles[1]
+	local data = { profiles = prepared.profiles, hero = first, groups = CharacterSetup.groups(first), name = "" }
 	local handle, content, closed
 	local actions = {}
 	data.actions = actions
-	local function close()
+	local function close(alreadyDismissed)
 		if closed then return false end
 		closed = true
 		if content then content:dispose() end
-		self.dismissSheet(handle)
+		if not alreadyDismissed then self.dismissSheet(handle) end
 		return true
 	end
-	actions.cancel = close
+	actions.cancel = function() return close(false) end
 	actions.nameChanged = function(value)
 		data.name = type(value) == "string" and value or ""
 	end
-	actions.confirm = function()
-		if closed or not data.selected then return false end
-		local ok, reason = self.model:start(game, nil, { id = data.selected, name = data.name }, prepared)
+	local function start(hero, name)
+		if closed or not hero then return false end
+		local ok, reason = self.model:start(game, nil, { id = hero.id, name = name }, prepared)
 		if not ok then
 			if reason == "invalid_name" then
 				data.error = self.resources().heroNameError
@@ -129,17 +131,20 @@ function Controller:showCharacterSetup(game, prepared)
 		SavedGames:record(self.model:snapshot())
 		return self:openReader(game, nil)
 	end
+	actions.confirm = function() return start(data.hero, data.name) end
+	-- Like the original quick setup, use the default preset and its default name.
+	actions.quickStart = function() return start(first, "") end
 	for index, hero in ipairs(prepared.profiles) do
 		actions["pick_" .. index] = function()
 			if closed then return end
-			data.selected, data.error = hero.id, nil
+			data.hero, data.groups, data.error = hero, CharacterSetup.groups(hero), nil
 			content:update(data)
 		end
 	end
-	local sheet, refs = self.renderTemplate("sheets/CharacterSetup", { actions = actions })
+	local sheet, refs = self.renderTemplate("sheets/CharacterSetup", { actions = actions, defaultHero = first and first.title })
 	content = self.mountTemplate(refs.characterSetup, "sections/CharacterSetup")
 	content:update(data)
-	handle = self.presentSheet(sheet, { "large" })
+	handle = self.presentSheet(sheet, { "large" }, function() close(true) end)
 	return true
 end
 
@@ -166,7 +171,7 @@ function Controller:openReader(game, saved)
 		inputFocused = function() self:scrollTranscript(true) end,
 		dictate = function() self:toggleDictation() end,
 		readingSettings = function() self:showReadingSettings() end,
-		exportSheet = function() self:exportSheet() end,
+		characterStatus = function() self:showCharacterStatus() end,
 	}
 	local presentation = self.model:presentation()
 	actions.disappear = function() self:onDisappear() end
@@ -209,7 +214,7 @@ function Controller:readerData()
 	-- a command with its first word.
 	data.composer = { verbatim = true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
 	local engine = self.model.engine
-	data.canExportSheet = engine and engine.canExportSheet and engine:canExportSheet()
+	data.canShowCharacterStatus = engine and engine.canExportSheet and engine:canExportSheet()
 	data.sheetError = self.sheetError
 	data.toast = self.toast
 	data.actions = self.actions
@@ -221,12 +226,50 @@ function Controller:render()
 	local data = self:readerData()
 	self.refs = select(2, self.reader:update(data))
 	local story = self.model:presentation()
+	local monitor = not self.monitorHidden and data.canShowCharacterStatus and ReaderStatus.monitor(self:currentCharacterSheet())
 	self.heading:update({
 		roomTitle = story.roomTitle,
-		progress = ReaderStatus.progress(self.resources(), self.game and self.game.statusLine, story.score, story.maxScore, story.moves),
+		progress = monitor or ReaderStatus.progress(self.resources(), self.game and self.game.statusLine, story.score, story.maxScore, story.moves),
 		colorScheme = data.reading.colorScheme, font = data.reading.font,
 	})
 	self:renderCompletions()
+end
+
+function Controller:currentCharacterSheet()
+	local engine = self.model.engine
+	if not engine or not engine.characterSheet then return nil end
+	local ok, sheet = pcall(engine.characterSheet, engine)
+	return ok and sheet or nil
+end
+
+function Controller:showCharacterStatus()
+	local current = self:currentCharacterSheet()
+	if not current or self.characterStatusSheet then return false end
+	local data = CharacterSheet.presentation(current)
+	data.monitorAvailable = ReaderStatus.monitor(current) ~= nil
+	data.monitorHidden = self.monitorHidden == true
+	data.actions = {
+		done = function() self:closeCharacterStatus() end,
+		print = function() self:exportSheet() end,
+		monitor = function()
+			self.monitorHidden = not self.monitorHidden
+			self:closeCharacterStatus()
+			self:render()
+		end,
+	}
+	local sheet = self.renderTemplate("sheets/CharacterStatus", data)
+	local handle
+	handle = self.presentSheet(sheet, { "medium", "large" }, function()
+		if self.characterStatusSheet == handle then self.characterStatusSheet = nil end
+	end)
+	self.characterStatusSheet = handle
+	return true
+end
+
+function Controller:closeCharacterStatus()
+	local sheet = self.characterStatusSheet
+	self.characterStatusSheet = nil
+	if sheet then self.dismissSheet(sheet) end
 end
 
 function Controller:exportSheet()
@@ -452,6 +495,7 @@ function Controller:close()
 end
 
 function Controller:onDisappear()
+	self:closeCharacterStatus()
 	self:cancelDictation()
 	self:finishTyping()
 	for _, name in ipairs({ "transcript", "heading", "reader", "completions" }) do
