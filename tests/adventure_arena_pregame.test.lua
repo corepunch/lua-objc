@@ -73,6 +73,30 @@ t.expect(old:start(game, { seed = 97, commands = {"выбрать искру", "
 t.expect(not old.engine:requiresSetup() and old.engine:canExportSheet())
 t.expect(old:snapshot().setup == nil)
 
+-- Captured from the old engine before pre-game records existed. The first
+-- two d100 rolls at seed 44129 are 100 (rescue) and 40 (console). The old
+-- yellow console check fails; a new Lens run succeeds at the same roll.
+local meridian = {
+  id = "books.en.blackout-at-meridian", language = "en",
+  startFile = "blackout-at-meridian.zil", title = "Blackout at Meridian",
+}
+local previous = session()
+local previousCommands = { "choose lens", "north", "rescue tram", "east", "disable console", "look" }
+t.expect(previous:start(meridian, { seed = 44129, commands = previousCommands }))
+t.expect(previous.running, "restoring a legacy console failure must not win the mission")
+t.assertEqual(#previous:snapshot().commands, 6)
+t.assertEqual(previous:snapshot().moves, 5)
+t.assertEqual(previous.engine:characterSheet().rows[9].value, 50)
+t.assertEqual(previous.engine:characterSheet().rows[10].value, 100)
+
+local modern = session()
+t.expect(modern:start(meridian, {
+  seed = 44129, setup = { id = "lens" }, commands = { "north", "rescue tram", "east", "disable console" },
+}))
+t.expect(not modern.running, "new saves use intensity-based FEATs")
+t.assertEqual(modern.engine:characterSheet().rows[9].value, 60)
+t.assertEqual(modern.engine:characterSheet().rows[10].value, 120)
+
 local plain = assert(reader:prepare {
   id = "books.en.wondertown", startFile = "wondertown.zil", language = "en", title = "Wondertown",
 })
