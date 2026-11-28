@@ -2,6 +2,7 @@ _G.__headless = true
 local t = require("TestKit")
 local xml = require("ui.xml")
 local catalog = require("apps.adventure-arena.catalog.en")
+local Plurals = require("apps.adventure-arena.helpers.Plurals")
 local English = require("apps.adventure-arena.services.Words").load("en")
 
 t.assertEqual(English.noRatings, "No ratings yet", "the unreviewed state is worded as the library words it")
@@ -17,7 +18,7 @@ t.assertEqual(originals, 13, "all thirteen English Arena Originals are audited")
 
 local function render(path, game)
 	return xml.describeFile("apps/adventure-arena/views/" .. path .. ".etlua",
-		{ game = game, index = 1, id = "book", action = "open", related = {}, resources = English }).source
+		{ game = game, ratingsText = Plurals.format(English, "ratingsCount", game.reviewCount), index = 1, id = "book", action = "open", related = {}, resources = English }).source
 end
 for _, path in ipairs({ "components/FeaturedCard", "components/GameRow", "pages/Detail" }) do
 	for _, book in ipairs(catalog) do

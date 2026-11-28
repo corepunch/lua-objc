@@ -42,19 +42,26 @@ function Languages.preferred(tags, has)
 	return DEFAULT
 end
 
--- Lower case that knows the accents of Latin-1 (Ä, Ö, Ü), which string.lower
--- leaves alone: search must find "Öffnen" typed as "öffnen".
+-- Lower case that knows the capitals of Latin-1 (Ä, Ö, Ü) and Cyrillic (Ж, Ё),
+-- which string.lower leaves alone: search must find "Öffnen" typed as
+-- "öffnen" and "Меридиане" as "меридиане".
 function Languages.lower(text)
 	if not utf8.len(text) then return text:lower() end
 	local lowered = {}
 	for _, code in utf8.codes(text) do
 		if (code >= 0xC0 and code <= 0xDE and code ~= 0xD7) then code = code + 32
 		elseif code >= 0x410 and code <= 0x42F then code = code + 32
-		elseif code == 0x401 then code = 0x451
+		elseif code >= 0x400 and code <= 0x40F then code = code + 80
 		elseif code < 128 then code = string.lower(string.char(code)):byte() end
 		table.insert(lowered, utf8.char(code))
 	end
 	return table.concat(lowered)
+end
+
+-- Text as search compares it: lower case, and in Russian ё is written е as
+-- often as not, so the two are one letter.
+function Languages.fold(text)
+	return (Languages.lower(text):gsub("ё", "е"))
 end
 
 return Languages

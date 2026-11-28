@@ -14,7 +14,7 @@
 	<String id="featured" value="Избранное" />
 	<String id="read" value="Читать" />
 	<String id="noRatings" value="Оценок пока нет" />
-	<String id="ratingsCount" value="Оценок: %d" />
+
 	<String id="outOfFive" value="%s из 5" />
 	<String id="ratedOutOfFive" value="Оценка %s из 5" />
 	<String id="startOver" value="Начать заново" />
@@ -55,12 +55,12 @@
 	<String id="dictate" value="Продиктовать команду" />
 	<String id="score" value="Очки" />
 	<String id="points" value="Очки" />
-	<String id="point" value="очко" />
-	<String id="pointsUnit" value="очков" />
+
+
 	<String id="scoreOf" value="Очки: %d из %d" />
 	<String id="scoreOnly" value="Очки: %d" />
-	<String id="oneMove" value="Ходы: 1" />
-	<String id="moves" value="Ходы: %d" />
+
+
 	<String id="youSaid" value="Вы: %s" />
 	<String id="dictationListening" value="Слушаю… Нажмите на микрофон, чтобы закончить." />
 	<String id="dictationStarting" value="Ожидание доступа к микрофону…" />
@@ -144,4 +144,17 @@
 	<String id="heroStats_powers" value="Сверхспособности" />
 	<String id="heroStats_resources" value="Начальное состояние" />
 	<String id="heroStats_stats" value="Параметры" />
+	<String id="pluralRule" value="eastSlavic" />
+	<String id="moveCount_one" value="%d ход" />
+	<String id="moveCount_few" value="%d хода" />
+	<String id="moveCount_many" value="%d ходов" />
+	<String id="moveCount_other" value="%d хода" />
+	<String id="pointCount_one" value="%d очко" />
+	<String id="pointCount_few" value="%d очка" />
+	<String id="pointCount_many" value="%d очков" />
+	<String id="pointCount_other" value="%d очка" />
+	<String id="ratingsCount_one" value="%d оценка" />
+	<String id="ratingsCount_few" value="%d оценки" />
+	<String id="ratingsCount_many" value="%d оценок" />
+	<String id="ratingsCount_other" value="%d оценки" />
 </Resources>

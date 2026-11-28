@@ -29,6 +29,17 @@ for _, game in ipairs(catalog:all()) do
 	t.assertEqual(game.description, story.description, "synopsis matches the story manifest for " .. game.id)
 	t.assertEqual(game.language, game.id:match("^books%.(%a%a)%.") or "en", "the catalog language is the edition folder of " .. game.id)
 end
+-- The Russian edition is checked against its manifest once the engine has it.
+local russian = require("apps.adventure-arena.catalog.ru")[1]
+local russianManifest = io.open("apps/adventure-arena/zilscript/" .. russian.id:gsub("%.", "/") .. "/game.json", "r")
+if not russianManifest then
+	print("SKIPPED: the Russian edition is not in the pinned engine; its catalog entry is compared after the engine re-pin")
+else
+	local story = jsonParse(russianManifest:read("*a"))
+	russianManifest:close()
+	t.assertEqual(russian.shortDescription, story.shortDescription, "card summary matches the story manifest for " .. russian.id)
+	t.assertEqual(russian.description, story.description, "synopsis matches the story manifest for " .. russian.id)
+end
 t.assertEqual(reviews, 0, "bundled catalog contains no unsourced reader feedback")
 t.assertEqual(catalog:find("books.en.limehouse-killings").genre, "Victorian Mystery")
 for _, game in ipairs(catalog:all()) do

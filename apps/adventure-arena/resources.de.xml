@@ -1,4 +1,12 @@
 <Resources>
+	<!-- Counted nouns: pluralRule names the rule (helpers/Plurals.lua); each form is a string -->
+	<String id="pluralRule" value="oneOther" />
+	<String id="moveCount_one" value="%d Zug" />
+	<String id="moveCount_other" value="%d Züge" />
+	<String id="pointCount_one" value="%d Punkt" />
+	<String id="pointCount_other" value="%d Punkte" />
+	<String id="ratingsCount_one" value="%d Bewertung" />
+	<String id="ratingsCount_other" value="%d Bewertungen" />
 	<!-- Home and navigation -->
 	<String id="discover" value="Entdecken" />
 	<String id="search" value="Suchen" />
@@ -17,7 +25,6 @@
 	<String id="read" value="Lesen" />
 	<!-- Ratings -->
 	<String id="noRatings" value="Keine Bewertungen" />
-	<String id="ratingsCount" value="%d Bewertungen" />
 	<String id="outOfFive" value="%s von 5" />
 	<String id="ratedOutOfFive" value="Bewertet mit %s von 5" />
 	<!-- Detail -->
@@ -68,12 +75,8 @@
 	<String id="dictate" value="Befehl diktieren" />
 	<String id="score" value="Punkte" />
 	<String id="points" value="Punkte" />
-	<String id="point" value="Punkt" />
-	<String id="pointsUnit" value="Punkte" />
 	<String id="scoreOf" value="Punkte %d von %d" />
 	<String id="scoreOnly" value="Punkte %d" />
-	<String id="oneMove" value="1 Zug" />
-	<String id="moves" value="%d Züge" />
 	<String id="youSaid" value="Du: %s" />
 	<String id="dictationListening" value="Ich höre zu … Tippe auf das Mikrofon, wenn du fertig bist." />
 	<String id="dictationStarting" value="Warte auf den Zugriff auf das Mikrofon …" />

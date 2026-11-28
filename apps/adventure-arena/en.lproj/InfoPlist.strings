@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "The app uses the microphone to turn what you say into the command you type.";
+"NSSpeechRecognitionUsageDescription" = "The app uses speech recognition to turn what you say into text.";

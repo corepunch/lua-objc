@@ -1,6 +1,7 @@
 local Adventures = require("apps.adventure-arena.models.Adventures")
 local SavedGames = require("apps.adventure-arena.models.SavedGames")
 local Routes = require("data.routes")
+local Plurals = require("apps.adventure-arena.helpers.Plurals")
 
 -- A story's product page, pushed on the stack the tap came from: the request
 -- names the story (`state.id`).
@@ -17,7 +18,7 @@ return {
 			for index, other in ipairs(related) do
 				handlers["related_" .. index] = function() self:flow("Opening"):game(other.id) end
 			end
-			return { game = self.game, related = related, saved = record and record:progress() or nil, handlers = handlers }
+			return { game = self.game, ratingsText = Plurals.format(self.app.resources(), "ratingsCount", self.game.reviewCount or 0), related = related, saved = record and record:progress() or nil, handlers = handlers }
 		end,
 		play = function(self) self.app.openSession(self.game.id) end,
 		restart = function(self) self.app.openSession(self.game.id, true) end,

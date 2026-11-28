@@ -4,6 +4,7 @@ _G.__headless = true
 local t = require("TestKit")
 local xml = require("ui.xml")
 local Languages = require("apps.adventure-arena.helpers.Languages")
+local Plurals = require("apps.adventure-arena.helpers.Plurals")
 
 local PATH = "apps/adventure-arena/resources.xml"
 local APP = "apps/adventure-arena/"
@@ -35,6 +36,17 @@ local function placeholders(text)
 	for spec in text:gmatch("%%[%a]") do table.insert(found, spec) end
 	return table.concat(found)
 end
+-- A counted noun is a string per form (moveCount_one ...). English declares
+-- them all, so any language can; a language translates the forms its rule
+-- distinguishes.
+local function needed(language, id)
+	local noun, form = id:match("^(%a+Count)_(%a+)$")
+	if not noun then return true end
+	for _, known in ipairs(Plurals.forms(ids(language).pluralRule)) do
+		if known == form then return true end
+	end
+	return false
+end
 for _, language in ipairs(Languages.list()) do
 	local own = ids(language.id)
 	local source = xml.source(PATH:gsub("%.xml$", "." .. language.id .. ".xml"))
@@ -45,23 +57,40 @@ for _, language in ipairs(Languages.list()) do
 		local declared = {}
 		for id in (source or ""):gmatch('<String id="([%w_]+)"') do declared[id] = true end
 		for id in pairs(English) do
-			t.expect(declared[id], language.id .. " translates " .. id)
+			t.expect(declared[id] or not needed(language.id, id), language.id .. " translates " .. id)
 		end
 		for id in pairs(declared) do
 			t.expect(English[id] ~= nil, language.id .. " has no string English lacks: " .. id)
 		end
 		for id, value in pairs(own) do
-			t.assertEqual(placeholders(value), placeholders(English[id]), language.id .. " keeps the placeholders of " .. id)
+			if id:find("Count_", 1, true) then
+				t.expect(placeholders(value) == "%d", language.id .. " counts with %d in " .. id)
+			else
+				t.assertEqual(placeholders(value), placeholders(English[id]), language.id .. " keeps the placeholders of " .. id)
+			end
 		end
 	end
 end
 
--- German words are written, not copied from English (a few are the same word).
-local SAME = { genre = true, factGenre = true, factAdventure = false, theme_original = true, spacingNormal = true,
-	fontSerif = true, fontSans = true, fontMono = true, factGenre = true }
-local German = ids("de")
-for id, value in pairs(English) do
-	if not SAME[id] then t.expect(German[id] ~= value, "German differs from English for " .. id) end
+-- Translated words are written, not copied from English (a few are the same word).
+local SAME = { genre = true, factGenre = true, theme_original = true, spacingNormal = true,
+	fontSerif = true, fontSans = true, fontMono = true, pluralRule = true }
+local function differs(language, same)
+	local words = ids(language)
+	for id, value in pairs(English) do
+		if not same[id] and needed(language, id) then
+			t.expect(words[id] ~= value, language .. " differs from English for " .. id)
+		end
+	end
+end
+differs("de", SAME)
+-- Russian shares no word with English at all, and writes its own plural rule.
+local russian = ids("ru")
+t.assertEqual(russian.pluralRule, "eastSlavic")
+differs("ru", { pluralRule = true })
+for id, value in pairs(russian) do
+	local rest = value:gsub("Adventure Arena", ""):gsub("Infocom", ""):gsub("ZIL", ""):gsub("Arena", ""):gsub("%%%a", "")
+	t.expect(id == "pluralRule" or not rest:find("%a%a%a"), "ru " .. id .. " has no English word: " .. value)
 end
 
 -- Every `@name` and `resources.name` a view or controller uses is declared,
@@ -77,14 +106,20 @@ for _, path in ipairs(sources) do
 	-- A template may declare numbers of its own in a <Resources> element.
 	local own = {}
 	for id in text:gmatch('<%u%l+ id="([%a_][%w_]*)" value=') do own[id] = true end
-	for name in text:gmatch('"@([%a_][%w_]*)"') do
+	for name in text:gmatch([=[["']@([%a_][%w_]*)["']]=]) do
 		used[name] = true
 		t.expect(English[name] ~= nil or own[name], path .. " uses @" .. name .. " which is not declared")
 	end
-	for name in text:gmatch("%f[%w_]resources%.([%a_][%w_]*)") do
+	for name in text:gmatch("%f[%w_]resources%(?%)?%.([%a_][%w_]*)") do
 		if name ~= "xml" and name ~= "lua" then
 			used[name] = true
 			t.expect(English[name] ~= nil, path .. " uses resources." .. name .. " which is not declared")
+		end
+	end
+	-- Counted nouns: Plurals.format(strings, "moveCount", n) uses moveCount_<form>.
+	for name in text:gmatch('Plurals%.format%([%w_.()]+, "(%a+)"') do
+		for id in pairs(English) do
+			if id:find("^" .. name .. "_") then used[id] = true end
 		end
 	end
 	for name in text:gmatch("strings%.([%a_][%w_]*)") do

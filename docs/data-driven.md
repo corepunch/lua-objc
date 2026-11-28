@@ -235,8 +235,21 @@ one it speaks as `data.resources`, or gives a retained template a function
 update asks, so a language change shows on the next render. A string with
 placeholders is formatted in the template, `string.format(resources.seeAll,
 title)`; a plain one is `text="@seeAll"`. Adventure Arena is the example
-(`apps/adventure-arena/resources.xml`, `resources.de.xml`,
+(`apps/adventure-arena/resources.xml`, `resources.de.xml`, `resources.ru.xml`,
 `tests/adventure_arena_strings.test.lua`).
+
+A counted noun is one string per plural form, `<noun>_<form>`
+(`moveCount_one`, `moveCount_few`, `moveCount_many`, `moveCount_other`), and the
+language's `pluralRule` string names the rule that picks the form for a number
+(`oneOther` for English and German, `eastSlavic` for Russian: 1 ход, 2 хода,
+5 ходов). `Plurals.format(strings, "moveCount", 5)` in
+`apps/adventure-arena/helpers/Plurals.lua` is the one place that chooses.
+The base declares every form any language uses; a language translates the
+forms its rule distinguishes.
+
+Changing the language also gives the pages a stack draws once their titles
+again: `ns.navigationPages(nav)` lists a navigation stack's pages, root first,
+and the controller sets each page's `title` (`Controller:retitle`).
 
 ## The manifest
 

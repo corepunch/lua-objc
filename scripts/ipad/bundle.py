@@ -33,7 +33,7 @@ def copy_tree(source, workspace, lua_only=False, runtime_only=False):
     for path in source.rglob('*'):
         relative = path.relative_to(source)
         if not path.is_file() or any(part.startswith('.') or part in ('Build', '__pycache__', 'ci_scripts', 'store-assets', 'fastlane')
-                                   or part.endswith(('.xcodeproj', '.xcworkspace', '.xcassets')) for part in relative.parts):
+                                   or part.endswith(('.xcodeproj', '.xcworkspace', '.xcassets', '.lproj')) for part in relative.parts):
             continue
         if lua_only and path.suffix not in ('.lua', '.etlua'):
             continue
@@ -42,6 +42,17 @@ def copy_tree(source, workspace, lua_only=False, runtime_only=False):
         target = workspace / path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
+
+
+def copy_localizations(app, bundle):
+    """The app's <language>.lproj folders (InfoPlist.strings: the permission
+    prompts and the name under the icon) go to the bundle root, where iOS reads
+    them; they are not Workspace files. A language the app dropped is removed."""
+    for stale in bundle.glob('*.lproj'):
+        shutil.rmtree(stale)
+    for folder in sorted(Path(app).glob('*.lproj')):
+        if folder.is_dir():
+            shutil.copytree(folder, bundle / folder.name)
 
 
 def asset_kits(*roots):
@@ -140,6 +151,7 @@ def main():
     else:
         (bundle / 'PrivacyInfo.xcprivacy').unlink(missing_ok=True)
     (bundle / 'Info.plist').write_bytes(plistlib.dumps(info))
+    copy_localizations(args.app, bundle)
     workspace = bundle / 'Workspace'
     if workspace.exists():
         shutil.rmtree(workspace)

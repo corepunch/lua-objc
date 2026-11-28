@@ -37,6 +37,7 @@ local GENRE_SYMBOLS = {
 	["Superhelden-Rollenspiel"] = "bolt.fill",
 	["Kinderabenteuer"] = "cloud.sun.fill",
 	["Science-Fiction"] = "sparkles",
+	["Супергеройская ролевая игра"] = "bolt.fill",
 }
 
 function Adventures.genreSymbol(genre)
@@ -145,7 +146,7 @@ function Adventures:related(id, limit)
 end
 
 local function searchable(game)
-	return Languages.lower(table.concat({
+	return Languages.fold(table.concat({
 		game.title or "", game.author or "", game.genre or "", collectionOf(game), table.concat(game.categories or {}, " "),
 		game.shortDescription or "", tostring(game.year or ""), game.difficulty or "",
 	}, " "))
@@ -155,11 +156,11 @@ end
 -- widening. Title matches rank first; ties keep catalog order.
 function Adventures:search(query)
 	local terms = {}
-	for term in Languages.lower(tostring(query or "")):gmatch("%S+") do table.insert(terms, term) end
+	for term in Languages.fold(tostring(query or "")):gmatch("%S+") do table.insert(terms, term) end
 	if #terms == 0 then return {} end
 	local matches = {}
 	for index, game in ipairs(self:all()) do
-		local text, title, matched = searchable(game), Languages.lower(game.title or ""), true
+		local text, title, matched = searchable(game), Languages.fold(game.title or ""), true
 		local titleHits = 0
 		for _, term in ipairs(terms) do
 			if not text:find(term, 1, true) then matched = false break end

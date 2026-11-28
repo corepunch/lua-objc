@@ -35,5 +35,32 @@ class AssetKitTest(unittest.TestCase):
                 os.chdir(previous)
 
 
+class LocalizationTest(unittest.TestCase):
+    def test_lproj_folders_go_to_the_bundle_root_and_stale_ones_go(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'app/de.lproj').mkdir(parents=True)
+            (root / 'app/de.lproj/InfoPlist.strings').write_text('"a" = "b";')
+            (root / 'bundle/fr.lproj').mkdir(parents=True)
+            bundle.copy_localizations(root / 'app', root / 'bundle')
+            self.assertTrue((root / 'bundle/de.lproj/InfoPlist.strings').is_file())
+            self.assertFalse((root / 'bundle/fr.lproj').exists())
+
+    def test_the_workspace_copy_leaves_lproj_folders_out(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'app/ru.lproj').mkdir(parents=True)
+            (root / 'app/ru.lproj/InfoPlist.strings').write_text('"a" = "b";')
+            (root / 'app/init.lua').write_text('return {}')
+            previous = Path.cwd()
+            try:
+                os.chdir(root)
+                bundle.copy_tree('app', root / 'workspace')
+            finally:
+                os.chdir(previous)
+            self.assertTrue((root / 'workspace/app/init.lua').is_file())
+            self.assertFalse((root / 'workspace/app/ru.lproj').exists())
+
+
 if __name__ == '__main__':
     unittest.main()

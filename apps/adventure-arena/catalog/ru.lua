@@ -13,6 +13,7 @@ return {
 		portraitRoot = "books/en/blackout-at-meridian",
 		genre = "Супергеройская ролевая игра",
 		statusLine = "moves",
+		ruleset = "superhero-percentile",
 		collection = "Оригинальные приключения",
 		categories = { "Супергерои" },
 		difficulty = "Начальный",

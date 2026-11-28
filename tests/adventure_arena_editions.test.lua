@@ -66,6 +66,11 @@ local settings = app.pages:data("settings")
 t.assertEqual(settings.languageIndex, 0, "Automatic starts selected")
 t.assertEqual(#settings.languages, 3, "Settings offers every language by its own name")
 t.assertEqual(settings.languages[2].title, "Deutsch")
+t.assertEqual(settings.languages[3].title, "Русский")
+local pages = ns.navigationPages(app.navigation)
+t.assertEqual(#pages, 2, "Settings is pushed on the Discover page")
+t.assertEqual(pages[1].title, "Discover", "the navigation titles are English")
+t.assertEqual(pages[2].title, "Settings")
 t.assertEqual(picker.selectedSegment, 0, "the native picker shows Automatic")
 
 settings.actions.changeLanguage(2)
@@ -79,6 +84,22 @@ t.assertEqual(#SavedGames:inProgress(), 0, "English progress does not show in th
 t.expect(contains(app.pages:refs("discover").libraryScroll, "Stromausfall in Meridian"), "Discover shows the German edition")
 t.expect(contains(app.pages:refs("settings").settingsScroll, "Hilfe"), "Settings speaks German at once")
 t.expect(not contains(app.pages:refs("settings").settingsScroll, "Help"), "and no English is left on it")
+pages = ns.navigationPages(app.navigation)
+t.assertEqual(pages[1].title, "Entdecken", "changing the language retitles the page under Settings at once")
+t.assertEqual(pages[2].title, "Einstellungen", "and Settings itself")
+settings.actions.changeLanguage(3)
+pages = ns.navigationPages(app.navigation)
+t.assertEqual(pages[1].title, Words.load("ru").discover, "the titles follow every change")
+t.assertEqual(pages[2].title, "Настройки")
+t.expect(contains(app.pages:refs("settings").settingsScroll, Words.load("ru").help), "Settings speaks Russian at once")
+settings.actions.changeLanguage(2)
+t.assertEqual(ns.navigationPages(app.navigation)[2].title, "Einstellungen")
+-- A page the user swiped away leaves no title behind for the next one.
+app.navigation:pop()
+app:openCatalogPage("search")
+t.assertEqual(ns.navigationPages(app.navigation)[2].title, "Suchen", "a later page is titled in the current language")
+app.navigation:pop()
+app:openCatalogPage("settings")
 
 -- Saves are keyed by edition: the two editions never share progress.
 local german = Adventures:find(germanId)
@@ -181,6 +202,65 @@ t.assertEqual(refs.dictate.accessibilityLabel, words.dictate)
 t.assertEqual(reader.sessionController.heading.refs.sessionScore.text, "0 Züge", "the running head counts in German")
 t.assertEqual(starts[#starts], false, "opening the German edition resumes none of the English edition's progress")
 t.expect(not reader.sessionController:show(englishId), "the English edition cannot be opened from the German library")
+
+-- ── A Russian device: the Russian library and Russian words everywhere ──
+local russianId = "books.ru.blackout-at-meridian"
+reading, saves = nil, nil
+for _, tag in ipairs({ "ru-RU", "ru-BY", "ru-UA", "ru-KZ" }) do
+	launch({ tag })
+	t.assertEqual(ReadingSettings.language(), "ru", tag .. " speaks Russian")
+end
+app = launch({ "ru-RU", "en-US" })
+t.assertEqual(#Adventures:all(), 1, "the Russian library lists exactly the Russian edition")
+t.assertEqual(Adventures:all()[1].id, russianId)
+t.assertEqual(Adventures:all()[1].language, "ru")
+t.assertEqual(Adventures:find(englishId), nil, "no English edition on a Russian device")
+t.assertEqual(Adventures:find(germanId), nil, "and no German one")
+local russian = Words.load("ru")
+discover = app.pages:refs("discover").libraryScroll
+t.expect(contains(discover, "Огни Меридиана"), "Discover shows the Russian edition")
+t.expect(contains(discover, "Оригинальные приключения"), "on the shelf with a Russian name")
+t.expect(not contains(discover, "Top Rated") and not contains(discover, "Featured"), "no English is left on Discover")
+t.assertEqual(ns.navigationPages(app.navigation)[1].title, russian.discover, "the root title is Russian from the start")
+
+_, detailRefs = app:pushPage("detail", { id = russianId })
+detail = detailRefs.detailScrollView
+t.expect(contains(detail, russian.aboutStory) and contains(detail, russian.factDifficulty), "the detail page speaks Russian")
+t.expect(contains(detail, russian.noRatings), "with its ratings in Russian")
+t.assertEqual(detailRefs.play.title, russian.startReading)
+t.expect(not contains(detail, "About this Story") and not contains(detail, "Start Reading"), "and no English")
+app:back()
+
+app:openCatalogPage("settings")
+page = app.pages:refs("settings")
+t.expect(contains(page.settingsScroll, russian.help) and contains(page.settingsScroll, russian.howToPlay), "Settings speaks Russian")
+t.expect(contains(page.settingsScroll, russian.textSize) and contains(page.settingsScroll, russian.theme_night), "so do the reading options")
+t.assertEqual(app.pages:data("settings").languages[3].title, "Русский", "the picker names the language in itself")
+t.assertEqual(ns.navigationPages(app.navigation)[2].title, "Настройки")
+t.assertEqual(app.pages:data("settings").languageIndex, 0, "Automatic is selected")
+app.pages:data("settings").actions.changeLanguage(1)
+t.assertEqual(ReadingSettings.language(), "en", "the picker overrides the Russian device")
+t.assertEqual(ns.navigationPages(app.navigation)[1].title, "Discover", "and the titles follow")
+app.pages:data("settings").actions.changeLanguage(0)
+t.assertEqual(ReadingSettings.language(), "ru", "Automatic returns to the device")
+
+-- Search folds case and ё for Russian.
+for _, query in ipairs({ "меридиан", "МЕРИДИАНА", "Огни", "огни меридиана", "супергерои", "огни свет" }) do
+	t.assertEqual(#Adventures:search(query), 1, "search finds the Russian edition for " .. query)
+end
+t.assertEqual(#Adventures:search("огни молния"), 0, "every word must match")
+t.assertEqual(Languages.fold("Ёлочка"), Languages.fold("елочка"), "ё and е are one letter in search")
+
+-- The reader's own chrome speaks Russian.
+local ruReader = Controller.new { documents = documents, preferredLanguages = { "ru-RU" }, sessionModel = Session.new { engineFactory = function()
+	return { start = function() return { resume = function() return "Поехали." end }, "Добро пожаловать." end, exits = function() return {} end }
+end }, speech = { recognizer = function() return {} end } }
+ruReader:home()
+t.expect(ruReader.sessionController:show(russianId), "the Russian edition opens in the reader")
+local ruRefs = ruReader.sessionController.refs
+t.assertEqual(ruRefs.input.placeholder, russian.placeholder, "the command field asks in Russian")
+t.assertEqual(ruRefs.dictate.accessibilityLabel, russian.dictate)
+t.assertEqual(ruReader.sessionController.heading.refs.sessionScore.text, "0 ходов", "the running head counts in Russian")
 
 local nativeLanguages = require("ns").preferredLanguages()
 t.expect(type(nativeLanguages) == "table" and type(nativeLanguages[1]) == "string",

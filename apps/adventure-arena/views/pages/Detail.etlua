@@ -25,7 +25,7 @@
 
       <ScrollView id="facts" horizontal="true" vertical="false">
         <HStack spacing="0" paddingHorizontal="8" paddingVertical="14" alignment="center">
-          <%- partial("../components/Fact.etlua", { caption = resources.factRating, value = game.reviewCount > 0 and string.format("%.1f", game.rating) or "—", detail = game.reviewCount > 0 and string.format(resources.ratingsCount, game.reviewCount) or resources.noRatings, divider = true }) %>
+          <%- partial("../components/Fact.etlua", { caption = resources.factRating, value = game.reviewCount > 0 and string.format("%.1f", game.rating) or "—", detail = game.reviewCount > 0 and ratingsText or resources.noRatings, divider = true }) %>
           <%- partial("../components/Fact.etlua", { caption = resources.factDifficulty, value = game.difficulty or "—", detail = resources.infocomLevel, divider = true }) %>
           <%- partial("../components/Fact.etlua", { caption = resources.factGenre, value = game.genre:gsub(" Adventure$", ""), detail = resources.factAdventure, divider = true }) %>
           <%- partial("../components/Fact.etlua", { caption = resources.factReleased, value = tostring(game.year), detail = game.author, divider = false }) %>
@@ -42,7 +42,7 @@
       <VStack paddingTop="8" spacing="12" alignment="leading" maxWidth="infinity">
         <HStack paddingHorizontal="20" spacing="8" alignment="bottom" maxWidth="infinity">
           <Label text="@ratingsAndReviews" size="22" weight="bold" flexGrow="1" />
-          <Label text="<%= string.format(resources.ratingsCount, game.reviewCount) %>" size="15" color="secondary" />
+          <Label text="<%= ratingsText %>" size="15" color="secondary" />
         </HStack>
         <ScrollView horizontal="true" vertical="false" scrollTargetBehavior="viewAligned">
           <HStack spacing="12" paddingHorizontal="20" alignment="top">

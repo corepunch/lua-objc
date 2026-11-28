@@ -1,6 +1,7 @@
 local t = require("TestKit")
 local etlua = require("etlua")
 local CharacterSheet = require("apps.adventure-arena.services.CharacterSheet")
+local Words = require("apps.adventure-arena.services.Words")
 local ReaderStatus = require("apps.adventure-arena.helpers.ReaderStatus")
 local Controller = require("apps.adventure-arena.controllers.SessionController")
 local Runtime = require("apps.adventure-arena.services.ZILRuntime")
@@ -22,21 +23,22 @@ local session = Session.new {
   newSeed = function() return 97 end,
 }
 local heading, opened, actions, onDismiss
+local printError = { hidden = true }
 local controller = setmetatable({
   model = session, game = book, reader = { isDisposed = function() return false end, update = function() end },
   readerData = function(self) return { reading = {}, canShowCharacterStatus = self.model.engine ~= nil } end,
   renderCompletions = function() end,
   heading = { update = function(_, data) heading = data.progress end },
-  resources = function() return { moves = "%d turns", oneMove = "1 turn" } end,
+  resources = function() return Words.load("ru") end,
   renderTemplate = function(name, data)
     t.assertEqual(name, "sheets/CharacterStatus")
     actions = data.actions
     opened = assert(etlua.render(template, data))
-    return opened
+    return opened, { characterPrintError = printError }
   end,
   presentSheet = function(sheet, _, onClose) onDismiss = onClose; return sheet end,
   dismissSheet = function() end,
-  ns = { shareFiles = function(entries) return entries[1].text:find("85 / 90", 1, true) ~= nil end },
+  ns = { printHTML = function(html) return html:find("85 / 90", 1, true) ~= nil end },
 }, { __index = Controller })
 
 t.expect(not controller:showCharacterStatus())
@@ -60,7 +62,7 @@ t.expect(heading ~= "Здоровье 85/90" and not controller.characterStatusS
 t.expect(controller:showCharacterStatus())
 t.expect(opened:find("@showCharacterMonitor", 1, true))
 actions.print()
-t.expect(not controller.sheetError)
+t.expect(printError.hidden)
 actions.monitor()
 t.assertEqual(heading, "Здоровье 85/90")
 t.assertEqual(session:snapshot().moves, before.moves)

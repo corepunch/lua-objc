@@ -1,13 +1,14 @@
 <%
   -- One column of the App Store’s information strip: a caption in small
-  -- capitals, the fact itself, and a line of detail. A long value (a German
-  -- compound such as Superhelden-Rollenspiel) shrinks to fit rather than cut.
-  local FACT = { width = 148, rule = 36 }
+  -- capitals, the fact itself, and a line of detail. A column is as wide as
+  -- its longest line plus padding, so a long value (Superhelden-Rollenspiel,
+  -- Супергеройская ролевая игра) is never cut: the strip scrolls sideways.
+  local FACT = { padding = 22, rule = 36 }
 %>
 <HStack spacing="0" alignment="center">
-  <VStack width="<%= FACT.width %>" spacing="3" alignment="center">
+  <VStack paddingHorizontal="<%= FACT.padding %>" spacing="3" alignment="center">
     <Label text="<%= caption %>" size="11" weight="semibold" color="secondary" smallCaps="true" lines="1" />
-    <Label text="<%= value %>" size="20" weight="bold" design="rounded" lines="1" minimumScaleFactor="0.55" truncation="tail" alignment="center" />
+    <Label text="<%= value %>" size="20" weight="bold" design="rounded" lines="1" alignment="center" />
     <Label text="<%= detail %>" size="12" color="secondary" lines="2" truncation="tail" alignment="center" />
   </VStack>
   <% if divider then %>

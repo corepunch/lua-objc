@@ -23,7 +23,10 @@ return {
 		end,
 		changeLanguage = function(self, index)
 			local settings = ReadingSettings:current()
-			if settings:setLanguageIndex(index) then settings:persist() end
+			if settings:setLanguageIndex(index) then
+				settings:persist()
+				self.app.languageChanged()
+			end
 		end,
 		remove = function(self, id) return SavedGames:remove(id) end,
 		howToPlay = function(self) self.app.openGuide() end,

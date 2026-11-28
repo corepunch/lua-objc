@@ -1,4 +1,18 @@
 <Resources>
+	<!-- Counted nouns: pluralRule names the rule (helpers/Plurals.lua); each form is a string -->
+	<String id="pluralRule" value="oneOther" />
+	<String id="moveCount_one" value="%d move" />
+	<String id="moveCount_few" value="%d moves" />
+	<String id="moveCount_many" value="%d moves" />
+	<String id="moveCount_other" value="%d moves" />
+	<String id="pointCount_one" value="%d point" />
+	<String id="pointCount_few" value="%d points" />
+	<String id="pointCount_many" value="%d points" />
+	<String id="pointCount_other" value="%d points" />
+	<String id="ratingsCount_one" value="%d rating" />
+	<String id="ratingsCount_few" value="%d ratings" />
+	<String id="ratingsCount_many" value="%d ratings" />
+	<String id="ratingsCount_other" value="%d ratings" />
 	<!-- Home and navigation -->
 	<String id="discover" value="Discover" />
 	<String id="search" value="Search" />
@@ -17,7 +31,6 @@
 	<String id="read" value="Read" />
 	<!-- Ratings -->
 	<String id="noRatings" value="No ratings yet" />
-	<String id="ratingsCount" value="%d ratings" />
 	<String id="outOfFive" value="%s out of 5" />
 	<String id="ratedOutOfFive" value="Rated %s out of 5" />
 	<!-- Detail -->
@@ -68,12 +81,8 @@
 	<String id="dictate" value="Dictate command" />
 	<String id="score" value="Score" />
 	<String id="points" value="Points" />
-	<String id="point" value="point" />
-	<String id="pointsUnit" value="points" />
 	<String id="scoreOf" value="Score %d of %d" />
 	<String id="scoreOnly" value="Score %d" />
-	<String id="oneMove" value="1 move" />
-	<String id="moves" value="%d moves" />
 	<String id="youSaid" value="You: %s" />
 	<String id="dictationListening" value="Listening… Tap the microphone to finish." />
 	<String id="dictationStarting" value="Waiting for microphone access…" />

@@ -70,6 +70,7 @@ function Controller.new(options)
 		push = function(id, state) return self:pushPage(id, state) end,
 		back = function() return self:back() end,
 		openCatalogPage = function(id) return self:openCatalogPage(id) end,
+		languageChanged = function() self:retitle() end,
 		openSession = function(id, fresh) return self.sessionController:show(id, fresh) end,
 		openGuide = function() self.onboarding:openGuide(self.window) end,
 		mountReadingOptions = function(host) self:mountReadingOptions(host) end,
@@ -133,17 +134,38 @@ function Controller:render(template, data)
 end
 
 -- Screens are <Page> templates: title, toolbar and presentation are declared
--- there, so pushing is render-and-push.
-function Controller:push(template, data)
+-- there, so pushing is render-and-push. A page whose title is a word of the
+-- app (Settings, Search) passes `title`, a function that names it in the
+-- language of the moment, so that changing the language retitles the stack.
+function Controller:push(template, data, title)
 	local page, refs = self:render(template, data)
-	self.navigation:push(page)
+	self:pushTitled(page, title)
 	return page, refs
+end
+
+-- `titles[n]` names stack page n (the root is 1); a page the user swiped away
+-- leaves its entry behind, so the list is cut to the real stack first.
+function Controller:pushTitled(page, title)
+	for index = #self.titles, #self.ns.navigationPages(self.navigation) + 1, -1 do self.titles[index] = nil end
+	self.navigation:push(page)
+	self.titles[#self.ns.navigationPages(self.navigation)] = title or false
+end
+
+-- The app's language changed: the pages on screen that draw themselves once
+-- (the navigation titles) are named again; mounted pages are asked again
+-- by PageHost:refresh.
+function Controller:retitle()
+	local pages = self.ns.navigationPages(self.navigation)
+	for index, page in ipairs(pages) do
+		local title = self.titles[index]
+		if title then page.title = title() end
+	end
 end
 
 -- A page of a route pushed on the navigation stack that is showing.
 function Controller:pushPage(id, state)
 	local page, refs = self.pages:render(id, state)
-	self.navigation:push(page)
+	self:pushTitled(page)
 	return page, refs
 end
 
@@ -153,7 +175,7 @@ function Controller:back()
 end
 
 function Controller:openCatalogPage(id)
-	if id == "create" then return self:push("pages/Create", {}) end
+	if id == "create" then return self:push("pages/Create", {}, function() return self.resources().create end) end
 
 	local template, data
 	if id == "search" then
@@ -169,7 +191,7 @@ function Controller:openCatalogPage(id)
 		end
 		self.pages:unmount(id)
 	end
-	local _, refs = self:push(template, data)
+	local _, refs = self:push(template, data, function() return self.resources()[id] end)
 	self.pages:mount(id, refs.catalogContent)
 end
 
@@ -179,6 +201,7 @@ function Controller:renderHome(template)
 		actions = self.pages:actions("discover", page),
 	})
 	self.navigation = refs.navigation
+	self.titles = { function() return self.resources().discover end }
 	self.pages:mount("discover", refs.discoverContent)
 	return config
 end

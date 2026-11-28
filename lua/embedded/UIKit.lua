@@ -333,6 +333,16 @@ function UIKit.pushScreen(nav, title, builder)
 	return vc
 end
 
+--- The pages of a navigation stack as a list, root first: what a controller
+--- needs to give them new titles when the app's language changes
+--- (`page.title = ...`).
+function UIKit.navigationPages(nav)
+	assert(nav ~= nil, "navigationPages requires a navigation stack")
+	local pages = {}
+	for _, page in ipairs(nav.viewControllers) do table.insert(pages, page) end
+	return pages
+end
+
 function UIKit.popScreen(nav)
 	assert(nav ~= nil, "popScreen requires a navigation stack")
 	local stack = navScreenScopes[nav]
