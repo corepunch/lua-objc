@@ -46,7 +46,7 @@ end
 -- ── An English device: the English library, without the German edition ──
 local app = launch({ "en-GB", "de-DE" })
 t.assertEqual(ReadingSettings.language(), "en", "the first preferred language with a catalog is the app's")
-t.assertEqual(#Adventures:all(), 19, "the English library holds the English books")
+t.assertEqual(#Adventures:all(), 20, "the English library holds the English books")
 t.expect(Adventures:find(englishId) ~= nil, "Blackout at Meridian is in English")
 t.assertEqual(Adventures:find(germanId), nil, "the German edition never appears in the English library")
 local english = Adventures:find(englishId)
@@ -211,7 +211,7 @@ for _, tag in ipairs({ "ru-RU", "ru-BY", "ru-UA", "ru-KZ" }) do
 	t.assertEqual(ReadingSettings.language(), "ru", tag .. " speaks Russian")
 end
 app = launch({ "ru-RU", "en-US" })
-t.assertEqual(#Adventures:all(), 1, "the Russian library lists exactly the Russian edition")
+t.assertEqual(#Adventures:all(), 2, "the Russian library lists both Russian adventures")
 t.assertEqual(Adventures:all()[1].id, russianId)
 t.assertEqual(Adventures:all()[1].language, "ru")
 t.assertEqual(Adventures:find(englishId), nil, "no English edition on a Russian device")
@@ -245,9 +245,10 @@ app.pages:data("settings").actions.changeLanguage(0)
 t.assertEqual(ReadingSettings.language(), "ru", "Automatic returns to the device")
 
 -- Search folds case and ё for Russian.
-for _, query in ipairs({ "меридиан", "МЕРИДИАНА", "Огни", "огни меридиана", "супергерои", "огни свет" }) do
+for _, query in ipairs({ "меридиан", "МЕРИДИАНА", "Огни", "огни меридиана", "огни свет" }) do
 	t.assertEqual(#Adventures:search(query), 1, "search finds the Russian edition for " .. query)
 end
+t.assertEqual(#Adventures:search("супергерои"), 2, "both superhero adventures are searchable")
 t.assertEqual(#Adventures:search("огни молния"), 0, "every word must match")
 t.assertEqual(Languages.fold("Ёлочка"), Languages.fold("елочка"), "ё and е are one letter in search")
 

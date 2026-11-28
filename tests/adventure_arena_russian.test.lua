@@ -73,7 +73,7 @@ t.assertEqual(Languages.fold("Ёлка"), "елка", "search reads ё as е")
 t.assertEqual(Languages.fold("Straße ÖFFNEN"), "straße öffnen", "German folds as before")
 
 -- ── The edition ────────────────────────────────────────────────────────
-t.assertEqual(#russianCatalog, 1, "the Russian library holds the Russian edition of Blackout")
+t.assertEqual(#russianCatalog, 2, "both Russian adventures appear in the library")
 local entry, english = russianCatalog[1], nil
 for _, game in ipairs(englishCatalog) do if game.id == "books.en.blackout-at-meridian" then english = game end end
 t.assertEqual(entry.id, "books.ru.blackout-at-meridian")
