@@ -163,6 +163,12 @@ build/headless-lua: $(HEADLESS_LUA_SOURCES)
 	@mkdir -p build
 	$(CC) -O2 -DLUA_USE_MACOSX -Ivendor/lua-5.4.8/src -o $@ $(HEADLESS_LUA_SOURCES)
 
+# Family playtest of the bilingual adventure using the bundled interpreter.
+BATTLEWORLD_LANGUAGE ?= en
+.PHONY: battleworld
+battleworld: build/headless-lua
+	cd apps/adventure-arena/zilscript && ../../../build/headless-lua main.lua --companion books.$(BATTLEWORLD_LANGUAGE).last-door-of-battleworld.last-door-of-battleworld
+
 .PHONY: studio-test studio-smoke
 studio-smoke:
 	python3 scripts/ipad/studio_smoke.py $(if $(STUDIO_SMOKE_DEVICE),--device $(STUDIO_SMOKE_DEVICE))
@@ -172,7 +178,7 @@ studio-test: build/headless-lua
 		LUA_PATH='./?.lua;./lua/?.lua;./lua/vendor/etlua/?.lua;;' build/headless-lua "$$test"; \
 	done
 
-test: $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF)
+test: build/headless-lua $(LUA_OBJC_BIN) $(FRAMEWORK_MODULES) $(NATIVE_PLUGINS) $(PARITY_IMAGE_DIFF)
 	@passed=0; failed=0; \
 	for t in $(TEST_FILES); do \
 		echo "--- $$t ---"; \

@@ -575,6 +575,14 @@ External testing still requires the applicable Beta App Review.
 
 Apple documents [Mac Store package signing](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution).
 
+### Play Battleworld together
+
+Run `make battleworld` for the English edition or
+`make battleworld BATTLEWORLD_LANGUAGE=ru` for Russian. From the first
+menu, choose a hero and take turns reading and deciding what to
+try. The [family play guide](apps/adventure-arena/zilscript/books/en/last-door-of-battleworld/README.md)
+also covers typed commands.
+
 ### Adventure Arena tour screenshots
 
 The first-launch guide uses real iPhone reader captures in light and dark.
