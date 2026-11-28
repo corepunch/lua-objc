@@ -103,8 +103,8 @@ function Controller.new(options)
 			return self:render(template, data)
 		end,
 		mountTemplate = mountTemplate,
-		presentSheet = function(sheet, detents, onDismiss)
-			return ns.presentSheet(sheet, { parent = self.window, detents = detents, onDismiss = onDismiss })
+		presentSheet = function(sheet, detents, onDismiss, presentationStyle)
+			return ns.presentSheet(sheet, { parent = self.window, detents = detents, onDismiss = onDismiss, presentationStyle = presentationStyle })
 		end,
 		dismissSheet = function(sheet)
 			if sheet then return ns.dismiss(sheet) end

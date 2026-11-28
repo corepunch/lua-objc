@@ -23,6 +23,11 @@ for _, edition in ipairs({
 	local book = reader()
 	local setup = assert(book:prepare(game))
 	t.assertEqual(#setup.profiles, 3)
+	for _, profile in ipairs(setup.profiles) do
+		local portrait = assert(io.open(profile.portrait, "rb"))
+		t.assertEqual(portrait:read(8), "\137PNG\r\n\26\n")
+		portrait:close()
+	end
 	t.assertEqual(setup.profiles[2].title, edition.hero)
 	t.expect(book:start(game, nil, { id = "storm" }, setup))
 	t.expect(book:submit(edition.north))
@@ -32,5 +37,6 @@ for _, edition in ipairs({
 	t.expect(resumed:start(game, saved))
 	t.assertEqual(resumed.roomTitle, edition.ridge)
 	t.assertEqual(resumed.engine:characterSheet().name, edition.hero)
+	t.assertEqual(resumed.engine:characterSheet().portrait, setup.profiles[2].portrait, "printed sheet uses the selected card portrait")
 end
 os.exit(t.summary() and 0 or 1)

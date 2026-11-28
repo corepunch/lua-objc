@@ -156,11 +156,6 @@
 	<String id="cancelHeroSetup" value="Cancel" />
 	<String id="heroSelected" value="Selected" />
 	<String id="heroNameOptional" value="Character name (optional)" />
-	<String id="startMission" value="Begin adventure" />
+	<String id="heroContinue" value="Continue" />
 	<String id="heroNameError" value="Enter a name of up to 32 characters, without line breaks or markup." />
-	<String id="heroQuickStart" value="Quick start" />
-	<String id="heroStats_abilities" value="Core abilities" />
-	<String id="heroStats_powers" value="Powers" />
-	<String id="heroStats_resources" value="Starting status" />
-	<String id="heroStats_stats" value="Statistics" />
 </Resources>

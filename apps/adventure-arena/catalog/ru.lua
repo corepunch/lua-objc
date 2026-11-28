@@ -30,6 +30,7 @@ return {
 		reviewCount = 0,
 		reviews = {},
 		startFile = "last-door-of-battleworld.zil",
+		portraitRoot = "books/en/last-door-of-battleworld",
 		genre = "Супергеройская ролевая игра",
 		ruleset = "superhero-percentile",
 		statusLine = "moves",

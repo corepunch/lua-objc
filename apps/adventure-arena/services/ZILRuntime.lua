@@ -113,7 +113,18 @@ function ZILRuntime.new(game, readFile, seed)
 		local profiles
 		local function setupProfiles()
 			if not profiles then
-				profiles = withContext(readFile, paths, function() return Setup.profiles(env) end)
+				profiles = withContext(readFile, paths, function()
+					local list = Setup.profiles(env)
+					for _, profile in ipairs(list) do
+						local path = Portrait.reference(game.portraitRoot or sourceBase, profile.id)
+						local file = path and io.open(path, "rb")
+						if file then
+							file:close()
+							profile.portrait = path
+						end
+					end
+					return list
+				end)
 			end
 			return profiles
 		end
@@ -161,6 +172,10 @@ function ZILRuntime.new(game, readFile, seed)
 								if not ok then error(result, 0) end
 								if result then
 									sheet.portrait = portraitReference(env, game.portraitRoot or sourceBase)
+									if not sheet.portrait and env.RPG_PRESET_INDEX then
+										local preset = setupProfiles()[env.RPG_PRESET_INDEX]
+										sheet.portrait = preset and preset.portrait
+									end
 									return sheet
 								end
 							end)

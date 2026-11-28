@@ -137,13 +137,8 @@
 	<String id="cancelHeroSetup" value="Отмена" />
 	<String id="heroSelected" value="Выбран" />
 	<String id="heroNameOptional" value="Имя персонажа (необязательно)" />
-	<String id="startMission" value="Начать приключение" />
+	<String id="heroContinue" value="Продолжить" />
 	<String id="heroNameError" value="Введите имя до 32 символов, без переносов строки и разметки." />
-	<String id="heroQuickStart" value="Быстрый старт" />
-	<String id="heroStats_abilities" value="Основные характеристики" />
-	<String id="heroStats_powers" value="Сверхспособности" />
-	<String id="heroStats_resources" value="Начальное состояние" />
-	<String id="heroStats_stats" value="Параметры" />
 	<String id="pluralRule" value="eastSlavic" />
 	<String id="moveCount_one" value="%d ход" />
 	<String id="moveCount_few" value="%d хода" />

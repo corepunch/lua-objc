@@ -1,4 +1,3 @@
-local CharacterSetup = require("apps.adventure-arena.helpers.CharacterSetup")
 local CharacterSheet = require("apps.adventure-arena.services.CharacterSheet")
 local Quotes = require("apps.adventure-arena.helpers.Quotes")
 local ReaderStatus = require("apps.adventure-arena.helpers.ReaderStatus")
@@ -99,7 +98,7 @@ end
 -- still hasn't run GO, and nothing is saved until confirmation succeeds.
 function Controller:showCharacterSetup(game, prepared)
 	local first = prepared.profiles[1]
-	local data = { profiles = prepared.profiles, hero = first, groups = CharacterSetup.groups(first), name = "" }
+	local data = { profiles = prepared.profiles, hero = first, name = "" }
 	local handle, content, closed
 	local actions = {}
 	data.actions = actions
@@ -119,7 +118,7 @@ function Controller:showCharacterSetup(game, prepared)
 		local ok, reason = self.model:start(game, nil, { id = hero.id, name = name }, prepared)
 		if not ok then
 			if reason == "invalid_name" then
-				data.error = self.resources().heroNameError
+				data.nameError = self.resources().heroNameError
 				content:update(data)
 			else
 				close()
@@ -132,19 +131,17 @@ function Controller:showCharacterSetup(game, prepared)
 		return self:openReader(game, nil)
 	end
 	actions.confirm = function() return start(data.hero, data.name) end
-	-- Like the original quick setup, use the default preset and its default name.
-	actions.quickStart = function() return start(first, "") end
 	for index, hero in ipairs(prepared.profiles) do
 		actions["pick_" .. index] = function()
 			if closed then return end
-			data.hero, data.groups, data.error = hero, CharacterSetup.groups(hero), nil
+			data.hero, data.nameError = hero, nil
 			content:update(data)
 		end
 	end
-	local sheet, refs = self.renderTemplate("sheets/CharacterSetup", { actions = actions, defaultHero = first and first.title })
+	local sheet, refs = self.renderTemplate("sheets/CharacterSetup", { actions = actions })
 	content = self.mountTemplate(refs.characterSetup, "sections/CharacterSetup")
 	content:update(data)
-	handle = self.presentSheet(sheet, { "large" }, function() close(true) end)
+	handle = self.presentSheet(sheet, nil, function() close(true) end, "formSheet")
 	return true
 end
 

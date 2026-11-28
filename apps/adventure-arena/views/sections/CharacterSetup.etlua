@@ -1,22 +1,11 @@
-<VStack spacing="14" alignment="leading" maxWidth="infinity">
-  <VStack spacing="4" alignment="leading" maxWidth="infinity">
-    <% for index, profile in ipairs(profiles) do %>
-    <% local active = hero == profile %>
-    <Button id="select_<%= index %>" title="<%= profile.title %>" accessibilityLabel="<%= (active and resources.heroSelected .. ': ' or '') .. profile.title %>" systemImage="<%= active and 'checkmark.circle.fill' or 'circle' %>" style="<%= active and 'glassProminent' or 'glass' %>" action="pick_<%= index %>" height="44" />
-    <% end %>
-  </VStack>
-  <% if hero then %><Paragraph text="<%= hero.summary %>" size="15" color="secondary" /><% end %>
-  <TextField id="heroName" text="<%= name %>" placeholder="@heroNameOptional" accessibilityLabel="@heroNameOptional" onChange="nameChanged" verbatim="true" size="17" maxWidth="infinity" />
-  <% if error then %><Label text="<%= error %>" color="secondary" lines="0" /><% end %>
-  <% for _, group in ipairs(groups) do %>
-  <VStack spacing="4" alignment="leading" maxWidth="infinity">
-    <Label text="<%= resources['heroStats_' .. group.key] %>" size="13" weight="semibold" color="secondary" />
-    <% for _, row in ipairs(group.rows) do %>
-    <HStack spacing="8" alignment="center" maxWidth="infinity">
-      <Label text="<%= row.label %>" size="15" lines="0" maxWidth="infinity" />
-      <Label text="<%= row.value %>" size="15" weight="medium" lines="0" />
+<VStack spacing="16" alignment="leading" maxWidth="infinity">
+  <ScrollView id="heroCards" horizontal="true" vertical="false" scrollTargetBehavior="viewAligned" maxWidth="infinity">
+    <HStack spacing="12" alignment="top">
+      <% for index, profile in ipairs(profiles) do %>
+      <%- partial("../components/CharacterCard.etlua", { profile = profile, index = index, selected = hero == profile, resources = resources }) %>
+      <% end %>
     </HStack>
-    <% end %>
-  </VStack>
-  <% end %>
+  </ScrollView>
+  <TextField id="heroName" text="<%= name %>" placeholder="@heroNameOptional" accessibilityLabel="@heroNameOptional" onChange="nameChanged" verbatim="true" size="17" maxWidth="infinity" />
+  <% if nameError then %><Label text="<%= nameError %>" color="secondary" lines="0" /><% end %>
 </VStack>

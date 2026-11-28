@@ -1,0 +1,14 @@
+<% local CARD = { width = 248, portrait = 218, inset = 15, radius = 16, indicator = 22 } %>
+<Button id="select_<%= index %>" action="pick_<%= index %>" style="plain"
+        accessibilityLabel="<%= (selected and resources.heroSelected .. '. ' or '') .. profile.title .. '. ' .. profile.summary %>">
+  <VStack width="<%= CARD.width %>" padding="<%= CARD.inset %>" spacing="12" alignment="leading" background="secondaryBackground" cornerRadius="<%= CARD.radius %>" clipsToBounds="true">
+    <% if profile.portrait then %>
+    <Image path="<%= profile.portrait %>" resizable="true" contentMode="fit" width="<%= CARD.portrait %>" height="<%= CARD.portrait %>" background="white" cornerRadius="8" clipsToBounds="true" />
+    <% end %>
+    <HStack spacing="8" alignment="center" maxWidth="infinity">
+      <Label text="<%= profile.title %>" size="21" weight="bold" lines="0" maxWidth="infinity" />
+      <SystemImage name="<%= selected and 'checkmark.circle.fill' or 'circle' %>" color="<%= selected and 'accent' or 'secondary' %>" size="<%= CARD.indicator %>" width="<%= CARD.indicator %>" />
+    </HStack>
+    <Label text="<%= profile.summary %>" size="16" lines="0" maxWidth="infinity" />
+  </VStack>
+</Button>
