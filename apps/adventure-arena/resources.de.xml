@@ -138,12 +138,20 @@
 	<String id="worldsDetail" value="Wähle so viele, wie du magst. Wir beginnen mit einer Geschichte aus diesen Regalen." />
 	<String id="readyTitle" value="Deine Bibliothek ist bereit" />
 	<String id="readyDetail" value="Stöbere in den Regalen und öffne ein Cover." />
+	<String id="characterStatus" value="Charakterwerte" />
+	<String id="hideCharacterMonitor" value="Statusanzeige ausblenden" />
+	<String id="showCharacterMonitor" value="Statusanzeige einblenden" />
 	<String id="exportCharacterSheet" value="Heldenbogen drucken" />
 	<String id="sheetExportFailed" value="Der Heldenbogen konnte nicht geöffnet werden." />
-	<String id="chooseHero" value="Held auswählen" />
+	<String id="chooseHero" value="Figur auswählen" />
 	<String id="cancelHeroSetup" value="Abbrechen" />
 	<String id="heroSelected" value="Ausgewählt" />
-	<String id="heroNameOptional" value="Heldenname (optional)" />
-	<String id="startMission" value="Einsatz starten" />
+	<String id="heroNameOptional" value="Name der Figur (optional)" />
+	<String id="startMission" value="Abenteuer beginnen" />
 	<String id="heroNameError" value="Gib einen Namen mit höchstens 32 Zeichen ohne Zeilenumbrüche oder Markierungen ein." />
+	<String id="heroQuickStart" value="Schnellstart" />
+	<String id="heroStats_abilities" value="Grundfähigkeiten" />
+	<String id="heroStats_powers" value="Kräfte" />
+	<String id="heroStats_resources" value="Startwerte" />
+	<String id="heroStats_stats" value="Werte" />
 </Resources>

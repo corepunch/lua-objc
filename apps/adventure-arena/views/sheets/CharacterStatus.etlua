@@ -1,0 +1,44 @@
+<Sheet width="500" height="630">
+  <NavigationStack hidesNavigationBar="true">
+    <ScrollView>
+      <VStack padding="20" spacing="18" alignment="leading" maxWidth="infinity">
+        <HStack spacing="12" alignment="center" maxWidth="infinity">
+          <VStack spacing="3" alignment="leading" maxWidth="infinity">
+            <Label text="<%= sheet.name %>" size="23" weight="bold" lines="2" />
+            <Label text="<%= sheet.profile %>" size="14" color="secondary" />
+          </VStack>
+          <Button id="done" title="@done" action="done" style="glass" />
+        </HStack>
+        <% if #resources > 0 then %>
+        <VStack spacing="8" alignment="leading" maxWidth="infinity">
+          <Label text="<%= text.resources %>" size="14" color="secondary" weight="semibold" />
+          <% for _, row in ipairs(resources) do %>
+          <HStack spacing="14" maxWidth="infinity">
+            <Label text="<%= row.label %>" size="16" maxWidth="infinity" />
+            <Label text="<%= row.value %>" size="17" weight="semibold" monospacedDigit="true" />
+          </HStack>
+          <% end %>
+        </VStack>
+        <% end %>
+        <% for _, group in ipairs(tables) do %>
+        <VStack spacing="8" alignment="leading" maxWidth="infinity">
+          <Label text="<%= group.title %>" size="14" color="secondary" weight="semibold" />
+          <% for _, row in ipairs(group.rows) do %>
+          <HStack spacing="12" maxWidth="infinity">
+            <Label text="<%= row.label %>" size="16" maxWidth="infinity" />
+            <% if row.rank then %><Label text="<%= row.rank %>" size="14" color="secondary" /><% end %>
+            <Label text="<%= row.value %>" size="16" weight="semibold" monospacedDigit="true" />
+          </HStack>
+          <% end %>
+        </VStack>
+        <% end %>
+        <VStack spacing="10" alignment="leading" maxWidth="infinity">
+          <% if monitorAvailable then %>
+          <Button id="characterMonitor" title="<%= monitorHidden and '@showCharacterMonitor' or '@hideCharacterMonitor' %>" action="monitor" style="glass" />
+          <% end %>
+          <Button id="printCharacter" title="@exportCharacterSheet" systemImage="printer" action="print" style="glass" />
+        </VStack>
+      </VStack>
+    </ScrollView>
+  </NavigationStack>
+</Sheet>

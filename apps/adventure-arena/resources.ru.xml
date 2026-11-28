@@ -89,6 +89,9 @@
 	<String id="justify" value="По ширине" />
 	<String id="previewTitle" value="К западу от дома" />
 	<String id="previewBody" value="Вы стоите на поле к западу от белого дома. Вход заколочен. Рядом стоит небольшой почтовый ящик." />
+	<String id="characterStatus" value="Характеристики персонажа" />
+	<String id="hideCharacterMonitor" value="Скрыть показатель состояния" />
+	<String id="showCharacterMonitor" value="Показать показатель состояния" />
 	<String id="exportCharacterSheet" value="Печать карточки героя" />
 	<String id="sheetExportFailed" value="Не удалось открыть карточку героя." />
 	<String id="audienceDetail" value="Мы подберём первые полки. Это можно изменить позже." />
@@ -130,10 +133,15 @@
 	<String id="welcomeTitle" value="Книга, которая вам отвечает" />
 	<String id="worldsDetail" value="Выберите любые жанры. Мы предложим историю с одной из этих полок." />
 	<String id="worldsTitle" value="Какие миры вам нравятся?" />
-	<String id="chooseHero" value="Выберите героя" />
+	<String id="chooseHero" value="Выберите персонажа" />
 	<String id="cancelHeroSetup" value="Отмена" />
 	<String id="heroSelected" value="Выбран" />
-	<String id="heroNameOptional" value="Имя героя (необязательно)" />
-	<String id="startMission" value="Начать миссию" />
+	<String id="heroNameOptional" value="Имя персонажа (необязательно)" />
+	<String id="startMission" value="Начать приключение" />
 	<String id="heroNameError" value="Введите имя до 32 символов, без переносов строки и разметки." />
+	<String id="heroQuickStart" value="Быстрый старт" />
+	<String id="heroStats_abilities" value="Основные характеристики" />
+	<String id="heroStats_powers" value="Сверхспособности" />
+	<String id="heroStats_resources" value="Начальное состояние" />
+	<String id="heroStats_stats" value="Параметры" />
 </Resources>

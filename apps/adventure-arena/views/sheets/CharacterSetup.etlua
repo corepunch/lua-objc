@@ -1,13 +1,20 @@
 <Sheet width="540" height="690">
   <NavigationStack hidesNavigationBar="true">
-    <ScrollView>
-      <VStack padding="20" spacing="14" alignment="leading" maxWidth="infinity">
-        <HStack spacing="8" maxWidth="infinity">
-          <Label text="@chooseHero" size="23" weight="bold" maxWidth="infinity" />
-          <Button id="cancelSetup" title="@cancelHeroSetup" action="cancel" style="glass" />
-        </HStack>
-        <VStack id="characterSetup" maxWidth="infinity" />
+    <VStack padding="20" spacing="14" alignment="leading" maxWidth="infinity" maxHeight="infinity">
+      <HStack spacing="8" maxWidth="infinity">
+        <Label text="@chooseHero" size="23" weight="bold" maxWidth="infinity" />
+        <Button id="cancelSetup" title="@cancelHeroSetup" action="cancel" keyboardShortcut="cancelAction" style="glass" />
+      </HStack>
+      <ScrollView maxWidth="infinity" maxHeight="infinity">
+        <VStack id="characterSetup" alignment="leading" maxWidth="infinity" />
+      </ScrollView>
+      <Divider />
+      <VStack spacing="8" alignment="leading" maxWidth="infinity">
+        <Button id="confirmHero" title="@startMission" action="confirm" keyboardShortcut="defaultAction" style="glassProminent" tint="accent" height="46" maxWidth="infinity" />
+        <% if defaultHero then %>
+        <Button id="quickStart" title="<%= resources.heroQuickStart .. ': ' .. defaultHero %>" action="quickStart" style="glass" height="44" maxWidth="infinity" />
+        <% end %>
       </VStack>
-    </ScrollView>
+    </VStack>
   </NavigationStack>
 </Sheet>

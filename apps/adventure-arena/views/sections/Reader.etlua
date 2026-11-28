@@ -10,8 +10,8 @@
     </ScrollView>
     <VStack spacing="8" maxWidth="infinity">
       <Label id="dictationStatus" text="<%= dictation.status %>" size="13" color="<%= reading.secondary %>" paddingHorizontal="20" lines="2" hidden="<%= tostring(dictation.status == "") %>" />
-      <% if canExportSheet then %>
-      <Button id="exportSheet" title="@exportCharacterSheet" systemImage="printer" action="exportSheet" style="plain" />
+      <% if canShowCharacterStatus then %>
+      <Button id="characterStatus" title="@characterStatus" systemImage="person.text.rectangle" action="characterStatus" style="plain" />
       <% end %>
       <% if sheetError then %>
       <Label id="sheetExportError" text="@sheetExportFailed" size="13" color="secondary" />
