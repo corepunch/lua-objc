@@ -8,6 +8,7 @@ local Languages = {}
 local LIST = {
 	{ id = "en", title = "English", speechLocale = "en-US" },
 	{ id = "de", title = "Deutsch", speechLocale = "de-DE" },
+	{ id = "ru", title = "Русский", speechLocale = "ru-RU" },
 }
 local DEFAULT = "en"
 
@@ -48,6 +49,8 @@ function Languages.lower(text)
 	local lowered = {}
 	for _, code in utf8.codes(text) do
 		if (code >= 0xC0 and code <= 0xDE and code ~= 0xD7) then code = code + 32
+		elseif code >= 0x410 and code <= 0x42F then code = code + 32
+		elseif code == 0x401 then code = 0x451
 		elseif code < 128 then code = string.lower(string.char(code)):byte() end
 		table.insert(lowered, utf8.char(code))
 	end

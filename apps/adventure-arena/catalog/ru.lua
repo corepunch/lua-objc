@@ -1,0 +1,20 @@
+return {
+	{
+		id = "books.ru.blackout-at-meridian",
+		title = "Огни Меридиана",
+		shortDescription = "Выберите героя и верните свет в город.",
+		description = "Меридиан погрузился во тьму. Трамвай с пассажирами повис над рекой, а релейная станция вышла из-под контроля. Выберите одного из трёх героев, спасите людей и восстановите электроснабжение. Способности героя и броски кубика определят, чем закончится ночь.",
+		author = "AdventureArena",
+		year = 2026,
+		rating = 0,
+		reviewCount = 0,
+		reviews = {},
+		startFile = "blackout-at-meridian.zil",
+		genre = "Супергеройская ролевая игра",
+		statusLine = "moves",
+		collection = "Оригинальные приключения",
+		categories = { "Супергерои" },
+		difficulty = "Начальный",
+		cover = "apps/adventure-arena/zilscript/books/en/blackout-at-meridian/cover.jpg",
+	},
+}

@@ -1,3 +1,4 @@
+local CharacterSheet = require("apps.adventure-arena.services.CharacterSheet")
 local Quotes = require("apps.adventure-arena.helpers.Quotes")
 local ReaderStatus = require("apps.adventure-arena.helpers.ReaderStatus")
 local Languages = require("apps.adventure-arena.helpers.Languages")
@@ -95,11 +96,12 @@ function Controller:show(id, fresh)
 		inputFocused = function() self:scrollTranscript(true) end,
 		dictate = function() self:toggleDictation() end,
 		readingSettings = function() self:showReadingSettings() end,
+		exportSheet = function() self:exportSheet() end,
 	}
 	local presentation = self.model:presentation()
 	actions.disappear = function() self:onDisappear() end
 	self.actions = actions
-	self.draft, self.dictationStatus, self.toast = "", "", nil
+	self.draft, self.dictationStatus, self.toast, self.sheetError = "", "", nil, nil
 	local pageRefs
 	self.page, pageRefs = self.push("pages/Session", {
 		roomTitle = presentation.roomTitle, phone = self.ns.idiom == "phone", actions = actions,
@@ -136,6 +138,9 @@ function Controller:readerData()
 	-- any keyboard. On iPad a correction committed late could also replace
 	-- a command with its first word.
 	data.composer = { verbatim = true, dictate = self.speech ~= nil and not (hasText and not self.dictationActive), canSend = hasText }
+	local engine = self.model.engine
+	data.canExportSheet = engine and engine.canExportSheet and engine:canExportSheet()
+	data.sheetError = self.sheetError
 	data.toast = self.toast
 	data.actions = self.actions
 	return data
@@ -152,6 +157,18 @@ function Controller:render()
 		colorScheme = data.reading.colorScheme, font = data.reading.font,
 	})
 	self:renderCompletions()
+end
+
+function Controller:exportSheet()
+	local engine = self.model.engine
+	if not engine or not engine.characterSheet then return false end
+	local ok, shared = pcall(function()
+		local sheet = engine:characterSheet()
+		return sheet and CharacterSheet.share(self.ns, sheet)
+	end)
+	self.sheetError = not ok or not shared
+	self:render()
+	return ok and shared
 end
 
 function Controller:isOpen()

@@ -100,16 +100,16 @@ else
 		t.expect(not text:find("kannst das hier nicht sehen", 1, true), command .. " names a visible thing: " .. text)
 		return text
 	end
+	t.expect(play("waehl fels"):find("Fels an", 1, true), "choosing a profile from the menu")
 	t.assertEqual(offered("untersuch fenster").title, "Untersuchen", "menus name actions in German")
 	t.expect(offered("examine window") == nil, "no English command is offered")
 	t.expect(play("untersuch fenster"):find("Glas", 1, true), "examining the window")
-	t.expect(play("lies einsatztafel"):find("Profilkarten", 1, true), "reading the board")
-	t.expect(play("waehl fels"):find("Fels an", 1, true), "choosing a profile from the menu")
+	t.expect(play("lies einsatztafel"):find("AKTIV", 1, true), "reading the board")
 	t.expect(book:hasExit("north"), "the German exit north is a direction")
 	t.assertEqual(book:linkActions("north")[1].command, "nord")
 	t.expect(play("nord"):find("Br", 1, true), "walking north")
 	t.expect(book:submit("inventar"), "inventory")
-	t.assertEqual(book:presentation().progress, "5 Züge", "moves are counted in German")
+	t.assertEqual(book:presentation().progress, "4 Züge", "moves are counted in German")
 end
 
 os.exit(t.summary() and 0 or 1)

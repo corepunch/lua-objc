@@ -138,4 +138,6 @@
 	<String id="worldsDetail" value="Pick as many as you want. We’ll open with a story from those shelves." />
 	<String id="readyTitle" value="Your library is ready" />
 	<String id="readyDetail" value="Browse the shelves and open any cover." />
+	<String id="exportCharacterSheet" value="Print Character Sheet" />
+	<String id="sheetExportFailed" value="Couldn’t open the character sheet." />
 </Resources>
